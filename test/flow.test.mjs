@@ -84,7 +84,8 @@ test('nhánh chính chạy tới phê duyệt theo v1.1, KPI ≤ 20 NLV', () => 
   for (const n of [11, 38, 39, 40]) assert.equal(Flow.taskStatus(n), 'na', `task ${n} phải là na`);
   for (const n of ['10a', '10b']) assert.equal(Flow.taskStatus(n), 'cond');
   assert.deepEqual(plain(Flow.state.vars.checks.map((c) => c.ok)), [true]);
-  assert.equal(Flow.ci().code, 'ĐXMS-2026-0117');
+  assert.equal(Flow.ci().code, 'HS-2026-0117');
+  assert.equal(Flow.ci().dxms, 'ĐXMS-2026-0117');
   // Giải trình 1 vòng → BM-04 lập 2 lần cho mỗi CQCM.
   assert.equal(Flow.state.vars.round, 1);
   assert.equal(Flow.state.history.filter((h) => h.task === 19).length, 6);
@@ -214,20 +215,51 @@ test('nhảy tới từng cảnh demo đặt đúng task và vai', () => {
   }
 });
 
-test('mở prototype: chưa có hồ sơ; Lưu ở SCR-25 mới start instance và giao task 1 cho người tạo', () => {
+test('mở prototype: chưa có hồ sơ; tạo ĐXMS không start quy trình; Lưu hồ sơ ở SCR-25 mới start instance và giao task 1 cho người tạo', () => {
   const w = boot(null);
   const { Flow } = w;
   assert.equal(Flow.state.status, 'new');
   assert.equal(Flow.state.tokens.length, 0);
   assert.equal(Flow.caseStatus(), 'Chưa tạo');
-  Flow.create('MS01.01', { title: 'ĐXMS thử' });
+  const dx = Flow.createDxms({ title: 'ĐXMS thử', unit: 'Trung tâm Vô tuyến', priority: 'Thường', est: 180 });
+  assert.equal(dx, 'ĐXMS-2026-0117');
+  assert.equal(Flow.state.status, 'new', 'tạo ĐXMS không start quy trình (D-11)');
+  assert.equal(Flow.state.tokens.length, 0);
+  Flow.create('MS01.01', { dxms: dx, name: 'Hồ sơ thử' });
   assert.equal(Flow.state.status, 'running');
-  assert.equal(Flow.ci().code, 'ĐXMS-2026-0117');
+  assert.equal(Flow.ci().code, 'HS-2026-0117');
+  assert.equal(Flow.ci().dxms, 'ĐXMS-2026-0117');
   assert.equal(Flow.ci().title, 'ĐXMS thử');
+  assert.equal(Flow.ci().name, 'Hồ sơ thử');
   assert.equal(Flow.ci().flow, 'MS01.01');
   assert.deepEqual(Array.from(Flow.state.tokens, (t) => [t.task, t.who]), [[1, 'minh']]);
+  // ĐXMS vẫn còn sau khi tạo hồ sơ; Reset luồng xoá cả ĐXMS tạo trên prototype.
+  assert.equal(Flow.findDxms(dx).title, 'ĐXMS thử');
   Flow.reset();
   assert.equal(Flow.state.status, 'new');
+  assert.equal(Flow.findDxms(dx), null);
+});
+
+test('ĐXMS: mã tự sinh, sửa/xoá; hồ sơ Phê duyệt giữ số của ĐXMS, hồ sơ Điều chỉnh lấy số trống', () => {
+  const w = boot(null);
+  const { Flow } = w;
+  assert.equal(Flow.createDxms({ title: 'A' }), 'ĐXMS-2026-0117');
+  assert.equal(Flow.createDxms({ title: 'B' }), 'ĐXMS-2026-0127');
+  assert.deepEqual(plain(Flow.dxmsAll().slice(0, 2).map((x) => x.code)), ['ĐXMS-2026-0127', 'ĐXMS-2026-0117']);
+  Flow.updateDxms('ĐXMS-2026-0119', { title: 'Máy in 3D (sửa)' });
+  assert.equal(Flow.findDxms('ĐXMS-2026-0119').title, 'Máy in 3D (sửa)');
+  Flow.deleteDxms('ĐXMS-2026-0127');
+  Flow.deleteDxms('ĐXMS-2026-0119');
+  assert.equal(Flow.findDxms('ĐXMS-2026-0127'), null);
+  assert.equal(Flow.findDxms('ĐXMS-2026-0119'), null);
+  // Hồ sơ Điều chỉnh của ĐXMS-2026-0103 (đã phê duyệt): số trống đầu tiên từ 0127; ĐXMS và hồ sơ đã tạo được giữ khi tạo hồ sơ Phê duyệt khác.
+  assert.equal(Flow.createAdj({ dxms: 'ĐXMS-2026-0103', name: 'Điều chỉnh lần 1', process: 'MS02', total: 220 }), 'HS-2026-0127');
+  Flow.create('MS01.03', { dxms: 'ĐXMS-2026-0117' });
+  assert.equal(Flow.ci().code, 'HS-2026-0117');
+  assert.equal(Flow.state.adj[0].code, 'HS-2026-0127');
+  assert.equal(Flow.state.adj[0].kind, 'DC');
+  assert.equal(Flow.findDxms('ĐXMS-2026-0117').title, 'A');
+  assert.equal(Flow.nextCaseCode('ĐXMS-2026-0098', 'PD'), 'HS-2026-0128', 'HS-2026-0098 đã có (hồ sơ mẫu) → số trống');
 });
 
 test('task 1 chỉ hiện căn cứ hợp với quy trình đã chọn', () => {
@@ -253,7 +285,7 @@ test('chọn nhầm MS01.03 cho hồ sơ 182,90 tỷ: cổng báo không khớp 
   assert.equal(Flow.state.vars.checks.length, 2);
 });
 
-test('chuyển quy trình: 10b tạo ĐXMS mới theo MS01.01, hồ sơ cũ "Đã chuyển quy trình"; hồ sơ mới làm lại từ task 1 và chạy tới phê duyệt', () => {
+test('chuyển quy trình: 10b tạo hồ sơ mới của cùng ĐXMS theo MS01.01, hồ sơ cũ "Đã chuyển quy trình"; hồ sơ mới làm lại từ task 1 và chạy tới phê duyệt', () => {
   const w = boot('MS01.03');
   const { Flow } = w;
   Flow.setUi('basisDoc', 'qd1');
@@ -262,17 +294,19 @@ test('chuyển quy trình: 10b tạo ĐXMS mới theo MS01.01, hồ sơ cũ "Đ�
   assert.equal(Flow.state.status, 'moved');
   assert.equal(Flow.caseStatus(), 'Đã chuyển quy trình');
   assert.equal(Flow.taskStatus('10b'), 'done');
-  assert.deepEqual({ ...Flow.state.movedTo }, { code: 'ĐXMS-2026-0125', process: 'MS01.01' });
+  assert.deepEqual({ ...Flow.state.movedTo }, { code: 'HS-2026-0125', process: 'MS01.01' });
   assert.equal(Flow.state.tokens.length, 0);
   assert.equal(Flow.kpiUsed(), null, 'không tính KPI');
 
   Flow.openReplacement();
   assert.equal(Flow.state.status, 'running');
-  assert.equal(Flow.ci().code, 'ĐXMS-2026-0125');
+  assert.equal(Flow.ci().code, 'HS-2026-0125');
+  assert.equal(Flow.ci().dxms, 'ĐXMS-2026-0117', 'cùng ĐXMS');
   assert.equal(Flow.ci().flow, 'MS01.01');
-  assert.equal(Flow.state.replaces, 'ĐXMS-2026-0117');
+  assert.equal(Flow.state.replaces, 'HS-2026-0117');
   assert.equal(Flow.state.archived.length, 1);
-  assert.equal(Flow.state.archived[0].replacedBy, 'ĐXMS-2026-0125');
+  assert.equal(Flow.state.archived[0].replacedBy, 'HS-2026-0125');
+  assert.equal(Flow.state.archived[0].dxms, 'ĐXMS-2026-0117');
   assert.equal(Flow.ui.basisDoc, 'qd1', 'dữ liệu đã sao chép');
   assert.deepEqual(Array.from(Flow.state.tokens, (t) => t.task), [1]);
   runMain(w);

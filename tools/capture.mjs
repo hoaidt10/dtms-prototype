@@ -40,14 +40,21 @@ const add = (page, id, title, steps, extra) => S.push(Object.assign({ page, id, 
 const P0 = 'Khung & màn khác', P1 = 'Cảnh 1–3 · Khởi tạo → Gửi CQCM', P2 = 'Cảnh 4–6 · Góp ý CQCM → BM-05', P3 = 'Cảnh 7–9 · Tập đoàn → Phê duyệt → Tổng kết', P4 = 'Nhánh phụ';
 
 add(P0, 'SCR-00', 'Chọn vai demo', [J.jump(1, 'minh'), J.hash('#/chon-vai')]);
-add(P0, 'SCR-02', 'Danh sách ĐXMS', [J.jump(1, 'minh'), J.hash('#/dxms')]);
+add(P0, 'SCR-02', 'Danh sách hồ sơ ĐXMS', [J.jump(1, 'minh'), J.hash('#/ho-so-dxms')]);
+add(P0, 'SCR-29', 'Chi tiết ĐXMS — hồ sơ Phê duyệt + Điều chỉnh', [J.jump(1, 'minh'), J.hash('#/dxms/%C4%90XMS-2026-0077')], { link: 'SCR-20-e', linkSel: '[data-dxms-profiles] a.link' });
+add(P0, 'SCR-20-e', 'Chi tiết hồ sơ Điều chỉnh (MS02)', [J.jump(1, 'minh'), J.hash('#/ho-so-dxms/HS-2026-0126')]);
+add(P0, 'SCR-25-dc', 'Thêm mới hồ sơ — loại Điều chỉnh', [J.jump(1, 'minh'), J.hash('#/ho-so-dxms/create/%C4%90XMS-2026-0103')]);
 add(P0, 'tong-quan', 'Tổng quan', [J.scene(4), J.hash('#/tong-quan')]);
 add(P0, 'phan-he', 'Trang phân hệ chưa dựng — Gói thầu', [J.jump(1, 'minh'), J.hash('#/ph/goi-thau')]);
 add(P0, 'cho-chot', 'Điểm chưa chốt ❓', [J.jump(1, 'minh'), J.hash('#/cho-chot')]);
 
-add(P1, 'SCR-01-minh', 'Việc của tôi — Minh (chưa có hồ sơ)', [J.scene(1), J.hash('#/viec-cua-toi')], { link: 'SCR-02-minh', linkSel: '.sb-nav [data-go="dxms"]' });
-add(P1, 'SCR-02-minh', 'Danh sách ĐXMS — Minh', [J.scene(1), J.hash('#/dxms')], { link: 'SCR-25', linkSel: '[data-create]' });
-add(P1, 'SCR-25', 'Tạo mới ĐXMS', [J.scene(1), J.hash('#/dxms/create'), `document.querySelector('#c-title').value = D.caseInfo.title`], { link: 'SCR-03', linkSel: '#c-save' });
+// Cảnh 1 (D-10, D-11): tạo ĐXMS → Chỉnh sửa ĐXMS › Tạo hồ sơ → Thêm mới hồ sơ (ĐXMS khoá, loại Phê duyệt chọn sẵn) → task 01.
+const DX0 = `Flow.createDxms({ title: D.caseInfo.title, unit: D.caseInfo.unit, priority: D.caseInfo.priority, est: 183, period: D.caseInfo.period, secret: false, purpose: 'Trang bị thiết bị đo kiểm RF và OTA phục vụ phát triển trạm gNodeB thế hệ 2.' })`;
+add(P1, 'SCR-01-minh', 'Việc của tôi — Minh (chưa có hồ sơ)', [J.scene(1), J.hash('#/viec-cua-toi')], { link: 'SCR-27-minh', linkSel: '.sb-nav [data-go="dxms"]' });
+add(P1, 'SCR-27-minh', 'Danh sách ĐXMS — Minh', [J.scene(1), J.hash('#/dxms')], { link: 'SCR-28', linkSel: '[data-create="dxms"]' });
+add(P1, 'SCR-28', 'Thêm mới ĐXMS', [J.scene(1), J.hash('#/dxms/create'), `document.querySelector('#x-title').value = D.caseInfo.title`, `document.querySelector('#x-est').value = '183'`], { link: 'SCR-28-edit', linkSel: '#x-save' });
+add(P1, 'SCR-28-edit', 'Chỉnh sửa ĐXMS — Danh sách hồ sơ trống, Tạo hồ sơ', [J.scene(1), DX0, J.hash('#/dxms/%C4%90XMS-2026-0117/edit')], { link: 'SCR-25', linkSel: '[data-dxms-profiles] .vcard-h .vbtn' });
+add(P1, 'SCR-25', 'Thêm mới hồ sơ — ĐXMS khoá, loại Phê duyệt', [J.scene(1), DX0, J.hash('#/ho-so-dxms/create/%C4%90XMS-2026-0117')], { link: 'SCR-03', linkSel: '#c-save' });
 add(P1, 'SCR-03', 'Chọn căn cứ · T01 · lọc theo quy trình', [J.jump(1, 'minh'), J.task(1)], { link: 'SCR-04-a' });
 add(P1, 'SCR-04-a', 'Thông tin cơ bản · T04 · AI gợi ý', [J.jump(4, 'minh'), J.task(4)], { link: 'SCR-04-b', linkSel: '[data-ai-all]' });
 add(P1, 'SCR-04-b', 'Thông tin cơ bản · T04 · đã nhận gợi ý', [J.jump(4, 'minh'), J.ui('ai', { purposeText: 'accepted', scope: 'accepted', value: 'accepted', fund: 'accepted', period: 'accepted' }), J.task(4)], { link: 'SCR-05' });
@@ -91,7 +98,7 @@ add(P3, 'SCR-20-d', 'Chi tiết BPMN (đang xử lý · T26)', [J.jump(26, 'minh
 add(P4, 'B-3e-a', 'Chọn nhầm MS01.03 · T04 cảnh báo mềm', [J.jump(4, 'minh', {}, 'MS01.03'), J.task(4)], { link: 'B-3e-b' });
 add(P4, 'B-3e-b', 'Không khớp quy trình · T10a (SCR-26)', [J.jump('10a', 'minh', {}, 'MS01.03'), J.task('10a')], { link: 'B-3e-c', linkLabel: 'Chuyển quy trình' });
 add(P4, 'B-3e-c', 'Đã chuyển quy trình · hồ sơ cũ (T10b → End)', [J.jump('10a', 'minh', {}, 'MS01.03'), J.choose("'10a'", 'Chuyển'), J.hash('#/ho-so')], { link: 'B-3e-d', linkSel: '[data-open-new]' });
-add(P4, 'B-3e-d', 'Hồ sơ mới ĐXMS-2026-0125 · T01 · dữ liệu sao chép', [J.jump('10a', 'minh', {}, 'MS01.03'), J.choose("'10a'", 'Chuyển'), `Flow.openReplacement()`, J.task(1)]);
+add(P4, 'B-3e-d', 'Hồ sơ mới HS-2026-0125 (cùng ĐXMS) · T01 · dữ liệu sao chép', [J.jump('10a', 'minh', {}, 'MS01.03'), J.choose("'10a'", 'Chuyển'), `Flow.openReplacement()`, J.task(1)]);
 add(P4, 'B-09', 'Chỉ huy không đồng ý · T13 → AI lọc (T14) → T12', [J.jump(13, 'hai'), J.choose(13, 'Không đồng ý'), J.persona('minh'), J.ui('necessity', true), J.task(12)]);
 add(P4, 'B-22', 'TTMS trả lại danh sách CQCM · T17 → T16', [J.jump(17, 'lan'), J.choose(17, 'Chưa'), J.persona('minh'), J.ui('bm03File', true), J.task(16)]);
 add(P4, 'B-14-a', 'Giải trình vòng 3/2 · T28', [J.jump(28, 'minh', { round: 2 }), J.task(28)], { link: 'B-14-b' });
@@ -115,6 +122,23 @@ add(P5, 'SCR-32-off', 'Xác nhận dừng hoạt động', [...dm('nguon-von'), 
   .forEach(([id, key, name]) => add(P5, id, 'Danh sách ' + name, dm(key)));
 add(P5, 'SCR-40', 'Danh sách ngưỡng phân luồng', dm('nguong-phan-luong'), { link: 'SCR-40-edit', linkSel: '[data-cat-edit]' });
 add(P5, 'SCR-40-edit', 'Chỉnh sửa ngưỡng phân luồng', [...dm('nguong-phan-luong'), click('[data-cat-edit]')], { overlay: true });
+
+// Quản trị quy trình (T9): vai Quản trị hệ thống; hồ sơ đang chạy ở task 26 để Giám sát tiến trình có dòng Đang chạy.
+const P6 = 'Quản trị quy trình';
+const qt = (h) => [J.jump(26, 'minh'), 'MaTran.reset()', J.persona('qt'), J.hash(h)];
+const V2 = '2251799813690112';
+add(P6, 'SCR-48', 'Giám sát tiến trình', qt('#/giam-sat-tien-trinh'));
+add(P6, 'SCR-41', 'Danh sách quy trình (mở MS01.01)', [...qt('#/quy-trinh'), click('[data-vtt-key="DTMS_MS01_01"]')], { link: 'SCR-42', linkSel: '.vtt tbody tr.child a.link' });
+add(P6, 'SCR-42', 'Chi tiết quy trình MS01 v1.1', qt('#/quy-trinh/' + V2), { link: 'SCR-41', linkSel: '.pg-head .vbtn.back' });
+add(P6, 'SCR-42-el', 'Chi tiết quy trình — chọn phần tử (task 11)', [...qt('#/quy-trinh/' + V2),
+  `document.dispatchEvent(new CustomEvent('bpmn-element', { detail: { key: 'wf/${V2}', page: 'MS01 v1.1', id: 'Activity_11' } }))`]);
+add(P6, 'SCR-43', 'Ma trận hành động — Luật hiển thị hành động', qt('#/ma-tran/display-rule'), { link: 'SCR-44-new', linkSel: 'main .pg-head .r .vbtn.primary' });
+add(P6, 'SCR-44-new', 'Thêm mới luật hiển thị hành động', qt('#/ma-tran/display-rule/create'), { link: 'SCR-43', linkSel: '.pg-head .vbtn.back' });
+add(P6, 'SCR-44-view', 'Xem chi tiết luật hiển thị hành động', [...qt('#/ma-tran/display-rule'), `location.hash = '#/ma-tran/display-rule/' + MaTran.rules()[0].id + '/view'`], { link: 'SCR-43', linkSel: '.pg-head .vbtn.back' });
+add(P6, 'SCR-45', 'Ma trận hành động — Đối soát BPMN', qt('#/ma-tran/bpmn-reconcile'), { link: 'SCR-45-sync', linkSel: '[data-mt="sync"]' });
+add(P6, 'SCR-45-sync', 'Xác nhận đồng bộ luật từ BPMN', [...qt('#/ma-tran/bpmn-reconcile'), click('[data-mt="sync"]')], { overlay: true });
+add(P6, 'SCR-46', 'Ma trận hành động — Danh mục hành động', qt('#/ma-tran/action-catalog'), { link: 'SCR-47', linkSel: 'main table tbody a.link' });
+add(P6, 'SCR-47', 'Xem chi tiết hành động GUI_DUYET', qt('#/ma-tran/action-catalog/GUI_DUYET'), { link: 'SCR-42', linkSel: 'main table tbody a.link' });
 
 const manifest = [];
 for (let i = 0; i < S.length; i++) {

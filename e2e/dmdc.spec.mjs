@@ -565,15 +565,16 @@ const setDxms150 = async (page) => {
   }
 };
 
-test('B5 §5.4: Tạo mới ĐXMS lấy điều kiện từ Ngưỡng phân luồng; hồ sơ đã tạo giữ ngưỡng lúc tạo (P-34)', async ({ page }) => {
+test('B5 §5.4: Thêm mới hồ sơ lấy điều kiện từ Ngưỡng phân luồng; hồ sơ đã tạo giữ ngưỡng lúc tạo (P-34)', async ({ page }) => {
   await asAdmin(page, '#/viec-cua-toi');
-  await page.evaluate(() => { Flow.setPersona('minh'); location.hash = '#/dxms/create'; });
+  // ĐXMS-2026-0119 chưa có hồ sơ → loại Phê duyệt chọn sẵn, Quy trình liệt kê MS01.01 / .02 / .03.
+  await page.evaluate(() => { Flow.setPersona('minh'); location.hash = '#/ho-so-dxms/create/%C4%90XMS-2026-0119'; });
   expect(await optLabels(page, 'c-proc')).toEqual([
     'MS01.01 · ≥ 160 tỷ · căn cứ chưa được CT/TGĐ TĐ duyệt',
     'MS01.02 · ≥ 160 tỷ · căn cứ đã được CT/TGĐ TĐ duyệt (không gồm Kế hoạch SXKD năm)',
     'MS01.03 · < 160 tỷ · mọi loại căn cứ']);
   // Hồ sơ tạo trước khi đổi ngưỡng.
-  await page.locator('#c-title').fill('Hồ sơ tạo trước khi đổi ngưỡng');
+  await page.locator('#c-name').fill('Hồ sơ tạo trước khi đổi ngưỡng');
   await pick(page, 'c-proc', 'MS01.03');
   await page.locator('#c-save').click();
   await expect(page).toHaveURL(/#\/task\//);
@@ -581,12 +582,12 @@ test('B5 §5.4: Tạo mới ĐXMS lấy điều kiện từ Ngưỡng phân lu�
   await setDxms150(page);
   expect(await page.evaluate(() => Flow.condOf('MS01.03'))).toBe('< 160 tỷ · mọi loại căn cứ');
   // Hồ sơ mới thấy nhãn đổi theo ngưỡng.
-  await page.evaluate(() => { Flow.setPersona('minh'); location.hash = '#/dxms/create'; });
+  await page.evaluate(() => { Flow.setPersona('minh'); const c = Flow.createDxms({ title: 'ĐXMS thử ngưỡng' }); location.hash = '#/ho-so-dxms/create/' + encodeURIComponent(c); });
   expect(await optLabels(page, 'c-proc')).toEqual([
     'MS01.01 · ≥ 150 tỷ · căn cứ chưa được CT/TGĐ TĐ duyệt',
     'MS01.02 · ≥ 150 tỷ · căn cứ đã được CT/TGĐ TĐ duyệt (không gồm Kế hoạch SXKD năm)',
     'MS01.03 · < 150 tỷ · mọi loại căn cứ']);
-  await page.locator('#c-title').fill('Hồ sơ tạo sau khi đổi ngưỡng');
+  await page.locator('#c-name').fill('Hồ sơ tạo sau khi đổi ngưỡng');
   await pick(page, 'c-proc', 'MS01.01');
   await page.locator('#c-save').click();
   await expect(page).toHaveURL(/#\/task\//);

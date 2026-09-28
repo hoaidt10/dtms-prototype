@@ -22,7 +22,31 @@ export async function fresh(page, hash) {
   await expect(page.locator('#app')).not.toBeEmpty();
 }
 
-export const lastToast = (page) => page.evaluate(() => [...document.querySelectorAll('.toast')].map((t) => t.className + '|' + t.textContent).pop() || '');
+// SCR-28 Thêm mới ĐXMS (#/dxms → Thêm mới): nhập tên rồi Lưu — chỉ tạo ĐXMS, không start quy trình (D-11). Trả về mã ĐXMS.
+export async function createDxms(page, title = 'Mua sắm thiết bị đo kiểm phục vụ phát triển trạm gNodeB thế hệ 2') {
+  await page.evaluate(() => { location.hash = '#/dxms'; });
+  await page.locator('[data-create="dxms"]').click();
+  await expect(page).toHaveURL(/#\/dxms\/create$/);
+  await page.locator('#x-title').fill(title);
+  await page.locator('#x-save').click();
+  await expect(page).toHaveURL(/#\/dxms$/);
+  return page.evaluate(() => Flow.dxmsAll()[0].code);
+}
+
+// Chỉnh sửa ĐXMS → Danh sách hồ sơ → Tạo hồ sơ (SCR-25, ô ĐXMS khoá, loại Phê duyệt chọn sẵn) → chọn quy trình → Lưu: start ngay, mở task 01.
+export async function createCase(page, proc, dxms) {
+  const code = dxms || (await createDxms(page));
+  await page.evaluate((c) => { location.hash = `#/dxms/${encodeURIComponent(c)}/edit`; }, code);
+  await page.locator('[data-dxms-profiles] .vcard-h [data-go^="ho-so-dxms/create/"]').click();
+  await expect(page).toHaveURL(/#\/ho-so-dxms\/create\//);
+  await page.locator('[data-vsel="c-proc"]').click();
+  await page.locator(`.vsel-panel [data-opt="${proc}"]`).click();
+  await page.locator('#c-save').click();
+  await expect(page).toHaveURL(/#\/task\//);
+  return code;
+}
+
+export const lastToast =(page) => page.evaluate(() => [...document.querySelectorAll('.toast')].map((t) => t.className + '|' + t.textContent).pop() || '');
 
 export const state = (page) => page.evaluate(() => ({
   s: Flow.state.status,

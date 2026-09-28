@@ -371,7 +371,7 @@
         'Đề xuất mua sắm: dưới 160 tỷ → MS01.03; từ 160 tỷ → MS01.01 hoặc MS01.02, chọn theo căn cứ chứ không theo ngưỡng. Loại khoản đầu tư có Cấp xử lý "Luôn cấp Tập đoàn" (SXKD) được ưu tiên hơn bảng ngưỡng (P-29).',
         'Ngưỡng MS13/MS14 theo BBLV 24/09: Viễn thông - CNTT dưới 160 tỷ, lĩnh vực khác (trừ BĐS) dưới 90 tỷ; BBLV 15/09 ghi ngược lại (P-28). Chưa có ngưỡng cho Bất động sản và Quốc phòng.',
         'Ngưỡng của Đề xuất mua sắm đang được hồ sơ dùng: không xoá được, chỉ Dừng hoạt động (P-33). Dữ liệu mẫu; thay đổi được lưu trên trình duyệt.',
-        'Dùng ở: nhãn điều kiện của từng quy trình khi Tạo mới ĐXMS, cảnh báo mềm ở task 04, cổng "Giá trị khớp quy trình đã chọn?" sau task 10 và gợi ý quy trình ở task 10a. Hồ sơ giữ ngưỡng tại lúc tạo; tên quy trình (vd "Phê duyệt ĐXMS ≥ 160 tỷ") là tên trong BPMN, không đổi theo ngưỡng.',
+        'Dùng ở: nhãn điều kiện của từng quy trình khi Thêm mới hồ sơ Phê duyệt ĐXMS, cảnh báo mềm ở task 04, cổng "Giá trị khớp quy trình đã chọn?" sau task 10 và gợi ý quy trình ở task 10a. Hồ sơ giữ ngưỡng tại lúc tạo; tên quy trình (vd "Phê duyệt ĐXMS ≥ 160 tỷ") là tên trong BPMN, không đổi theo ngưỡng.',
       ],
       q: ['P-28', 'P-34', 'P-29', 'P-33', 'P-27'], src: 'ecat common-catalog/base/catalog-list · khcn sys_config.TASK_LEVEL',
     };

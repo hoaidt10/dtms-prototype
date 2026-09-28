@@ -1,11 +1,12 @@
 /*
  * Bộ máy luồng cho prototype: chạy 61 task BPMN MS01 v1.1 (+ 10a, 10b) theo D.flow, có token song song (mỗi CQCM một token),
  * điểm hợp nhất (join), cổng theo biến (gw), cổng kiểm tra khớp quy trình và bộ đếm vòng giải trình.
- * Hồ sơ chỉ có instance khi người dùng Lưu ở SCR-25 (chọn quy trình, start ngay — chốt 2026-09-28).
+ * Hồ sơ chỉ có instance khi người dùng Lưu ở SCR-25 (chọn quy trình, start ngay — chốt 2026-09-28). Hồ sơ thuộc một ĐXMS (D-10):
+ * ĐXMS tạo riêng ở SCR-28 (không start quy trình); prototype chạy luồng cho một hồ sơ Phê duyệt tại một thời điểm.
  * Trạng thái lưu localStorage của trình duyệt (chỉ để người review mở lại không mất chỗ đang xem); lỗi lưu thì vẫn chạy bình thường.
  */
 (function () {
-  const KEY = 'dtms-proto-v3';
+  const KEY = 'dtms-proto-v4';
   const T = window.BPMN_TASKS;
   const F = window.D.flow;
   const D = window.D;
@@ -13,20 +14,49 @@
 
   let S = null;
 
-  /* status: new (chưa tạo hồ sơ) | running | approved | stopped | moved (đã chuyển quy trình). */
+  /* status: new (chưa tạo hồ sơ) | running | approved | stopped | moved (đã chuyển quy trình).
+     dxms = mã ĐXMS của hồ sơ chạy luồng; name = tên hồ sơ. dxmsUser/dxmsEdit/dxmsDel/adj: ĐXMS và hồ sơ Điều chỉnh tạo trên prototype. */
   function fresh(process) {
     return {
-      persona: 'minh', tokens: [], clock: 0, seq: 0, code: null, title: null, replaces: null, movedTo: null, archived: [],
+      persona: 'minh', tokens: [], clock: 0, seq: 0, code: null, dxms: null, name: null, replaces: null, movedTo: null, archived: [],
+      dxmsUser: [], dxmsEdit: {}, dxmsDel: [], adj: [],
       vars: { round: 0, reportTD: null, process: process || null, big: process !== 'MS01.03', basisOk: true, checks: [], th: process ? D.dxmsRules() : null },
       history: [], status: 'new', kpiStart: null, kpiEnd: null, qNotes: {}, lastScene: 1, ui: {},
     };
   }
 
+  /* Dữ liệu không thuộc riêng hồ sơ chạy luồng — giữ qua các lần tạo hồ sơ mới (ĐXMS, hồ sơ Điều chỉnh đã tạo, ý kiến ❓). */
+  const CARRY = ['qNotes', 'dxmsUser', 'dxmsEdit', 'dxmsDel', 'adj'];
+  const carry = (from, to) => { CARRY.forEach((k) => { if (from && from[k] != null) to[k] = from[k]; }); return to; };
+
+  /* ĐXMS của luồng demo khi nhảy cảnh (dữ liệu hồ sơ mẫu §2.3). */
+  const demoDxms = () => ({ code: D.dxmsCode0, title: D.caseInfo.title, unit: D.caseInfo.unit, priority: D.caseInfo.priority, est: D.aiEstimate,
+    period: D.caseInfo.period, secret: false, purpose: 'Trang bị thiết bị đo kiểm RF và OTA phục vụ phát triển trạm gNodeB thế hệ 2.',
+    creator: 'Nguyễn Văn Minh', created: '01/10/2026', updated: '01/10/2026' });
+
+  /* Mã hồ sơ đã dùng (mẫu, đã tạo, đang chạy, đã chuyển quy trình). Hồ sơ Phê duyệt đầu tiên giữ 4 số của ĐXMS; còn lại lấy số trống từ 0127. */
+  function usedCodes() {
+    return new Set(D.otherCases.map((c) => c.code).concat(S.adj.map((c) => c.code), S.archived.map((c) => c.code), S.code ? [S.code] : [], D.caseCodes.slice(1)));
+  }
+  function nextCaseCode(dxms, kind) {
+    const used = usedCodes();
+    const own = 'HS-2026-' + dxms.slice(-4);
+    if (kind === 'PD' && !used.has(own)) return own;
+    for (let n = 127; ; n++) { const c = 'HS-2026-' + String(n).padStart(4, '0'); if (!used.has(c)) return c; }
+  }
+  function nextDxmsCode() {
+    const used = new Set(D.dxmsList.map((x) => x.code).concat(S.dxmsUser.map((x) => x.code)));
+    if (!used.has(D.dxmsCode0)) return D.dxmsCode0;
+    for (let n = 127; ; n++) { const c = 'ĐXMS-2026-' + String(n).padStart(4, '0'); if (!used.has(c)) return c; }
+  }
+
   /* Lưu ở SCR-25 = sinh mã hồ sơ + start instance của quy trình đã chọn; task 1 giao cho người tạo. */
   function start(opts) {
     opts = opts || {};
-    S.code = opts.code || D.caseCodes[0];
-    S.title = opts.title || null;
+    S.dxms = opts.dxms || D.dxmsCode0;
+    if (!Flow.findDxms(S.dxms)) S.dxmsUser.push(demoDxms());
+    S.code = opts.code || nextCaseCode(S.dxms, 'PD');
+    S.name = opts.name || null;
     S.status = 'running';
     S.persona = 'minh';
     log('START', { system: true, action: `Khởi tạo ${S.code} theo quy trình ${S.vars.process}` });
@@ -181,7 +211,7 @@
 
   /* Tua nhanh từ đầu theo nhánh chính cho tới khi có token ở task `target` (hoặc kết thúc). */
   function fastForward(target, process) {
-    S = fresh(process || 'MS01.01');
+    S = carry({ qNotes: S ? S.qNotes : {} }, fresh(process || 'MS01.01'));
     if (target === 'NEW') { S.vars.process = null; return; }
     start();
     let guard = 0;
@@ -211,24 +241,56 @@
     onChange(fn) { listeners.push(fn); },
     /* Về trạng thái chưa tạo hồ sơ — chạy lại từ SCR-25. */
     reset() { const keep = S ? S.qNotes : {}; const p = S ? S.persona : 'minh'; S = fresh(); S.qNotes = keep; S.persona = p; emit(); },
-    /* SCR-25 Lưu: start instance theo quy trình người dùng chọn; sau đó không đổi được quy trình. */
+    /* SCR-25 Lưu (loại Phê duyệt): start instance theo quy trình người dùng chọn; sau đó không đổi được quy trình.
+       opts: { dxms, name }. Prototype chạy một hồ sơ: hồ sơ đang chạy trước đó (nếu có) được thay. */
     create(process, opts) {
-      const keep = S ? S.qNotes : {};
-      S = fresh(process); S.qNotes = keep;
+      S = carry(S, fresh(process));
       start(opts);
       emit();
     },
-    /* Sau 10b: mở ĐXMS mới theo quy trình đúng. Mặc định P-26: hồ sơ mới làm lại từ task 1 với dữ liệu đã sao chép sẵn. */
+    /* SCR-28 Lưu: tạo ĐXMS (không start quy trình — D-11). Trả về mã ĐXMS. */
+    createDxms(data) {
+      const code = nextDxmsCode(), now = Flow.dateOf(S.clock);
+      S.dxmsUser.unshift(Object.assign({ creator: window.D.personas.find((p) => p.id === S.persona).name, created: now }, data, { code, updated: now }));
+      emit();
+      return code;
+    },
+    updateDxms(code, patch) {
+      const own = S.dxmsUser.find((x) => x.code === code);
+      const p = Object.assign({}, patch, { updated: Flow.dateOf(S.clock) });
+      if (own) Object.assign(own, p); else S.dxmsEdit[code] = Object.assign({}, S.dxmsEdit[code], p);
+      emit();
+    },
+    deleteDxms(code) {
+      S.dxmsUser = S.dxmsUser.filter((x) => x.code !== code);
+      if (D.dxmsList.some((x) => x.code === code)) S.dxmsDel = S.dxmsDel.concat([code]);
+      emit();
+    },
+    /* ĐXMS đang có: tạo trên prototype (mới nhất trước) + mẫu đã áp chỉnh sửa, bỏ bản ghi đã xoá. */
+    dxmsAll() {
+      return S.dxmsUser.concat(D.dxmsList.filter((x) => !S.dxmsDel.includes(x.code)).map((x) => Object.assign({}, x, S.dxmsEdit[x.code] || {})));
+    },
+    findDxms(code) { return Flow.dxmsAll().find((x) => x.code === code) || null; },
+    /* SCR-25 Lưu (loại Điều chỉnh): ghi nhận hồ sơ MS02 ở bước đầu tiên. Luồng MS02 chưa chạy trên prototype nên mở ở chế độ xem. */
+    createAdj(opts) {
+      const code = nextCaseCode(opts.dxms, 'DC'), now = Flow.dateOf(S.clock);
+      S.adj.unshift({ code, dxms: opts.dxms, kind: 'DC', title: opts.name, total: opts.total, flow: opts.process, st: 'processing', task: 1,
+        created: now, updated: now, creator: window.D.personas.find((p) => p.id === S.persona).name });
+      emit();
+      return code;
+    },
+    nextCaseCode: (dxms, kind) => nextCaseCode(dxms, kind),
+    /* Sau 10b: mở hồ sơ mới của cùng ĐXMS theo quy trình đúng. Mặc định P-26: hồ sơ mới làm lại từ task 1 với dữ liệu đã sao chép sẵn. */
     openReplacement() {
       if (S.status !== 'moved') return;
       const ci = Flow.ci();
-      const old = { code: ci.code, title: ci.title, unit: ci.unit, total: ci.total, flow: ci.flow, status: 'Đã chuyển quy trình',
-        priority: ci.priority, updated: Flow.dateOf(S.clock), replacedBy: S.movedTo.code };
-      const keep = S.qNotes, ui = JSON.parse(JSON.stringify(S.ui || {})), archived = (S.archived || []).concat([old]), to = S.movedTo;
+      const old = { code: ci.code, dxms: ci.dxms, kind: 'PD', title: ci.name, total: ci.total, flow: ci.flow, status: 'Đã chuyển quy trình',
+        updated: Flow.dateOf(S.clock), replacedBy: S.movedTo.code };
+      const prev = S, ui = JSON.parse(JSON.stringify(S.ui || {})), archived = (S.archived || []).concat([old]), to = S.movedTo;
       delete ui.aiFail;
-      S = fresh(to.process);
-      Object.assign(S, { qNotes: keep, ui, archived, replaces: old.code });
-      start({ code: to.code, title: old.title });
+      S = carry(prev, fresh(to.process));
+      Object.assign(S, { ui, archived, replaces: old.code });
+      start({ code: to.code, dxms: old.dxms, name: old.title });
       emit();
     },
     jumpToScene(n) {
@@ -246,7 +308,13 @@
       emit();
     },
     /* Hồ sơ đang chạy: dữ liệu mẫu + mã, tên, quy trình của instance. */
-    ci() { return Object.assign({}, D.caseInfo, { code: S.code || '—', title: S.title || D.caseInfo.title, flow: S.vars.process || '—' }); },
+    /* Hồ sơ đang chạy: dữ liệu mẫu + mã, tên, quy trình của instance + thông tin ĐXMS cha (title = tên ĐXMS, name = tên hồ sơ). */
+    ci() {
+      const x = (S.dxms && Flow.findDxms(S.dxms)) || {};
+      const title = x.title || D.caseInfo.title;
+      return Object.assign({}, D.caseInfo, { code: S.code || '—', dxms: S.dxms || '—', kind: 'PD', title, name: S.name || title, flow: S.vars.process || '—',
+        unit: x.unit || D.caseInfo.unit, priority: x.priority || D.caseInfo.priority, secret: !!x.secret, period: x.period || D.caseInfo.period });
+    },
     matchCheck,
     condOf,
     inRange: (process, total) => D.inRange(process, total, rules()),

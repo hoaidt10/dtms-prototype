@@ -37,26 +37,31 @@
     binh: ['R-PTGD'], tgd: ['R-TGD-VHT'], td: ['R-BAN-DTXD'] };
   const labelOf = (opts, v) => (opts.find((o) => o.value === v) || {}).label || '';
 
-  /* Quy trình áp dụng — danh sách quy trình của SCR-41; bước = User Task trên sơ đồ phiên bản đang hoạt động. */
+  /* Quy trình áp dụng — danh sách quy trình của SCR-41; bước = User Task trên sơ đồ phiên bản đang hoạt động.
+     MS01.01 / .02 / .03 là ba quy trình riêng (P-37) dùng chung trang MS01 v1.1: bỏ các bước không áp dụng cho quy trình (D.notApplicable). */
   const workflows = () => window.QuyTrinh.WORKFLOWS;
+  const MS01 = ['MS01.01', 'MS01.02', 'MS01.03'];
+  const applies = (proc, task) => !(D.notApplicable[proc] || []).includes(Number(task));
   const processOptions = () => workflows().map((w) => ({ value: w.code, label: `${w.code} - ${w.name}` }));
   function stepOptions(code) {
     const w = workflows().find((x) => x.code === code);
     if (!w) return [];
     const v = w.versions.find((x) => x.status === 'ACTIVE') || w.versions[0];
     const seen = new Set();
-    return window.BPMN_DIAGRAMS[v.page].nodes.filter((n) => n.el && n.el.type === 'userTask' && !seen.has(n.el.id) && seen.add(n.el.id))
+    return window.BPMN_DIAGRAMS[v.page].nodes.filter((n) => n.el && n.el.type === 'userTask' && applies(code, n.el.id.replace(/^Activity_/, ''))
+      && !seen.has(n.el.id) && seen.add(n.el.id))
       .map((n) => ({ value: n.el.id, label: n.el.name }));
   }
 
   /* ---------- Luật mẫu: sinh từ D.flow (§3.2) ----------
-     Mỗi nút hành động của mỗi User Task MS01 = một luật. Bỏ 2 nút của task 10a (Sửa lại / Chuyển quy trình): để "Thiếu luật" cho Đối soát BPMN (B4). */
+     Mỗi nút hành động của mỗi User Task áp dụng cho MS01.01 / .02 / .03 = một luật của quy trình đó. Bỏ 2 nút của task 10a (Sửa lại / Chuyển quy trình): để "Thiếu luật" cho Đối soát BPMN (B4). */
   function actionOf(label, c) {
     const l = label.toLowerCase();
     if (/chuyển quy trình/.test(l)) return 'CHUYEN_QUY_TRINH';
     if (/^sửa lại/.test(l)) return 'SUA_LAI';
-    if (c && c.sign) return 'TRINH_KY';
+    /* "Phê duyệt" (task 60) mở hộp thoại ký BM-08 nhưng là hành động phê duyệt, xét trước cờ ký. */
     if (/^phê duyệt/.test(l)) return 'PHE_DUYET';
+    if (c && c.sign) return 'TRINH_KY';
     if (/^không đồng ý/.test(l)) return 'TU_CHOI';
     if (/trả lại|chưa|không đạt|yêu cầu|kết thúc|thiếu/.test(l)) return 'TRA_LAI';
     if (/^(gửi|trình)/.test(l)) return 'GUI_DUYET';
@@ -76,13 +81,15 @@
   };
   /* Thứ tự bước như trên BPMN: 10a nằm sau 10 (Object.entries đưa khoá số lên trước khoá chữ). */
   const taskOrder = (t) => parseInt(t, 10) + (/[a-z]$/.test(t) ? 0.5 : 0);
-  /* Mọi nhánh ra của các User Task MS01 = mỗi nút hành động của mỗi bước người dùng trong D.flow. Dùng chung cho luật mẫu và Đối soát BPMN. */
-  function branches() {
+  /* Mọi nhánh ra của các User Task của một quy trình MS01.0x = mỗi nút hành động của mỗi bước người dùng trong D.flow (trừ bước không áp dụng).
+     Dùng chung cho luật mẫu và Đối soát BPMN. Quy trình khác chưa có mô tả nhánh. */
+  function branches(proc) {
     const out = [];
-    Object.keys(D.flow).filter((t) => D.flow[t].who).sort((a, b) => taskOrder(a) - taskOrder(b)).forEach((task) => {
+    if (!MS01.includes(proc)) return out;
+    Object.keys(D.flow).filter((t) => D.flow[t].who && applies(proc, t)).sort((a, b) => taskOrder(a) - taskOrder(b)).forEach((task) => {
       const f = D.flow[task];
       (f.choices || [{ label: f.actionLabel || 'Hoàn thành' }]).forEach((c) => {
-        out.push({ task, step: 'Activity_' + task, stepName: (window.BPMN_TASKS[task] || {}).name || task, branch: branchKey(c.label),
+        out.push({ proc, task, step: 'Activity_' + task, stepName: (window.BPMN_TASKS[task] || {}).name || task, branch: branchKey(c.label),
           label: c.label, act: actionOf(c.label, c), form: formOf(task, c), roles: WHO_ROLES[f.who] || [] });
       });
     });
@@ -90,19 +97,20 @@
   }
   function ruleCode(b, taken) {
     const t = /^\d+$/.test(b.task) ? String(b.task).padStart(2, '0') : b.task.toUpperCase();
-    let code = `MS01_T${t}_${b.act}`, n = 2;
-    while (taken.has(code)) code = `MS01_T${t}_${b.act}_${n++}`;
+    const pre = `${b.proc.replace('.', '_')}_T${t}_${b.act}`;
+    let code = pre, n = 2;
+    while (taken.has(code)) code = `${pre}_${n++}`;
     taken.add(code);
     return code;
   }
-  const ruleOf = (b, id, code, created, updated) => ({ id, code, action: b.act, name: b.label.slice(0, 50), screen: 'TASK', proc: 'MS01', step: b.step,
+  const ruleOf = (b, id, code, created, updated) => ({ id, code, action: b.act, name: b.label.slice(0, 50), screen: 'TASK', proc: b.proc, step: b.step,
     form: b.form, roles: b.roles.slice(), active: true, created, updated });
   /* Ngày cập nhật mẫu: vài luật đã được chỉnh sau khi deploy v1.1. */
   const EDITED = { 17: '12/08/2026', 26: '03/09/2026', 60: '21/09/2026' };
   /* Bỏ 2 nút của 10a: để "Thiếu luật" cho Đối soát BPMN. */
   function seed() {
     const taken = new Set();
-    return branches().filter((b) => b.task !== '10a')
+    return MS01.flatMap((p) => branches(p)).filter((b) => b.task !== '10a')
       .map((b, i) => ruleOf(b, i + 1, ruleCode(b, taken), '30/06/2026', EDITED[b.task] || '30/06/2026'));
   }
   let RULES = seed();
@@ -147,10 +155,9 @@
 
   /* Mỗi nhánh ghép với một luật chưa dùng cùng bước + cùng hành động (hai nhánh cùng hành động ở một bước → hai luật). */
   function reconRows(proc) {
-    if (proc !== 'MS01') return [];
     const used = new Set();
-    return branches().map((b) => {
-      const r = RULES.find((x) => !used.has(x) && x.proc === 'MS01' && x.step === b.step && x.action === b.act);
+    return branches(proc).map((b) => {
+      const r = RULES.find((x) => !used.has(x) && x.proc === proc && x.step === b.step && x.action === b.act);
       if (r) used.add(r);
       return Object.assign({}, b, { rule: r || null, actName: (actionBy(b.act) || {}).name || b.act });
     });
@@ -161,12 +168,12 @@
     notes: [
       'Mỗi dòng là một nhánh ra của một User Task (một nút hành động của bước) trên BPMN phiên bản đang hoạt động, đặt cạnh luật hiển thị hành động phủ nhánh đó. Không có thao tác trên dòng — việc duy nhất màn này ghi dữ liệu là nút "Đồng bộ/Đối soát luật từ BPMN" trên hàng tab.',
       'Đã khớp = đã có luật cùng Quy trình áp dụng, cùng Bước trong điều kiện và cùng Hành động; Thiếu luật = chưa có. Xoá một luật ở tab Luật hiển thị hành động thì nhánh của nó trở lại Thiếu luật.',
-      'Dữ liệu mẫu: 2 nhánh của bước "Xử lý ĐXMS không khớp quy trình" (Chuyển quy trình / Sửa lại — thêm theo quyết định chọn quy trình khi tạo ĐXMS) cố ý chưa có luật. Đồng bộ → hỏi xác nhận → tạo 2 luật (mã MS01_T10A_…), 2 dòng thành Đã khớp; luật mới hiện ở đầu tab Luật hiển thị hành động.',
-      'Ô Quy trình áp dụng là một phần của truy vấn, không bỏ chọn được; mở ở quy trình đầu tiên (MS01). Chỉ MS01 có mô tả nhánh trong prototype; MS02 / MS13 / MS14 hiện "Chưa có dữ liệu" và đồng bộ tạo 0 luật.',
+      'Dữ liệu mẫu: ở mỗi quy trình MS01.01 / .02 / .03, 2 nhánh của bước "Xử lý ĐXMS không khớp quy trình" (Chuyển quy trình / Sửa lại — thêm theo quyết định chọn quy trình khi tạo ĐXMS) cố ý chưa có luật. Đồng bộ → hỏi xác nhận → tạo 2 luật cho quy trình đang chọn (vd MS01_01_T10A_…), 2 dòng thành Đã khớp; luật mới hiện ở đầu tab Luật hiển thị hành động.',
+      'Ô Quy trình áp dụng là một phần của truy vấn, không bỏ chọn được; mở ở quy trình đầu tiên (MS01.01). Ba quy trình MS01 dùng chung sơ đồ MS01 v1.1 nhưng chỉ đối soát các bước áp dụng cho quy trình (MS01.03 không có bước 12, 41–58; MS01.01 / .02 không có bước 11, 38–40). MS02 / MS13 / MS14 chưa có mô tả nhánh: "Chưa có dữ liệu", đồng bộ tạo 0 luật.',
       'Tìm theo mã luật khớp hoặc tên bước (Enter). Phân trang tại chỗ 10/20/50 như source (API trả cả danh sách một lần).',
       'Quyền (P-41): chỉ Quản trị hệ thống.',
     ],
-    q: ['P-37', 'P-39'], src: 'action-matrix/catalogs/bpmn-reconcile · /action-matrix/bpmn-reconcile',
+    q: ['P-39'], src: 'action-matrix/catalogs/bpmn-reconcile · /action-matrix/bpmn-reconcile',
   });
 
   function reconcile() {
@@ -340,11 +347,11 @@
       'Cột Thao tác chỉ có Sửa và Xoá như source (không có icon xem); xem chi tiết bằng cách bấm Mã luật hành động. Trạng thái là công tắc: bấm thì đổi ngay rồi hỏi xác nhận, chọn Không thì trả lại như cũ.',
       'Mã hành động là liên kết sang Xem chi tiết hành động. Tên hành động là tên trong Danh mục hành động, không phải Tên hiển thị của nút.',
       'Tìm kiếm nhanh theo mã luật hoặc tên hành động (Enter); Tìm kiếm nâng cao có 6 trường (5 ô chữ + Trạng thái) như source. Hai kiểu tìm độc lập, chỉ một kiểu có hiệu lực.',
-      'Dữ liệu mẫu sinh từ luồng MS01 v1.1: mỗi nút hành động của mỗi bước người dùng là một luật (mã MS01_T&lt;bước&gt;_&lt;hành động&gt;). Hai nút của bước "Xử lý ĐXMS không khớp quy trình" (Sửa lại / Chuyển quy trình) cố ý chưa có luật để demo Đối soát BPMN.',
+      'Dữ liệu mẫu sinh từ luồng MS01 v1.1 cho từng quy trình MS01.01 / .02 / .03 (ba quy trình riêng — P-37 đã chốt): mỗi nút hành động của mỗi bước người dùng áp dụng cho quy trình là một luật (mã MS01_01_T&lt;bước&gt;_&lt;hành động&gt;). Ở mỗi quy trình, hai nút của bước "Xử lý ĐXMS không khớp quy trình" (Sửa lại / Chuyển quy trình) cố ý chưa có luật để demo Đối soát BPMN.',
       'Thêm / sửa / xoá / kích hoạt chạy thật trong phiên; tải lại trang hoặc "Reset luồng" ở nút demo thì về dữ liệu mẫu. Luật chưa quyết định nút trên màn xử lý việc (P-39).',
       'Quyền (P-41): chỉ Quản trị hệ thống; vai khác thấy thông báo chưa được cấp quyền.',
     ],
-    q: ['P-37', 'P-39'], src: 'action-matrix/catalogs/display-rule/display-rule-list · /action-matrix/display-rule',
+    q: ['P-39'], src: 'action-matrix/catalogs/display-rule/display-rule-list · /action-matrix/display-rule',
   });
 
   function list() {
@@ -490,9 +497,9 @@
         'Mã luật hành động: tự viết hoa, chỉ chữ không dấu, số, "-", "_", tối đa 50 ký tự; không sửa được khi Chỉnh sửa; trùng mã → báo lỗi, giữ nguyên form. Tên hiển thị tối đa 50 ký tự.',
         'Huỷ / quay lại khi đã nhập → hỏi "Bạn có chắc muốn hủy?". Màn Xem có nút Chỉnh sửa; tiêu đề "Xem chi tiết luật hiển thị nút" lấy nguyên chuỗi source.',
         'Xem trước = nút như sẽ hiện trên màn Xử lý công việc + các vai trò thấy nút; chưa nối vào màn xử lý việc thật (P-39).',
-        'Quy trình áp dụng: 4 quy trình của Danh sách quy trình; MS01.01 / .02 / .03 dùng chung MS01 (P-37). Biểu mẫu sử dụng: các mẫu BM / Checklist của ĐXMS. Vai trò thực hiện: vai trò theo URD.',
+        'Quy trình áp dụng: 6 quy trình của Danh sách quy trình (MS01.01 / .02 / .03 là ba quy trình riêng — P-37 đã chốt); Bước trong điều kiện chỉ gồm bước áp dụng cho quy trình. Biểu mẫu sử dụng: các mẫu BM / Checklist của ĐXMS. Vai trò thực hiện: vai trò theo URD.',
       ],
-      q: ['P-37', 'P-39'], src: 'action-matrix/catalogs/display-rule/display-rule-form · /action-matrix/display-rule/create | :id/edit | :id/view',
+      q: ['P-39'], src: 'action-matrix/catalogs/display-rule/display-rule-form · /action-matrix/display-rule/create | :id/edit | :id/view',
     };
     const headL = `<div class="l"><button type="button" class="vbtn back" data-mt-cancel aria-label="Quay lại">${icon('back')}</button><h1 class="pg-title">${esc(title)}${infoBtn(info)}</h1></div>`;
     if (!ROLES_ALLOWED.includes(Flow.state.persona)) return noAccess(`<div class="pg-head">${headL}</div>`);

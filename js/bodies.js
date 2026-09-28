@@ -223,18 +223,18 @@
       ${r.ok ? `quy trình ${esc(r.process)}` : `điều kiện của quy trình ${esc(r.process)} (${esc(condOf(r.process))})`}</div>`;
   };
 
-  /* SCR-26 — task 10a: ĐXMS không khớp quy trình đã chọn. Sửa lại → task 10; Chuyển quy trình → 10b tạo ĐXMS mới. */
+  /* SCR-26 — task 10a: hồ sơ không khớp quy trình đã chọn. Sửa lại → task 10; Chuyển quy trình → 10b tạo hồ sơ mới của cùng ĐXMS (D-10). */
   function scr26() {
     const r = Flow.matchCheck(), checks = Flow.state.vars.checks;
     qChip('P-26');
     ba(`Ngưỡng lấy từ Ngưỡng phân luồng tại ngày tạo hồ sơ (${esc(condOf(r.process))}), tính trên tổng kinh phí gồm VAT, sau khi đã trừ tồn kho. Quy trình phù hợp dựa trên giá trị và căn cứ đang chọn (${esc((basisSel().doc || {}).no || '—')}).`);
     ba(`Sửa lại → task 10. Hồ sơ mẫu có giá trị cố định ${ty(r.total)} tỷ nên trên prototype sẽ lại không khớp.`);
-    ba('Chuyển quy trình → task 10b tạo hồ sơ mới, làm lại từ task 01 với dữ liệu đã sao chép sẵn. Không dùng migration process instance của Camunda. Lựa chọn nào cũng bắt buộc ghi lý do.');
+    ba('Chuyển quy trình → task 10b tạo hồ sơ Phê duyệt mới <b>của cùng ĐXMS</b> (không tạo ĐXMS mới), làm lại từ task 01 với dữ liệu đã sao chép sẵn. Không dùng migration process instance của Camunda. Lựa chọn nào cũng bắt buộc ghi lý do.');
     const copy = ['Căn cứ và phạm vi', 'Thông tin cơ bản', 'Danh mục hàng hoá sau trừ lùi', 'Kết quả rà soát tồn kho RSTK-2026-0311', 'Yêu cầu báo giá và 3 báo giá'];
     return `<div class="banner-bad">Giá trị hồ sơ không khớp quy trình đã chọn. Hồ sơ chưa được chuyển sang bước dự thảo.</div>
       ${card('Kết quả kiểm tra khớp quy trình', cmpBox(r))}
       ${card('Sửa lại', '<p>Dùng khi nhập sai báo giá hoặc giá trị. Hồ sơ quay về bước Tổng hợp và kiểm tra báo giá; sau khi sửa, hệ thống kiểm tra khớp lại.</p>')}
-      ${card(`Chuyển quy trình → ${esc(r.suggest)}`, `<p>Hệ thống tạo <b>${esc(D.caseCodes[1])}</b> theo quy trình ${esc(r.suggest)} và sao chép:</p><ul class="plain">${copy.map((c) => `<li>${esc(c)}</li>`).join('')}</ul>
+      ${card(`Chuyển quy trình → ${esc(r.suggest)}`, `<p>Hệ thống tạo hồ sơ <b>${esc(D.caseCodes[1])}</b> của ĐXMS ${esc(Flow.ci().dxms)} theo quy trình ${esc(r.suggest)} và sao chép:</p><ul class="plain">${copy.map((c) => `<li>${esc(c)}</li>`).join('')}</ul>
         <p>Hai hồ sơ được liên kết (“Thay thế cho” / “Được thay bởi”). Hồ sơ này kết thúc với trạng thái <b>Đã chuyển quy trình</b> và không tính KPI.</p>`)}
       ${checks.length > 1 ? card('Lịch sử kiểm tra khớp', table('<th class="ord">Lần</th><th>Ngày</th><th class="r">Giá trị (tỷ)</th><th>Quy trình</th><th>Kết quả</th>',
         checks.map((c, i) => `<tr><td class="ord">${i + 1}</td><td class="num">${Flow.dateOf(c.t)}</td><td class="r num">${ty(c.total)}</td><td>${esc(c.process)}</td><td>${c.ok ? badge('Khớp', 'success') : badge('Không khớp', 'error')}</td></tr>`).join(''))) : ''}`;

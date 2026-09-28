@@ -10,14 +10,18 @@ Mở `index.html` bằng Chrome hoặc Edge. Không cần mạng, không cần b
 
 ## Dùng
 
-- **Tạo hồ sơ (SCR-25):** mở lần đầu chưa có hồ sơ. Bấm “Tạo mới ĐXMS” (SCR-02 hoặc Việc của tôi), nhập tên, **chọn quy trình** MS01.01 / MS01.03
-  (MS01.02 để mờ — hồ sơ mẫu dựng ở T6), bấm Lưu: hệ thống sinh mã `ĐXMS-2026-0117`, khởi tạo quy trình ngay và mở task 01. Sau khi lưu không đổi được quy trình
-  (quyết định 2026-09-28, ❓ P-26).
+- **ĐXMS và hồ sơ (T12, D-10…D-12):** ĐXMS là đối tượng cha (như nhiệm vụ KHCN), hồ sơ là đối tượng con. Menu Đề xuất mua sắm có
+  **Danh sách ĐXMS** (`#/dxms`, SCR-27 theo `task-management`) và **Hồ sơ ĐXMS** (`#/ho-so-dxms`, SCR-02 theo `profile-list`).
+  - Tạo ĐXMS: Danh sách ĐXMS › Thêm mới (SCR-28) → Lưu. Chỉ tạo ĐXMS, **không** khởi tạo quy trình; mã `ĐXMS-2026-0117`.
+  - Tạo hồ sơ (SCR-25): Chỉnh sửa ĐXMS › Danh sách hồ sơ › **Tạo hồ sơ** (ô ĐXMS khoá), hoặc Hồ sơ ĐXMS › Thêm mới. Chọn **Loại hồ sơ**
+    (Phê duyệt ĐXMS → MS01.01 / .02 / .03; Điều chỉnh ĐXMS → MS02) và **Quy trình**, bấm Lưu: hồ sơ Phê duyệt sinh mã `HS-2026-0117`,
+    khởi tạo quy trình ngay và mở task 01 (MS01.02 để mờ — hồ sơ mẫu dựng ở T6; ❓ P-26). Hồ sơ Điều chỉnh được ghi nhận và mở ở chế độ xem (luồng MS02 chưa dựng).
+  - Luật: một ĐXMS chỉ có một hồ sơ đang xử lý; Phê duyệt khi ĐXMS chưa được phê duyệt; Điều chỉnh khi đã phê duyệt. Trạng thái và giá trị hiệu lực của ĐXMS suy từ hồ sơ.
 - **Đổi vai:** bấm avatar góc phải topbar, hoặc vào màn SCR-00 (`#/chon-vai`). Việc được giao cho vai nào thì hiện ở "Việc của tôi" của vai đó.
 - **Chạy luồng:** mở một việc, bấm nút trên thanh hành động ở cuối màn. Hồ sơ đi theo 61 task BPMN MS01 v1.1 (+ 10a, 10b), có:
   - task 01 chỉ hiện căn cứ hợp với quy trình đã chọn; task 04 cảnh báo mềm nếu giá trị dự kiến lệch ngưỡng;
   - cổng “Giá trị khớp quy trình đã chọn?” sau task 10: khớp thì .01 đi task 12, .03 đi task 11; không khớp thì task 10a (SCR-26):
-    *Sửa lại* về task 10, hoặc *Chuyển quy trình* → 10b tạo `ĐXMS-2026-0125` theo quy trình đúng, hồ sơ cũ kết thúc “Đã chuyển quy trình”;
+    *Sửa lại* về task 10, hoặc *Chuyển quy trình* → 10b tạo hồ sơ `HS-2026-0125` **của cùng ĐXMS** theo quy trình đúng, hồ sơ cũ kết thúc “Đã chuyển quy trình”;
     nút “Mở hồ sơ mới” chạy lại từ task 01 với dữ liệu đã sao chép (mặc định P-26);
   - TTMS xác nhận danh sách CQCM (task 17, N07) — màn SCR-22;
   - 3 CQCM làm song song, mỗi CQCM một phiếu BM-04; AI kiểm tra xung đột (task 24);
@@ -27,7 +31,7 @@ Mở `index.html` bằng Chrome hoặc Edge. Không cần mạng, không cần b
   - nhánh < 160 tỷ (task 11, 38–40) có cấu hình nhưng hồ sơ mẫu không đi qua — timeline ghi "không áp dụng";
   - hộp thoại trình ký SCR-21.
 - **Công cụ demo** (nút trên topbar): nhảy tới cảnh 1–9 theo §2.4 (cảnh 1 mở SCR-25), 6 nhánh phụ (đầu tiên là B-3e: chọn nhầm MS01.03 → 10a),
-  reset luồng (về trước bước Tạo mới), mở danh sách điểm ❓.
+  reset luồng (về trước bước Thêm mới ĐXMS; xoá ĐXMS và hồ sơ đã tạo trên prototype), mở danh sách điểm ❓.
 - **Điểm ❓:** bấm nhãn tím `❓ P-xx` trên màn để ghi ý kiến. Trang `#/cho-chot` tổng hợp 33 điểm (P-01…P-16, P-22, P-26, P-27…P-36 của DMDC, P-37…P-41 của Quản trị quy trình) và xuất ra Markdown/CSV.
 - **Danh mục dùng chung** (T8): Quản trị hệ thống › Danh mục dùng chung (`#/dmdc`) mở trang Tổng quan (SCR-30), vào từng danh mục qua ô
   (`#/dmdc/<danh-mục>`). Ô lọc theo vai (❓ P-36): vai **Quản trị hệ thống** (Đặng Thu Trang) thấy cả 10 danh mục, Chuyên viên TTMS thấy 2, vai khác không thấy.
@@ -38,7 +42,7 @@ Mở `index.html` bằng Chrome hoặc Edge. Không cần mạng, không cần b
   (mã số thuế, quốc gia), ngành hàng chọn nhiều từ SCR-36, tìm kiếm nâng cao như màn Đối tác của ecat, cột Tình trạng (cấm / hạn chế),
   Nhập từ Excel (chọn file → kết quả từng dòng → Xác nhận nhập; file giả lập 20 dòng, 2 dòng lỗi).
   Bước B4 dựng Ngưỡng phân luồng (SCR-40): bảng quy tắc (nhóm, lĩnh vực, tính chất tài sản, khoảng giá trị) → quy trình, chặn chồng khoảng, hiệu lực từ ngày.
-  Bước B5 nối vào luồng MS01: nhãn điều kiện ở Tạo mới ĐXMS, cảnh báo task 04, cổng kiểm tra khớp sau task 10 và gợi ý ở 10a đọc bảng ngưỡng
+  Bước B5 nối vào luồng MS01: nhãn điều kiện ở Thêm mới hồ sơ, cảnh báo task 04, cổng kiểm tra khớp sau task 10 và gợi ý ở 10a đọc bảng ngưỡng
   (hồ sơ giữ ngưỡng lúc tạo — P-34); Nguồn vốn ở task 04 chọn từ SCR-32; task 08 chọn nhà cung cấp nhận YCBG từ SCR-31, lọc theo ngành hàng
   của hạng mục; bảng báo giá lấy tên, loại tiền từ danh mục. Dữ liệu danh mục lưu riêng (localStorage `dtms-proto-dmdc`), "Reset luồng" không xoá.
 - **Quản trị quy trình** (T9): menu cha mới trên Quản trị hệ thống gồm Quy trình BPMN (`#/quy-trinh`), Ma trận hành động (`#/ma-tran`),

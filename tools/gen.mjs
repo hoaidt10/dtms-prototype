@@ -125,7 +125,7 @@ const cnt=top.findOne(n=>n.name==='span.count');if(cnt){if(${p.bell}>0){const t=
 const ACTIVE=${JSON.stringify(active)};
 if(ACTIVE!=='Việc của tôi'){
  const v=side.findOne(n=>n.name==='nav:Việc của tôi');if(v){v.fills=[];recolor(v,'#0a0c11');const b=v.findOne(n=>n.name==='span.badge-n');if(b){b.fills=[paint('#ee0033')];recolor(b,'#ffffff');}}
- const a=side.findOne(n=>n.name==='nav:'+ACTIVE);if(a){a.fills=[paint('#ee0033')];recolor(a,'#ffffff');const g=side.findOne(n=>n.name==='nav:Đề xuất mua sắm');if(g&&['Danh sách ĐXMS','Yêu cầu báo giá','Cơ sở giá','Điều chỉnh ĐXMS'].includes(ACTIVE))recolor(g,'#ee0033');}
+ const a=side.findOne(n=>n.name==='nav:'+ACTIVE);if(a){a.fills=[paint('#ee0033')];recolor(a,'#ffffff');const g=side.findOne(n=>n.name==='nav:Đề xuất mua sắm');if(g&&['Danh sách ĐXMS','Hồ sơ ĐXMS','Yêu cầu báo giá','Cơ sở giá'].includes(ACTIVE))recolor(g,'#ee0033');}
 }
 {const v=side.findOne(n=>n.name==='nav:Việc của tôi');const b=v&&v.findOne(n=>n.name==='span.badge-n');if(b){if(${p.bell}>0){b.findOne(n=>n.type==='TEXT').characters='${p.bell}';}else b.visible=false;}}
 const main=build(D.main,D.main.t,fr,256,60);main.name='Nội dung';
@@ -148,7 +148,7 @@ for(const t of top.findAll(n=>n.type==='TEXT'))if(TX[t.characters]!=null&&TX[t.c
 const cnt=top.findOne(n=>n.name==='span.count');if(cnt){if(CFG.bell>0){cnt.findOne(n=>n.type==='TEXT').characters=String(CFG.bell);}else cnt.visible=false;}
 if(CFG.active!=='Việc của tôi'){
  const v=side.findOne(n=>n.name==='nav:Việc của tôi');if(v){v.fills=[];recolor(v,'#0a0c11');const b=v.findOne(n=>n.name==='span.badge-n');if(b){b.fills=[paint('#ee0033')];recolor(b,'#ffffff');}}
- const a=side.findOne(n=>n.name==='nav:'+CFG.active);if(a){a.fills=[paint('#ee0033')];recolor(a,'#ffffff');const g=side.findOne(n=>n.name==='nav:Đề xuất mua sắm');if(g&&['Danh sách ĐXMS','Yêu cầu báo giá','Cơ sở giá','Điều chỉnh ĐXMS'].includes(CFG.active))recolor(g,'#ee0033');}
+ const a=side.findOne(n=>n.name==='nav:'+CFG.active);if(a){a.fills=[paint('#ee0033')];recolor(a,'#ffffff');const g=side.findOne(n=>n.name==='nav:Đề xuất mua sắm');if(g&&['Danh sách ĐXMS','Hồ sơ ĐXMS','Yêu cầu báo giá','Cơ sở giá'].includes(CFG.active))recolor(g,'#ee0033');}
 }
 {const v=side.findOne(n=>n.name==='nav:Việc của tôi');const b=v&&v.findOne(n=>n.name==='span.badge-n');if(b){if(CFG.bell>0)b.findOne(n=>n.type==='TEXT').characters=String(CFG.bell);else b.visible=false;}}
 const main=build(D.main,D.main.t,fr,256,60);main.name='Nội dung';

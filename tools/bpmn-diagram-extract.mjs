@@ -219,6 +219,8 @@ function extract(PAGE, conf) {
       el.actor = pick(/^Tác nhân:\s*/) || laneOf(n);
       el.form = pick(/^Biểu mẫu(?:\/Hồ sơ)?:\s*/).replace(/\.$/, '');
       el.doc = pick(/^Thực hiện:\s*/) || ls.slice(1).filter((s) => !/^(Tác nhân|Biểu mẫu[^:]*|User Task|Service Task)\b/.test(s) && !/^[A-Z0-9_]+$/.test(s)).join(' ');
+      // Nhãn BA viết "task 10" → màn hiện "bước 10" (rule C3, từ vựng của app).
+      el.doc = el.doc.replace(/\btask (\d)/gi, 'bước $1');
       const kind = ls.find((s) => /^(User|Service) Task ·/.test(s));
       if (!el.form && kind && /BM/.test(kind)) el.form = kind.replace(/^(User|Service) Task ·\s*/, '');
       el.type = n.mk === 'service' || /Hệ thống/.test(el.actor) || (kind && /^Service/.test(kind)) ? 'serviceTask' : 'userTask';

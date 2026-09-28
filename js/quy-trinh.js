@@ -12,17 +12,24 @@
 
   /* ---------- Dữ liệu quy trình (§3.1) ----------
      Mỗi quy trình (processDefinitionId) có các phiên bản deploy (processDefinitionKey). page = trang ĐTMS.drawio vẽ sơ đồ.
-     P-37: MS01.01/.02/.03 là một định nghĩa DTMS_MS01. */
+     P-37 (chốt 2026-09-28): MS01.01 / .02 / .03 là ba quy trình riêng. Bản vẽ chuẩn gộp cả ba trên trang MS01 v1.1 nên ba quy trình
+     tạm dùng chung sơ đồ đó. at = ngày deploy: hồ sơ chạy phiên bản mới nhất đã deploy tại ngày tạo hồ sơ. */
   const WF_STATUS = { ACTIVE: ['Hoạt động', 'success'], DELETED: ['Dừng hoạt động', 'warning'] }; // WORKFLOW_STATUS_LABEL_MAP / VARIANT_MAP
   const WORKFLOWS = [
-    { code: 'MS01', id: 'DTMS_MS01', name: 'Đề xuất mua sắm', versions: [
-      { key: '2251799813690112', version: 2, modeler: 'v1.1', deploy: 2, status: 'ACTIVE', page: 'MS01 v1.1', live: 2 },
-      { key: '2251799813685377', version: 1, modeler: 'v1.0', deploy: 1, status: 'DELETED', page: 'MS01', live: 1 }],
+    { code: 'MS01.01', id: 'DTMS_MS01_01', name: D.processes['MS01.01'].name, versions: [
+      { key: '2251799813690112', version: 2, modeler: 'v1.1', deploy: 2, status: 'ACTIVE', page: 'MS01 v1.1', at: '01/07/2026' },
+      { key: '2251799813685377', version: 1, modeler: 'v1.0', deploy: 1, status: 'DELETED', page: 'MS01', at: '02/03/2026' }],
       history: [
-        { version: 'v1.1', at: '2026-06-30T10:15', current: true, desc: 'Gộp MS01.01 và MS01.03 bằng cổng Giá trị; thêm cổng kiểm tra giá trị khớp quy trình đã chọn, bước xử lý không khớp (Sửa lại / Chuyển quy trình). 61 bước.' },
+        { version: 'v1.1', at: '2026-06-30T10:15', current: true, desc: 'Vẽ chung trang MS01 v1.1 với MS01.02, MS01.03; thêm cổng kiểm tra giá trị khớp quy trình đã chọn, bước xử lý không khớp (Sửa lại / Chuyển quy trình). 61 bước.' },
         { version: 'v1.0', at: '2026-03-02T09:40', desc: 'Bản đầu theo quy trình TO-BE MS01.01, 58 bước.' }] },
+    { code: 'MS01.02', id: 'DTMS_MS01_02', name: D.processes['MS01.02'].name, versions: [
+      { key: '2251799813690118', version: 1, modeler: 'v1.1', deploy: 1, status: 'ACTIVE', page: 'MS01 v1.1', at: '01/07/2026' }],
+      history: [{ version: 'v1.1', at: '2026-06-30T10:20', current: true, desc: 'Bản đầu: nhánh từ 160 tỷ của trang MS01 v1.1, căn cứ đã được CT/TGĐ Tập đoàn phê duyệt (không báo cáo Tập đoàn).' }] },
+    { code: 'MS01.03', id: 'DTMS_MS01_03', name: D.processes['MS01.03'].name, versions: [
+      { key: '2251799813690124', version: 1, modeler: 'v1.1', deploy: 1, status: 'ACTIVE', page: 'MS01 v1.1', at: '01/07/2026' }],
+      history: [{ version: 'v1.1', at: '2026-06-30T10:25', current: true, desc: 'Bản đầu: nhánh dưới 160 tỷ của trang MS01 v1.1 (thẩm định trực tiếp BM-09).' }] },
     { code: 'MS02', id: 'DTMS_MS02', name: 'Điều chỉnh đề xuất mua sắm', versions: [
-      { key: '2251799813690540', version: 1, modeler: 'v1.1', deploy: 1, status: 'ACTIVE', page: 'MS02 ver1.1' }],
+      { key: '2251799813690540', version: 1, modeler: 'v1.1', deploy: 1, status: 'ACTIVE', page: 'MS02 ver1.1', at: '15/07/2026' }],
       history: [{ version: 'v1.1', at: '2026-07-15T14:05', current: true, desc: 'Điều chỉnh ĐXMS theo cùng khung MS01 v1.1.' }] },
     { code: 'MS13', id: 'DTMS_MS13', name: 'Chủ trương khoản đầu tư', versions: [
       { key: '2251799813691208', version: 1, modeler: 'v1.0', deploy: 1, status: 'ACTIVE', page: 'MS13-TO BE' }],
@@ -31,10 +38,9 @@
       { key: '2251799813691536', version: 1, modeler: 'v1.0', deploy: 1, status: 'ACTIVE', page: 'MS14-TO BE' }],
       history: [{ version: 'v1.0', at: '2026-08-04T08:45', current: true, desc: 'Quy trình TO-BE lập, thẩm định, phê duyệt dự án đầu tư.' }] },
   ];
-  /* SL hồ sơ đang xử lý: đếm từ Giám sát tiến trình (hồ sơ Đang chạy / Quá hạn theo phiên bản); quy trình chưa dựng = 0. */
-  function processingCount(v) {
-    if (!v.live) return 0;
-    return monitorRows().filter((r) => r.version === v.live && (r.status === 'Đang chạy' || r.status === 'Quá hạn')).length;
+  /* SL hồ sơ đang xử lý: đếm từ Giám sát tiến trình (hồ sơ Đang chạy / Quá hạn theo quy trình + phiên bản); quy trình chưa dựng = 0. */
+  function processingCount(w, v) {
+    return monitorRows().filter((r) => r.proc === w.code && r.version === v.version && (r.status === 'Đang chạy' || r.status === 'Quá hạn')).length;
   }
   const findVersion = (key) => {
     for (const w of WORKFLOWS) for (const v of w.versions) if (v.key === key) return { w, v };
@@ -50,8 +56,8 @@
       .map((w) => {
         const vers = w.versions.filter((v) => !L.st || v.status === L.st);
         const latest = w.versions.reduce((a, b) => (b.version > a.version ? b : a));
-        return { key: w.id, w, version: latest.version, count: w.versions.reduce((s, v) => s + processingCount(v), 0), hasChildren: vers.length > 0,
-          children: vers.map((v) => ({ key: v.key, w, v, isVersion: true, version: v.version, count: processingCount(v) })) };
+        return { key: w.id, w, version: latest.version, count: w.versions.reduce((s, v) => s + processingCount(w, v), 0), hasChildren: vers.length > 0,
+          children: vers.map((v) => ({ key: v.key, w, v, isVersion: true, version: v.version, count: processingCount(w, v) })) };
       });
   }
 
@@ -63,11 +69,12 @@
       notes: [
         'Không có Thêm mới: quy trình vào hệ thống qua "Đồng bộ từ Camunda" (deploy từ Web Modeler). Nút đồng bộ chỉ hiện khi có quyền QT03; prototype chỉ báo thành công, không đổi dữ liệu.',
         'Bảng cây như source: dòng cha = quy trình (Mã quy trình "-", không có badge), bấm ▾ mở dòng con = từng phiên bản deploy; Mã quy trình ở dòng con là liên kết mở Chi tiết quy trình. Tìm kiếm / lọc Trạng thái thu gọn lại mọi dòng.',
-        'SL hồ sơ đang xử lý của MS01 đếm từ hồ sơ đang chạy (cùng số với Giám sát tiến trình: Đang chạy + Quá hạn); hồ sơ tạo trước 01/07/2026 chạy phiên bản 1 (đã dừng hoạt động nhưng vẫn xử lý nốt). Các quy trình khác chưa có hồ sơ.',
-        'Dữ liệu: 4 quy trình theo các trang của ĐTMS.drawio — MS01 v1.1 (phiên bản 2) và MS01 (phiên bản 1), MS02 ver1.1, MS13-TO BE, MS14-TO BE. Mã Camunda = BPMN process id.',
+        'MS01.01, MS01.02, MS01.03 là ba quy trình riêng (P-37 đã chốt), cùng là ba lựa chọn của ô Quy trình khi tạo ĐXMS. Bản vẽ chuẩn gộp cả ba trên trang MS01 v1.1 nên ba quy trình tạm dùng chung sơ đồ đó.',
+        'SL hồ sơ đang xử lý đếm từ hồ sơ đang chạy của từng quy trình (cùng số với Giám sát tiến trình: Đang chạy + Quá hạn); hồ sơ MS01.01 tạo trước 01/07/2026 chạy phiên bản 1 (đã dừng hoạt động nhưng vẫn xử lý nốt). MS02 đếm hồ sơ Điều chỉnh ĐXMS; MS13, MS14 chưa có hồ sơ.',
+        'Dữ liệu: 6 quy trình theo các trang của ĐTMS.drawio — MS01.01 (phiên bản 2: MS01 v1.1, phiên bản 1: MS01), MS01.02 và MS01.03 (MS01 v1.1), MS02 ver1.1, MS13-TO BE, MS14-TO BE. Mã Camunda = BPMN process id.',
         'Quyền (P-41): chỉ Quản trị hệ thống; vai khác thấy thông báo chưa được cấp quyền.',
       ],
-      q: ['P-37'], src: 'workflow-management/workflow-management.component · /workflow-management',
+      q: [], src: 'workflow-management/workflow-management.component · /workflow-management',
     };
     const title = `<div class="pg-head"><div class="l"><h1 class="pg-title lg">Danh sách quy trình${infoBtn(info)}</h1></div>
       ${WORKFLOW_ROLES.includes(Flow.state.persona) ? `<div class="r"><button type="button" class="vbtn primary" data-wf="sync" ${L.syncing ? 'disabled' : ''}>Đồng bộ từ Camunda</button></div>` : ''}</div>`;
@@ -157,7 +164,7 @@
         <div class="tmain">
           <section class="vcard pad24 gen"><h3>Thông tin quy trình</h3><div class="ginfo c3">
             ${kv('Mã quy trình', w.code)}${kv('Mã Camunda', w.id)}${kv('Tên quy trình', w.name)}${kv('Phiên bản', v.modeler)}
-            ${kv('Phiên bản Deploy', v.deploy)}${kv('Trạng thái', WF_STATUS[v.status][0])}${kv('Số hồ sơ đang xử lý', processingCount(v))}</div></section>
+            ${kv('Phiên bản Deploy', v.deploy)}${kv('Trạng thái', WF_STATUS[v.status][0])}${kv('Số hồ sơ đang xử lý', processingCount(w, v))}</div></section>
           <div class="wf-dg ${el ? 'sel' : ''}">
             <section class="vcard pad24 gen"><h3>Sơ đồ quy trình</h3>
               ${window.BpmnView.html('wf/' + key, [], 500, { page: v.page, toolbar: true, select: true, selected: DT.sel })}</section>
@@ -207,9 +214,12 @@
   const STATUS = { 'Đang chạy': 'info', 'Hoàn thành': 'success', 'Quá hạn': 'warning', 'Đã hủy': 'error' };
   /* Ô lọc Trạng thái lấy từ GET /process-instances/statuses — BE bỏ "Đã hủy" khỏi danh sách này. */
   const FILTER_STATUS = ['Đang chạy', 'Hoàn thành', 'Quá hạn'];
-  /* P-37: một process definition cho MS01.01/.02/.03. Bản v2 (61 task) deploy 01/07/2026; hồ sơ tạo trước đó chạy v1. */
-  const PROC = { name: 'Đề xuất mua sắm', code: 'MS01' };
-  const V2_FROM = new Date(2026, 6, 1);
+  /* Quy trình của hồ sơ = quy trình chọn khi tạo (c.flow); phiên bản = bản mới nhất đã deploy tại ngày tạo hồ sơ (chưa có thì bản đầu). */
+  const wfOf = (code) => WORKFLOWS.find((w) => w.code === code);
+  function versionAt(w, created) {
+    const on = w.versions.filter((v) => parseDate(v.at) <= parseDate(created));
+    return on.length ? Math.max(...on.map((v) => v.version)) : Math.min(...w.versions.map((v) => v.version));
+  }
   const parseDate = (s) => { const [d, m, y] = s.split('/').map(Number); return new Date(y, m - 1, d); };
   /* Mã Camunda (process instance key) 16 chữ số, cố định theo mã hồ sơ. */
   const camundaKey = (code) => '2251799813' + String(685000 + Number(code.replace(/\D/g, '').slice(-4)) * 37).padStart(6, '0');
@@ -229,8 +239,9 @@
           if (c.late) status = 'Quá hạn';
         }
       }
-      return { status, key: camundaKey(c.code), code: c.code, href: S.caseHref(c), step,
-        version: parseDate(c.created) < V2_FROM ? 1 : 2, created: c.created, updated: c.updated };
+      const w = wfOf(c.flow);
+      return { status, key: camundaKey(c.code), code: c.code, href: S.caseHref(c), step, proc: c.flow, name: w ? w.name : c.flow,
+        version: w ? versionAt(w, c.created) : 1, created: c.created, updated: c.updated };
     }).sort((a, b) => parseDate(b.created) - parseDate(a.created));
   }
 
@@ -244,7 +255,7 @@
     return monitorRows().filter((r) => (G.mode === 'kw'
       ? !G.kw || norm(r.key + ' ' + r.code).includes(norm(G.kw))
       : (!f.key || r.key.includes(f.key)) && (!f.code || norm(r.code).includes(norm(f.code)))
-        && (!f.proc || norm(`${PROC.name} ${PROC.code}`).includes(norm(f.proc))) && (!f.st || r.status === f.st)));
+        && (!f.proc || norm(`${r.name} ${r.proc}`).includes(norm(f.proc))) && (!f.st || r.status === f.st)));
   }
 
   function advPanel() {
@@ -270,7 +281,7 @@
         'Màn chỉ xem (D-3): không có nút trên hàng tiêu đề, không có cột Thao tác, bấm dòng không mở gì. Chỉ <b>Mã hồ sơ</b> là liên kết, mở Chi tiết hồ sơ (SCR-20); nút quay lại của Chi tiết hồ sơ về lại đúng trang và bộ lọc đang xem (khác source: profile-detail luôn về Danh sách hồ sơ).',
         'Mỗi dòng là một process instance của một ĐXMS: hồ sơ đang chạy luồng, hồ sơ đã chuyển quy trình và 12 hồ sơ mẫu. Mã Camunda là process instance key (dữ liệu mẫu).',
         'Trạng thái: Đang chạy; Quá hạn khi bước hiện tại quá hạn xử lý; Hoàn thành khi đã phê duyệt; Đã hủy khi hồ sơ kết thúc do Chuyển quy trình (10b) hoặc Dừng xử lý (P-38). Ô lọc Trạng thái không có "Đã hủy" như source (BE loại khỏi danh sách trạng thái lọc).',
-        'Quy trình: P-37 tạm coi MS01.01/.02/.03 là một định nghĩa MS01; hồ sơ tạo trước 01/07/2026 chạy v1.0 (58 task), sau đó v2.0 (61 task, trang MS01 v1.1).',
+        'Quy trình: quy trình người tạo chọn cho hồ sơ (MS01.01 / .02 / .03 là ba quy trình riêng — P-37 đã chốt), dòng phụ là mã quy trình và phiên bản. Hồ sơ MS01.01 tạo trước 01/07/2026 chạy v1.0 (58 task), sau đó v2.0 (61 task, trang MS01 v1.1); MS01.02, MS01.03 mới có v1.0.',
         'Bước hiện tại: nhiều nhánh song song thì hiện bước đầu và (+N).',
         'Chưa có trong source nên không dựng (UR-WF-05): chi tiết instance, danh sách User/Service Task, incident, biến input/output, Retry (P-40).',
         'Quyền xem (P-41): Quản trị hệ thống và Chuyên viên TTMS; vai khác thấy thông báo chưa được cấp quyền. Source ẩn mục menu theo quyền GS00; prototype giữ menu để đổi vai demo.',
@@ -291,7 +302,7 @@
     const body = rows.slice(from, from + G.size).map((r, i) => `<tr data-code="${esc(r.code)}">
         <td class="ord">${from + i + 1}</td><td class="c">${badge(r.status, STATUS[r.status])}</td><td class="num">${esc(r.key)}</td>
         <td><a class="link" href="#/${r.href}" data-go="${r.href}">${esc(r.code)}</a></td>
-        <td><div class="proc-cell"><div class="n">${esc(PROC.name)}</div><div class="s">${PROC.code} - v${r.version}.0</div></div></td>
+        <td><div class="proc-cell"><div class="n" title="${esc(r.name)}">${esc(r.name)}</div><div class="s">${esc(r.proc)} - v${r.version}.0</div></div></td>
         <td>${r.step ? `<span class="clamp">${esc(r.step)}</span>` : dash}</td><td class="num">${esc(r.created)}</td><td class="num">${esc(r.updated)}</td></tr>`).join('');
     return `<div class="pg">
       ${title}
@@ -347,5 +358,5 @@
     if (k) { k.focus(); k.setSelectionRange(k.value.length, k.value.length); }
   });
 
-  window.QuyTrinh = { monitor, monitorRows, list, detail, WORKFLOWS };
+  window.QuyTrinh = { monitor, monitorRows, list, detail, WORKFLOWS, camundaKey };
 })();

@@ -4,8 +4,9 @@ import { test, expect } from '@playwright/test';
 import { fresh, open, primary, INDEX } from './helpers.mjs';
 
 const BA = /SCR-\d|UC-\d|task \d|Prototype|minh hoạ|giả lập/i;
-const CLEAN_ROUTES = ['#/viec-cua-toi', '#/dxms', '#/dxms/create', '#/dxms/%C4%90XMS-2026-0103', '#/dxms/%C4%90XMS-2026-0098',
-  '#/dxms/%C4%90XMS-2026-0098/bpmn', '#/dxms/%C4%90XMS-2026-0072', '#/ph/goi-thau'];
+const CLEAN_ROUTES = ['#/viec-cua-toi', '#/dxms', '#/dxms/create', '#/dxms/%C4%90XMS-2026-0077', '#/dxms/%C4%90XMS-2026-0077/edit',
+  '#/ho-so-dxms', '#/ho-so-dxms/create', '#/ho-so-dxms/create/%C4%90XMS-2026-0119', '#/ho-so-dxms/HS-2026-0103', '#/ho-so-dxms/HS-2026-0098',
+  '#/ho-so-dxms/HS-2026-0098/bpmn', '#/ho-so-dxms/HS-2026-0072', '#/ho-so-dxms/HS-2026-0126', '#/ho-so-dxms/HS-2026-0126/bpmn', '#/ph/goi-thau'];
 
 // Chữ hiển thị trong vùng nội dung, bỏ nút (i) (popover chỉ gắn vào body khi bấm).
 const mainText = (page) => page.evaluate(() => {
@@ -35,7 +36,7 @@ for (const r of CLEAN_ROUTES) {
 }
 
 test('A2: nút (i) mở ghi chú BA của màn, có điểm ❓ bấm được', async ({ page }) => {
-  await fresh(page, '#/dxms/create');
+  await fresh(page, '#/ho-so-dxms/create');
   await page.locator('.pg-title .info-i').click();
   await expect(page.locator('.info-pop')).toContainText('SCR-25');
   await expect(page.locator('.info-pop')).toContainText('profile-form');
@@ -51,47 +52,111 @@ test('C4: ?capture=1 ẩn nút (i) và nút công cụ demo', async ({ page }) =
   await expect(page.locator('#demo')).toBeHidden();
 });
 
-test('B5: Danh sách ĐXMS theo profile-list — cột, tìm kiếm, tìm kiếm nâng cao, phân trang', async ({ page }) => {
-  await fresh(page, '#/dxms');
-  await expect(page.locator('.pg-title')).toHaveText('Danh sách ĐXMS');
-  await expect(page.locator('.pg-head .r [data-create]')).toHaveText(/Thêm mới/);
-  await expect(page.locator('.vtable th')).toHaveText(['STT', 'Thao tác', 'Trạng thái', 'Mã hồ sơ', 'Tên hồ sơ', 'Đơn vị đề xuất',
-    'Tổng giá trị (tỷ đồng)', 'Quy trình', 'Mức ưu tiên', 'Bước hiện tại', 'Ngày cập nhật']);
-  await expect(page.locator('.vpager')).toContainText('Tổng số bản ghi: 12');
+test('B5: Danh sách hồ sơ ĐXMS theo profile-list — cột, tìm kiếm, tìm kiếm nâng cao, phân trang', async ({ page }) => {
+  await fresh(page, '#/ho-so-dxms');
+  await expect(page.locator('.pg-title')).toHaveText('Danh sách hồ sơ ĐXMS');
+  await expect(page.locator('.sb-nav [data-go="ho-so-dxms"]')).toHaveClass(/active/);
+  await expect(page.locator('.pg-head .r [data-create="hs"]')).toHaveText(/Thêm mới/);
+  await expect(page.locator('.vtable th')).toHaveText(['STT', 'Thao tác', 'Trạng thái', 'Mã hồ sơ', 'Mã ĐXMS', 'Tên hồ sơ', 'Loại hồ sơ', 'Đơn vị đề xuất',
+    'Tổng giá trị (tỷ đồng)', 'Mức ưu tiên', 'Quy trình', 'Bước hiện tại', 'Ngày cập nhật']);
+  await expect(page.locator('.vpager')).toContainText('Tổng số bản ghi: 14');
   await expect(page.locator('.vtable tbody tr')).toHaveCount(10);
   await page.locator('.vpager [data-pg="2"]').first().click();
-  await expect(page.locator('.vtable tbody tr')).toHaveCount(2);
+  await expect(page.locator('.vtable tbody tr')).toHaveCount(4);
   await expect(page.locator('.vtable tbody tr').first().locator('td').first()).toHaveText('11');
 
-  await page.locator('#dxms-kw').fill('may chu');
-  await page.locator('#dxms-kw').press('Enter');
+  await page.locator('#hs-kw').fill('may chu');
+  await page.locator('#hs-kw').press('Enter');
   await expect(page.locator('.vtable tbody tr')).toHaveCount(1);
-  await expect(page.locator('.vtable tbody')).toContainText('ĐXMS-2026-0121');
+  await expect(page.locator('.vtable tbody')).toContainText('HS-2026-0121');
+  // Tìm theo mã ĐXMS ra mọi hồ sơ của ĐXMS đó (Phê duyệt + Điều chỉnh).
+  await page.locator('#hs-kw').fill('ĐXMS-2026-0077');
+  await page.locator('#hs-kw').press('Enter');
+  await expect(page.locator('.vtable tbody tr')).toHaveCount(2);
+  await expect(page.locator('.vtable tbody')).toContainText('Điều chỉnh ĐXMS');
 
   await page.locator('[data-l="adv"]').click();
-  await expect(page.locator('#dxms-kw')).toHaveCount(0);
+  await expect(page.locator('#hs-kw')).toHaveCount(0);
   await expect(page.locator('[data-l="adv"]')).toHaveText('Ẩn tìm kiếm nâng cao');
   await page.locator('[data-vsel="f-st"]').click();
   await page.locator('.vsel-panel [data-opt="done"]').click();
   await page.locator('.adv button[type="submit"]').click({ force: true });
   const n = await page.locator('.vtable tbody tr').count();
-  expect(n).toBe(5);
+  expect(n).toBe(6);
   for (let i = 0; i < n; i++) await expect(page.locator('.vtable tbody tr').nth(i).locator('.vbadge')).toHaveText('Hoàn thành');
+  await page.locator('[data-vsel="f-kind"]').click();
+  await page.locator('.vsel-panel [data-opt="DC"]').click();
+  await page.locator('.adv button[type="submit"]').click({ force: true });
+  await expect(page.locator('.vtable tbody tr')).toHaveCount(1);
+  await expect(page.locator('.vtable tbody')).toContainText('HS-2026-0112');
   await page.locator('[data-l="reset"]').click();
-  await expect(page.locator('.vpager')).toContainText('Tổng số bản ghi: 12');
+  await expect(page.locator('.vpager')).toContainText('Tổng số bản ghi: 14');
 });
 
 test('A5: mọi hồ sơ trong danh sách mở được', async ({ page }) => {
-  await fresh(page, '#/dxms');
+  await fresh(page, '#/ho-so-dxms');
   await page.locator('.vpager .ps-t').click();
   await page.locator('.vpager [data-ps="50"]').click();
   const codes = await page.locator('.vtable tbody tr').evaluateAll((rs) => rs.map((r) => r.dataset.code));
-  expect(codes.length).toBe(12);
+  expect(codes.length).toBe(14);
+  for (const code of codes) {
+    await page.evaluate(() => { location.hash = '#/ho-so-dxms'; });
+    await page.locator(`tr[data-code="${code}"] .link`).click();
+    await expect(page.locator('.ginfo')).toContainText(code);
+    await expect(page.locator('.dmain .vsteps, .dmain .vst').first()).toBeVisible();
+  }
+  expect(page.errors).toEqual([]);
+});
+
+test('B5: Danh sách ĐXMS theo task-management — cột, chỉ ô tìm kiếm, trạng thái suy từ hồ sơ, mọi ĐXMS mở được, Xoá khi chưa có hồ sơ', async ({ page }) => {
+  await fresh(page, '#/dxms');
+  await expect(page.locator('.pg-title')).toHaveText('Danh sách ĐXMS');
+  await expect(page.locator('.sb-nav [data-go="dxms"]')).toHaveClass(/active/);
+  await expect(page.locator('.pg-head .r [data-create="dxms"]')).toHaveText(/Thêm mới/);
+  await expect(page.locator('[data-l="adv"]')).toHaveCount(0);
+  await expect(page.locator('.vtable th')).toHaveText(['STT', 'Thao tác', 'Trạng thái', 'Mã ĐXMS', 'Tên ĐXMS', 'Đơn vị đề xuất',
+    'Giá trị hiệu lực (tỷ đồng)', 'Mức ưu tiên', 'Ngày cập nhật']);
+  await expect(page.locator('.vpager')).toContainText('Tổng số bản ghi: 12');
+  const st = (code) => page.locator(`tr[data-code="${code}"] .vbadge`);
+  await expect(st('ĐXMS-2026-0119')).toHaveText('Chưa có hồ sơ');
+  await expect(st('ĐXMS-2026-0121')).toHaveText('Đang phê duyệt');
+  await expect(st('ĐXMS-2026-0103')).toHaveText('Đã phê duyệt');
+  await page.locator('.vpager [data-pg="2"]').first().click();
+  await expect(st('ĐXMS-2026-0077')).toHaveText('Đang điều chỉnh');
+  // Giá trị hiệu lực = hồ sơ Hoàn thành gần nhất (Điều chỉnh 9,60 → 11,20).
+  await page.locator('.vpager [data-pg="1"]').first().click();
+  await expect(page.locator('tr[data-code="ĐXMS-2026-0084"]')).toContainText('11,20');
+  await expect(page.locator('[data-del-dxms]')).toHaveCount(1);
+
+  await page.locator('#dxms-kw').fill('may in');
+  await page.locator('#dxms-kw').press('Enter');
+  await expect(page.locator('.vtable tbody tr')).toHaveCount(1);
+  await page.locator('[data-del-dxms="ĐXMS-2026-0119"]').click();
+  await expect(page).toHaveURL(/#\/dxms$/);
+  await page.locator('.vconfirm #cf-ok').click();
+  await expect(page.locator('.vtable tbody tr')).toHaveCount(1);
+  await expect(page.locator('.vtable tbody')).toContainText('Chưa có dữ liệu');
+
+  await page.locator('#dxms-kw').fill('');
+  await page.locator('#dxms-kw').press('Enter');
+  await page.locator('.vpager .ps-t').click();
+  await page.locator('.vpager [data-ps="50"]').click();
+  const codes = await page.locator('.vtable tbody tr').evaluateAll((rs) => rs.map((r) => r.dataset.code));
+  expect(codes.length).toBe(11);
   for (const code of codes) {
     await page.evaluate(() => { location.hash = '#/dxms'; });
     await page.locator(`tr[data-code="${code}"] .link`).click();
-    await expect(page.locator('.ginfo')).toContainText(code);
+    await expect(page.locator('.pg-title')).toHaveText('Xem chi tiết ĐXMS');
+    await expect(page.locator('.gen .ginfo')).toContainText(code);
+    await expect(page.locator('[data-dxms-profiles] tbody tr').first()).toContainText('HS-2026-');
   }
+  // ĐXMS có hai hồ sơ (Phê duyệt đã chuyển quy trình + hồ sơ thay thế); mở hồ sơ từ đây thì quay lại đúng ĐXMS.
+  await page.evaluate(() => { location.hash = '#/dxms/%C4%90XMS-2026-0072'; });
+  await expect(page.locator('[data-dxms-profiles] tbody tr')).toHaveCount(2);
+  await page.locator('[data-dxms-profiles] a.link', { hasText: 'HS-2026-0074' }).click();
+  await expect(page.locator('.pg-title')).toHaveText('Chi tiết hồ sơ');
+  await page.locator('.pg-head .vbtn.back').click();
+  await expect(page).toHaveURL(/#\/dxms\/%C4%90XMS-2026-0072$/);
   expect(page.errors).toEqual([]);
 });
 
@@ -101,7 +166,7 @@ test('B5: Việc của tôi theo my-tasks — không tab, cột, lọc Trạng t
   await expect(page.locator('.pg-title')).toHaveText('Danh sách việc của tôi');
   await expect(page.locator('main .tab')).toHaveCount(0);
   await expect(page.locator('main [data-create]')).toHaveCount(0);
-  await expect(page.locator('.vtable th')).toHaveText(['STT', 'Trạng thái', 'Mã hồ sơ', 'Tên hồ sơ', 'Hành động', 'Ngày tạo',
+  await expect(page.locator('.vtable th')).toHaveText(['STT', 'Trạng thái', 'Mã hồ sơ', 'Mã ĐXMS', 'Hành động', 'Ngày tạo',
     'Hạn xử lý', 'Loại hồ sơ', 'Mức ưu tiên', 'Quy trình']);
   await expect(page.locator('#my-kw')).toHaveAttribute('placeholder', /Tìm kiếm theo tên công việc/);
   const first = page.locator('.vtable tbody tr').first();
@@ -132,7 +197,7 @@ test('B5: Việc của tôi theo my-tasks — không tab, cột, lọc Trạng t
   expect(page.errors).toEqual([]);
 });
 
-test('B5: sau Chuyển quy trình, việc đầu tiên của ĐXMS thay thế nằm trong Việc của tôi', async ({ page }) => {
+test('B5: sau Chuyển quy trình, việc đầu tiên của hồ sơ thay thế (cùng ĐXMS) nằm trong Việc của tôi', async ({ page }) => {
   await fresh(page, '#/viec-cua-toi');
   await page.evaluate(() => {
     Flow.jumpTo('10a', 'minh', {}, 'MS01.03');
@@ -140,11 +205,12 @@ test('B5: sau Chuyển quy trình, việc đầu tiên của ĐXMS thay thế n�
     Flow.complete(t.id, D.flow['10a'].choices.find((c) => c.label.startsWith('Chuyển')), 'x');
     location.hash = '#/viec-cua-toi';
   });
-  const row = page.locator('tr[data-code="ĐXMS-2026-0125"]');
+  const row = page.locator('tr[data-code="HS-2026-0125"]');
   await expect(row).toContainText('Chưa xử lý');
+  await expect(row).toContainText('ĐXMS-2026-0117');
   await row.locator('.link').click();
   await expect(page).toHaveURL(/#\/task\//);
-  expect(await page.evaluate(() => Flow.ci().code)).toBe('ĐXMS-2026-0125');
+  expect(await page.evaluate(() => [Flow.ci().code, Flow.ci().dxms])).toEqual(['HS-2026-0125', 'ĐXMS-2026-0117']);
 });
 
 // Màn xử lý task theo my-task-detail (B7): nút trên hàng tiêu đề, lưới 5 + 2, card theo thứ tự source, không chữ BA (C3).
@@ -283,3 +349,148 @@ for (const st of ['approved', 'moved']) {
     expect(page.errors).toEqual([]);
   });
 }
+
+// T9 B5 — Quản trị quy trình (SCR-41…48): C3 không chữ BA ngoài nút (i), mọi hàng trong danh sách mở được, C4 ?capture=1.
+const asQt = async (page, hash) => {
+  await fresh(page, '#/viec-cua-toi');
+  await page.evaluate(() => Flow.setPersona('qt'));
+  await page.goto(page.url().replace(/#.*$/, '') + hash);
+  await expect(page.locator('main')).not.toBeEmpty();
+};
+const V2 = '2251799813690112', V1 = '2251799813685377';
+// {rule} = id luật mẫu đầu tiên (sinh khi nạp trang).
+const WF_ROUTES = ['#/giam-sat-tien-trinh', '#/quy-trinh', `#/quy-trinh/${V2}`, `#/quy-trinh/${V1}`, '#/quy-trinh/2251799813690540',
+  '#/quy-trinh/2251799813691208', '#/ma-tran/display-rule', '#/ma-tran/display-rule/create', '#/ma-tran/display-rule/{rule}/edit',
+  '#/ma-tran/display-rule/{rule}/view', '#/ma-tran/bpmn-reconcile', '#/ma-tran/action-catalog', '#/ma-tran/action-catalog/GUI_DUYET'];
+const go = (page, h) => page.evaluate((x) => { location.hash = x; }, h);
+
+for (const r of WF_ROUTES) {
+  test(`C3: không có chữ BA ngoài nút (i) — ${r}`, async ({ page }) => {
+    await asQt(page, '#/quy-trinh');
+    const id = await page.evaluate(() => MaTran.rules()[0].id);
+    await go(page, r.replace('{rule}', id));
+    await expect(page.locator('main .pg-title .info-i').first()).toBeVisible();
+    await expect(page.locator('main')).not.toContainText(/Không tìm thấy|chưa được cấp quyền|Đang phát triển/);
+    expect(await mainText(page)).not.toMatch(BA);
+    expect(page.errors).toEqual([]);
+  });
+}
+
+test('C3: SCR-42 — panel của mọi phần tử trên 5 sơ đồ không có chữ BA', async ({ page }) => {
+  await asQt(page, '#/quy-trinh');
+  const keys = await page.evaluate(() => QuyTrinh.WORKFLOWS.flatMap((w) => w.versions.map((v) => [v.key, v.page])));
+  expect(keys.length).toBe(7);
+  for (const [key, pg] of keys) {
+    await go(page, '#/quy-trinh/' + key);
+    await expect(page.locator('.bp-vp')).toBeVisible();
+    const res = await page.evaluate(([k, p]) => {
+      const ids = BPMN_DIAGRAMS[p].nodes.filter((n) => n.el).map((n) => n.el.id);
+      const re = /SCR-\d|UC-\d|task \d|Prototype|minh hoạ|giả lập/i, out = [];
+      for (const id of ids) {
+        document.dispatchEvent(new CustomEvent('bpmn-element', { detail: { key: 'wf/' + k, page: p, id } }));
+        const el = document.querySelector('.wf-el');
+        if (!el) { out.push(id + ': không mở panel'); continue; }
+        const m = el.innerText.match(re);
+        if (m) out.push(`${id}: ${m[0]}`);
+      }
+      return { n: ids.length, out };
+    }, [key, pg]);
+    expect(res.n).toBeGreaterThan(10);
+    expect(res.out, pg).toEqual([]);
+  }
+  expect(page.errors).toEqual([]);
+});
+
+test('C3: SCR-41 — mọi dòng phiên bản mở được Chi tiết quy trình', async ({ page }) => {
+  await asQt(page, '#/quy-trinh');
+  for (const k of ['DTMS_MS01_01', 'DTMS_MS01_02', 'DTMS_MS01_03', 'DTMS_MS02', 'DTMS_MS13', 'DTMS_MS14']) {
+    const tg = page.locator(`[data-vtt-key="${k}"]`);
+    if (await tg.count()) await tg.click();
+  }
+  const hrefs = await page.locator('.vtt tbody a.link').evaluateAll((as) => as.map((a) => a.getAttribute('href')));
+  expect(hrefs.length).toBe(7);
+  for (const h of hrefs) {
+    await go(page, h);
+    await expect(page.locator('.pg-title')).toHaveText('Chi tiết quy trình');
+    await expect(page.locator('main')).not.toContainText('Không tìm thấy');
+  }
+  expect(page.errors).toEqual([]);
+});
+
+// Gom liên kết của một cột qua mọi trang (cỡ trang 50).
+async function allLinks(page, sel, pager) {
+  await page.locator(`${pager} .ps-t`).click();
+  await page.locator(`${pager} [data-ps="50"]`).click();
+  const out = [];
+  for (let p = 1; p < 20; p++) {
+    out.push(...await page.locator(sel).evaluateAll((as) => as.map((a) => a.getAttribute('href'))));
+    const next = page.locator(`${pager} [data-pg="${p + 1}"]`).first();
+    if (!(await next.count())) break;
+    await next.click();
+  }
+  return out;
+}
+
+test('C3: SCR-43 — mọi Mã luật mở Xem chi tiết, mọi Mã hành động mở Chi tiết hành động', async ({ page }) => {
+  await asQt(page, '#/ma-tran/display-rule');
+  const rules = await allLinks(page, '.mt-table tbody td:nth-child(4) a.link', '[data-pager="mt"]');
+  expect(rules.length).toBe(await page.evaluate(() => MaTran.rules().length));
+  const acts = [...new Set(await page.evaluate(() => MaTran.rules().map((r) => '#/ma-tran/action-catalog/' + r.action)))];
+  for (const h of rules) {
+    await go(page, h);
+    await expect(page.locator('.pg-title')).toContainText('Xem chi tiết luật');
+    await expect(page.locator('main')).not.toContainText('Không tìm thấy');
+  }
+  for (const h of acts) {
+    await go(page, h);
+    await expect(page.locator('.pg-title')).toContainText('Xem chi tiết hành động');
+    await expect(page.locator('main')).not.toContainText('Không tìm thấy');
+  }
+  expect(page.errors).toEqual([]);
+});
+
+test('C3: SCR-46/47 — mọi hành động mở được; mọi quy trình áp dụng mở Chi tiết quy trình', async ({ page }) => {
+  await asQt(page, '#/ma-tran/action-catalog');
+  const acts = await page.locator('main table tbody a.link').evaluateAll((as) => as.map((a) => a.getAttribute('href')));
+  expect(acts.length).toBe(await page.evaluate(() => MaTran.ACTIONS.length));
+  for (const h of acts) {
+    await go(page, h);
+    await expect(page.locator('.pg-title')).toContainText('Xem chi tiết hành động');
+    const procs = await page.locator('main table tbody a.link').evaluateAll((as) => as.map((a) => a.getAttribute('href')));
+    for (const p of procs) {
+      await go(page, p);
+      await expect(page.locator('.pg-title')).toHaveText('Chi tiết quy trình');
+      await expect(page.locator('main')).not.toContainText('Không tìm thấy');
+    }
+  }
+  expect(page.errors).toEqual([]);
+});
+
+test('C3: SCR-48 — mọi Mã hồ sơ mở Chi tiết hồ sơ', async ({ page }) => {
+  await asQt(page, '#/giam-sat-tien-trinh');
+  await page.locator('.vpager .ps-t').click();
+  await page.locator('.vpager [data-ps="50"]').click();
+  const hrefs = await page.locator('.vtable tbody td:nth-child(4) a.link').evaluateAll((as) => as.map((a) => a.getAttribute('href')));
+  expect(hrefs.length).toBe(await page.evaluate(() => QuyTrinh.monitorRows().length));
+  expect(hrefs.length).toBeGreaterThan(10);
+  for (const h of hrefs) {
+    await go(page, h);
+    await expect(page.locator('.pg-title')).toHaveText('Chi tiết hồ sơ');
+    await expect(page.locator('main')).not.toContainText('không còn tồn tại');
+    expect(await mainText(page)).not.toMatch(BA);
+  }
+  expect(page.errors).toEqual([]);
+});
+
+test('C4: ?capture=1 — màn Quản trị quy trình ẩn nút (i); sơ đồ SCR-42 vẽ gọn', async ({ page }) => {
+  await page.goto(INDEX + '?capture=1#/viec-cua-toi');
+  await page.evaluate(() => { localStorage.clear(); Flow.setPersona('qt'); });
+  for (const h of ['#/giam-sat-tien-trinh', '#/quy-trinh', '#/ma-tran/display-rule', '#/ma-tran/bpmn-reconcile', '#/ma-tran/action-catalog']) {
+    await go(page, h);
+    await expect(page.locator('main .pg-title').first()).toBeVisible();
+    await expect(page.locator('main .info-i').first()).toBeHidden();
+  }
+  await go(page, '#/quy-trinh/' + V2);
+  await expect(page.locator('.bp-svg')).toBeVisible();
+  await expect(page.locator('.bp-svg foreignObject')).toHaveCount(0);
+});

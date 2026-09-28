@@ -13,7 +13,8 @@
   /* Mục menu đang được chọn theo route. */
   function activePath(r) {
     if (r.startsWith('task/') || r.startsWith('viec-cua-toi')) return 'viec-cua-toi';
-    if (r.startsWith('ho-so') || r.startsWith('dxms')) return 'dxms';
+    if (r.startsWith('ho-so')) return 'ho-so-dxms';
+    if (r.startsWith('dxms')) return 'dxms';
     if (r.startsWith('dmdc')) return 'dmdc';
     if (r.startsWith('quy-trinh')) return 'quy-trinh';
     if (r.startsWith('ma-tran')) return 'ma-tran';
@@ -63,7 +64,7 @@
   }
 
   /* Route cũ của Quy trình BPMN / Ma trận hành động trước khi tách menu Quản trị quy trình (D-2). */
-  const MOVED = { 'ph/quy-trinh': 'quy-trinh', 'ph/ma-tran': 'ma-tran/display-rule', 'ma-tran': 'ma-tran/display-rule' };
+  const MOVED = { 'ph/quy-trinh': 'quy-trinh', 'ph/ma-tran': 'ma-tran/display-rule', 'ma-tran': 'ma-tran/display-rule', 'ph/dieu-chinh': 'ho-so-dxms' };
 
   function content(r) {
     const [a, b, c] = r.split('/');
@@ -72,9 +73,15 @@
     if (a === 'ma-tran') return window.MaTran.route(r.split('/').slice(1));
     if (a === 'chon-vai') return S.chonVai();
     if (a === 'viec-cua-toi') return S.viecCuaToi(b);
-    if (a === 'dxms' && b === 'create') return S.dxmsCreate();
-    if (a === 'dxms' && b) return S.sampleDetail(decodeURIComponent(b), c);
+    /* ĐXMS (cha): SCR-27 danh sách, SCR-28 thêm mới / chỉnh sửa, SCR-29 chi tiết — theo task-management. */
+    if (a === 'dxms' && b === 'create') return S.dxmsForm();
+    if (a === 'dxms' && b && c === 'edit') return S.dxmsForm();
+    if (a === 'dxms' && b) return S.dxmsDetail(decodeURIComponent(b));
     if (a === 'dxms') return S.dxmsList();
+    /* Hồ sơ (con): SCR-02 danh sách, SCR-25 thêm mới [/<mã ĐXMS>], SCR-20 chi tiết hồ sơ mẫu — theo profile-management. */
+    if (a === 'ho-so-dxms' && b === 'create') return S.profileCreate();
+    if (a === 'ho-so-dxms' && b) return S.sampleDetail(decodeURIComponent(b), c);
+    if (a === 'ho-so-dxms') return S.profileList();
     if (a === 'ho-so') return S.caseDetail(b);
     if (a === 'task' && c === 'bpmn') return S.taskBpmn(b);
     if (a === 'task') return S.taskScreen(b);
@@ -113,14 +120,15 @@
     { name: 'Thủ trưởng VHT yêu cầu hoàn chỉnh', tasks: '60 → 25 → 26', task: 60, who: 'tgd' },
   ];
 
-  /* Màn mở Chi tiết hồ sơ mẫu (#/dxms/<mã>…): Giám sát tiến trình thì nút quay lại về đó, còn lại về Danh sách ĐXMS. */
+  /* Màn mở Chi tiết hồ sơ mẫu (#/ho-so-dxms/<mã>…): Giám sát tiến trình, Chi tiết/Chỉnh sửa ĐXMS thì nút quay lại về đó, còn lại về Danh sách hồ sơ. */
   let lastRoute = null, detailFrom = null;
 
   function render() {
     const r = route();
     if (MOVED[r]) { location.replace('#/' + MOVED[r]); return; }
     const base = r.split('/').slice(0, 2).join('/');
-    if (r.startsWith('dxms/') && r !== 'dxms/create' && !(lastRoute || '').startsWith(base)) detailFrom = lastRoute;
+    if (r.startsWith('ho-so-dxms/') && !r.startsWith('ho-so-dxms/create') && !(lastRoute || '').startsWith(base)) detailFrom = lastRoute;
+    if (r !== lastRoute) S.enter(r);
     lastRoute = r;
     const act = activePath(r);
     const main = document.querySelector('.main');
@@ -135,10 +143,10 @@
     document.title = 'ĐTMS';
   }
 
-  /* SCR-25 Tạo mới ĐXMS là trang riêng #/dxms/create (rule B6), luôn mở với form trống. */
-  function openCreate() {
-    S.resetCreate();
-    if (location.hash === '#/dxms/create') render(); else location.hash = '#/dxms/create';
+  /* Trang Thêm mới (rule B6) luôn mở với form trống: 'dxms' = SCR-28 Thêm mới ĐXMS, 'hs' = SCR-25 Thêm mới hồ sơ. */
+  function openCreate(what) {
+    const h = what === 'hs' ? '#/ho-so-dxms/create' : '#/dxms/create';
+    if (location.hash === h) { S.enter(h.slice(2)); render(); } else location.hash = h;
   }
 
   function openReplacement() {
@@ -223,7 +231,7 @@
     }
     if (t.closest('#sbt')) { collapsed = !collapsed; try { localStorage.setItem('dtms-proto-sb', collapsed ? '1' : '0'); } catch (err) { /* bỏ qua */ } render(); return; }
     if (t.closest('#demo')) { demoOpen = !demoOpen; render(); return; }
-    if (t.closest('[data-create]')) { e.preventDefault(); openCreate(); return; }
+    if (t.closest('[data-create]')) { e.preventDefault(); openCreate(t.closest('[data-create]').dataset.create); return; }
     if (t.closest('[data-open-new]')) { e.preventDefault(); openReplacement(); return; }
     if (t.closest('[data-back]')) { e.preventDefault(); if (history.length > 1) history.back(); else location.hash = '#/viec-cua-toi'; return; }
     const sc = t.closest('[data-scene]');
@@ -232,7 +240,7 @@
       const s = D.scenes.find((x) => x.n === Number(sc.dataset.scene));
       toast(`Cảnh ${s.n} · ${esc(s.name)} — vai ${esc(persona(Flow.state.persona).name)}`, 'info');
       demoOpen = false;
-      if (s.start === 'NEW') { openCreate(); return; }
+      if (s.start === 'NEW') { openCreate('dxms'); return; }
       const mine = Flow.tokensFor(Flow.state.persona)[0];
       location.hash = mine ? `#/task/${mine.id}` : '#/ho-so';
       render(); return;
@@ -248,7 +256,7 @@
       render(); return;
     }
     if (t.closest('#reset')) {
-      const m = modal(`<div class="modal-h"><h3>Reset luồng?</h3></div><div class="modal-b">Xoá hồ sơ đang chạy, quay về trước bước Tạo mới ĐXMS (SCR-25). Ý kiến ❓ đã ghi được giữ lại.</div>
+      const m = modal(`<div class="modal-h"><h3>Reset luồng?</h3></div><div class="modal-b">Xoá hồ sơ đang chạy và các ĐXMS, hồ sơ đã tạo trên prototype, quay về trước bước Thêm mới ĐXMS (SCR-28). Ý kiến ❓ đã ghi được giữ lại.</div>
         <div class="modal-f"><button class="btn secondary" data-close>Huỷ</button><button class="btn primary" id="rs">Reset</button></div>`);
       m.el.querySelector('#rs').onclick = () => { m.close(); Flow.reset(); Flow.setPersona('minh'); demoOpen = false; location.hash = '#/viec-cua-toi'; toast('Đã reset luồng.'); };
       return;

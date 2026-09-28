@@ -376,6 +376,8 @@ body.cap .actionbar { position: relative; }
 .vcard-h { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
 .grid3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
 .grid3 .span2 { grid-column: span 2; }
+.grid3 .span3, .ginfo .span3 { grid-column: 1 / -1; }
+.ginfo.c3 .span2 { grid-column: span 2; }
 
 /* vht-button: radius 12, padding 8/16, gap 6, 500 14/21; sm 36, md 40. */
 .vbtn { box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 8px 16px; border: 0; border-radius: 12px; font: inherit; font-size: 14px; font-weight: 500; line-height: 21px; white-space: nowrap; cursor: pointer; height: 40px; background: transparent; transition: filter .2s, background .2s; }
@@ -458,6 +460,7 @@ table.vtable { width: 100%; border-spacing: 0; border-collapse: separate; color:
 .vtable .link { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #EE0033; text-decoration: underline; cursor: pointer; }
 /* Giám sát tiến trình: ô Quy trình = tên (500, #1A1C1E) + dòng phụ mã - phiên bản (#667085), mỗi dòng cắt 1 dòng. */
 .proc-cell { display: flex; flex-direction: column; max-width: 100%; }
+.gs-table .proc-cell { max-width: 220px; } /* = độ rộng cột Quy trình của source; tên dài (MS01.01…) cắt "…", rê chuột xem đủ */
 .proc-cell > div { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .proc-cell .n { font-weight: 500; color: #1A1C1E; } .proc-cell .s { color: #667085; }
 .vtable .acts { display: flex; align-items: center; justify-content: center; gap: 8px; }
