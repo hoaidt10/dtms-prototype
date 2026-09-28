@@ -1,0 +1,21 @@
+{
+  "name": "dtms",
+  "version": "1.0.0",
+  "description": "Prototype HTML bấm được ĐTMS MS01.01 (review nội bộ). Xem README.md.",
+  "scripts": {
+    "test": "npm run test:unit && npm run test:e2e",
+    "test:unit": "node --test test/*.test.mjs",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "report": "playwright show-report",
+    "e2e:shots": "node tools/e2e.mjs"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "devDependencies": {
+    "@playwright/test": "^1.63.0"
+  },
+  "private": true
+}

@@ -1,0 +1,771 @@
+/* Danh mục dùng chung (DMDC) — Quản trị hệ thống › Danh mục dùng chung (#/dmdc, D-1).
+   Khuôn theo fe/repo-khcn-ecat-fe/src/app/features/common-catalog: mỗi danh mục chỉ khai báo cấu hình
+   (như CatalogConfig), khuôn chung dựng danh sách, bộ lọc, hộp thoại Thêm mới/Chỉnh sửa, xác nhận và toast. */
+(function () {
+  const D = window.D, Flow = window.Flow;
+  const { esc, icon, infoBtn, vSelect, vModal, modal, toast, pager, norm, badge } = window.UI;
+  const rerender = () => window.App.render();
+  const STORE = 'dtms-proto-dmdc';
+
+  /* Cấu hình danh mục, thứ tự = thứ tự ô trên Tổng quan (tài liệu chuẩn bị §3).
+     built: đã dựng khuôn danh sách; chưa dựng → màn Đang phát triển, count = số bản ghi mẫu dự kiến.
+     roles: vai thấy ô ngoài Quản trị hệ thống (P-36).
+     Mỗi dòng mẫu: [mã, tên, mô tả, đang hoạt động, số hồ sơ đang dùng, {trường thêm của nhóm A+}].
+     Trường: code/name/textarea như ecat; abbr = Tên viết tắt (CATALOG_ABBREVIATION_PATTERN); select = vht-select, options cố định. */
+  const F = {
+    code: (label, width) => ({ key: 'code', label, type: 'code', required: true, max: 50, width: width || 160 }),
+    name: (label, minWidth) => ({ key: 'name', label, type: 'name', required: true, max: 255, minWidth: minWidth || 280 }),
+    desc: () => ({ key: 'description', label: 'Mô tả', type: 'textarea', max: 500, minWidth: 200 }),
+  };
+  const PROC_LEVEL = [{ value: 'THEO_NGUONG', label: 'Theo ngưỡng' }, { value: 'TAP_DOAN', label: 'Luôn cấp Tập đoàn' }];
+  const GOODS_GROUP = [{ value: 'HANG_HOA', label: 'Hàng hoá' }, { value: 'DICH_VU', label: 'Dịch vụ' }];
+  /* ---------- SCR-31 Nhà cung cấp / Nhà thầu (tài liệu chuẩn bị §4) ---------- */
+  const KIND = [{ value: 'VN', label: 'Trong nước' }, { value: 'NN', label: 'Nước ngoài' }];
+  const COUNTRY = ['Việt Nam', 'Singapore', 'Đức', 'Hàn Quốc', 'Nhật Bản', 'Trung Quốc', 'Đài Loan', 'Hoa Kỳ', 'Pháp', 'Anh', 'Thái Lan', 'Malaysia']
+    .map((label, i) => ({ value: i ? label : 'VN', label }));
+  const CURRENCY = ['VNĐ', 'USD', 'EUR', 'JPY', 'KRW', 'CNY'].map((v) => ({ value: v, label: v }));
+  /* Ngành hàng lấy từ SCR-36; ô chọn chỉ có bản ghi đang hoạt động, trừ giá trị hồ sơ đang giữ (P-33). */
+  const goodsOptions = (cur, all) => rows(byKey('loai-hang-hoa')).filter((r) => all || r.active || (cur || []).includes(r.code)).map((r) => ({ value: r.code, label: r.name }));
+  const banBadge = (r) => (!r.ban ? badge('Bình thường', 'default') : r.ban.until ? badge('Cấm đến ' + r.ban.until, 'error') : badge('Hạn chế', 'warning'));
+  const NCC = {
+    formSize: 'lg', importable: true, advanced: true, unique: ['tax'],
+    kwPlaceholder: 'Tìm kiếm theo mã, tên, mã số thuế nhà cung cấp',
+    /* Nước ngoài không có mã số thuế thì không có khoá chống trùng: coi là trùng khi cùng Tên và Quốc gia (P-32). */
+    dupOf: (v, row, list) => {
+      if (v.tax) return '';
+      const hit = list.find((r) => r !== row && !r.tax && norm(r.name) === norm(v.name) && r.country === v.country);
+      return hit ? `Nhà cung cấp ${v.name} (${labelOf({ options: COUNTRY }, v.country)}) đã tồn tại.` : '';
+    },
+    autoCode: (list) => 'NCC-' + String(Math.max(0, ...list.map((r) => Number(r.code.slice(4)) || 0)) + 1).padStart(6, '0'),
+    fields: [
+      { key: 'code', label: 'Mã nhà cung cấp', type: 'auto', placeholder: 'Hệ thống tự sinh' },
+      { key: 'kind', label: 'Phân loại', type: 'select', required: true, options: KIND, default: 'VN',
+        onChange: (v, sel) => { if (v === 'VN') sel.country = 'VN'; else if (sel.country === 'VN') sel.country = null; } },
+      { key: 'name', label: 'Tên nhà cung cấp', type: 'orgname', required: true, max: 255, span: 2 },
+      { key: 'short', label: 'Tên viết tắt / tên giao dịch', type: 'text', max: 100 },
+      { key: 'nameEn', label: 'Tên tiếng Anh', type: 'text', max: 255 },
+      { key: 'tax', label: 'Mã số thuế', type: 'tax', max: 50, required: (v) => v.kind !== 'NN' },
+      { key: 'country', label: 'Quốc gia', type: 'select', required: true, searchable: true, default: 'VN', options: COUNTRY, locked: (v) => v.kind === 'VN' },
+      { key: 'address', label: 'Địa chỉ', type: 'text', required: true, max: 500, span: 2 },
+      { key: 'goods', label: 'Ngành hàng cung cấp', type: 'select', multi: true, searchable: true, required: true, options: goodsOptions, span: 2 },
+      { key: 'email', label: 'Email nhận yêu cầu báo giá', type: 'email', required: true, max: 255 },
+      { key: 'cc', label: 'Email CC', type: 'emails', max: 500, placeholder: 'Nhiều email cách nhau bằng dấu ;' },
+      { key: 'contact', label: 'Người liên hệ', type: 'text', max: 100 },
+      { key: 'phone', label: 'Số điện thoại', type: 'phone', max: 20 },
+      { key: 'currency', label: 'Loại tiền báo giá thường dùng', type: 'select', options: CURRENCY },
+      { key: 'blank', type: 'blank' },
+      { key: 'description', label: 'Mô tả', type: 'textarea', max: 500, span: 2 },
+    ],
+    columns: [
+      { key: 'code', label: 'Mã nhà cung cấp', width: 130 },
+      { key: 'name', label: 'Tên nhà cung cấp', type: 'name', minWidth: 260 },
+      { key: 'tax', label: 'Mã số thuế', width: 150 },
+      { key: 'kind', label: 'Phân loại', type: 'select', options: KIND, width: 110 },
+      { key: 'country', label: 'Quốc gia', type: 'select', options: COUNTRY, width: 120 },
+      { key: 'goods', label: 'Ngành hàng', type: 'select', multi: true, options: goodsOptions, minWidth: 220 },
+      { key: 'email', label: 'Email nhận yêu cầu báo giá', minWidth: 220 },
+      { key: 'contact', label: 'Người liên hệ', width: 170 },
+      { key: 'ban', label: 'Tình trạng', width: 190, render: banBadge },
+    ],
+    /* 12 bản ghi mẫu: 3 nước ngoài (Gamma, Theta, Iota); Alpha/Beta/Gamma là 3 NCC trong luồng MS01 (task 09–12);
+       Eta đang bị cấm, Kappa bị hạn chế (danh sách cấm thuộc phân hệ LCNT, UC-09-08); Mu dừng hoạt động. */
+    seedRows: () => [
+      ['Công ty TNHH Công nghệ Alpha', 'NCC Alpha', 'Alpha Technology Co., Ltd', 'VN', '0101234567', 'VN', 'Số 12 Duy Tân, Cầu Giấy, Hà Nội', ['VTCNTT', 'NCSX'], 'baogia@alphatech.vn', 'kinhdoanh@alphatech.vn', 'Nguyễn Văn Hùng', '024 3765 1234', 'VNĐ', 3],
+      ['Công ty Cổ phần Thiết bị Beta', 'NCC Beta', 'Beta Equipment JSC', 'VN', '0301234568', 'VN', '45 Nguyễn Thị Minh Khai, Quận 1, TP Hồ Chí Minh', ['VTCNTT'], 'rfq@betaequip.vn', '', 'Trần Thị Mai', '0903 456 789', 'VNĐ', 3],
+      ['Gamma Technologies Pte. Ltd.', 'NCC Gamma', 'Gamma Technologies Pte. Ltd.', 'NN', '201912345K', 'Singapore', '8 Marina View, Singapore 018960', ['VTCNTT'], 'quotation@gammatech.sg', 'sales.vn@gammatech.sg', 'David Tan', '+65 6123 4567', 'USD', 3],
+      ['Công ty TNHH Đo lường Delta - Chi nhánh Hà Nội', 'Delta HN', '', 'VN', '0107654321-001', 'VN', 'Lô B2 Khu công nghệ cao Hoà Lạc, Thạch Thất, Hà Nội', ['NCSX'], 'baogia.hn@deltameas.vn', '', 'Lê Minh Tuấn', '0912 345 678', 'VNĐ', 1],
+      ['Tổng công ty Vận tải Epsilon', 'Epsilon', '', 'VN', '0100100100', 'VN', '18 Láng Hạ, Đống Đa, Hà Nội', ['PTVT_TBQL'], 'muasam@epsilon.com.vn', '', 'Phạm Quốc Bảo', '024 3833 5566', 'VNĐ', 0],
+      ['Công ty Cổ phần Tư vấn Thiết kế Zeta', 'Zeta Consult', '', 'VN', '0105550123', 'VN', '72 Trần Duy Hưng, Cầu Giấy, Hà Nội', ['DVTV'], 'tuvan@zeta.vn', '', 'Đỗ Thu Hà', '0988 111 222', 'VNĐ', 1],
+      ['Công ty TNHH Dịch vụ Kỹ thuật Eta', 'Eta', '', 'VN', '0106667788', 'VN', '5 Phạm Hùng, Nam Từ Liêm, Hà Nội', ['DVPTV'], 'eta.service@eta.vn', '', 'Vũ Văn Nam', '0977 222 333', 'VNĐ', 0, { until: '31/12/2026' }],
+      ['Theta Messtechnik GmbH', 'Theta', 'Theta Messtechnik GmbH', 'NN', 'DE812345678', 'Đức', 'Mühldorfstraße 15, 81671 München', ['NCSX'], 'angebot@theta-mt.de', '', 'Klaus Weber', '+49 89 4129 0', 'EUR', 0],
+      ['Iota Electronics Co., Ltd.', 'Iota', 'Iota Electronics Co., Ltd.', 'NN', '', 'Hàn Quốc', '129 Samsung-ro, Suwon, Gyeonggi-do', ['VTCNTT', 'NCSX'], 'global.sales@iota-elec.kr', '', 'Kim Min-jun', '+82 31 200 1114', 'USD', 0],
+      ['Công ty TNHH Thương mại Kappa', 'Kappa', '', 'VN', '0314445566', 'VN', '210 Cộng Hoà, Tân Bình, TP Hồ Chí Minh', ['HHKD', 'PTVT_TBQL'], 'sales@kappa.com.vn', '', 'Ngô Thanh Tâm', '028 3811 2233', 'VNĐ', 0, {}],
+      ['Công ty Cổ phần Lambda & Cộng sự', 'Lambda', '', 'VN', '0108889900', 'VN', '3 Tôn Thất Thuyết, Cầu Giấy, Hà Nội', ['DVTV', 'DVPTV'], 'lienhe@lambda.vn', '', 'Hoàng Anh Đức', '0904 555 666', 'VNĐ', 0],
+      ['Công ty TNHH Giải pháp Mạng Mu', 'Mu Network', '', 'VN', '0102223344', 'VN', '88 Hoàng Quốc Việt, Cầu Giấy, Hà Nội', ['VTCNTT'], 'baogia@munet.vn', '', 'Trịnh Văn Lợi', '0936 777 888', 'VNĐ', 0, null, false],
+    ].map(([name, short, nameEn, kind, tax, country, address, goods, email, cc, contact, phone, currency, used, ban, active], i) => ({
+      id: i + 1, code: 'NCC-' + String(i + 1).padStart(6, '0'), name, short, nameEn, kind, tax, country, address, goods, email, cc, contact, phone, currency,
+      description: '', used, ban: ban || null, active: active !== false })),
+  };
+
+  /* ---------- SCR-40 Ngưỡng phân luồng (tài liệu chuẩn bị §5) ----------
+     Mỗi dòng là một quy tắc (nhóm quy trình, lĩnh vực, tính chất tài sản, [từ, đến dưới)) → quy trình áp dụng; không có Mã/Tên.
+     KĐT gộp MS13 và MS14 làm một nhóm để kiểm tra chồng khoảng giữa hai quy trình. "Tất cả" (*) giao với mọi giá trị. */
+  const FLOW_GROUP = [{ value: 'DXMS', label: 'Đề xuất mua sắm (MS01)' }, { value: 'KDT', label: 'Khoản đầu tư (MS13, MS14)' }];
+  const FLOW_PROC = {
+    DXMS: Object.keys(D.processes).map((k) => [k, D.processes[k].name]),
+    KDT: [['MS13.01', 'Phê duyệt chủ trương khoản đầu tư đơn giản'], ['MS13.03', 'Phê duyệt khoản đầu tư đơn giản'], ['MS14', 'Phê duyệt khoản đầu tư thông thường']],
+  };
+  const procOptions = (cur, all, vals) => {
+    const g = vals && vals.group;
+    return Object.keys(FLOW_PROC).filter((k) => !g || k === g).flatMap((k) => FLOW_PROC[k].map(([v, name]) => ({ value: v, label: `${v} — ${name}` })));
+  };
+  const ALL = { value: '*', label: 'Tất cả' };
+  const dimOptions = (key) => (cur, all) => [ALL].concat(rows(byKey(key)).filter((r) => all || r.active || r.code === cur).map((r) => ({ value: r.code, label: r.name })));
+  /* Ngày hiện tại của prototype = ngày hồ sơ bắt đầu chạy (Flow.dateOf(0)). */
+  const today = () => Flow.dateOf(0);
+  const dateKey = (s) => { const [d, m, y] = String(s).split('/'); return `${y}${m}${d}`; };
+  const fmtNum = (n) => (n == null ? '' : n.toLocaleString('vi-VN', { maximumFractionDigits: 2 }));
+  const range = (r) => (r.to == null ? `từ ${fmtNum(r.from)} tỷ trở lên` : `${fmtNum(r.from)} – dưới ${fmtNum(r.to)} tỷ`);
+  const TH = {
+    formGrid: true, unique: [], order: (a, b) => a.group.localeCompare(b.group) || a.field.localeCompare(b.field) || a.from - b.from || a.asset.localeCompare(b.asset),
+    kwPlaceholder: 'Tìm kiếm theo lĩnh vực, tính chất tài sản, quy trình',
+    searchText: (r) => [labelOf(TH.fields[1], r.field), labelOf(TH.fields[2], r.asset), (r.procs || []).join(' ')].join(' '),
+    subject: (r) => `${labelOf({ options: FLOW_GROUP }, r.group)} · ${labelOf(TH.fields[1], r.field)} · ${labelOf(TH.fields[2], r.asset)} · ${range(r)}`,
+    fields: [
+      { key: 'group', label: 'Nhóm quy trình', type: 'select', required: true, options: FLOW_GROUP, span: 2,
+        onChange: (v, sel) => { sel.procs = (sel.procs || []).filter((p) => procOptions(null, false, { group: v }).some((o) => o.value === p)); } },
+      { key: 'field', label: 'Lĩnh vực', type: 'select', required: true, searchable: true, default: '*', options: dimOptions('linh-vuc'), span: 2 },
+      { key: 'asset', label: 'Tính chất tài sản', type: 'select', required: true, default: '*', options: dimOptions('tinh-chat-tai-san'), span: 2 },
+      { key: 'from', label: 'Giá trị từ (tỷ đồng)', type: 'num', required: true, max: 13, placeholder: 'Gồm giá trị này' },
+      { key: 'to', label: 'Đến dưới (tỷ đồng)', type: 'num', max: 13, placeholder: 'Để trống nếu không giới hạn' },
+      { key: 'procs', label: 'Quy trình áp dụng', type: 'select', multi: true, required: true, options: procOptions, span: 2 },
+      { key: 'eff', label: 'Hiệu lực từ ngày', type: 'date', required: true, default: today, span: 2 },
+    ],
+    columns: [
+      /* 7 cột dữ liệu vừa bảng ở màn 1440: nhóm bỏ mã (đã có ở cột Quy trình), Giá trị từ / Đến dưới gộp một cột, tên dài xuống dòng. */
+      { key: 'group', label: 'Nhóm quy trình', width: 130, render: (r) => esc(labelOf({ options: FLOW_GROUP }, r.group).replace(/ \(.*\)$/, '')) },
+      { key: 'field', label: 'Lĩnh vực', minWidth: 120, render: (r) => `<span class="clamp">${esc(labelOf(TH.fields[1], r.field))}</span>` },
+      { key: 'asset', label: 'Tính chất tài sản', minWidth: 150, render: (r) => `<span class="clamp">${esc(labelOf(TH.fields[2], r.asset))}</span>` },
+      { key: 'from', label: 'Khoảng giá trị (tỷ đồng)', width: 170,
+        render: (r) => (r.to == null ? `Từ ${fmtNum(r.from)} trở lên` : `${fmtNum(r.from)} – dưới ${fmtNum(r.to)}`) },
+      { key: 'procs', label: 'Quy trình áp dụng', width: 130, render: (r) => esc((r.procs || []).join(', ')) },
+      { key: 'eff', label: 'Hiệu lực từ ngày', width: 130,
+        render: (r) => `<div class="eff">${esc(r.eff)}${dateKey(r.eff) > dateKey(today()) ? badge('Chưa hiệu lực', 'warning') : ''}</div>` },
+    ],
+    /* Kiểm tra khi Lưu (backend): Đến dưới > Giá trị từ; đổi điều kiện hoặc quy trình thì hiệu lực không được trước ngày hiện tại (P-34);
+       không chồng khoảng với quy tắc đang hoạt động khác. Lỗi hiện dưới trường. */
+    validate: (v, row, list) => {
+      const err = {};
+      if (v.to != null && v.to <= v.from) err.to = 'Đến dưới phải lớn hơn Giá trị từ.';
+      const changed = !row || ['group', 'field', 'asset', 'from', 'to', 'eff'].some((k) => row[k] !== v[k]) || String(row.procs) !== String(v.procs);
+      if (changed && dateKey(v.eff) < dateKey(today())) err.eff = `Hiệu lực từ ngày không được trước ngày hiện tại (${today()}).`;
+      const hit = (!row || row.active) && overlapOf(v, row, list);
+      if (hit && !err.to) err.from = `Khoảng giá trị giao với ngưỡng đang hoạt động: ${TH.subject(hit)}.`;
+      return err;
+    },
+    /* Kích hoạt lại một quy tắc cũng không được chồng khoảng. */
+    canActivate: (r, list) => { const hit = overlapOf(r, r, list); return hit ? `Không thể kích hoạt: khoảng giá trị giao với ngưỡng đang hoạt động ${TH.subject(hit)}.` : ''; },
+    seedRows: () => [
+      ['DXMS', '*', '*', 0, 160, ['MS01.03'], 9],
+      ['DXMS', '*', '*', 160, null, ['MS01.01', 'MS01.02'], 5],
+      ['KDT', 'VTCNTT', 'NGUYEN_CHIEC', 0, 160, ['MS13.01'], 0],
+      ['KDT', 'KHAC', 'NGUYEN_CHIEC', 0, 90, ['MS13.01'], 0],
+      ['KDT', 'VTCNTT', 'TICH_HOP', 0, 160, ['MS13.03'], 0],
+      ['KDT', 'VTCNTT', '*', 160, 1000, ['MS14'], 0],
+      ['KDT', 'KHAC', '*', 90, 500, ['MS14'], 0],
+    ].map(([group, field, asset, from, to, procs, used], i) => ({ id: i + 1, group, field, asset, from, to, procs, eff: '01/07/2026', used, active: true })),
+  };
+  const meets = (a, b) => a === '*' || b === '*' || a === b;
+  const overlapOf = (v, row, list) => list.find((r) => r !== row && r.active && r.group === v.group && meets(r.field, v.field) && meets(r.asset, v.asset)
+    && v.from < (r.to == null ? Infinity : r.to) && r.from < (v.to == null ? Infinity : v.to));
+
+  const CATALOGS = [
+    Object.assign({ key: 'nha-cung-cap', scr: 'SCR-31', title: 'Nhà cung cấp / Nhà thầu', entity: 'nhà cung cấp', icon: 'doi_tac', roles: ['lan'], built: true,
+      use: 'Chọn nhà cung cấp nhận yêu cầu báo giá (lọc theo ngành hàng), bảng báo giá và cơ sở giá; sau này lựa chọn nhà thầu và hợp đồng.' }, NCC),
+    { key: 'nguon-von', scr: 'SCR-32', title: 'Nguồn vốn', entity: 'nguồn vốn', icon: 'nguon_kinh_phi', built: true,
+      fields: [
+        { key: 'code', label: 'Mã nguồn vốn', type: 'code', required: true, max: 50, width: 220 },
+        { key: 'name', label: 'Tên nguồn vốn', type: 'name', required: true, max: 255, minWidth: 320 },
+        { key: 'description', label: 'Mô tả', type: 'textarea', max: 500, minWidth: 260 },
+      ],
+      seed: [
+        ['KHCN', 'Vốn KHCN', 'Quỹ phát triển khoa học và công nghệ của VHT', true, 14],
+        ['DTPT', 'Vốn đầu tư phát triển', 'Nguồn vốn đầu tư phát triển theo kế hoạch năm', true, 6],
+        ['SXKD', 'Vốn SXKD', 'Vốn sản xuất kinh doanh', true, 0],
+        ['CPTX', 'Chi phí thường xuyên', 'Chi phí hoạt động thường xuyên của đơn vị', true, 3],
+        ['VAY', 'Vốn vay', '', false, 0],
+      ] },
+    { key: 'linh-vuc', scr: 'SCR-33', title: 'Lĩnh vực đầu tư', entity: 'lĩnh vực đầu tư', icon: 'linh_vuc', built: true,
+      use: 'Phân luồng khoản đầu tư; điều kiện của Ngưỡng phân luồng.',
+      fields: [F.code('Mã lĩnh vực'), F.name('Tên lĩnh vực'), F.desc()],
+      seed: [
+        ['VTCNTT', 'Viễn thông - CNTT', 'Hạ tầng viễn thông, công nghệ thông tin, chuyển đổi số', true, 9],
+        ['QP', 'Quốc phòng', 'Khoản đầu tư phục vụ nhiệm vụ quốc phòng', true, 1],
+        ['BDS', 'Bất động sản', 'Đất đai, nhà xưởng, công trình xây dựng', true, 0],
+        ['KHAC', 'Lĩnh vực khác', 'Các lĩnh vực không thuộc nhóm trên', true, 2],
+      ] },
+    { key: 'loai-kdt', scr: 'SCR-34', title: 'Loại khoản đầu tư', entity: 'loại khoản đầu tư', icon: 'view_flow', built: true, q: ['P-29'],
+      use: 'Phân luồng và báo cáo khoản đầu tư. Cấp xử lý "Luôn cấp Tập đoàn" được ưu tiên hơn Ngưỡng phân luồng (P-29).',
+      fields: [F.code('Mã loại khoản đầu tư'), F.name('Tên loại khoản đầu tư', 260),
+        { key: 'level', label: 'Cấp xử lý', type: 'select', required: true, options: PROC_LEVEL, width: 180 }, F.desc()],
+      seed: [
+        ['KHCN', 'Khoa học công nghệ', 'Nhiệm vụ, đề tài, dự án khoa học công nghệ', true, 12, { level: 'THEO_NGUONG' }],
+        ['TBNB', 'Trang bị nội bộ', 'Máy móc, thiết bị phục vụ hoạt động nội bộ', true, 4, { level: 'THEO_NGUONG' }],
+        ['SXKD', 'Khoản đầu tư sản xuất kinh doanh', 'Luôn trình và phê duyệt ở cấp Tập đoàn', true, 0, { level: 'TAP_DOAN' }],
+        ['BDS', 'Khoản đầu tư bất động sản', '', true, 0, { level: 'THEO_NGUONG' }],
+        ['PTVT', 'Phương tiện vận tải', 'Xe, phương tiện vận chuyển', true, 1, { level: 'THEO_NGUONG' }],
+        ['KHAC', 'Khác', '', true, 0, { level: 'THEO_NGUONG' }],
+      ] },
+    { key: 'tinh-chat-tai-san', scr: 'SCR-35', title: 'Tính chất tài sản hình thành', entity: 'tính chất tài sản', icon: 'phan_he_hang_hoa', built: true,
+      use: 'Chọn mẫu biểu và phân luồng; điều kiện của Ngưỡng phân luồng.',
+      fields: [F.code('Mã tính chất tài sản'), F.name('Tên tính chất tài sản', 320), F.desc()],
+      seed: [
+        ['NGUYEN_CHIEC', 'Nguyên chiếc', 'Tài sản dùng được ngay khi bàn giao', true, 8],
+        ['TICH_HOP', 'Cần tích hợp hệ thống trước khi sử dụng', 'Tài sản phải lắp đặt, tích hợp với hệ thống hiện có', true, 3],
+      ] },
+    { key: 'loai-hang-hoa', scr: 'SCR-36', title: 'Loại hàng hoá / dịch vụ', entity: 'loại hàng hoá, dịch vụ', icon: 'view_grid', roles: ['lan'], built: true,
+      use: 'Ngành hàng của nhà cung cấp; lọc nhà cung cấp khi gửi yêu cầu báo giá. Bốn ngành hàng đầu theo biểu mẫu import ngành hàng MS27.01.',
+      fields: [F.code('Mã loại hàng hoá, dịch vụ'), F.name('Tên loại hàng hoá, dịch vụ', 300),
+        { key: 'group', label: 'Nhóm', type: 'select', required: true, options: GOODS_GROUP, width: 140 }, F.desc()],
+      seed: [
+        ['VTCNTT', 'Viễn thông - CNTT', 'Thiết bị viễn thông, máy chủ, phần mềm', true, 7, { group: 'HANG_HOA' }],
+        ['PTVT_TBQL', 'Phương tiện vận tải - Thiết bị dụng cụ quản lý', '', true, 2, { group: 'HANG_HOA' }],
+        ['NCSX', 'Nghiên cứu sản xuất', 'Vật tư, linh kiện phục vụ nghiên cứu sản xuất', true, 5, { group: 'HANG_HOA' }],
+        ['HHKD', 'Hàng hoá kinh doanh', '', true, 0, { group: 'HANG_HOA' }],
+        ['DVTV', 'Dịch vụ tư vấn', 'Tư vấn lập dự án, thiết kế, thẩm tra, giám sát', true, 1, { group: 'DICH_VU' }],
+        ['DVPTV', 'Dịch vụ phi tư vấn', 'Vận chuyển, lắp đặt, bảo trì, đào tạo', true, 0, { group: 'DICH_VU' }],
+      ] },
+    { key: 'hinh-thuc-lcnt', scr: 'SCR-37', title: 'Hình thức lựa chọn nhà thầu', entity: 'hình thức lựa chọn nhà thầu', icon: 'chuc_danh_khoa_hoc', built: true,
+      use: 'Kế hoạch lựa chọn nhà thầu (BR-16: 11 hình thức). Tên viết tắt theo khuôn Chức danh khoa học của ecat.',
+      fields: [F.code('Mã hình thức'), F.name('Tên hình thức', 260),
+        { key: 'abbreviation', label: 'Tên viết tắt', type: 'abbr', required: true, max: 100, width: 140 }, F.desc()],
+      seed: [
+        ['DTRR', 'Đấu thầu rộng rãi', '', true, 3, { abbreviation: 'ĐTRR' }],
+        ['DTHC', 'Đấu thầu hạn chế', '', true, 0, { abbreviation: 'ĐTHC' }],
+        ['CGTT', 'Chào giá trực tuyến', '', true, 1, { abbreviation: 'CGTT' }],
+        ['MSTT', 'Mua sắm trực tuyến', '', true, 0, { abbreviation: 'MSTT' }],
+        ['CDT_RG', 'Chỉ định thầu rút gọn', '', true, 4, { abbreviation: 'CĐT RG' }],
+        ['CDT_TT', 'Chỉ định thầu thông thường', '', true, 1, { abbreviation: 'CĐT TT' }],
+        ['DPTT', 'Đàm phán trực tiếp', 'Tên đầy đủ chờ VHT xác nhận', true, 0, { abbreviation: 'ĐPTT' }],
+        ['DAT_HANG', 'Đặt hàng', '', true, 0, { abbreviation: 'ĐH' }],
+        ['GIAO_NV', 'Giao nhiệm vụ', '', true, 0, { abbreviation: 'GNV' }],
+        ['TU_TH', 'Tự thực hiện', '', true, 0, { abbreviation: 'TTH' }],
+        ['DAC_BIET', 'Trường hợp đặc biệt', '', true, 0, { abbreviation: 'THĐB' }],
+      ] },
+    { key: 'phuong-thuc-lcnt', scr: 'SCR-38', title: 'Phương thức lựa chọn nhà thầu', entity: 'phương thức lựa chọn nhà thầu', icon: 'phan_he_quy_trinh', built: true, q: ['P-35'],
+      use: 'Kế hoạch lựa chọn nhà thầu. Danh sách theo Luật Đấu thầu (P-35).',
+      fields: [F.code('Mã phương thức'), F.name('Tên phương thức', 300), F.desc()],
+      seed: [
+        ['1GD1T', 'Một giai đoạn một túi hồ sơ', '', true, 5],
+        ['1GD2T', 'Một giai đoạn hai túi hồ sơ', 'Hồ sơ đề xuất kỹ thuật và tài chính nộp riêng', true, 1],
+        ['2GD1T', 'Hai giai đoạn một túi hồ sơ', '', true, 0],
+        ['2GD2T', 'Hai giai đoạn hai túi hồ sơ', '', true, 0],
+      ] },
+    { key: 'loai-hop-dong', scr: 'SCR-39', title: 'Loại hợp đồng', entity: 'loại hợp đồng', icon: 'menu_square', built: true, q: ['P-35'],
+      use: 'Hợp đồng (phân hệ chưa dựng). Danh sách theo Luật Đấu thầu (P-35).',
+      fields: [F.code('Mã loại hợp đồng'), F.name('Tên loại hợp đồng'), F.desc()],
+      seed: [
+        ['TRON_GOI', 'Trọn gói', 'Giá hợp đồng không đổi trong suốt thời gian thực hiện', true, 6],
+        ['DG_CD', 'Theo đơn giá cố định', '', true, 1],
+        ['DG_DC', 'Theo đơn giá điều chỉnh', '', true, 0],
+        ['THOI_GIAN', 'Theo thời gian', 'Thường dùng cho dịch vụ tư vấn', true, 0],
+        ['HON_HOP', 'Hỗn hợp', '', false, 0],
+      ] },
+    Object.assign({ key: 'nguong-phan-luong', scr: 'SCR-40', title: 'Ngưỡng phân luồng', entity: 'ngưỡng phân luồng', icon: 'danh_muc_dung_chung', built: true }, TH),
+  ];
+  const byKey = (k) => CATALOGS.find((c) => c.key === k);
+  const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
+
+  /* ---------- Dữ liệu: mẫu + thay đổi người dùng (lưu localStorage, độc lập với luồng hồ sơ) ---------- */
+  let DATA = {};
+  try { DATA = JSON.parse(localStorage.getItem(STORE) || '{}'); } catch (e) { DATA = {}; }
+  function rows(c) {
+    if (!DATA[c.key]) DATA[c.key] = c.seedRows ? c.seedRows() : c.seed.map(([code, name, description, active, used, extra], i) => Object.assign({ id: i + 1, code, name, description, active, used }, extra));
+    return DATA[c.key];
+  }
+  function save() { try { localStorage.setItem(STORE, JSON.stringify(DATA)); } catch (e) { /* bỏ qua */ } }
+  /* Bản ghi đang hoạt động — nguồn cho ô chọn ở luồng nghiệp vụ. */
+  const activeOptions = (key) => rows(byKey(key)).filter((r) => r.active).map((r) => ({ value: r.code, label: r.name }));
+  /* Nối vào luồng MS01 (§5.4, §6): ngưỡng ĐXMS đang hoạt động, đã có hiệu lực ở ngày `date` (mặc định hôm nay), thay D.dxmsRules mặc định;
+     tên, loại tiền của nhà cung cấp theo mã (D.quotes). */
+  D.dxmsRules = (date) => rows(byKey('nguong-phan-luong')).filter((r) => r.group === 'DXMS' && r.active && dateKey(r.eff) <= dateKey(date || today()))
+    .sort((a, b) => a.from - b.from).map((r) => ({ from: r.from, to: r.to, procs: r.procs.slice() }));
+  const nccDefault = D.nccOf;
+  D.nccOf = (code) => rows(byKey('nha-cung-cap')).find((r) => r.code === code) || nccDefault(code);
+
+  /* ---------- SCR-30 Tổng quan ---------- */
+  const ARROW = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M20 12H4M15.5 16.5S20 13.186 20 12s-4.5-4.5-4.5-4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  const visible = () => { const p = Flow.state.persona; return CATALOGS.filter((c) => p === 'qt' || (c.roles || []).includes(p)); };
+
+  function overview() {
+    // Theo: fe/repo-khcn-ecat-fe/src/app/features/common-catalog/overview/common-catalog-overview.component.html
+    const info = {
+      scr: 'SCR-30', name: 'Tổng quan Danh mục dùng chung', uc: 'UC-12-05 · UR-DOC-05, UR-DOC-06, BR-04',
+      notes: [
+        'Vị trí theo D-1: một mục "Danh mục dùng chung" dưới Quản trị hệ thống; từng danh mục không có dòng riêng trên sidebar, vào qua ô.',
+        'Ô lọc theo vai (P-36): Quản trị hệ thống thấy mọi danh mục; Chuyên viên TTMS thấy Nhà cung cấp / Nhà thầu và Loại hàng hoá / dịch vụ; vai khác thấy thông báo chưa được cấp quyền.',
+        'Đã dựng đủ 10 danh mục (SCR-31…40); Ngưỡng phân luồng là bảng quy tắc, dùng cùng khuôn danh sách.',
+      ],
+      q: ['P-36', 'P-27'], src: 'ecat common-catalog/overview · /common-catalog',
+    };
+    const cards = visible();
+    const tile = (c) => `<a class="ov-tile" href="#/dmdc/${c.key}" data-go="dmdc/${c.key}">
+        <span class="ov-ic">${icon(c.icon)}</span>
+        <span class="ov-tx"><span class="t">Danh mục ${esc(c.title)}</span><span class="d">Quản lý danh sách ${esc(c.entity)}.</span></span>
+        <span class="ov-n"><span class="n">${c.built ? rows(c).length : c.count}</span>${ARROW}</span></a>`;
+    return `<div class="ov"><div class="ov-card">
+      <h3 class="ov-title">Các module trong phân hệ${infoBtn(info)}</h3>
+      ${cards.length ? `<div class="ov-grid">${cards.map(tile).join('')}</div>` : '<p class="ov-empty">Bạn chưa được cấp quyền truy cập module nào trong phân hệ này</p>'}
+    </div></div>`;
+  }
+
+  /* ---------- SCR-31…39 Danh sách một danh mục (catalog-list) ---------- */
+  const LS = {};
+  const ADV0 = () => ({ code: '', name: '', tax: '', kind: null, country: null, goods: null, st: null });
+  const ls = (k) => (LS[k] = LS[k] || { kw: '', kwInput: '', st: null, page: 1, size: 10, psOpen: false, advOpen: false, adv: ADV0(), draft: ADV0() });
+  const STATUS = [{ value: 'ACTIVE', label: 'Đang hoạt động' }, { value: 'INACTIVE', label: 'Dừng hoạt động' }];
+
+  function filtered(c) {
+    const s = ls(c.key), a = s.adv;
+    const has = (v, q) => !q || norm(v).includes(norm(q));
+    const out = rows(c).filter((r) => has(c.searchText ? c.searchText(r) : [r.code, r.name, r.tax].join(' '), s.kw)
+      && (!s.st || r.active === (s.st === 'ACTIVE'))
+      && has(r.code, a.code) && has(r.name, a.name) && has(r.tax, a.tax)
+      && (!a.kind || r.kind === a.kind) && (!a.country || r.country === a.country) && (!a.goods || (r.goods || []).includes(a.goods)));
+    return c.order ? out.slice().sort(c.order) : out;
+  }
+
+  /* Tìm kiếm nâng cao (catalog-filter khi hasAdvancedFilter, như màn Đối tác của ecat): ô tìm nhanh và khung nâng cao loại trừ nhau;
+     đóng/mở chỉ đổi ô hiển thị, danh sách giữ kết quả lần tìm gần nhất. */
+  function advFilter(c) {
+    const s = ls(c.key), d = s.draft;
+    const toggle = `<button type="button" class="vbtn ${s.advOpen ? 'active' : 'secondary'} sm" data-adv-toggle>${s.advOpen ? 'Ẩn tìm kiếm nâng cao' : 'Tìm kiếm nâng cao'}</button>`;
+    const quick = s.advOpen ? '' : `<label class="vsearch h36 w320">${icon('search')}<input data-cat-kw="${c.key}" maxlength="255" placeholder="${esc(c.kwPlaceholder)}" value="${esc(s.kwInput)}"></label>`;
+    const fld = (label, ctl) => `<div class="vfield"><div class="lr"><label>${label}</label></div>${ctl}</div>`;
+    const txt = (k, ph) => `<input class="vctl" data-adv="${k}" maxlength="255" placeholder="${ph}" value="${esc(d[k])}">`;
+    const sel = (k, options, ph, searchable) => vSelect({ id: 'adv-' + k, options, value: d[k], placeholder: ph, clear: true, searchable,
+      onChange: (v) => { d[k] = v; rerender(); } });
+    const panel = !s.advOpen ? '' : `<form class="adv-panel" data-adv-form>
+        <div class="adv-grid">${fld('Mã nhà cung cấp', txt('code', 'Nhập mã nhà cung cấp'))}${fld('Tên nhà cung cấp', txt('name', 'Nhập tên nhà cung cấp'))}
+          ${fld('Mã số thuế', txt('tax', 'Nhập mã số thuế'))}${fld('Phân loại', sel('kind', KIND, 'Chọn phân loại'))}
+          ${fld('Quốc gia', sel('country', COUNTRY, 'Chọn quốc gia', true))}${fld('Ngành hàng', sel('goods', goodsOptions(null, true), 'Chọn ngành hàng', true))}
+          ${fld('Trạng thái', sel('st', STATUS, 'Tất cả trạng thái'))}</div>
+        <div class="adv-acts"><button type="button" class="vbtn secondary sm" data-adv-reset>Làm mới</button><button type="submit" class="vbtn primary sm">Tìm kiếm</button></div></form>`;
+    return `<div class="cat-filter">${quick}${toggle}</div>${panel}`;
+  }
+
+  /* Lựa chọn của trường select: mảng cố định hoặc hàm (giá trị đang giữ, lấy cả bản ghi dừng hoạt động). */
+  const optsOf = (f, cur, all, vals) => (typeof f.options === 'function' ? f.options(cur, all, vals) : f.options);
+  const labelOf = (f, v) => {
+    const o = optsOf(f, null, true);
+    return f.multi ? (v || []).map((x) => (o.find((y) => y.value === x) || {}).label).filter(Boolean).join(', ') : (o.find((y) => y.value === v) || {}).label;
+  };
+
+  function nccInfo(c) {
+    return {
+      scr: c.scr, name: 'Danh sách nhà cung cấp', uc: 'UC-12-05 · UR-DOC-05, UR-PRE-21/22, BR-08, BR-16',
+      notes: [
+        'ĐTMS giữ danh sách gốc, không đồng bộ SAP/Ariba; nhà cung cấp không đăng nhập hệ thống, mọi yêu cầu báo giá gửi qua email — vì vậy Email nhận yêu cầu báo giá là bắt buộc (chốt 28/09/2026).',
+        'Khuôn chung ecat, khác: hộp thoại vht-modal lg 720px lưới 2 cột; tìm kiếm nâng cao như màn Đối tác của ecat; nút Nhập từ Excel dùng vht-import-dialog (2 bước: chọn file → kết quả kiểm tra từng dòng → Xác nhận nhập).',
+        'Mã nhà cung cấp do hệ thống tự sinh NCC-000123 (P-30); mã số thuế là khoá chống trùng.',
+        'Trong nước: Mã số thuế bắt buộc, 10 số hoặc 10 số-3 số (chi nhánh), Quốc gia khoá ở Việt Nam. Nước ngoài: mã định danh nước sở tại tuỳ chọn, nhập tự do (P-32).',
+        'Nới khuôn của ecat: Tên nhận thêm & . , ( ) cho tên doanh nghiệp; Số điện thoại nhận +, số, khoảng trắng, 8–20 ký tự (số bàn, số nước ngoài).',
+        'Ngành hàng lấy từ danh mục Loại hàng hoá / dịch vụ, dùng để lọc nhà cung cấp khi gửi yêu cầu báo giá (task 09).',
+        'Cột Tình trạng chỉ hiển thị; đưa vào/gỡ khỏi danh sách cấm là việc của phân hệ Lựa chọn nhà thầu (UC-09-08, chưa dựng).',
+        'Không có ở vòng này: tài khoản ngân hàng, hồ sơ năng lực, đánh giá nhà cung cấp (P-31).',
+        'NCC Alpha, Beta, Gamma là 3 nhà cung cấp của luồng MS01 (đang dùng, không xoá được — P-33). Dữ liệu mẫu; thay đổi được lưu trên trình duyệt.',
+      ],
+      q: ['P-30', 'P-32', 'P-31', 'P-33', 'P-27'], src: 'ecat common-catalog/base/catalog-list (partner) · @khcn-core/ui vht-import-dialog',
+    };
+  }
+
+  function thInfo(c) {
+    return {
+      scr: c.scr, name: 'Danh sách ngưỡng phân luồng', uc: 'UC-12-05 · UR-DOC-06, UR-KDT-02, UR-KDT-07, BR-04',
+      notes: [
+        'Bảng quy tắc (nhóm quy trình, lĩnh vực, tính chất tài sản, khoảng giá trị) → quy trình áp dụng; thay cho ngưỡng 160 tỷ viết cứng. UR-DOC-06: ngưỡng phân luồng phải cấu hình được. Source KHCN có mẫu tương tự: sys_config.TASK_LEVEL (min_budget/max_budget).',
+        'Khuôn chung ecat (danh sách + hộp thoại 520px), không có Mã/Tên. Khoảng giá trị tính theo tỷ đồng, gồm "Giá trị từ", không gồm "Đến dưới"; để trống "Đến dưới" = không giới hạn. Trên bảng, hai trường gộp thành cột "Khoảng giá trị" để 7 cột vừa màn 1440.',
+        'Khi Lưu: hai ngưỡng đang hoạt động cùng nhóm quy trình không được có khoảng giá trị giao nhau nếu lĩnh vực và tính chất tài sản trùng nhau ("Tất cả" trùng với mọi giá trị). Lỗi hiện dưới "Giá trị từ". Kích hoạt lại ngưỡng đã dừng cũng kiểm tra như vậy.',
+        'Khoản đầu tư gộp MS13 và MS14 làm một nhóm để kiểm tra chồng khoảng giữa hai quy trình (tài liệu chuẩn bị ghi 2 nhóm).',
+        'Hiệu lực từ ngày (P-34): hồ sơ đã tạo giữ ngưỡng tại thời điểm tạo; ngưỡng mới chỉ áp dụng cho hồ sơ tạo từ ngày hiệu lực. Đổi điều kiện hoặc quy trình thì ngày hiệu lực không được trước ngày hiện tại. Ngày hiệu lực ở tương lai hiện nhãn "Chưa hiệu lực"; prototype chưa giữ bản cũ cho giai đoạn chờ.',
+        'Đề xuất mua sắm: dưới 160 tỷ → MS01.03; từ 160 tỷ → MS01.01 hoặc MS01.02, chọn theo căn cứ chứ không theo ngưỡng. Loại khoản đầu tư có Cấp xử lý "Luôn cấp Tập đoàn" (SXKD) được ưu tiên hơn bảng ngưỡng (P-29).',
+        'Ngưỡng MS13/MS14 theo BBLV 24/09: Viễn thông - CNTT dưới 160 tỷ, lĩnh vực khác (trừ BĐS) dưới 90 tỷ; BBLV 15/09 ghi ngược lại (P-28). Chưa có ngưỡng cho Bất động sản và Quốc phòng.',
+        'Ngưỡng của Đề xuất mua sắm đang được hồ sơ dùng: không xoá được, chỉ Dừng hoạt động (P-33). Dữ liệu mẫu; thay đổi được lưu trên trình duyệt.',
+        'Dùng ở: nhãn điều kiện của từng quy trình khi Tạo mới ĐXMS, cảnh báo mềm ở task 04, cổng "Giá trị khớp quy trình đã chọn?" sau task 10 và gợi ý quy trình ở task 10a. Hồ sơ giữ ngưỡng tại lúc tạo; tên quy trình (vd "Phê duyệt ĐXMS ≥ 160 tỷ") là tên trong BPMN, không đổi theo ngưỡng.',
+      ],
+      q: ['P-28', 'P-34', 'P-29', 'P-33', 'P-27'], src: 'ecat common-catalog/base/catalog-list · khcn sys_config.TASK_LEVEL',
+    };
+  }
+
+  function list(key) {
+    // Theo: fe/repo-khcn-ecat-fe/src/app/features/common-catalog/base/catalog-list.component.html
+    //       + utils/common-catalog.utils.ts buildCatalogListColumns (Thao tác 80 → Trạng thái 136 → các trường)
+    //       + constants/common-catalog.constants.ts FUNDING_SOURCE_CONFIG (độ rộng, maxLength)
+    const c = byKey(key);
+    if (!c) return window.Screens.viecCuaToi();
+    if (!c.built) return window.Screens.phanHe({ label: 'Danh mục ' + c.title, uc: ['UC-12-05'] }, { ph: '12' });
+    const s = ls(key);
+    const all = filtered(c);
+    const pages = Math.max(1, Math.ceil(all.length / s.size));
+    if (s.page > pages) s.page = pages;
+    const from = (s.page - 1) * s.size;
+    const cols = c.columns || c.fields;
+    const th = (f) => `<th class="${f.cls || ''}" style="${f.width ? `width:${f.width}px;min-width:${f.width}px;max-width:${f.width}px` : `min-width:${f.minWidth || 180}px`}">${esc(f.label)}</th>`;
+    const td = (f, r) => {
+      if (f.render) return `<td class="${f.cls || ''}">${f.render(r)}</td>`;
+      const v = f.type === 'select' ? labelOf(f, r[f.key]) : r[f.key];
+      if (!v) return '<td><span class="dash">-</span></td>';
+      return `<td><span class="${f.type === 'textarea' || f.type === 'name' || f.multi ? 'clamp' : 'one'}">${esc(v)}</span></td>`;
+    };
+    const body = all.slice(from, from + s.size).map((r, i) => `<tr data-id="${r.id}">
+      <td class="ord">${from + i + 1}</td>
+      <td class="c"><div class="acts">
+        <button type="button" class="cat-ic" data-cat-edit="${r.id}" title="Chỉnh sửa" aria-label="Chỉnh sửa">${icon('edit')}</button><span class="sep"></span>
+        <button type="button" class="cat-ic del" data-cat-del="${r.id}" title="Xoá" aria-label="Xoá">${icon('del')}</button></div></td>
+      <td class="c"><button type="button" class="vswitch ${r.active ? 'on' : ''}" role="switch" aria-checked="${r.active}" data-cat-tg="${r.id}"
+        title="${r.active ? 'Dừng hoạt động' : 'Kích hoạt'}" aria-label="${r.active ? 'Dừng hoạt động' : 'Kích hoạt'}"><span></span></button></td>
+      ${cols.map((f) => td(f, r)).join('')}</tr>`).join('');
+    const info = c.key === 'nha-cung-cap' ? nccInfo(c) : c.key === 'nguong-phan-luong' ? thInfo(c) : {
+      scr: c.scr, name: 'Danh sách ' + c.entity, uc: 'UC-12-05 · UR-DOC-05, BR-04',
+      notes: [
+        'Khuôn chung theo ecat common-catalog: Thêm mới / Chỉnh sửa là hộp thoại vht-modal 520px — ngoại lệ so với rule B6 (trang riêng) vì màn tương đương trong ecat dùng hộp thoại.',
+        'Nút quay lại về Tổng quan: ecat không có vì mỗi danh mục có dòng riêng trên sidebar; ĐTMS để danh mục dưới Quản trị hệ thống và vào qua ô (D-1).',
+        'Lọc Trạng thái áp ngay khi chọn; ô tìm kiếm (mã hoặc tên) áp khi nhấn Enter. Phân trang 10 / 25 / 50 như ecat.',
+        'Mã: chữ không dấu, số, "-", "_"; dấu và khoảng trắng tự bỏ, tự viết hoa; không sửa được khi Chỉnh sửa; không trùng. Tên: chữ, số, khoảng trắng, "-".',
+        'Bản ghi đang được hồ sơ dùng (vd Vốn KHCN) không xoá được, chỉ Dừng hoạt động (P-33). Bản ghi dừng hoạt động không hiện trong ô chọn ở luồng nghiệp vụ.',
+        ...(c.use ? ['Dùng ở: ' + c.use] : []),
+        'Dữ liệu mẫu; danh sách thật chờ VHT gửi (P-27). Thay đổi được lưu trên trình duyệt.',
+      ],
+      q: ['P-27', 'P-33'].concat(c.q || []), src: 'ecat common-catalog/base/catalog-list · /common-catalog/funding-source',
+    };
+    return `<div class="pg">
+      <div class="pg-head"><div class="l"><button class="vbtn back" data-go="dmdc" aria-label="Quay lại">${icon('back')}</button>
+        <h1 class="pg-title">Danh sách ${esc(c.entity)}${infoBtn(info)}</h1></div>
+        <div class="r">${c.importable ? `<button class="vbtn secondary" data-cat-import>${icon('upload')} Nhập từ Excel</button>` : ''}<button class="vbtn primary" data-cat-new="${key}">${icon('add')} Thêm mới</button></div></div>
+      <div class="vcard">
+        ${c.advanced ? advFilter(c) : `<div class="cat-filter">
+          <div class="cat-st">${vSelect({ id: 'cat-st-' + key, options: STATUS, value: s.st, placeholder: 'Trạng thái', clear: true,
+            onChange: (v) => { s.st = v; s.kw = s.kwInput.trim(); s.page = 1; rerender(); } })}</div>
+          <label class="vsearch h36">${icon('search')}<input data-cat-kw="${key}" maxlength="255" placeholder="${esc(c.kwPlaceholder || `Tìm kiếm theo mã ${c.entity}, tên ${c.entity}`)}" value="${esc(s.kwInput)}"></label>
+        </div>`}
+        <div class="vtable-vp"><table class="vtable cat"><thead><tr><th class="ord">STT</th>
+          <th class="c" style="width:80px;min-width:80px">Thao tác</th><th class="c" style="width:136px;min-width:136px">Trạng thái</th>${cols.map(th).join('')}</tr></thead>
+          <tbody>${body || `<tr><td class="vtable-empty" colspan="${cols.length + 3}"><img src="assets/empty-table.svg" alt="">Chưa có dữ liệu</td></tr>`}</tbody></table></div>
+        ${pager({ id: 'cat-' + key, total: all.length, page: s.page, size: s.size, open: s.psOpen, sizes: [10, 25, 50] })}
+      </div></div>`;
+  }
+
+  /* ---------- Hộp thoại Thêm mới / Chỉnh sửa (catalog-form-dialog trong vht-modal 520) ---------- */
+  const CODE_RE = /^[a-zA-Z0-9_-]+$/;
+  const NAME_RE = /^[\p{Script=Latin}\p{Mark}0-9\s-]+$/u;
+  const ABBR_RE = /^[\p{Script=Latin}\p{Mark}0-9._\s-]+$/u;
+  /* ecatCatalogTextFilter chế độ mã: bỏ dấu, bỏ khoảng trắng, viết hoa. */
+  const codeFilter = (v) => v.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/đ/g, 'd').replace(/Đ/g, 'D').replace(/\s+/g, '').toUpperCase();
+
+  /* Nhà cung cấp (§4.2): tên doanh nghiệp nới khuôn tên của ecat; MST Việt Nam 10 số hoặc 10 số-3 số; SĐT nới khuôn di động 10 số. */
+  const ORG_RE = /^[\p{Script=Latin}\p{Mark}0-9\s\-&.,()]+$/u;
+  const TAX_VN_RE = /^\d{10}(-\d{3})?$/;
+  const EMAIL_RE = /^[^\s@;]+@[^\s@;]+\.[^\s@;]+$/;
+  const PHONE_RE = /^\+?[0-9 ]{8,20}$/;
+  /* Ngưỡng (§5.2): số tỷ đồng kiểu Việt Nam — dấu chấm phân nhóm nghìn, dấu phẩy thập phân, tối đa 2 chữ số lẻ. */
+  const NUM_RE = /^(\d{1,3}(\.\d{3})+|\d+)(,\d{1,2})?$/;
+  const parseNum = (v) => (v === '' || v == null ? null : Number(String(v).replace(/\./g, '').replace(',', '.')));
+  const CAL = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M18 2v2M6 2v2M11.996 13h.008M11.996 17h.008M15.991 13H16M8 13h.009M8 17h.009M3.5 8h17M2.5 12.243c0-4.357 0-6.536 1.252-7.89C5.004 3 7.02 3 11.05 3h1.9c4.03 0 6.046 0 7.298 1.354C21.5 5.707 21.5 7.886 21.5 12.244v.513c0 4.357 0 6.536-1.252 7.89C18.996 22 16.98 22 12.95 22h-1.9c-4.03 0-6.046 0-7.298-1.354C2.5 19.293 2.5 17.114 2.5 12.756v-.513ZM3 8h18" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  const DATE_RE = /^(\d{2})\/(\d{2})\/(\d{4})$/;
+  const isDate = (v) => { const m = DATE_RE.exec(v); if (!m) return false; const d = new Date(+m[3], m[2] - 1, +m[1]); return d.getDate() === +m[1] && d.getMonth() === m[2] - 1; };
+
+  /* vals: giá trị hiện tại của cả hộp thoại (quy tắc phụ thuộc Phân loại). */
+  const isReq = (f, vals) => (typeof f.required === 'function' ? f.required(vals) : !!f.required);
+  function fieldError(f, v, vals) {
+    const empty = Array.isArray(v) ? !v.length : !v;
+    const bad = `${f.label} không đúng định dạng.`;
+    if (isReq(f, vals || {}) && empty) return `Bạn cần ${f.type === 'select' ? 'chọn' : 'nhập'} ${f.label}.`;
+    if (empty) return '';
+    if (f.type === 'code' && !CODE_RE.test(v)) return bad;
+    if (f.type === 'name' && !NAME_RE.test(v)) return bad;
+    if (f.type === 'abbr' && !ABBR_RE.test(v)) return bad;
+    if (f.type === 'orgname' && !ORG_RE.test(v)) return bad;
+    if (f.type === 'tax' && (vals || {}).kind !== 'NN' && !TAX_VN_RE.test(v)) return bad;
+    if (f.type === 'email' && !EMAIL_RE.test(v)) return bad;
+    if (f.type === 'emails' && !v.split(';').map((x) => x.trim()).filter(Boolean).every((x) => EMAIL_RE.test(x))) return bad;
+    if (f.type === 'phone' && !PHONE_RE.test(v)) return bad;
+    if (f.type === 'num' && !NUM_RE.test(v)) return bad;
+    if (f.type === 'date' && !isDate(v)) return bad;
+    return '';
+  }
+
+  function openForm(c, row) {
+    /* Trường select: vht-select; searchable / multi theo cấu hình (Quốc gia, Ngành hàng của Nhà cung cấp). */
+    const sel = {};
+    const fields = c.fields.filter((f) => f.type !== 'blank');
+    const vals = () => { const o = {}; fields.forEach((f) => { o[f.key] = valueOf(f); }); return o; };
+    const selHtml = (f, invalid) => vSelect({ id: 'cf-' + f.key, options: optsOf(f, sel[f.key], false, sel), value: sel[f.key], multi: f.multi, searchable: f.searchable,
+      placeholder: 'Chọn ' + f.label.toLowerCase(), invalid, disabled: f.locked && f.locked(sel),
+      onChange: (v) => { sel[f.key] = v; if (f.onChange) { f.onChange(v, sel); sync(); } check(f); } });
+    const ctl = (f) => {
+      if (f.type === 'select') { sel[f.key] = row ? row[f.key] : f.default || (f.multi ? [] : null); return `<div data-cf="${f.key}">${selHtml(f)}</div>`; }
+      const raw = row ? row[f.key] : typeof f.default === 'function' ? f.default() : f.default;
+      const v = esc(f.type === 'num' ? fmtNum(raw) : raw || '');
+      const dis = f.type === 'auto' || (row && f.type === 'code') ? 'disabled' : '';
+      const ph = f.placeholder ? `placeholder="${esc(f.placeholder)}"` : '';
+      if (f.type === 'textarea') return `<textarea class="vctl ta" data-cf="${f.key}" maxlength="${f.max}" rows="3">${v}</textarea>`;
+      // vht-calendar: ô nhập DD/MM/YYYY + icon lịch bên phải (mở bộ chọn ngày của trình duyệt).
+      if (f.type === 'date') return `<div class="vdate"><input class="vctl" data-cf="${f.key}" maxlength="10" inputmode="numeric" placeholder="DD/MM/YYYY" value="${v}">
+          <button type="button" class="vdate-ic" data-date-pick tabindex="-1" aria-label="Chọn ngày">${CAL}</button><input type="date" class="vdate-native" tabindex="-1" aria-hidden="true"></div>`;
+      return `<input class="vctl" data-cf="${f.key}" ${f.max ? `maxlength="${f.max}"` : ''} ${f.type === 'num' ? 'inputmode="decimal"' : ''} value="${v}" ${ph} ${dis}>`;
+    };
+    const lg = c.formSize === 'lg';
+    const m = vModal({
+      title: (row ? 'Chỉnh sửa ' : 'Thêm mới ') + c.entity, size: lg ? 'lg' : 'w520',
+      body: `<form class="cat-form ${lg || c.formGrid ? 'g2' : ''}" novalidate>${c.fields.map((f) => (f.type === 'blank' ? '<div class="g2-blank"></div>' : `<div class="vfield ${f.span === 2 ? 'span2' : ''}" data-ff="${f.key}">
+          <div class="lr"><label>${esc(f.label)}</label><span class="req" ${isReq(f, row || {}) ? '' : 'hidden'}>*</span></div>${ctl(f)}<p class="msg" hidden></p></div>`)).join('')}</form>`,
+      actions: '<button class="vbtn secondary" data-close>Hủy</button><button class="vbtn primary" id="cat-save">Lưu</button>',
+    });
+    const el = (k) => m.el.querySelector(`[data-cf="${k}"]`);
+    const wrap = (f) => m.el.querySelector(`[data-ff="${f.key}"]`);
+    const show = (f, err) => {
+      const w = wrap(f);
+      w.classList.toggle('invalid', !!err);
+      if (f.type === 'select') el(f.key).innerHTML = selHtml(f, !!err);
+      else el(f.key).setAttribute('aria-invalid', err ? 'true' : 'false');
+      const msg = w.querySelector('.msg'); msg.hidden = !err; msg.textContent = err;
+    };
+    const valueOf = (f) => (f.type === 'select' ? sel[f.key] || (f.multi ? [] : '') : f.type === 'auto' ? '' : el(f.key).value.trim());
+    const check = (f) => { if (f.type === 'auto') return true; const err = fieldError(f, valueOf(f), vals()); show(f, err); return !err; };
+    /* Đổi Phân loại: cập nhật dấu *, khoá Quốc gia; trường đang báo lỗi được kiểm tra lại theo quy tắc mới. */
+    const sync = () => {
+      const v = vals();
+      fields.forEach((f) => {
+        const w = wrap(f);
+        w.querySelector('.req').hidden = !isReq(f, v);
+        if (f.type === 'select' && !f.onChange) el(f.key).innerHTML = selHtml(f, w.classList.contains('invalid'));
+        if (w.classList.contains('invalid')) check(f);
+      });
+    };
+    fields.forEach((f) => {
+      if (f.type === 'select' || f.type === 'auto') return;
+      const input = el(f.key);
+      if (f.type === 'code') input.addEventListener('input', () => { const p = input.selectionStart, before = input.value.length; input.value = codeFilter(input.value); const at = Math.max(0, p - (before - input.value.length)); input.setSelectionRange(at, at); });
+      if (f.type === 'num') input.addEventListener('input', () => { input.value = input.value.replace(/[^\d.,]/g, ''); });
+      if (f.type === 'date') {
+        // Gõ số thì tự chèn dấu /; chọn ở bộ chọn ngày thì ghi lại theo DD/MM/YYYY.
+        input.addEventListener('input', () => { const d = input.value.replace(/\D/g, '').slice(0, 8); input.value = [d.slice(0, 2), d.slice(2, 4), d.slice(4)].filter(Boolean).join('/'); });
+        const nat = input.parentNode.querySelector('.vdate-native');
+        input.parentNode.querySelector('[data-date-pick]').onclick = () => {
+          const mm = DATE_RE.exec(input.value); nat.value = mm ? `${mm[3]}-${mm[2]}-${mm[1]}` : '';
+          try { nat.showPicker(); } catch (e) { nat.focus(); }
+        };
+        nat.addEventListener('change', () => { if (nat.value) { const [y, mo, d] = nat.value.split('-'); input.value = `${d}/${mo}/${y}`; check(f); } });
+      }
+      input.addEventListener('blur', () => check(f));
+    });
+    const first = m.el.querySelector('input[data-cf]:not(:disabled), textarea[data-cf]');
+    if (first) first.focus();
+    m.el.querySelector('form').addEventListener('submit', (e) => e.preventDefault());
+    // Nhấn Lưu không làm ô đang nhập mất focus trước khi click: blur có thể xoá/hiện lỗi, hộp thoại đổi chiều cao và nút Lưu dịch khỏi con trỏ.
+    m.el.querySelector('#cat-save').addEventListener('mousedown', (e) => e.preventDefault());
+    m.el.querySelector('#cat-save').onclick = () => {
+      if (!fields.map(check).every(Boolean)) return;
+      const val = vals();
+      fields.forEach((f) => { if (f.type === 'num') val[f.key] = parseNum(val[f.key]); });
+      const list = rows(c);
+      // Kiểm tra chéo giữa các trường (vd khoảng giá trị của Ngưỡng phân luồng): lỗi hiện dưới trường, hộp thoại giữ nguyên.
+      const errs = c.validate ? c.validate(val, row, list) : {};
+      if (Object.keys(errs).length) { Object.keys(errs).forEach((k) => show(fields.find((f) => f.key === k), errs[k])); return; }
+      // Backend trả lỗi trùng mã (hoặc trùng khoá như mã số thuế); hộp thoại giữ nguyên để sửa (catalog-base.facade handleSubmitForm).
+      const dup = (k) => val[k] && list.some((r) => r !== row && String(r[k] || '').toUpperCase() === String(val[k]).toUpperCase());
+      const dupKey = [c.autoCode ? null : 'code'].concat(c.unique || []).find((k) => k && (k !== 'code' || !row) && dup(k));
+      const dupMsg = dupKey ? `${fields.find((f) => f.key === dupKey).label} ${val[dupKey]} đã tồn tại.` : c.dupOf ? c.dupOf(val, row, list) : '';
+      if (dupMsg) { toast(`<b>Lỗi</b><br>${esc(dupMsg)}`, 'warn'); return; }
+      if (row) Object.assign(row, val, { code: row.code });
+      else list.unshift(Object.assign({ id: Math.max(0, ...list.map((r) => r.id)) + 1, active: true, used: 0 }, val, c.autoCode ? { code: c.autoCode(list) } : {}));
+      save();
+      m.close();
+      ls(c.key).page = 1;
+      toast(`<b>Thành công</b><br>${row ? 'Cập nhật' : 'Thêm mới'} ${esc(c.entity)} thành công`);
+      rerender();
+    };
+  }
+
+  /* ---------- vht-confirm-dialog: 400px, icon 48 theo mức độ, tiêu đề 18/700, tên bản ghi in đậm ---------- */
+  const GLYPH = {
+    danger: icon('del'),
+    warning: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M5.32 9.56C8.22 4.52 9.67 2 12 2s3.78 2.52 6.68 7.56l.36.63c2.41 4.19 3.62 6.28 2.53 7.82C20.48 19.55 17.78 19.55 12.38 19.55h-.76c-5.4 0-8.1 0-9.19-1.54-1.09-1.54.12-3.63 2.53-7.82l.36-.63Z" stroke="currentColor" stroke-width="1.5"/><path d="M12 8v5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M12 16h.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
+    info: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none"><rect x="2.5" y="2.5" width="19" height="19" rx="6" stroke="currentColor" stroke-width="1.5"/><path d="M12 16.5v-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="12" cy="8" r="1.1" fill="currentColor"/></svg>',
+  };
+  function confirmDlg(o) {
+    return new Promise((resolve) => {
+      const i = o.desc.indexOf(o.hl);
+      const desc = i < 0 ? esc(o.desc) : esc(o.desc.slice(0, i)) + `<b>${esc(o.hl)}</b>` + esc(o.desc.slice(i + o.hl.length));
+      const m = modal(`<div class="vconfirm ${o.sev}" role="alertdialog">
+        <button type="button" class="vconfirm-x" data-close aria-label="Đóng">${icon('x')}</button>
+        <div class="vconfirm-c"><span class="vconfirm-ic">${GLYPH[o.sev]}</span>
+          <div class="vconfirm-t"><h2>${esc(o.title)}</h2><p>${desc}</p></div></div>
+        <div class="vconfirm-a"><button type="button" class="vconfirm-b ghost" data-close>${esc(o.cancel)}</button><button type="button" class="vconfirm-b filled" id="cf-ok">${esc(o.ok)}</button></div></div>`, { v: 'bare' });
+      let done = false;
+      const end = (v) => { if (!done) { done = true; resolve(v); } };
+      m.el.querySelector('#cf-ok').onclick = () => { m.close(); end(true); };
+      m.el.addEventListener('click', (e) => { if (e.target === m.el || e.target.closest('[data-close]')) end(false); });
+      new MutationObserver((_, ob) => { if (!m.el.isConnected) { ob.disconnect(); end(false); } }).observe(document.body, { childList: true });
+    });
+  }
+  /* Tên bản ghi hiển thị "Tên - Mã" (buildCatalogConfirmParams); danh mục không có Mã/Tên tự khai báo subject. */
+  const subjectOf = (c, r) => (c.subject ? c.subject(r) : r.code ? `${r.name} - ${r.code}` : r.name);
+
+  async function del(c, r) {
+    const hl = subjectOf(c, r);
+    const ok = await confirmDlg({ sev: 'danger', title: 'Bạn chắc chắn muốn xoá không?', desc: `Bạn có chắc chắn muốn xóa ${c.entity}: ${hl} không?`, hl, cancel: 'Hủy', ok: 'Xoá' });
+    if (!ok) return;
+    if (r.used) {
+      // P-33: backend chặn xoá bản ghi đang được hồ sơ dùng.
+      toast(`<b>Lỗi</b><br>${esc(cap(c.entity))} ${esc(c.subject ? hl : r.name)} đang được sử dụng trong ${r.used} hồ sơ, không thể xoá. Bạn có thể dừng hoạt động.`, 'warn');
+      return;
+    }
+    const list = rows(c);
+    list.splice(list.indexOf(r), 1);
+    save();
+    toast(`<b>Thành công</b><br>Xoá ${esc(c.entity)} thành công`);
+    rerender();
+  }
+
+  async function toggle(c, r) {
+    const off = r.active, hl = subjectOf(c, r);
+    const ok = await confirmDlg(off
+      ? { sev: 'warning', title: 'Dừng hoạt động', desc: `Bạn có chắc chắn muốn dừng hoạt động ${c.entity}: ${hl} không?`, hl, cancel: 'Không', ok: 'Có' }
+      : { sev: 'info', title: 'Kích hoạt', desc: `Bạn có chắc chắn muốn kích hoạt ${c.entity}: ${hl} không?`, hl, cancel: 'Không', ok: 'Có' });
+    if (!ok) return;
+    const block = !off && c.canActivate && c.canActivate(r, rows(c));
+    if (block) { toast(`<b>Lỗi</b><br>${esc(block)}`, 'warn'); return; }
+    r.active = !off;
+    save();
+    ls(c.key).page = 1;
+    toast(`<b>Thành công</b><br>${off ? 'Dừng hoạt động' : 'Kích hoạt'} ${esc(c.entity)} thành công`);
+    rerender();
+  }
+
+  /* ---------- Nhập từ Excel (vht-import-dialog + bảng Kết quả nhập dữ liệu, như personnel-import-dialog của hr-tools) ----------
+     Giả lập file 20 dòng: kiểm tra từng dòng theo quy tắc của hộp thoại; dòng 7 trùng mã số thuế NCC Alpha, dòng 15 thiếu email.
+     Nhập lại cùng file thì mọi dòng trùng mã số thuế → không còn dòng hợp lệ. */
+  const IMPORT_FILE = { name: 'danh-sach-nha-cung-cap.xlsx', size: '18,4 KB' };
+  const IMPORT_ROWS = [
+    ['Công ty TNHH Viễn thông Nam Việt', 'VN', '0109000101', 'VN', 'baogia@namvietcom.vn'],
+    ['Công ty Cổ phần Điện tử Sao Mai', 'VN', '0109000102', 'VN', 'kinhdoanh@saomai-elec.vn'],
+    ['Công ty TNHH Giải pháp Mạng Toàn Cầu', 'VN', '0309000103', 'VN', 'rfq@toancaunet.vn'],
+    ['Công ty Cổ phần Cơ điện Thăng Long', 'VN', '0109000104', 'VN', 'baogia@codienthanglong.vn'],
+    ['Công ty TNHH Thiết bị Đo Hải Âu', 'VN', '0209000105', 'VN', 'sales@haiau-measure.vn'],
+    ['Công ty Cổ phần Phần mềm Bình Minh', 'VN', '0109000106', 'VN', 'contact@binhminhsoft.vn'],
+    ['Công ty TNHH Công nghệ Alpha', 'VN', '0101234567', 'VN', 'baogia@alphatech.vn'],
+    ['Công ty TNHH Vận tải Sông Hồng', 'VN', '0109000108', 'VN', 'muasam@songhonglogistics.vn'],
+    ['Công ty Cổ phần Tư vấn Xây dựng Đại Việt', 'VN', '0109000109', 'VN', 'tuvan@daivietcons.vn'],
+    ['Công ty TNHH Linh kiện Phương Nam', 'VN', '0309000110', 'VN', 'order@phuongnamparts.vn'],
+    ['Công ty TNHH Bảo trì Kỹ thuật Hoàng Gia', 'VN', '0109000111', 'VN', 'dichvu@hoanggiatech.vn'],
+    ['Omega Instruments Ltd.', 'NN', '', 'Anh', 'sales@omega-instruments.co.uk'],
+    ['Công ty Cổ phần Thiết bị Văn phòng Ánh Dương', 'VN', '0109000113', 'VN', 'banhang@anhduongoffice.vn'],
+    ['Công ty TNHH Anten và Vi ba Sao Việt', 'VN', '0109000114', 'VN', 'baogia@saoviet-rf.vn'],
+    ['Công ty Cổ phần Tích hợp Hệ thống Trường Sơn', 'VN', '0109000115', 'VN', ''],
+    ['Công ty TNHH Nguồn điện Tân Tiến', 'VN', '0409000116', 'VN', 'sales@tantienpower.vn'],
+    ['Sigma Components Co., Ltd.', 'NN', 'TW-84512377', 'Đài Loan', 'rfq@sigma-comp.com.tw'],
+    ['Công ty TNHH Đào tạo Công nghệ An Khang', 'VN', '0109000118', 'VN', 'daotao@ankhang-edu.vn'],
+    ['Công ty Cổ phần Cơ khí Chính xác Hà Nội', 'VN', '0109000119', 'VN', 'kinhdoanh@cokhihn.vn'],
+    ['Công ty TNHH Cáp quang Miền Trung', 'VN', '0409000120', 'VN', 'baogia@capquangmientrung.vn'],
+  ];
+  const IMPORT_GOODS = ['VTCNTT', 'NCSX', 'VTCNTT', 'NCSX', 'NCSX', 'VTCNTT', 'VTCNTT', 'PTVT_TBQL', 'DVTV', 'NCSX',
+    'DVPTV', 'NCSX', 'PTVT_TBQL', 'VTCNTT', 'VTCNTT', 'NCSX', 'NCSX', 'DVPTV', 'NCSX', 'VTCNTT'];
+  const CITY = { '01': 'Hà Nội', '02': 'Hải Phòng', '03': 'TP Hồ Chí Minh', '04': 'Đà Nẵng' };
+  function importCheck(c) {
+    const list = rows(c), seen = new Set(list.map((r) => r.tax).filter(Boolean));
+    const f = (k) => c.fields.find((x) => x.key === k);
+    return IMPORT_ROWS.map(([name, kind, tax, country, email], i) => {
+      const v = { name, kind, tax, country, email, goods: [IMPORT_GOODS[i]], address: kind === 'VN' ? CITY[tax.slice(0, 2)] : labelOf({ options: COUNTRY }, country) };
+      const errs = ['name', 'tax', 'email'].map((k) => fieldError(f(k), v[k], v)).filter(Boolean);
+      if (tax && seen.has(tax)) errs.push(`Mã số thuế ${tax} đã tồn tại.`);
+      if (tax) seen.add(tax);
+      else { const d = c.dupOf(v, null, list); if (d) errs.push(d); }
+      return { n: i + 1, v, errs };
+    });
+  }
+  function importDlg(c) {
+    let file = null;
+    // Bước 1 — vht-import-dialog: 780px, dải file mẫu, vùng kéo thả; Nhập dữ liệu chỉ bật khi đã chọn file.
+    const pick = () => {
+      const m = vModal({ title: 'Nhập dữ liệu', size: 'w780', body: `<div class="imp">
+          <div class="imp-banner"><span class="imp-bl">${icon('file')}File mẫu import nhà cung cấp</span>
+            <button type="button" class="imp-tpl" data-imp-tpl>${icon('download')}Tải file mẫu</button></div>
+          <button type="button" class="imp-zone" data-imp-zone><span class="imp-glyph">${icon('upload')}</span>
+            <span class="imp-hint">${file ? esc(file.name) : 'Kéo thả file vào đây hoặc bấm để chọn'}</span>
+            <span class="imp-sub">${file ? esc(file.size) : 'Hỗ trợ định dạng .xlsx, .csv (tối đa 10MB)'}</span></button></div>`,
+        actions: `<button class="vbtn secondary" data-close>Hủy</button><button class="vbtn primary" id="imp-go" ${file ? '' : 'disabled'}>Nhập dữ liệu</button>` });
+      m.el.querySelector('[data-imp-tpl]').onclick = () => toast('<b>Thành công</b><br>Đã tải file mau-nhap-nha-cung-cap.xlsx');
+      m.el.querySelector('[data-imp-zone]').onclick = () => { file = IMPORT_FILE; m.close(); pick(); };
+      m.el.querySelector('#imp-go').onclick = () => { m.close(); result(); };
+    };
+    // Bước 2 — Kết quả nhập dữ liệu: dòng chỉ được ghi khi Xác nhận nhập (bước tải lên là chạy thử).
+    const result = () => {
+      const res = importCheck(c), ok = res.filter((r) => !r.errs.length);
+      const cell = (v) => (v ? esc(v) : '<span class="dash">-</span>');
+      const body = res.map((r) => `<tr><td class="ord">${r.n}</td><td class="c">${r.errs.length ? badge('Lỗi', 'error') : badge('Hợp lệ', 'success')}</td>
+          <td>${r.errs.length ? `<span class="imp-err">${esc(r.errs.join(' '))}</span>` : '<span class="dash">-</span>'}</td>
+          <td>${cell(r.v.name)}</td><td>${cell(r.v.tax)}</td><td>${cell(labelOf({ options: KIND }, r.v.kind))}</td>
+          <td>${cell(labelOf({ options: COUNTRY }, r.v.country))}</td><td>${cell(labelOf({ options: goodsOptions, multi: true }, r.v.goods))}</td><td>${cell(r.v.email)}</td></tr>`).join('');
+      const m = vModal({ title: 'Kết quả nhập dữ liệu', size: 'xl', body: `<div class="imp-res">
+          <div class="imp-top"><span class="imp-sum">${ok.length}/${res.length} dòng hợp lệ</span><button type="button" class="vbtn primary" data-imp-again>${icon('upload')} Nhập file mới</button></div>
+          <div class="vtable-vp"><table class="vtable cat"><thead><tr><th class="ord">STT</th><th class="c" style="min-width:110px">Kết quả</th><th style="min-width:260px">Nội dung lỗi</th>
+            <th style="min-width:260px">Tên nhà cung cấp</th><th style="min-width:140px">Mã số thuế</th><th style="min-width:110px">Phân loại</th><th style="min-width:110px">Quốc gia</th><th style="min-width:180px">Ngành hàng</th><th style="min-width:220px">Email nhận yêu cầu báo giá</th></tr></thead>
+            <tbody>${body}</tbody></table></div></div>`,
+        actions: `<button class="vbtn secondary" data-close>Hủy</button><button class="vbtn primary" id="imp-ok" ${ok.length ? '' : 'disabled'}>Xác nhận nhập</button>` });
+      m.el.querySelector('[data-imp-again]').onclick = () => { file = null; m.close(); pick(); };
+      m.el.querySelector('#imp-ok').onclick = () => {
+        const list = rows(c);
+        ok.forEach((r) => {
+          const nv = r.v.kind === 'VN';
+          list.unshift({ id: Math.max(0, ...list.map((x) => x.id)) + 1, code: c.autoCode(list), name: r.v.name, short: '', nameEn: nv ? '' : r.v.name,
+            kind: r.v.kind, tax: r.v.tax, country: r.v.country, address: r.v.address, goods: r.v.goods, email: r.v.email, cc: '', contact: '', phone: '',
+            currency: nv ? 'VNĐ' : 'USD', description: '', used: 0, ban: null, active: true });
+        });
+        save(); m.close();
+        ls(c.key).page = 1;
+        toast(`<b>Thành công</b><br>Nhập nhà cung cấp thành công (${ok.length} nhà cung cấp)`);
+        rerender();
+      };
+    };
+    pick();
+  }
+
+  /* ---------- Sự kiện ---------- */
+  const curCatalog = () => { const m = location.hash.match(/^#\/dmdc\/([^/?]+)/); return m ? byKey(m[1]) : null; };
+  const rowOf = (c, id) => rows(c).find((r) => String(r.id) === String(id));
+  document.addEventListener('click', (e) => {
+    const t = e.target, c = curCatalog();
+    if (!c || !c.built) return;
+    const pg = t.closest(`[data-pager="cat-${c.key}"]`);
+    const s = ls(c.key);
+    if (pg) {
+      const b = t.closest('[data-pg]'), z = t.closest('[data-ps]');
+      if (b) s.page = Number(b.dataset.pg);
+      else if (z) { s.size = Number(z.dataset.ps); s.page = 1; s.psOpen = false; } else if (t.closest('[data-ps-open]')) s.psOpen = !s.psOpen;
+      else return;
+      rerender(); return;
+    }
+    if (s.psOpen) { s.psOpen = false; rerender(); }
+    if (t.closest('[data-cat-new]')) { openForm(c, null); return; }
+    if (t.closest('[data-cat-import]')) { importDlg(c); return; }
+    if (t.closest('[data-adv-toggle]')) { s.advOpen = !s.advOpen; rerender(); return; }
+    if (t.closest('[data-adv-reset]')) { s.draft = ADV0(); s.adv = ADV0(); s.st = null; s.kw = ''; s.kwInput = ''; s.page = 1; rerender(); return; }
+    const ed = t.closest('[data-cat-edit]');
+    if (ed) { openForm(c, rowOf(c, ed.dataset.catEdit)); return; }
+    const dl = t.closest('[data-cat-del]');
+    if (dl) { del(c, rowOf(c, dl.dataset.catDel)); return; }
+    const tg = t.closest('[data-cat-tg]');
+    if (tg) toggle(c, rowOf(c, tg.dataset.catTg));
+  });
+  document.addEventListener('input', (e) => {
+    const k = e.target.closest && e.target.closest('[data-cat-kw]');
+    if (k) ls(k.dataset.catKw).kwInput = k.value;
+    const a = e.target.closest && e.target.closest('[data-adv]'), c = curCatalog();
+    if (a && c) ls(c.key).draft[a.dataset.adv] = a.value;
+  });
+  document.addEventListener('submit', (e) => {
+    const f = e.target.closest('[data-adv-form]'), c = curCatalog();
+    if (!f || !c) return;
+    e.preventDefault();
+    // handleAdvancedSearch: chỉ gửi các trường nâng cao, bỏ từ khoá nhanh.
+    const s = ls(c.key);
+    s.adv = Object.assign({}, s.draft, { code: s.draft.code.trim(), name: s.draft.name.trim(), tax: s.draft.tax.trim() });
+    s.st = s.draft.st; s.kw = ''; s.kwInput = ''; s.page = 1;
+    rerender();
+  });
+  document.addEventListener('keydown', (e) => {
+    const k = e.key === 'Enter' && e.target.closest && e.target.closest('[data-cat-kw]');
+    if (!k) return;
+    const s = ls(k.dataset.catKw);
+    s.kwInput = k.value; s.kw = k.value.trim(); s.page = 1;
+    // handleQuickSearch của danh mục có tìm kiếm nâng cao: xoá các trường nâng cao.
+    const c = byKey(k.dataset.catKw);
+    if (c && c.advanced) { s.draft = ADV0(); s.adv = ADV0(); s.st = null; }
+    rerender();
+    const n = document.querySelector('[data-cat-kw]');
+    if (n) { n.focus(); n.setSelectionRange(n.value.length, n.value.length); }
+  });
+
+  window.Catalog = { overview, list, activeOptions, rows: (key) => rows(byKey(key)), CATALOGS, confirm: confirmDlg };
+})();
