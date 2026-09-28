@@ -140,6 +140,22 @@ add(P6, 'SCR-45-sync', 'Xác nhận đồng bộ luật từ BPMN', [...qt('#/ma
 add(P6, 'SCR-46', 'Ma trận hành động — Danh mục hành động', qt('#/ma-tran/action-catalog'), { link: 'SCR-47', linkSel: 'main table tbody a.link' });
 add(P6, 'SCR-47', 'Xem chi tiết hành động GUI_DUYET', qt('#/ma-tran/action-catalog/GUI_DUYET'), { link: 'SCR-42', linkSel: 'main table tbody a.link' });
 
+// Quản lý E-Form (T10): vai Quản trị hệ thống; dữ liệu mẫu 12 biểu mẫu (EForm.reset). id 4 = BM-04 Phiếu nhận xét.
+const P7 = 'Quản lý E-Form';
+const ef = (h) => [J.jump(1, 'minh'), 'EForm.reset()', J.persona('qt'), J.hash(h)];
+const pickTask13 = `document.dispatchEvent(new CustomEvent('bpmn-element', { detail: { key: 'wf/${V2}', page: 'MS01 v1.1', id: 'Activity_13' } }))`;
+add(P7, 'SCR-49', 'Danh sách biểu mẫu e-form', ef('#/eform'), { link: 'SCR-50-new', linkSel: '[data-ef-new]' });
+add(P7, 'SCR-50-new', 'Thêm mới biểu mẫu (hộp thoại 560)', [...ef('#/eform'), click('[data-ef-new]')], { overlay: true });
+add(P7, 'SCR-50-err', 'Thêm mới biểu mẫu — lỗi bỏ trống', [...ef('#/eform'), click('[data-ef-new]'), click('#ef-save')], { overlay: true });
+add(P7, 'SCR-50-edit', 'Chỉnh sửa biểu mẫu e-form BM-04', [...ef('#/eform'), click('[data-ef-edit="4"]')], { overlay: true });
+add(P7, 'SCR-53', 'Lịch sử cập nhật biểu mẫu BM-04', [...ef('#/eform'), click('[data-ef-hist="4"]')], { overlay: true });
+add(P7, 'SCR-51', 'Thiết kế biểu mẫu BM-04 — đang chọn trường', ef('#/eform/4/thiet-ke'), { link: 'SCR-52', linkSel: '[data-efd-preview]' });
+add(P7, 'SCR-51-none', 'Thiết kế biểu mẫu — chưa chọn trường', [...ef('#/eform/4/thiet-ke'), click('[data-efd-close]')]);
+add(P7, 'SCR-52', 'Xem trước biểu mẫu BM-04', [...ef('#/eform/4/thiet-ke'), click('[data-efd-preview]')], { overlay: true });
+add(P7, 'SCR-42-form', 'Chi tiết quy trình — Biểu mẫu phần tử là link (task 13)', [...ef('#/quy-trinh/' + V2), pickTask13], { link: 'SCR-51', linkSel: '.wf-el a[data-ef-open]' });
+add(P7, 'SCR-51-ro', 'Thiết kế biểu mẫu — chỉ xem (Dừng hoạt động, mở từ Chi tiết quy trình)',
+  [...ef('#/quy-trinh/' + V2), `EForm.rows().find((r) => r.id === 1).active = false`, `EForm.openFrom(1, 'quy-trinh/${V2}')`], { link: 'SCR-42-form', linkSel: '.efd-back' });
+
 const manifest = [];
 for (let i = 0; i < S.length; i++) {
   const s = S[i];

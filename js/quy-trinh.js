@@ -108,14 +108,16 @@
 
   /* ---------- SCR-42 Chi tiết quy trình ---------- */
   const DT = { key: null, sel: null, closed: new Set() };
-  const TYPE_GROUPS = (el) => {
-    const f = (label, value) => ({ label, value: value || '-' });
+  /* T10 B4: bước của MS01.01 / .02 / .03 — mã biểu mẫu trong ô Biểu mẫu là link mở Thiết kế biểu mẫu (E-Form Phê duyệt ĐXMS). */
+  const EFORM_PROCS = ['MS01.01', 'MS01.02', 'MS01.03'];
+  const TYPE_GROUPS = (el, code) => {
+    const f = (label, value, html) => ({ label, value: value || '-', html });
     const base = [{ key: 'common', label: 'Chung', fields: [f('Tên', el.name), f('ID', el.id)] },
       { key: 'documentation', label: 'Tài liệu mô tả', fields: [f('Mô tả', el.doc)] }];
     if (el.type === 'serviceTask') return base.concat([{ key: 'integration', label: 'Tích hợp', fields: [f('Job type (Worker xử lý)', el.job)] }]);
     return base.concat([
       { key: 'assignment', label: 'Phân công', fields: [f('Nhóm phụ trách', el.actor), f('Người cụ thể', ''), f('Cần vai trò', '')] },
-      { key: 'form', label: 'Biểu mẫu phần tử', fields: [f('Biểu mẫu', el.form)] }]);
+      { key: 'form', label: 'Biểu mẫu phần tử', fields: [f('Biểu mẫu', el.form, el.form && EFORM_PROCS.includes(code) ? window.EForm.linkRefs(el.form) : null)] }]);
   };
   const pad2 = (n) => String(n).padStart(2, '0');
   function elementOf(page, id, code) {
@@ -138,8 +140,9 @@
         'Nội dung phần tử lấy từ nhãn task trong ĐTMS.drawio: Tác nhân → Nhóm phụ trách (không có thì lấy tên lane), Thực hiện → Mô tả, Biểu mẫu → Biểu mẫu. ID phần tử (Activity_11…) và Job type là dữ liệu mẫu; bản thật đọc từ XML đã deploy.',
         'Sơ đồ vẽ lại bằng SVG thay bpmn-js: toolbar Phóng to / Thu nhỏ như source (nhân 1,25 mỗi lần thay vì cộng 0,1 vì sơ đồ rộng ~28.000px), bỏ nút Bản đồ thu nhỏ; mở ở chế độ vừa khung (fit-viewport).',
         'Lịch sử phiên bản là các phiên bản Web Modeler (type MODELER) của quy trình, không phải lịch sử deploy.',
+        'Biểu mẫu phần tử (MS01.01 / .02 / .03): mã BM-xx / Checklist xx có trong Quản lý E-Form là liên kết mở Thiết kế biểu mẫu; quay lại về màn này. Biểu mẫu đang Dừng hoạt động mở ở chế độ chỉ xem. MS02, MS13, MS14 chưa có biểu mẫu E-Form tương ứng (P-43, P-44) nên chỉ hiện chữ.',
       ],
-      q: [], src: 'workflow-management/workflow-detail · /workflow-management/:id?processDefinitionId=',
+      q: ['P-44'], src: 'workflow-management/workflow-detail · /workflow-management/:id?processDefinitionId=',
     };
     const head = `<div class="pg-head"><div class="l"><button class="vbtn back" data-go="quy-trinh" aria-label="Quay lại">${icon('back')}</button>
       <h1 class="pg-title lg">Chi tiết quy trình${infoBtn(info)}</h1></div></div>`;
@@ -155,8 +158,8 @@
         <div class="wf-el-h"><div class="min0"><div class="t clamp">${esc(el.type || '-')}</div><div class="s clamp">${esc(el.name || '-')}</div></div>
           <button type="button" class="wf-el-x" data-wf="close-el" aria-label="Đóng">${icon('x')}</button></div>
         ${vAccordion({ id: 'wf-el', closed: DT.closed, onToggle: (k) => { if (DT.closed.has(k)) DT.closed.delete(k); else DT.closed.add(k); rerender(); },
-          items: TYPE_GROUPS(el).map((g) => ({ key: g.key, label: g.label,
-            body: g.fields.map((f) => `<div class="wf-f"><div class="k">${esc(f.label)}</div><div class="v clamp">${esc(f.value)}</div></div>`).join('') })) })}
+          items: TYPE_GROUPS(el, w.code).map((g) => ({ key: g.key, label: g.label,
+            body: g.fields.map((f) => `<div class="wf-f"><div class="k">${esc(f.label)}</div><div class="v clamp">${f.html || esc(f.value)}</div></div>`).join('') })) })}
       </aside>` : '';
     return `<div class="pg">
       ${head}

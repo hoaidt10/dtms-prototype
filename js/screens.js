@@ -13,6 +13,8 @@
   const head = (o) => `<div class="pg-head"><div class="l">${o.back ? `<button class="vbtn back" ${o.back === true ? 'data-back' : `data-go="${o.back}"`} aria-label="Quay lại">${icon('back')}</button>` : ''}
     <h1 class="pg-title ${o.lg ? 'lg' : ''}">${esc(o.title)}${o.info ? infoBtn(o.info) : ''}</h1></div>${o.right ? `<div class="r">${o.right}</div>` : ''}</div>`;
   const dash = '<span class="dash">-</span>';
+  /* Điểm ❓ gắn lên màn của hồ sơ theo quy trình `flow`: điểm có `flows` chỉ hiện với quy trình đó (P-17…P-25), bỏ trùng. */
+  const qFor = (flow, ids) => (ids || []).filter((id, i, a) => a.indexOf(id) === i && (!(D.openPoints[id] || {}).flows || D.openPoints[id].flows.includes(flow)));
   const clamp = (v) => (v ? `<span class="clamp">${esc(v)}</span>` : dash);
 
 
@@ -383,7 +385,7 @@
         '<b>Lưu = khởi tạo quy trình ngay</b>: hệ thống sinh mã hồ sơ, bước đầu tiên giao cho người tạo. Không có bản nháp. Sau khi lưu không đổi được quy trình; hồ sơ không khớp quy trình được phát hiện ở task 01 và sau báo giá (task 10 → nhánh 10a/10b).',
         'Mã hồ sơ do hệ thống tự sinh (source KHCN cho nhập tay) nên ô chỉ đọc. Tên hồ sơ gợi ý theo ĐXMS và loại hồ sơ, sửa được.',
         'Khoảng giá trị trong nhãn của từng quy trình lấy từ Ngưỡng phân luồng (Danh mục dùng chung), các ngưỡng đang hoạt động và đã có hiệu lực. Hồ sơ giữ ngưỡng tại lúc Lưu (P-34).',
-        'MS01.02 chưa chọn được: hồ sơ mẫu MS01.02 dựng ở đợt T6. Hồ sơ Điều chỉnh (MS02) được ghi nhận ở bước đầu tiên và mở ở chế độ xem — luồng MS02 chưa dựng.',
+        'Hồ sơ mẫu chạy luồng: ĐXMS-2026-0117 (MS01.01), ĐXMS-2026-0124 (MS01.02, căn cứ PAKD đã được TGĐ Tập đoàn duyệt), ĐXMS-2026-0098 (MS01.03, 45,20 tỷ). Hồ sơ Điều chỉnh (MS02) được ghi nhận ở bước đầu tiên và mở ở chế độ xem — luồng MS02 chưa dựng.',
         'Prototype chạy luồng cho một hồ sơ Phê duyệt: Lưu hồ sơ Phê duyệt khi đang có hồ sơ chạy luồng sẽ thay hồ sơ đó; ý kiến ❓ được giữ.',
       ],
       q: ['P-26', 'P-34', 'P-63', 'P-64'], src: 'profile-management/profile-form (mode create) · /khcn-profile-management/create/:taskId',
@@ -612,9 +614,11 @@
   }
 
   /* ---------- SCR-20 Chi tiết hồ sơ + Xem BPMN ---------- */
+  /* Văn bản hệ thống sinh theo bước (by = task); hồ sơ < 160 tỷ dùng BM-09 + Checklist 02 (task 11), không có BM-05…08. */
   const DOCS = [
-    { code: 'BM-01', name: 'Tờ trình đề xuất mua sắm', by: 12 }, { code: 'BM-02', name: 'Thuyết minh / phụ lục giải trình', by: 12 },
-    { code: 'CL01', name: 'Checklist 01 — danh mục hồ sơ', by: 12 }, { code: 'BM-03', name: 'Phiếu yêu cầu thẩm định', by: 15 },
+    { code: 'BM-01', name: 'Tờ trình đề xuất mua sắm', by: 12 }, { code: 'BM-09', name: 'Tờ trình đề xuất mua sắm (thẩm định, phê duyệt trực tiếp)', by: 11 },
+    { code: 'BM-02', name: 'Thuyết minh / phụ lục giải trình', by: 12 }, { code: 'BM-02', name: 'Thuyết minh / phụ lục giải trình', by: 11 },
+    { code: 'CL01', name: 'Checklist 01 — danh mục hồ sơ', by: 12 }, { code: 'CL02', name: 'Checklist 02 — danh mục hồ sơ', by: 11 }, { code: 'BM-03', name: 'Phiếu yêu cầu thẩm định', by: 15 },
     { code: 'BM-04', name: 'Phiếu nhận xét (mỗi CQCM một phiếu)', by: 22 }, { code: 'BM-05', name: 'Báo cáo kết quả thẩm định', by: 41 },
     { code: 'BM-06', name: 'Công văn báo cáo TGĐ Tập đoàn', by: 49 }, { code: 'BM-07', name: 'Báo cáo của Ban ĐTXD Tập đoàn', by: 53 },
     { code: 'BM-08', name: 'Quyết định phê duyệt ĐXMS', by: 57 },
@@ -631,7 +635,7 @@
     return {
       key: 'ho-so', code: ci.code, dxms: ci.dxms, kind: 'PD', title: ci.name, flow: ci.flow, st, unit: ci.unit, lead: persona('minh').name, total: ci.total,
       fund: ci.fund, period: ci.period, priority: ci.priority, secret: ci.secret, round: Flow.state.vars.round,
-      kpi: kpi === null ? null : `${ty(kpi, 1)} / 20 ngày làm việc`, active,
+      kpi: kpi === null ? null : `${ty(kpi, 1)} / ${D.kpiLimit[ci.flow] || 20} ngày làm việc`, active,
       step: active.length ? [...new Set(Flow.state.tokens.map((t) => Flow.taskName(t.task)))].join(', ') : END_STEP[st],
       replaces: Flow.state.replaces ? `<a class="link-red" href="#/${caseHref(allCases().find((x) => x.code === Flow.state.replaces) || { code: Flow.state.replaces })}">${esc(Flow.state.replaces)}</a>` : null,
       replacedBy: mv ? `<a class="link-red" href="#" data-open-new="1">${esc(mv.code)}</a>` : null,
@@ -691,11 +695,12 @@
     // Theo: fe/repo-khcn-bpmn-fe/src/app/features/profile-management/profile-detail/profile-detail.component.html
     //       + sections/profile-general-info, profile-documents (readOnly), profile-output-documents
     const info = Object.assign({}, SCR20_INFO, {
-      q: D.screenQ['SCR-20'],
+      q: qFor(vm.flow, D.screenQ['SCR-20']),
       notes: ['Bố cục lấy nguyên từ profile-detail: "Xem BPMN" là nút duy nhất trên hàng tiêu đề; cột trái Thông tin chung · Quy trình · Danh sách tài liệu · Văn bản đầu ra, cột phải Lịch sử hồ sơ (tỉ lệ 801 : 333).',
         'Các tab cũ (Danh mục hàng hoá, Tài liệu & phiên bản, Timeline, KPI, Nhật ký AI, Hồ sơ liên quan) bỏ vì source không có. KPI thẩm định, Vòng giải trình, Thay thế cho / Được thay bởi chuyển vào Thông tin chung; danh mục hàng hoá xem ở màn xử lý task; timeline xem ở Lịch sử hồ sơ và Xem BPMN.',
         'Mã ĐXMS (đối tượng cha, D-10) thay Mã nhiệm vụ, bấm mở Chi tiết ĐXMS. Loại hồ sơ: Phê duyệt ĐXMS / Điều chỉnh ĐXMS; hồ sơ Điều chỉnh hiện Giá trị sau điều chỉnh và Lý do điều chỉnh, Quy trình và Lịch sử theo các bước MS02.',
-        'Thông tin chung đổi theo nghiệp vụ ĐTMS như màn xử lý task: Tên nhiệm vụ → Trạng thái, Bước hiện tại; Cấp nhiệm vụ → Mức ưu tiên; Đơn vị chủ trì → Đơn vị đề xuất; Chủ nhiệm đề tài → Người phụ trách; Tổng dự toán → Tổng giá trị; Lĩnh vực → Nguồn vốn; thêm Mật, KPI thẩm định (UR-KPI-04: từ task 18 tới task 60, ngưỡng 20 NLV).',
+        'Thông tin chung đổi theo nghiệp vụ ĐTMS như màn xử lý task: Tên nhiệm vụ → Trạng thái, Bước hiện tại; Cấp nhiệm vụ → Mức ưu tiên; Đơn vị chủ trì → Đơn vị đề xuất; Chủ nhiệm đề tài → Người phụ trách; Tổng dự toán → Tổng giá trị; Lĩnh vực → Nguồn vốn; thêm Mật, KPI thẩm định (UR-KPI-04: từ task 18 tới task 60, ngưỡng 20 NLV; MS01.03 10 NLV — P-21).',
+        'Quy trình chỉ gồm bước người dùng của quy trình hồ sơ đi qua: MS01.02 không có task 49–56 (báo cáo Tập đoàn), MS01.03 không có task 12, 41–59 (BM-01, BM-05…BM-08).',
         'Danh sách tài liệu ở chế độ xem (readOnly): chỉ Tải xuống; "Chọn mẫu tài liệu" vẫn ở hàng tiêu đề như source.']
         .concat(vm.sample ? ['Hồ sơ mẫu không chạy luồng: tiến độ, lịch sử, tài liệu suy ra từ task đang chờ của bản ghi; ngày rải đều từ ngày tạo tới ngày cập nhật.'] : []),
     });
@@ -809,12 +814,12 @@
   function caseFiles() {
     const u = Flow.ui, at = (k) => { const h = Flow.lastOf(k); return h ? Flow.dateOf(h.t) : null; };
     const code = Flow.ci().code.replace('Đ', 'D');
-    const basis = D.basisDocs.find((d) => d.id === (u.basisDoc || D.basisDocs[0].id)) || D.basisDocs[0];
+    const basis = D.basisDocs.find((d) => d.id === (u.basisDoc || D.caseRef.basisDoc)) || D.basisDocs[0];
     const rows = [];
     if (at(1)) rows.push({ name: basis.no.replace(/\//g, '-') + '.pdf', at: at(1) });
-    if (at(5)) rows.push({ name: 'eBOM-gNodeB-G2-Do-kiem.xlsx', at: at(5) });
-    if (at(7)) rows.push({ name: 'RSTK-2026-0311.xlsx', at: at(7) });
-    if (Flow.lastOf(10) && Flow.state.history.some((h) => h.task === 10 && h.action === 'Báo giá đạt')) ['Alpha', 'Beta', 'Gamma'].forEach((n) => rows.push({ name: `Bao-gia-${n}.pdf`, at: at(10) }));
+    if (at(5)) rows.push({ name: D.caseRef.ebom, at: at(5) });
+    if (at(7)) rows.push({ name: D.caseRef.rstk + '.xlsx', at: at(7) });
+    if (Flow.lastOf(10) && Flow.state.history.some((h) => h.task === 10 && h.action === 'Báo giá đạt')) D.quotes.forEach((q) => rows.push({ name: `Bao-gia-${(D.nccOf(q.ncc).short || q.ncc).replace(/^NCC /, '')}.pdf`, at: at(10) }));
     const clock = Flow.dateOf(Flow.state.clock);
     if (u.bm03File) rows.push({ name: `BM-03_${code}_ky-nhay.pdf`, at: at(16) || clock });
     if (u.minutesFile) rows.push({ name: `Bien-ban-hop-${code}.pdf`, at: at(32) || clock });
@@ -839,19 +844,20 @@
       return `<div class="pg">${head({ title: 'Xem chi tiết hồ sơ', back: true, lg: true })}
         <section class="vcard pad24"><div class="empty-t">Không tìm thấy nhiệm vụ.</div></section></div>`;
     }
-    const t = T[tok.task], f = D.flow[tok.task], scr = D.screens[f.scr] || { name: t.name };
+    const t = T[tok.task], f = D.flow[tok.task], scrId = Flow.scrOf(tok.task), scr = D.screens[scrId] || { name: t.name };
     const ci = Flow.ci(), owner = persona(tok.who), mine = tok.who === Flow.state.persona;
     const body = (window.Bodies && window.Bodies.render(tok)) || '';
     const ba = window.Bodies ? window.Bodies.notes() : { notes: [], q: [] };
-    const choices = f.choices || [{ label: f.actionLabel || 'Hoàn thành', main: true, next: true }];
-    const qs = (D.screenQ[f.scr] || []).concat(f.q || [], ba.q, choices.some((c) => c.sign) ? ['P-16'] : []).filter((v, i, a) => a.indexOf(v) === i);
+    const choices = f.choices ? Flow.choices(tok.task) : [{ label: f.actionLabel || 'Hoàn thành', main: true, next: true }];
+    const qs = qFor(ci.flow, (D.screenQ[scrId] || []).concat(f.q || [], ba.q, choices.some((c) => c.sign) ? ['P-16'] : []));
 
-    /* Nút theo my-task-detail: chính primary, phụ viền đỏ, Xem BPMN viền đỏ, còn lại vào Thao tác khác. */
+    /* Nút theo my-task-detail: chính primary, phụ viền đỏ, Xem BPMN viền đỏ, còn lại vào Thao tác khác.
+       lockWhen: nút vẫn hiện nhưng không bấm được (vd. "Có báo cáo TGĐ Tập đoàn" với hồ sơ MS01.02). */
     const mc = Flow.mainChoice(tok.task);
     const list = choices.map((c, i) => ({ c, idx: c.next ? -1 : i, main: !!c.next || (mc && mc.label === c.label) }));
     const main = list.filter((x) => x.main), rest = list.filter((x) => !x.main);
     const side = rest.slice(0, 1), other = rest.slice(1);
-    const actBtn = (x, cls) => `<button type="button" class="vbtn ${cls}" data-act="${tok.id}" data-choice="${x.idx}">${esc(x.c.label)}</button>`;
+    const actBtn = (x, cls) => `<button type="button" class="vbtn ${cls}" data-act="${tok.id}" data-choice="${x.idx}" ${x.c.lockWhen && x.c.lockWhen(Flow.state.vars) ? 'disabled' : ''}>${esc(x.c.label)}</button>`;
     const acts = `${mine ? main.map((x) => actBtn(x, 'primary')).join('') + side.map((x) => actBtn(x, 'red')).join('') : ''}
       <button type="button" class="vbtn red" data-go="task/${tok.id}/bpmn">Xem BPMN</button>
       ${mine && other.length ? `<div class="more"><button type="button" class="vbtn secondary" data-more>Thao tác khác ${icon('chev')}</button>
@@ -869,7 +875,7 @@
 
     const files = caseFiles(), outs = outputDocs();
     const infoSpec = {
-      scr: f.scr, name: scr.name, bpmn: `Task ${tno(tok.task)} · ${t.name} · Actor: ${t.actor} · Biểu mẫu: ${t.form}`, q: qs,
+      scr: scrId, name: scr.name, bpmn: `Task ${tno(tok.task)} · ${t.name} · Actor: ${t.actor} · Biểu mẫu: ${t.form}`, q: qs,
       notes: (mine ? [] : [`Việc này giao cho <b>${esc(owner.name)}</b> (${esc(owner.role)}); đang xem với tài khoản ${esc(persona(Flow.state.persona).name)} nên không có nút hành động. <button class="vbtn sm red" data-persona="${owner.id}" data-stay="1">Chuyển tài khoản</button>`])
         .concat(['Tiêu đề "Xem chi tiết hồ sơ" và bố cục lấy nguyên từ my-task-detail: nút hành động trên hàng tiêu đề, lưới 5 + 2 cột, Lịch sử hồ sơ bên phải.',
           'Quy trình: các bước người dùng của quy trình đã chọn (không gồm bước hệ thống, bước của quy trình khác); vht-steps tự gộp bước thành +N.',
@@ -947,7 +953,7 @@
 
   /* Danh sách tài liệu mẫu (my-task-template-dialog): đếm tệp, tìm kiếm 260px, bảng có ô chọn, Đóng / Tải xuống (n). */
   function templateDialog() {
-    const TPL = DOCS.map((d) => `${d.code}_${d.name}.docx`).concat(['BM-09_Phieu-tham-dinh-truc-tiep.docx']);
+    const TPL = [...new Set(DOCS.map((d) => `${d.code}_${d.name}.docx`))];
     const sel = new Set();
     const m = UI.vModal({ title: 'Danh sách tài liệu mẫu', size: 'lg', body: `<div class="vcard-h"><span class="cnt"></span>
         <label class="vsearch" style="width:260px">${icon('search')}<input id="tpl-q" placeholder="Tìm kiếm tệp"></label></div>

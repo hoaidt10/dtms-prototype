@@ -50,12 +50,12 @@ test('SCR-48: bố cục theo process-monitoring — không nút tiêu đề, c�
   await expect(page.locator('#gs-kw')).toHaveAttribute('placeholder', 'Tìm kiếm theo mã Camunda, mã hồ sơ');
   await expect(page.locator('.vtable th')).toHaveText(['STT', 'Trạng thái', 'Mã Camunda', 'Mã hồ sơ', 'Quy trình', 'Bước hiện tại', 'Ngày tạo', 'Ngày cập nhật']);
   await expect(rows(page)).toHaveCount(10);
-  await expect(page.locator('.vpager')).toContainText('Tổng số bản ghi: 14');
+  await expect(page.locator('.vpager')).toContainText('Tổng số bản ghi: 13');
   const st = await page.locator('.vtable tbody .vbadge').allInnerTexts();
   await page.locator('.vpager [data-pg="2"]').first().click();
   st.push(...await page.locator('.vtable tbody .vbadge').allInnerTexts());
   for (const s of ['Đang chạy', 'Hoàn thành', 'Quá hạn', 'Đã hủy']) expect(st).toContain(s);
-  await expect(rows(page)).toHaveCount(4);
+  await expect(rows(page)).toHaveCount(3);
   expect(await mainText(page)).not.toMatch(BA);
   expect(page.errors).toEqual([]);
 });
@@ -91,14 +91,14 @@ test('D-3: chỉ Mã hồ sơ là liên kết, bấm dòng không mở gì; liê
 
 test('SCR-48: tìm nhanh theo mã hồ sơ / mã Camunda; nâng cao — Mã Camunda chỉ nhập số, lọc trạng thái', async ({ page }) => {
   await as(page, 'lan', '#/giam-sat-tien-trinh');
-  await page.locator('#gs-kw').fill('0098');
+  await page.locator('#gs-kw').fill('0106');
   await page.locator('#gs-kw').press('Enter');
   await expect(rows(page)).toHaveCount(1);
   const key = await rows(page).locator('td').nth(2).innerText();
   expect(key).toMatch(/^\d{16}$/);
   await page.locator('#gs-kw').fill(key);
   await page.locator('#gs-kw').press('Enter');
-  await expect(rows(page)).toHaveText([/HS-2026-0098/]);
+  await expect(rows(page)).toHaveText([/HS-2026-0106/]);
 
   await page.locator('[data-g="adv"]').click();
   await expect(page.locator('#gs-kw')).toHaveCount(0);
@@ -118,7 +118,7 @@ test('SCR-48: tìm nhanh theo mã hồ sơ / mã Camunda; nâng cao — Mã Camu
   expect(st.length).toBeGreaterThan(0);
   expect(new Set(st)).toEqual(new Set(['Hoàn thành']));
   await page.locator('[data-g="reset"]').click();
-  await expect(page.locator('.vpager')).toContainText('Tổng số bản ghi: 14');
+  await expect(page.locator('.vpager')).toContainText('Tổng số bản ghi: 13');
 });
 
 test('P-41: vai khác Quản trị hệ thống / TTMS thấy thông báo chưa được cấp quyền', async ({ page }) => {
@@ -135,7 +135,7 @@ test('SCR-48: hồ sơ đang chạy luồng hiện ở đầu danh sách, Đang 
   await fresh(page, '#/viec-cua-toi');
   await page.evaluate(() => { Flow.jumpTo(13, 'hai'); Flow.setPersona('qt'); });
   await page.goto(page.url().replace(/#.*$/, '#/giam-sat-tien-trinh'));
-  await expect(page.locator('.vpager')).toContainText('Tổng số bản ghi: 15');
+  await expect(page.locator('.vpager')).toContainText('Tổng số bản ghi: 14');
   const code = await page.evaluate(() => Flow.ci().code);
   const r = rows(page).filter({ hasText: code });
   await expect(r.locator('.vbadge')).toHaveText(/Đang chạy|Quá hạn/);

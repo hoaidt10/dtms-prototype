@@ -5,8 +5,8 @@ import { fresh, open, primary, INDEX } from './helpers.mjs';
 
 const BA = /SCR-\d|UC-\d|task \d|Prototype|minh hoạ|giả lập/i;
 const CLEAN_ROUTES = ['#/viec-cua-toi', '#/dxms', '#/dxms/create', '#/dxms/%C4%90XMS-2026-0077', '#/dxms/%C4%90XMS-2026-0077/edit',
-  '#/ho-so-dxms', '#/ho-so-dxms/create', '#/ho-so-dxms/create/%C4%90XMS-2026-0119', '#/ho-so-dxms/HS-2026-0103', '#/ho-so-dxms/HS-2026-0098',
-  '#/ho-so-dxms/HS-2026-0098/bpmn', '#/ho-so-dxms/HS-2026-0072', '#/ho-so-dxms/HS-2026-0126', '#/ho-so-dxms/HS-2026-0126/bpmn', '#/ph/goi-thau'];
+  '#/ho-so-dxms', '#/ho-so-dxms/create', '#/ho-so-dxms/create/%C4%90XMS-2026-0119', '#/ho-so-dxms/HS-2026-0103', '#/ho-so-dxms/HS-2026-0106',
+  '#/ho-so-dxms/HS-2026-0106/bpmn', '#/ho-so-dxms/create/%C4%90XMS-2026-0098', '#/ho-so-dxms/HS-2026-0072', '#/ho-so-dxms/HS-2026-0126', '#/ho-so-dxms/HS-2026-0126/bpmn', '#/ph/goi-thau'];
 
 // Chữ hiển thị trong vùng nội dung, bỏ nút (i) (popover chỉ gắn vào body khi bấm).
 const mainText = (page) => page.evaluate(() => {
@@ -59,10 +59,10 @@ test('B5: Danh sách hồ sơ ĐXMS theo profile-list — cột, tìm kiếm, t�
   await expect(page.locator('.pg-head .r [data-create="hs"]')).toHaveText(/Thêm mới/);
   await expect(page.locator('.vtable th')).toHaveText(['STT', 'Thao tác', 'Trạng thái', 'Mã hồ sơ', 'Mã ĐXMS', 'Tên hồ sơ', 'Loại hồ sơ', 'Đơn vị đề xuất',
     'Tổng giá trị (tỷ đồng)', 'Mức ưu tiên', 'Quy trình', 'Bước hiện tại', 'Ngày cập nhật']);
-  await expect(page.locator('.vpager')).toContainText('Tổng số bản ghi: 14');
+  await expect(page.locator('.vpager')).toContainText('Tổng số bản ghi: 13');
   await expect(page.locator('.vtable tbody tr')).toHaveCount(10);
   await page.locator('.vpager [data-pg="2"]').first().click();
-  await expect(page.locator('.vtable tbody tr')).toHaveCount(4);
+  await expect(page.locator('.vtable tbody tr')).toHaveCount(3);
   await expect(page.locator('.vtable tbody tr').first().locator('td').first()).toHaveText('11');
 
   await page.locator('#hs-kw').fill('may chu');
@@ -90,7 +90,7 @@ test('B5: Danh sách hồ sơ ĐXMS theo profile-list — cột, tìm kiếm, t�
   await expect(page.locator('.vtable tbody tr')).toHaveCount(1);
   await expect(page.locator('.vtable tbody')).toContainText('HS-2026-0112');
   await page.locator('[data-l="reset"]').click();
-  await expect(page.locator('.vpager')).toContainText('Tổng số bản ghi: 14');
+  await expect(page.locator('.vpager')).toContainText('Tổng số bản ghi: 13');
 });
 
 test('A5: mọi hồ sơ trong danh sách mở được', async ({ page }) => {
@@ -98,7 +98,7 @@ test('A5: mọi hồ sơ trong danh sách mở được', async ({ page }) => {
   await page.locator('.vpager .ps-t').click();
   await page.locator('.vpager [data-ps="50"]').click();
   const codes = await page.locator('.vtable tbody tr').evaluateAll((rs) => rs.map((r) => r.dataset.code));
-  expect(codes.length).toBe(14);
+  expect(codes.length).toBe(13);
   for (const code of codes) {
     await page.evaluate(() => { location.hash = '#/ho-so-dxms'; });
     await page.locator(`tr[data-code="${code}"] .link`).click();
@@ -116,17 +116,18 @@ test('B5: Danh sách ĐXMS theo task-management — cột, chỉ ô tìm kiếm,
   await expect(page.locator('[data-l="adv"]')).toHaveCount(0);
   await expect(page.locator('.vtable th')).toHaveText(['STT', 'Thao tác', 'Trạng thái', 'Mã ĐXMS', 'Tên ĐXMS', 'Đơn vị đề xuất',
     'Giá trị hiệu lực (tỷ đồng)', 'Mức ưu tiên', 'Ngày cập nhật']);
-  await expect(page.locator('.vpager')).toContainText('Tổng số bản ghi: 12');
+  await expect(page.locator('.vpager')).toContainText('Tổng số bản ghi: 13');
   const st = (code) => page.locator(`tr[data-code="${code}"] .vbadge`);
   await expect(st('ĐXMS-2026-0119')).toHaveText('Chưa có hồ sơ');
   await expect(st('ĐXMS-2026-0121')).toHaveText('Đang phê duyệt');
   await expect(st('ĐXMS-2026-0103')).toHaveText('Đã phê duyệt');
   await page.locator('.vpager [data-pg="2"]').first().click();
   await expect(st('ĐXMS-2026-0077')).toHaveText('Đang điều chỉnh');
-  // Giá trị hiệu lực = hồ sơ Hoàn thành gần nhất (Điều chỉnh 9,60 → 11,20).
-  await page.locator('.vpager [data-pg="1"]').first().click();
+  // Giá trị hiệu lực = hồ sơ Hoàn thành gần nhất (Điều chỉnh 9,60 → 11,20). 0084 ở trang 2 (0124 thêm đầu danh sách).
   await expect(page.locator('tr[data-code="ĐXMS-2026-0084"]')).toContainText('11,20');
-  await expect(page.locator('[data-del-dxms]')).toHaveCount(1);
+  await page.locator('.vpager [data-pg="1"]').first().click();
+  // Xoá được ĐXMS chưa có hồ sơ: 0119, 0124 và 0098 (hai ĐXMS demo MS01.02 / MS01.03 — hồ sơ tạo khi chạy luồng).
+  await expect(page.locator('[data-del-dxms]')).toHaveCount(3);
 
   await page.locator('#dxms-kw').fill('may in');
   await page.locator('#dxms-kw').press('Enter');
@@ -142,13 +143,13 @@ test('B5: Danh sách ĐXMS theo task-management — cột, chỉ ô tìm kiếm,
   await page.locator('.vpager .ps-t').click();
   await page.locator('.vpager [data-ps="50"]').click();
   const codes = await page.locator('.vtable tbody tr').evaluateAll((rs) => rs.map((r) => r.dataset.code));
-  expect(codes.length).toBe(11);
+  expect(codes.length).toBe(12);
   for (const code of codes) {
     await page.evaluate(() => { location.hash = '#/dxms'; });
     await page.locator(`tr[data-code="${code}"] .link`).click();
     await expect(page.locator('.pg-title')).toHaveText('Xem chi tiết ĐXMS');
     await expect(page.locator('.gen .ginfo')).toContainText(code);
-    await expect(page.locator('[data-dxms-profiles] tbody tr').first()).toContainText('HS-2026-');
+    await expect(page.locator('[data-dxms-profiles] tbody tr').first()).toContainText(['ĐXMS-2026-0124', 'ĐXMS-2026-0098'].includes(code) ? 'Chưa có dữ liệu' : 'HS-2026-');
   }
   // ĐXMS có hai hồ sơ (Phê duyệt đã chuyển quy trình + hồ sơ thay thế); mở hồ sơ từ đây thì quay lại đúng ĐXMS.
   await page.evaluate(() => { location.hash = '#/dxms/%C4%90XMS-2026-0072'; });
@@ -217,12 +218,18 @@ test('B5: sau Chuyển quy trình, việc đầu tiên của hồ sơ thay thế
 const TASKS = [[1, 'minh'], [4, 'minh'], [5, 'minh'], [7, 'minh'], [8, 'minh'], [10, 'minh'], [12, 'minh'], [13, 'hai'], [16, 'minh'], [17, 'lan'], [19, 'hoa'],
   [20, 'hoa'], [26, 'minh'], [27, 'minh'], [28, 'minh'], [35, 'hoa'], [36, 'hoa'], [42, 'lan'], [43, 'lan'], [46, 'hoa'], [47, 'binh'], [48, 'lan'],
   [50, 'lan'], [51, 'tgd'], [53, 'td'], [56, 'td'], [58, 'lan'], [59, 'lan'], [60, 'tgd']];
-const openTask = (page, task, who, proc) => page.evaluate(([t, w, p]) => {
-  Flow.jumpTo(t, w, {}, p);
-  const k = Flow.state.tokens.find((x) => String(x.task) === String(t));
+const openTask = (page, task, who, proc, dxms) => page.evaluate(([t, w, p, d]) => {
+  Flow.jumpTo(t, w, {}, p, d);
+  const k = Flow.state.tokens.find((x) => String(x.task) === String(t) && (!w || x.who === w)) || Flow.state.tokens.find((x) => String(x.task) === String(t));
   Flow.setPersona(k.who);
   location.hash = '#/task/' + k.id;
-}, [task, who, proc]);
+}, [task, who, proc, dxms]);
+// T6: màn task của hồ sơ MS01.02 (ĐXMS-2026-0124) và MS01.03 (ĐXMS-2026-0098) — biến thể BM-09, SCR-23, SCR-24.
+const TASKS_T6 = [[1, 'minh', 'MS01.02', 'ĐXMS-2026-0124'], [48, 'lan', 'MS01.02', 'ĐXMS-2026-0124'], [60, 'tgd', 'MS01.02', 'ĐXMS-2026-0124'],
+  [1, 'minh', 'MS01.03', 'ĐXMS-2026-0098'], [7, 'minh', 'MS01.03', 'ĐXMS-2026-0098'], [10, 'minh', 'MS01.03', 'ĐXMS-2026-0098'], [11, 'minh', 'MS01.03', 'ĐXMS-2026-0098'],
+  [13, 'hai', 'MS01.03', 'ĐXMS-2026-0098'], [16, 'minh', 'MS01.03', 'ĐXMS-2026-0098'], [17, 'lan', 'MS01.03', 'ĐXMS-2026-0098'], [19, 'thu', 'MS01.03', 'ĐXMS-2026-0098'],
+  [26, 'minh', 'MS01.03', 'ĐXMS-2026-0098'], [27, 'minh', 'MS01.03', 'ĐXMS-2026-0098'], [36, 'thu', 'MS01.03', 'ĐXMS-2026-0098'],
+  [38, 'lan', 'MS01.03', 'ĐXMS-2026-0098'], [39, 'binh', 'MS01.03', 'ĐXMS-2026-0098'], [60, 'tgd', 'MS01.03', 'ĐXMS-2026-0098']];
 
 test('B7: màn xử lý task theo my-task-detail — hàng tiêu đề, lưới 5 + 2, thứ tự card', async ({ page }) => {
   await fresh(page, '#/viec-cua-toi');
@@ -260,6 +267,16 @@ for (const [task, who] of TASKS) {
     await openTask(page, task, who);
     await expect(page.locator('.pg-title .info-i')).toBeVisible();
     expect(await mainText(page)).not.toMatch(/SCR-\d|UC-\d|task \d|Prototype|minh hoạ|giả lập|BBLV|❓/i);
+    expect(page.errors).toEqual([]);
+  });
+}
+for (const [task, who, proc, dxms] of TASKS_T6) {
+  test(`C3: ${proc} màn task ${task} không có chữ BA ngoài nút (i)`, async ({ page }) => {
+    await fresh(page, '#/viec-cua-toi');
+    await openTask(page, task, who, proc, dxms);
+    await expect(page.locator('.pg-title .info-i')).toBeVisible();
+    expect(await mainText(page)).not.toMatch(/SCR-\d|UC-\d|task \d|Prototype|minh hoạ|giả lập|BBLV|❓/i);
+    await expect(page.locator('.tmain .ginfo').first()).toContainText(dxms);
     expect(page.errors).toEqual([]);
   });
 }

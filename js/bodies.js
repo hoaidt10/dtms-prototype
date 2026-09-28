@@ -32,18 +32,30 @@
     : `<button type="button" class="vbtn sm red" data-ui="${key}" data-v="true">${icon('upload')} Tải file lên</button>`);
   const roundBadge = () => { const r = Flow.state.vars.round; return badge(`Vòng giải trình ${r}/2`, r > 2 ? 'error' : 'warning'); };
 
+  /* ---------- Hồ sơ đang chạy (T6): dữ liệu theo ĐXMS (D.caseRef), nhánh < 160 tỷ (MS01.03) đổi văn bản ---------- */
+  const R = () => D.caseRef;
+  const small = () => Flow.isSmall();
+  const draftTask = () => (small() ? 11 : 12);
+  const tt = () => (small() ? 'BM-09' : 'BM-01');
+  const clName = () => (small() ? 'Checklist 02' : 'Checklist 01');
+  const buyItems = () => D.items.filter((i) => i.buy > 0);
+  /* Nội dung có hai bản [v1, v2]: trước / sau hoàn chỉnh ở task 27. */
+  const vv = (x) => (Array.isArray(x) ? x[Flow.doneCount(27) ? 1 : 0] : x);
+  const vnd = (t) => Math.round(t * 1e9).toLocaleString('vi-VN');
+  const selCqcm = () => D.cqcm.filter((c) => Flow.cqcmSel().includes(c.id));
+
   /* Ý kiến BM-04 của một CQCM. Từ vòng BM-04 thứ hai (sau khi ĐVĐX giải trình, task 28–29 → 13 → 18), ý kiến
      mà ĐVĐX đã bảo lưu được coi là CQCM chấp nhận giải trình — theo kịch bản demo. */
   function opinionsOf(c) {
-    const edits = (U().bm04 || {})[c] || {};
-    const accepted = Flow.state.vars.round > 0 && (D.responses[c] || {}).decision === 'Bảo lưu';
-    return D.bm04Sections.filter((s) => (D.opinions[c] || {})[s] || edits[s]).map((s) => {
-      const o = Object.assign({ sec: s }, D.opinions[c][s] || {}, edits[s] || {});
+    const edits = (U().bm04 || {})[c] || {}, base = D.opinions[c] || {};
+    const accepted = Flow.state.vars.round > 0 && respOf(c) === 'Bảo lưu';
+    return D.bm04Sections.filter((s) => base[s] || edits[s]).map((s) => {
+      const o = Object.assign({ sec: s }, base[s] || {}, edits[s] || {});
       return accepted && !o.ok ? Object.assign({}, o, { ok: true, text: 'Chấp nhận giải trình của đơn vị.', guide: '' }) : o;
     });
   }
   const bm04Round = () => 1 + Flow.state.vars.round;
-  const nok = () => D.cqcm.flatMap((c) => opinionsOf(c.id).filter((o) => !o.ok).map((o) => Object.assign({ cqcm: c.id }, o)));
+  const nok = () => selCqcm().flatMap((c) => opinionsOf(c.id).filter((o) => !o.ok).map((o) => Object.assign({ cqcm: c.id }, o)));
   const respOf = (c) => ((U().resp || {})[c]) || (D.responses[c] || {}).decision || 'Tiếp thu';
   const version = () => 1 + Flow.doneCount(27);
 
@@ -56,10 +68,12 @@
   /* Văn bản căn cứ hiện ở task 1: đúng loại đang chọn và hợp với quy trình. */
   const basisList = (bt) => D.basisDocs.filter((d) => d.type === bt && D.basisFits(proc(), d));
   function basisSel() {
-    const u = U(), bt = u.basisType || 'khcn', list = basisList(bt);
-    const doc = list.find((d) => d.id === u.basisDoc) || (u.basisDoc ? null : list[0]) || null;
+    const u = U(), bt = u.basisType || R().basisType, list = basisList(bt);
+    const doc = list.find((d) => d.id === u.basisDoc) || (u.basisDoc ? null : list.find((d) => d.id === R().basisDoc) || list[0]) || null;
     return { bt, list, doc };
   }
+  /* Căn cứ của hồ sơ: văn bản đang chọn ở task 01, chưa hợp lệ thì văn bản của hồ sơ mẫu. */
+  const basisDoc = () => basisSel().doc || D.basisDocs.find((d) => d.id === R().basisDoc);
   const cmpBox = (r) => `<div class="cmp">
     ${kv('Quy trình đã chọn', esc(r.process))}${kv('Điều kiện của quy trình', esc(condOf(r.process)))}
     ${kv('Tổng giá trị hiện tại', ty(r.total) + ' tỷ')}${kv('Quy trình phù hợp', esc(r.suggest))}</div>`;
@@ -94,20 +108,20 @@
     const est = D.aiEstimate;
     const off = !Flow.inRange(proc(), est);
     if (off) ba('Cảnh báo mềm (không chặn) khi giá trị dự kiến lệch điều kiện quy trình; kiểm tra chính thức ở cổng sau task 10.');
-    ba('Nguồn vốn chọn từ danh mục Nguồn vốn (Quản trị hệ thống › Danh mục dùng chung); nguồn vốn dừng hoạt động không hiện trong ô chọn (P-33). Chấp nhận gợi ý AI thì tự chọn Vốn KHCN.');
+    ba('Nguồn vốn chọn từ danh mục Nguồn vốn (Quản trị hệ thống › Danh mục dùng chung); nguồn vốn dừng hoạt động không hiện trong ô chọn (P-33). Chấp nhận gợi ý AI thì tự chọn nguồn vốn AI trích từ căn cứ.');
     ba('Bỏ trường "Loại xử lý" (Tạo mới / Điều chỉnh): Điều chỉnh thuộc MS02, ngoài phạm vi. Hồ sơ Mật thì mặc định ký cứng.');
     qChip('P-02'); qChip('P-26');
     return `${off ? `<div class="banner-bad">Giá trị dự kiến khoảng ${ty(est, 0)} tỷ, lệch điều kiện của quy trình ${esc(proc())} (${esc(condOf(proc()))}). Hệ thống sẽ kiểm tra lại sau khi có báo giá.</div>` : ''}
       ${card('Thông tin cơ bản ĐXMS', `<div class="grid2">
         <div class="span2">${field('Tên đề xuất', input(Flow.ci().title), true)}</div>
-        ${field('Mục đích mua sắm', vSelect({ id: 'b-purpose', value: 'KHCN', options: [['DT', 'Duy trì thường xuyên'], ['SX', 'Liên tục SXKD'], ['KHCN', 'Triển khai hoạt động KHCN'], ['QP', 'QP-AN-CT']].map(([v, l]) => ({ value: v, label: l })) }), true)}
+        ${field('Mục đích mua sắm', vSelect({ id: 'b-purpose', value: R().purposeCode, options: [['DT', 'Duy trì thường xuyên'], ['SX', 'Liên tục SXKD'], ['KHCN', 'Triển khai hoạt động KHCN'], ['QP', 'QP-AN-CT']].map(([v, l]) => ({ value: v, label: l })) }), true)}
         ${field('Người phụ trách', input(`${persona('minh').name} — ${D.caseInfo.unit}`, 'disabled'))}
         <div class="span2">${field('Mục đích (thuyết minh)', area(val('purposeText', '')), true)}</div>
         <div class="span2">${field('Phạm vi, quy mô', area(val('scope', '')), true)}</div>
         ${field('Nguồn vốn', vSelect({ id: 'b-fund', value: fundOf(u, st), searchable: true, placeholder: 'Chọn nguồn vốn', options: fundOptions(fundOf(u, st)), onChange: (v) => Flow.setUi('fund', v) }), true)}${field('Thời gian thực hiện', input(val('period', '')), true)}
         ${field('Mật', radios([opt('secret', false, 'Không', !u.secret), opt('secret', true, 'Có', !!u.secret)]), true, 'Mặc định theo loại ĐXMS.')}
-        ${field('Mức ưu tiên', radios(['Thường', 'Khẩn', 'Thượng khẩn'].map((x) => opt('priority', x, x, (u.priority || 'Khẩn') === x))), true)}</div>`)}
-      ${ai('AI gợi ý từ căn cứ 1482/QĐ-VHT', D.aiBasic.map((a) => {
+        ${field('Mức ưu tiên', radios(['Thường', 'Khẩn', 'Thượng khẩn'].map((x) => opt('priority', x, x, (u.priority || D.caseInfo.priority) === x))), true)}</div>`)}
+      ${ai(`AI gợi ý từ căn cứ ${esc(basisDoc().no)}`, D.aiBasic.map((a) => {
         const s = st[a.key];
         return `<div class="ai-item ${s || ''}"><div class="k">${esc(a.label)}</div>
           ${s === 'edited' ? `<textarea class="vctl ta" rows="3" data-ui-in="ed_${a.key}">${esc(u['ed_' + a.key] || a.value)}</textarea>` : `<div class="v">${esc(a.value)}</div>`}
@@ -121,8 +135,10 @@
   const propOf = (i) => { const p = (U().prop || {})[i.n]; return p == null ? i.prop : p; };
 
   function scr05() {
-    ba('Trừ lùi: mỗi dòng đã dùng ở ĐXMS khác bị trừ (dòng 1 đã dùng 4 bộ ở ĐXMS khác nên còn 20). Dòng 5 không có trong dự toán/eBOM: chỉ cảnh báo, không chặn (mặc định theo BBLV 09/09).');
-    ba('Căn cứ thiếu thông tin → chọn "Thiếu thông tin căn cứ" để quay lại task 04. Nguồn eBOM là dữ liệu giả lập.');
+    ba('Trừ lùi: số đã dùng ở ĐXMS khác bị trừ khỏi số lượng gốc của căn cứ.'
+      + D.items.filter((i) => i.used).map((i) => ` Dòng ${i.n} đã dùng ${i.used} ở ĐXMS khác nên còn ${i.bom - i.used}.`).join(''));
+    D.items.filter((i) => i.warn).forEach((i) => ba(`Dòng ${i.n} không có trong dự toán/eBOM: chỉ cảnh báo, không chặn (mặc định theo BBLV 09/09).`));
+    ba(`Căn cứ thiếu thông tin → chọn "Thiếu thông tin căn cứ" để quay lại task 04. Nguồn bóc tách (${esc(R().src)}) là dữ liệu giả lập.`);
     qChip('P-03');
     const rows = D.items.map((i) => {
       const rem = lineRemain(i), p = propOf(i), bad = rem != null && p > rem;
@@ -131,29 +147,33 @@
         <td class="r num">${i.used ? `<span class="used" title="${esc(D.usedIn[i.n] || '')}">${i.used}</span>` : i.used == null ? '-' : 0}</td>
         <td class="r num"><b>${rem == null ? '-' : rem}</b></td>
         <td class="r"><input class="vctl num-in ${bad ? 'err' : ''}" type="number" min="0" value="${p}" data-uimap-in="prop" data-k="${i.n}">${bad ? '<div class="err-t">Vượt số còn lại</div>' : ''}</td>
-        <td>${i.group === 1 ? 'Nhóm 1' : 'Nhóm 2'}</td></tr>`;
+        <td>${i.group ? 'Nhóm ' + i.group : '-'}</td></tr>`;
     }).join('');
     return `${card('Cấu trúc căn cứ', `<ul class="tree">${D.tree.map((n) => `<li class="${n.warn ? 'warn' : ''}"><b>${esc(n.name)}</b>${n.children ? `<ul>${n.children.map((c) => `<li>${esc(c.name)} <span class="faint">(${c.lines.length} dòng)</span></li>`).join('')}</ul>` : ` <span class="faint">(${n.lines.length} dòng)</span>`}</li>`).join('')}</ul>
-        <p class="msg">Nguồn: eBOM dự án gNodeB-G2.</p>`)}
+        <p class="msg">Nguồn: ${esc(R().src)}.</p>`)}
       ${card('Bóc tách danh mục hàng hoá', table('<th class="ord">STT</th><th>Hàng hoá / dịch vụ</th><th style="width:80px">ĐVT</th><th class="r" style="width:80px">SL gốc</th><th class="r" style="width:80px">Đã dùng</th><th class="r" style="width:80px">Còn lại</th><th class="r" style="width:110px">SL đề xuất</th><th style="width:100px">Nhóm YCBG</th>', rows))}`;
   }
 
   function scr06() {
-    ba('Khả dụng = tồn sổ sách − hàng đang giữ cho tờ trình khác. Dòng 4: 8 − 2 = 6, nên SL mua giảm từ 40 xuống 34. ĐTMS gửi yêu cầu rà soát ở task 06, ĐVĐX xác nhận ở task 07.');
+    ba('Khả dụng = tồn sổ sách − hàng đang giữ cho tờ trình khác; mặc định dùng từ kho tối đa bằng số đề xuất.'
+      + D.items.filter((i) => i.stock).map((i) => ` Dòng ${i.n}: ${i.book != null ? i.book : i.stock} − ${i.held || 0} = ${i.stock}, SL mua ${i.prop} → ${i.buy}.`).join('')
+      + ' ĐTMS gửi yêu cầu rà soát ở task 06, ĐVĐX xác nhận ở task 07.');
+    if (D.items.some((i) => i.stock && !i.buy)) ba('Hạng mục dùng hết từ tồn kho: SL mua = 0, không đưa vào YCBG (nhóm YCBG để trống).');
     qChip('P-04');
     const fs = U().fromStock || {};
     const rows = D.items.map((i) => {
-      const avail = i.stock == null ? null : i.stock, use = fs[i.n] != null ? fs[i.n] : (avail || 0);
-      const buy = propOf(i) - use;
-      return `<tr ${i.n === 4 ? 'class="hl-row"' : ''}><td class="ord">${i.n}</td><td><span class="clamp">${esc(i.name)}</span></td><td class="r num">${propOf(i)}</td>
-        <td class="r num">${i.n === 4 ? 8 : i.stock == null ? '-' : 0}</td><td class="r num">${i.n === 4 ? '2 <div class="sub">ĐXMS-2026-0098</div>' : i.stock == null ? '-' : 0}</td>
+      const avail = i.stock == null ? null : i.stock, max = Math.min(avail || 0, propOf(i));
+      const use = fs[i.n] != null ? fs[i.n] : max, buy = propOf(i) - use;
+      const book = i.book != null ? i.book : avail;
+      return `<tr ${avail ? 'class="hl-row"' : ''}><td class="ord">${i.n}</td><td><span class="clamp">${esc(i.name)}</span></td><td class="r num">${propOf(i)}</td>
+        <td class="r num">${book == null ? '-' : book}</td><td class="r num">${i.held ? `${i.held} <div class="sub">${esc(i.heldFor)}</div>` : i.stock == null ? '-' : 0}</td>
         <td class="r num"><b>${avail == null ? '-' : avail}</b></td>
-        <td class="r">${avail ? `<input class="vctl num-in" type="number" min="0" max="${avail}" value="${use}" data-uimap-in="fromStock" data-k="${i.n}">` : '<span class="faint">-</span>'}</td>
+        <td class="r">${avail ? `<input class="vctl num-in" type="number" min="0" max="${max}" value="${use}" data-uimap-in="fromStock" data-k="${i.n}">` : '<span class="faint">-</span>'}</td>
         <td class="r num"><b>${buy}</b>${buy !== propOf(i) ? `<div class="sub">${propOf(i)} → ${buy}</div>` : ''}</td></tr>`;
     }).join('');
     return `${card('Trạng thái rà soát tồn kho', vSteps({ id: 'rstk', steps: [
         { title: 'Gửi yêu cầu rà soát', sub: Flow.dateOf(Math.max(0, Flow.state.clock - 1)), state: 'completed' },
-        { title: 'Quản lý kho trả kết quả', sub: 'RSTK-2026-0311', state: 'completed' },
+        { title: 'Quản lý kho trả kết quả', sub: R().rstk, state: 'completed' },
         { title: 'Xác nhận số dùng từ kho', sub: 'ĐVĐX', state: 'active' }] }))}
       ${card('Kết quả rà soát', table('<th class="ord">STT</th><th>Hàng hoá</th><th class="r" style="width:90px">SL đề xuất</th><th class="r" style="width:90px">Tồn sổ sách</th><th class="r" style="width:110px">Đang giữ</th><th class="r" style="width:80px">Khả dụng</th><th class="r" style="width:110px">Dùng từ kho</th><th class="r" style="width:90px">SL mua</th>', rows))}`;
   }
@@ -175,7 +195,7 @@
     const u = U(), ns = nccSel(), want = u.nccGoods ? [u.nccGoods] : itemGoods();
     const list = window.Catalog.rows('nha-cung-cap').filter((r) => r.active && (r.goods || []).some((x) => want.includes(x)));
     const banned = (r) => !!(r.ban && r.ban.until);
-    const g = (n) => D.items.filter((i) => i.group === n).map((i) => `<li>${i.n}. ${esc(i.name)} — ${i.buy} ${esc(i.uom)} <span class="faint">· ${esc(goodsName(i.goods))}</span></li>`).join('');
+    const g = (n) => buyItems().filter((i) => i.group === n).map((i) => `<li>${i.n}. ${esc(i.name)} — ${i.buy} ${esc(i.uom)} <span class="faint">· ${esc(goodsName(i.goods))}</span></li>`).join('');
     const rows = list.map((r) => `<tr data-ncc="${r.code}"><td class="ord"><label class="check"><input type="checkbox" ${ns.includes(r.code) && !banned(r) ? 'checked' : ''} ${banned(r) ? 'disabled' : ''}
         data-uitoggle="nccSel" data-k="${r.code}" data-all='${JSON.stringify(nccDefault())}' aria-label="Chọn ${esc(r.name)}"></label></td>
       <td>${esc(r.code)}</td><td><span class="clamp">${esc(r.name)}</span><div class="sub">${esc(r.email)}</div></td>
@@ -183,7 +203,7 @@
       <td>${!r.ban ? badge('Bình thường', 'default') : r.ban.until ? badge('Cấm đến ' + r.ban.until, 'error') : badge('Hạn chế', 'warning')}</td></tr>`).join('');
     const picked = ns.filter((c) => list.some((r) => r.code === c && !banned(r))).length;
     return `${card('YCBG nhóm 1 — Hàng hoá, dịch vụ mua sẵn', `<ul class="plain">${g(1)}</ul>`)}
-      ${card('YCBG nhóm 2 — Hàng hoá sản xuất theo yêu cầu', `<ul class="plain">${g(2)}</ul><p class="msg">Kèm chỉ tiêu kỹ thuật và bản vẽ buồng đo (tệp BOM).</p>`)}
+      ${g(2) ? card('YCBG nhóm 2 — Hàng hoá sản xuất theo yêu cầu', `<ul class="plain">${g(2)}</ul>${R().group2Note ? `<p class="msg">${esc(R().group2Note)}</p>` : ''}`) : ''}
       ${card('Nhà cung cấp nhận YCBG', `<div class="ycbg-filter">${vSelect({ id: 'b-ncc-goods', value: u.nccGoods || null, clear: true, placeholder: 'Tất cả ngành hàng của hạng mục',
           options: itemGoods().map((c) => ({ value: c, label: goodsName(c) })), onChange: (v) => Flow.setUi('nccGoods', v) })}</div>
         ${table('<th class="ord"></th><th style="width:130px">Mã nhà cung cấp</th><th style="min-width:220px">Tên nhà cung cấp</th><th style="min-width:150px">Ngành hàng</th><th style="width:170px">Tình trạng</th>',
@@ -194,24 +214,25 @@
   function quoteAttempt() { return Math.max(1, Flow.doneCount(9)); }
   /* Kịch bản: lần YCBG đầu Không đạt. Báo giá đã từng đạt (quay lại từ 10a) hoặc sao chép từ hồ sơ cũ thì không lặp lại. */
   function quoteFail() {
-    return quoteAttempt() === 1 && !Flow.state.replaces && !Flow.state.history.some((h) => h.task === 10 && h.action === 'Báo giá đạt');
+    return R().quoteFailFirst && quoteAttempt() === 1 && !Flow.state.replaces && !Flow.state.history.some((h) => h.task === 10 && h.action === 'Báo giá đạt');
   }
 
   function scr07b() {
     const fail = quoteFail();
     qChip('P-06');
     ba('Tên và loại tiền của nhà cung cấp lấy từ danh mục Nhà cung cấp; báo giá bằng ngoại tệ được quy đổi sang VNĐ.');
-    ba('Kịch bản: lần gửi YCBG đầu Không đạt (NCC Gamma hết hiệu lực) → "Không đạt — gửi lại YCBG" về task 09; lần 2 Đạt.');
-    const head = D.items.map((i) => `<th class="r">Dòng ${i.n}</th>`).join('');
+    ba(R().quoteFailFirst ? 'Kịch bản: lần gửi YCBG đầu Không đạt (NCC Gamma hết hiệu lực) → "Không đạt — gửi lại YCBG" về task 09; lần 2 Đạt.' : 'Kịch bản: báo giá đạt ngay lần gửi YCBG đầu.');
+    if (buyItems().length < D.items.length) ba('Chỉ so sánh các dòng có SL mua > 0 (dòng dùng hết từ tồn kho không gửi YCBG).');
+    const head = buyItems().map((i) => `<th class="r">Dòng ${i.n}</th>`).join('');
     const rows = D.quotes.map((q) => {
       const expired = fail && q.ncc === 'NCC-000003', cur = D.nccOf(q.ncc).currency || 'VNĐ';
       return `<tr><td><b>${esc(nccName(q.ncc))}</b><div class="sub">Ngày ${q.date} · ${esc(cur === 'VNĐ' ? cur : cur + ' → VNĐ')}</div></td>
         <td class="${expired ? 'bad' : ''}">${expired ? q.valid : (q.validRetry && !fail ? q.validRetry : q.valid)}</td>
-        ${D.items.map((i) => { const p = q.prices[i.n]; const min = Math.min(...D.quotes.map((x) => x.prices[i.n])); return `<td class="r num ${p === min ? 'best' : ''} ${expired && i.n === 3 ? 'bad' : ''}">${ty(p)}</td>`; }).join('')}</tr>`;
+        ${buyItems().map((i) => { const p = q.prices[i.n]; const min = Math.min(...D.quotes.map((x) => x.prices[i.n])); return `<td class="r num ${p === min ? 'best' : ''} ${expired && i.n === 3 ? 'bad' : ''}">${ty(p)}</td>`; }).join('')}</tr>`;
     }).join('');
     return `${card('So sánh báo giá (đơn giá, tỷ đồng, gồm VAT)', table(`<th>Nhà cung cấp</th><th style="width:110px">Hiệu lực đến</th>${head}`, rows), `${badge(`Lần gửi YCBG: ${quoteAttempt()}`, 'info')}${badge('3/3 NCC đã phản hồi', 'default')}`)}
       ${fail ? ai('Kết quả kiểm tra báo giá', `<ul class="plain"><li>${esc(nccName('NCC-000003'))}: báo giá hết hiệu lực từ 20/09/2026, dùng cho dòng 3 (buồng đo OTA).</li><li>Cần ít nhất 3 báo giá còn hiệu lực cho mỗi dòng.</li></ul><p class="msg">Chọn “Không đạt — gửi lại YCBG” để gửi lại yêu cầu báo giá cho ${esc(nccName('NCC-000003'))}.</p>`, 'fail')
-        : ai('Kết quả kiểm tra báo giá', '<ul class="plain"><li>3/3 báo giá còn hiệu lực, đủ 5 dòng.</li><li>Đơn giá thấp nhất mỗi dòng được tô xanh, dùng làm cơ sở giá.</li></ul>', 'pass')}
+        : ai('Kết quả kiểm tra báo giá', `<ul class="plain"><li>3/3 báo giá còn hiệu lực, đủ ${buyItems().length} dòng.</li><li>Đơn giá thấp nhất mỗi dòng được tô xanh, dùng làm cơ sở giá.</li></ul>`, 'pass')}
       ${flowLabel()}`;
   }
   /* Xem trước cổng "Giá trị khớp quy trình đã chọn?" chạy ngay sau khi bấm "Báo giá đạt". */
@@ -230,7 +251,7 @@
     ba(`Ngưỡng lấy từ Ngưỡng phân luồng tại ngày tạo hồ sơ (${esc(condOf(r.process))}), tính trên tổng kinh phí gồm VAT, sau khi đã trừ tồn kho. Quy trình phù hợp dựa trên giá trị và căn cứ đang chọn (${esc((basisSel().doc || {}).no || '—')}).`);
     ba(`Sửa lại → task 10. Hồ sơ mẫu có giá trị cố định ${ty(r.total)} tỷ nên trên prototype sẽ lại không khớp.`);
     ba('Chuyển quy trình → task 10b tạo hồ sơ Phê duyệt mới <b>của cùng ĐXMS</b> (không tạo ĐXMS mới), làm lại từ task 01 với dữ liệu đã sao chép sẵn. Không dùng migration process instance của Camunda. Lựa chọn nào cũng bắt buộc ghi lý do.');
-    const copy = ['Căn cứ và phạm vi', 'Thông tin cơ bản', 'Danh mục hàng hoá sau trừ lùi', 'Kết quả rà soát tồn kho RSTK-2026-0311', 'Yêu cầu báo giá và 3 báo giá'];
+    const copy = ['Căn cứ và phạm vi', 'Thông tin cơ bản', 'Danh mục hàng hoá sau trừ lùi', `Kết quả rà soát tồn kho ${R().rstk}`, 'Yêu cầu báo giá và 3 báo giá'];
     return `<div class="banner-bad">Giá trị hồ sơ không khớp quy trình đã chọn. Hồ sơ chưa được chuyển sang bước dự thảo.</div>
       ${card('Kết quả kiểm tra khớp quy trình', cmpBox(r))}
       ${card('Sửa lại', '<p>Dùng khi nhập sai báo giá hoặc giá trị. Hồ sơ quay về bước Tổng hợp và kiểm tra báo giá; sau khi sửa, hệ thống kiểm tra khớp lại.</p>')}
@@ -240,40 +261,54 @@
         checks.map((c, i) => `<tr><td class="ord">${i + 1}</td><td class="num">${Flow.dateOf(c.t)}</td><td class="r num">${ty(c.total)}</td><td>${esc(c.process)}</td><td>${c.ok ? badge('Khớp', 'success') : badge('Không khớp', 'error')}</td></tr>`).join(''))) : ''}`;
   }
 
+  /* Tờ trình BM-01 (≥ 160 tỷ) hoặc BM-09 (< 160 tỷ, P-19) — cùng 10 mục nội dung; BM-09 có thêm ô PHÊ DUYỆT ở đầu và khối chữ ký
+     thẩm định ở cuối. ro = bản trình ký (không còn nút bổ sung). */
+  function docBody(ro) {
+    const u = U(), d = R().doc;
+    const sec = (n, title, inner, req) => `<div class="doc-sec"><h4>${n}. ${title}${req ? ' <span class="req">*</span>' : ''}</h4>${inner}</div>`;
+    const need = ro || u.necessity ? `<p>${esc(d.necessity)}</p>`
+      : `<p class="missing">Chưa có nội dung.</p><button class="vbtn sm secondary" data-ui="necessity" data-v="true">${icon('spark')} Bổ sung theo gợi ý AI</button>`;
+    const s = small() ? bm09Signs() : null;
+    return `<div class="doc">
+      ${s ? `<div class="doc-sec"><h4>PHÊ DUYỆT</h4><p>${esc(persona('tgd').name)} — Tổng Giám đốc · ${esc(s.tgd.st)}${s.tgd.at ? ' ' + s.tgd.at : ''}</p></div>` : ''}
+      ${sec(1, 'Sự cần thiết', need, true)}
+      ${sec(2, 'Mục đích', `<p>${esc(D.aiBasic[0].value)}</p>`)}
+      ${sec(3, 'Phạm vi, quy mô', `<p>${esc(D.aiBasic[1].value)}</p>`)}
+      ${sec(4, 'Tổng kinh phí (gồm VAT)', `<p>${vv(d.total)}</p>`)}
+      ${sec(5, 'Phương pháp tính, cơ sở đơn giá', `<p>Đơn giá thấp nhất trong 3 báo giá hợp lệ (${esc(D.quotes.map((q) => nccName(q.ncc)).join(', '))}).</p>`)}
+      ${sec(6, 'Phương án kỹ thuật – công nghệ', `<p>${esc(d.tech)}</p>`)}
+      ${sec(7, 'Nguồn vốn', `<p>${esc(d.fund ? vv(d.fund) : D.caseInfo.fund)}.</p>`)}
+      ${sec(8, 'Sử dụng hàng tồn kho', `<p class="auto">“${esc(d.stock)}” <span class="faint">(câu tự động)</span></p>`)}
+      ${sec(9, 'Biện pháp thực hiện', `<p>${esc(vv(d.measures))}.</p>`)}
+      ${sec(10, 'Kế hoạch tổ chức thực hiện', `<p>${esc(d.plan)}</p>`)}
+      ${s ? `<div class="doc-sec"><h4>Thẩm định</h4><p>CQCM về ĐTXD (TTMS): ${esc(persona('lan').name)} · ${esc(s.ttms.st)}</p><p>Phó Tổng Giám đốc: ${esc(persona('binh').name)} · ${esc(s.ptgd.st)}</p></div>` : ''}</div>`;
+  }
+
   function scr08() {
     const u = U(), tab = u.t08 || 'bm01';
     const rej = Flow.lastOf(13);
     qChip('P-07');
-    ba('AI kiểm tra hồ sơ khi bấm Gửi: Fail thì trả lại ngay (hồ sơ chưa gửi); Pass thì người vẫn phải xác nhận. Chỉ huy không đồng ý → AI lọc nội dung chưa đạt (task 14).');
-    const tabs = [['bm01', 'BM-01 Tờ trình'], ['cp', 'Phụ lục chi phí'], ['bm02', 'BM-02'], ['cl01', 'Checklist 01'], ['files', 'Tài liệu đính kèm']];
+    if (small()) { qChip('P-19'); ba('Luồng < 160 tỷ: Tờ trình BM-09 + Checklist 02 thay BM-01 + Checklist 01 (task 11). BM-09 cùng các mục nội dung với BM-01, thêm ô PHÊ DUYỆT ở đầu và khối chữ ký thẩm định ở cuối — Thủ trưởng phê duyệt ngay trên văn bản này (task 60).'); }
+    ba(`AI kiểm tra hồ sơ khi bấm Gửi: Fail thì trả lại ngay (hồ sơ chưa gửi); Pass thì người vẫn phải xác nhận. Chỉ huy không đồng ý → AI lọc nội dung chưa đạt (task 14), hồ sơ về task ${pad2(draftTask())}.`);
+    const tabs = [['bm01', `${tt()} Tờ trình`], ['cp', 'Phụ lục chi phí'], ['bm02', 'BM-02'], ['cl01', clName()], ['files', 'Tài liệu đính kèm']];
     let body = '';
     if (tab === 'bm01') {
-      body = `<div class="doc">
-        <div class="doc-sec"><h4>1. Sự cần thiết <span class="req">*</span></h4>${u.necessity ? `<p>${esc('Nhiệm vụ gNodeB thế hệ 2 bước vào giai đoạn thử nghiệm hệ thống (2027). Năng lực đo kiểm RF/OTA hiện có chỉ đáp ứng 30% nhu cầu, phải thuê ngoài khoảng 14 tỷ đồng/năm.')}</p>` : `<p class="missing">Chưa có nội dung.</p><button class="vbtn sm secondary" data-ui="necessity" data-v="true">${icon('spark')} Bổ sung theo gợi ý AI</button>`}</div>
-        <div class="doc-sec"><h4>2. Mục đích</h4><p>${esc(D.aiBasic[0].value)}</p></div>
-        <div class="doc-sec"><h4>3. Phạm vi, quy mô</h4><p>${esc(D.aiBasic[1].value)}</p></div>
-        <div class="doc-sec"><h4>4. Tổng kinh phí (gồm VAT)</h4><p><b>182.900.000.000 đồng</b> <i>(Một trăm tám mươi hai tỷ, chín trăm triệu đồng)</i>. Trong đó: thiết bị 173,90 tỷ; dịch vụ 9,00 tỷ.</p></div>
-        <div class="doc-sec"><h4>5. Phương pháp tính, cơ sở đơn giá</h4><p>Đơn giá thấp nhất trong 3 báo giá hợp lệ (${esc(D.quotes.map((q) => nccName(q.ncc)).join(', '))}).</p></div>
-        <div class="doc-sec"><h4>6. Phương án kỹ thuật – công nghệ</h4><p>Thiết bị đo đến 44 GHz, hỗ trợ FR1/FR2; buồng đo OTA đạt chuẩn 3GPP TS 38.141-2.</p></div>
-        <div class="doc-sec"><h4>7. Nguồn vốn</h4><p>${esc(D.caseInfo.fund)}.</p></div>
-        <div class="doc-sec"><h4>8. Sử dụng hàng tồn kho</h4><p class="auto">“Đơn vị sử dụng 06 bộ kit hiệu chuẩn tồn kho khả dụng theo kết quả rà soát RSTK-2026-0311; số lượng đề xuất mua giảm tương ứng.” <span class="faint">(câu tự động)</span></p></div>
-        <div class="doc-sec"><h4>9. Biện pháp thực hiện</h4><p>${Flow.doneCount(27) ? esc(D.versionDiff[0].to) : esc(D.versionDiff[0].from)}.</p></div>
-        <div class="doc-sec"><h4>10. Kế hoạch tổ chức thực hiện</h4><p>LCNT: 01–03/2027 · Ký HĐ: 04/2027 · Giao hàng, nghiệm thu: 05–09/2027.</p></div></div>`;
+      body = docBody(false);
     } else if (tab === 'cp') {
       const t = Flow.doneCount(27);
       body = table(`<th class="ord">STT</th><th>Hàng hoá</th><th class="r">SL mua</th><th class="r">Đơn giá</th><th class="r">Thành tiền</th><th>Cơ sở giá</th>${t ? '<th>Loại chi phí</th>' : ''}`,
-        D.items.map((i) => `<tr><td class="ord">${i.n}</td><td>${esc(i.name)}</td><td class="r num">${i.buy}</td><td class="r num">${ty(i.price)}</td><td class="r num">${ty(i.amount)}</td><td>Báo giá ${esc(nccName('NCC-000001'))}</td>${t ? '<td>TSCĐ</td>' : ''}</tr>`).join('')
+        D.items.map((i) => `<tr><td class="ord">${i.n}</td><td>${esc(i.name)}</td><td class="r num">${i.buy}</td><td class="r num">${ty(i.price)}</td><td class="r num">${ty(i.amount)}</td><td>${i.buy ? `Báo giá ${esc(nccName('NCC-000001'))}` : 'Dùng tồn kho'}</td>${t ? `<td>${esc(i.cost)}</td>` : ''}</tr>`).join('')
         + `<tr><td></td><td colspan="3"><b>Tổng</b></td><td class="r num"><b>${ty(D.caseInfo.total)}</b></td><td></td>${t ? '<td></td>' : ''}</tr>`);
     } else if (tab === 'bm02') {
-      body = '<div class="doc"><div class="doc-sec"><h4>Thuyết minh ĐXMS (BM-02)</h4><p>Hệ thống sinh sẵn từ BM-01 và phụ lục chi phí. Phụ lục 1 (giải trình ý kiến) được điền khi lập giải trình.</p></div></div>';
+      body = `<div class="doc"><div class="doc-sec"><h4>Thuyết minh ĐXMS (BM-02)</h4><p>Hệ thống sinh sẵn từ ${tt()} và phụ lục chi phí. Phụ lục 1 (giải trình ý kiến) được điền khi lập giải trình.</p></div></div>`;
     } else if (tab === 'cl01') {
       body = checklistTable();
     } else {
-      body = `<ul class="plain files">${['1482-QD-VHT.pdf (căn cứ)', 'Bao-gia-Alpha.pdf, Bao-gia-Beta.pdf, Bao-gia-Gamma.pdf', 'RSTK-2026-0311.xlsx (kết quả tồn kho)', 'eBOM-gNodeB-G2-Do-kiem.xlsx'].map((x) => `<li>${icon('file')} ${esc(x)}</li>`).join('')}</ul>`;
+      body = `<ul class="plain files">${R().doc.files.map((x) => `<li>${icon('file')} ${esc(x)}</li>`).join('')}</ul>`;
     }
-    return `${rej && rej.action === 'Không đồng ý' && Flow.doneCount(12) === Flow.doneCount(13) ? ai(`Chỉ huy đơn vị trả lại: “${esc(rej.reason || '')}”`, '<ul class="plain"><li>AI lọc nội dung chưa đạt: mục “Kế hoạch tổ chức thực hiện” chưa có mốc giao hàng từng lô.</li></ul>', 'fail', 'Trả lại') : ''}
-      ${u.aiFail && !u.necessity ? ai('AI kiểm tra hồ sơ', '<ul class="plain"><li>BM-01 thiếu mục bắt buộc <b>“Sự cần thiết”</b> (QT 10.2.1, BM-01 mục 1).</li></ul><p class="msg">Hồ sơ chưa được gửi. Bổ sung rồi bấm gửi lại.</p>', 'fail', 'Fail') : ''}
-      ${u.necessity ? ai('AI kiểm tra hồ sơ', '<p class="msg">Đủ 10/10 mục bắt buộc của BM-01. Khi bấm Gửi, AI kiểm tra lại lần cuối.</p>', 'pass', 'Sẵn sàng') : ''}
+    return `${rej && rej.action === 'Không đồng ý' && Flow.doneCount(draftTask()) === Flow.doneCount(13) ? ai(`Chỉ huy đơn vị trả lại: “${esc(rej.reason || '')}”`, '<ul class="plain"><li>AI lọc nội dung chưa đạt: mục “Kế hoạch tổ chức thực hiện” chưa có mốc giao hàng từng lô.</li></ul>', 'fail', 'Trả lại') : ''}
+      ${u.aiFail && !u.necessity ? ai('AI kiểm tra hồ sơ', `<ul class="plain"><li>${tt()} thiếu mục bắt buộc <b>“Sự cần thiết”</b> (QT 10.2.1, ${tt()} mục 1).</li></ul><p class="msg">Hồ sơ chưa được gửi. Bổ sung rồi bấm gửi lại.</p>`, 'fail', 'Fail') : ''}
+      ${u.necessity ? ai('AI kiểm tra hồ sơ', `<p class="msg">Đủ 10/10 mục bắt buộc của ${tt()}. Khi bấm Gửi, AI kiểm tra lại lần cuối.</p>`, 'pass', 'Sẵn sàng') : ''}
       <section class="vcard pad24"><div class="vcard-h"><h3>Hồ sơ ĐXMS</h3><span class="faint">Phiên bản v${version()}</span></div>
         <div class="tabs in-card">${tabs.map(([k, l]) => `<button class="tab ${k === tab ? 'on' : ''}" data-ui="t08" data-v='"${k}"'>${l}</button>`).join('')}</div>${body}</section>`;
   }
@@ -281,45 +316,52 @@
   function checklistTable(signed) {
     ba('Dòng checklist tự điền từ tài liệu đã có trên hồ sơ (§5.6).');
     return table('<th style="width:60px">Nhóm</th><th>Danh mục hồ sơ</th><th style="width:130px">Số văn bản</th><th style="width:90px">Yêu cầu</th><th style="width:130px">Tình trạng</th>',
-      D.checklist.map((c) => { const ok = c.by == null ? null : Flow.taskStatus(c.by) !== 'todo' || c.by === 12; return `<tr><td>${c.g}</td><td>${esc(c.name)}</td><td>${esc(c.no)}</td><td>${c.req}</td><td>${ok == null ? badge('Không có', 'default') : ok ? badge('Đủ', 'success') : badge('Thiếu', 'warning')}</td></tr>`; }).join(''))
+      D.checklist.map((c) => { const ok = c.by == null ? null : Flow.taskStatus(c.by) !== 'todo' || c.by === draftTask(); return `<tr><td>${c.g}</td><td>${esc(c.name)}</td><td>${esc(c.no)}</td><td>${c.req}</td><td>${ok == null ? badge('Không có', 'default') : ok ? badge('Đủ', 'success') : badge('Thiếu', 'warning')}</td></tr>`; }).join(''))
       + (signed ? `<p class="msg">${signed}</p>` : '');
   }
 
   function scr09() {
-    ba('AI Pass nhưng chỉ huy vẫn phải xác nhận. Không đồng ý → AI liệt kê nội dung chưa đạt cho ĐVĐX (task 14), hồ sơ về task 12.');
-    return `${ai('AI kiểm tra hồ sơ', '<ul class="plain"><li>Đủ mục bắt buộc BM-01, BM-02, Checklist 01.</li><li>Tổng giá trị khớp phụ lục chi phí (182,90 tỷ).</li></ul>', 'pass', 'Pass')}
-      ${card('Tóm tắt dự thảo', `<div class="ginfo">${kv('Tên', esc(Flow.ci().title), true)}${kv('Căn cứ', '1482/QĐ-VHT')}${kv('Giá trị', '182,90 tỷ (5 hạng mục)')}
-        ${kv('Nguồn vốn', esc(D.caseInfo.fund))}${kv('Thời gian', esc(D.caseInfo.period))}${kv('Quy trình', `${esc(proc())} ${badge('Khớp giá trị', 'success')}`)}</div>`)}
+    const total = D.caseInfo.total;
+    ba(`AI Pass nhưng chỉ huy vẫn phải xác nhận. Không đồng ý → AI liệt kê nội dung chưa đạt cho ĐVĐX (task 14), hồ sơ về task ${pad2(draftTask())}.`);
+    return `${ai('AI kiểm tra hồ sơ', `<ul class="plain"><li>Đủ mục bắt buộc ${tt()}, BM-02, ${clName()}.</li><li>Tổng giá trị khớp phụ lục chi phí (${ty(total)} tỷ).</li></ul>`, 'pass', 'Pass')}
+      ${card('Tóm tắt dự thảo', `<div class="ginfo">${kv('Tên', esc(Flow.ci().title), true)}${kv('Căn cứ', esc(basisDoc().no))}${kv('Giá trị', `${ty(total)} tỷ (${buyItems().length} hạng mục)`)}
+        ${kv('Nguồn vốn', esc(D.caseInfo.fund))}${kv('Thời gian', esc(D.caseInfo.period))}${kv('Quy trình', `${esc(proc())}${small() ? ` · ${tt()} + ${clName()}` : ''} ${badge('Khớp giá trị', 'success')}`)}</div>`)}
       ${card('Cơ cấu chi phí', table('<th class="ord">STT</th><th>Hạng mục</th><th class="r" style="width:140px">Thành tiền (tỷ)</th><th class="r" style="width:100px">Tỷ trọng</th>',
-        D.items.map((i) => `<tr><td class="ord">${i.n}</td><td>${esc(i.name)}</td><td class="r num">${ty(i.amount)}</td><td class="r num">${ty((i.amount / D.caseInfo.total) * 100, 1)}%</td></tr>`).join('')))}
-      ${card('Checklist 01', checklistTable())}`;
+        buyItems().map((i) => `<tr><td class="ord">${i.n}</td><td>${esc(i.name)}</td><td class="r num">${ty(i.amount)}</td><td class="r num">${ty((i.amount / total) * 100, 1)}%</td></tr>`).join('')))}
+      ${card(clName(), checklistTable())}`;
   }
 
   function scr10() {
-    const u = U(), cs = u.cqcmSel || D.cqcm.map((c) => c.id);
+    const cs = Flow.cqcmSel(), must = small() ? ['TC'] : [];
     const back = Flow.lastOf(17);
     qChip('P-05');
     ba('Danh sách CQCM được chuyển TTMS xác nhận đúng chức năng, đủ thành phần (task 17, N07) trước khi hệ thống gửi yêu cầu thẩm định. Ban Kế hoạch, Ban ĐTXD không dùng trong demo nên không hiện.');
+    if (must.length) { qChip('P-25'); ba('Hồ sơ < 160 tỷ: Ban Tài chính bắt buộc theo QT B8.2 — hệ thống tích sẵn và khoá; TTMS vẫn xác nhận toàn bộ danh sách ở bước sau (P-25).'); }
     ba('BBLV 22/09: trình chỉ huy ĐVĐX phải kèm phiếu yêu cầu thẩm định (BM-03) đã ký nháy.');
     return `${back && /^Chưa/.test(back.action) && Flow.doneCount(16) === Flow.doneCount(17) ? ai(`TTMS trả lại danh sách CQCM: “${esc(back.reason || '')}”`, '<p class="msg">Cập nhật danh sách rồi gửi lại TTMS xác nhận.</p>', 'fail', 'Trả lại') : ''}
-      ${card('Chọn cơ quan chuyên môn (CQCM) góp ý', `<div class="checks col">${D.cqcm.map((c) => `<label class="check"><input type="checkbox" ${cs.includes(c.id) ? 'checked' : ''} data-uitoggle="cqcmSel" data-k="${c.id}" data-all='${JSON.stringify(D.cqcm.map((x) => x.id))}'> ${esc(c.unit)} <span class="faint">— ${esc(persona(c.doer).name)}</span></label>`).join('')}</div>
+      ${card('Chọn cơ quan chuyên môn (CQCM) góp ý', `<div class="checks col">${D.cqcm.map((c) => { const lock = must.includes(c.id); return `<label class="check"><input type="checkbox" ${cs.includes(c.id) || lock ? 'checked' : ''} ${lock ? 'disabled' : ''} data-uitoggle="cqcmSel" data-k="${c.id}" data-all='${JSON.stringify(cs)}'> ${esc(c.unit)} <span class="faint">— ${esc(persona(c.doer).name)}${lock ? ' · bắt buộc' : ''}</span></label>`; }).join('')}</div>
         <div class="grid2">${field('Hạn góp ý', input(Flow.dateOf(Flow.state.clock + 5)))}${field('Đầu mối tiếp nhận', input(persona('minh').name))}</div>`)}
       ${card('Phiếu yêu cầu thẩm định đã ký nháy (BM-03) <span class="req">*</span>', `<div>${fileBtn('bm03File', `BM-03_${fileCode()}_ky-nhay.pdf`)}</div>`)}
       ${card('BM-03 — Phiếu yêu cầu thẩm định', `<div class="doc paper"><p class="c"><b>PHIẾU YÊU CẦU THẨM ĐỊNH</b><br>Số: ……/PYC-TTVT · Ngày ${Flow.dateOf(Flow.state.clock)}</p>
-        <p>Kính gửi: ${cs.map(cqcmUnit).join('; ') || '<i>chưa chọn</i>'}.</p><p>Trung tâm Vô tuyến đề nghị thẩm định hồ sơ <b>${esc(Flow.ci().code)}</b> — ${esc(Flow.ci().title)}, giá trị 182,90 tỷ đồng.</p>
+        <p>Kính gửi: ${cs.map(cqcmUnit).join('; ') || '<i>chưa chọn</i>'}.</p><p>${esc(D.caseInfo.unit)} đề nghị thẩm định hồ sơ <b>${esc(Flow.ci().code)}</b> — ${esc(Flow.ci().title)}, giá trị ${ty(D.caseInfo.total)} tỷ đồng.</p>
         <p>Hạn gửi ý kiến (BM-04): ${Flow.dateOf(Flow.state.clock + 5)}.</p><p class="r">GIÁM ĐỐC TRUNG TÂM<br><br><i>${esc(persona('hai').name)}</i></p></div>`)}`;
   }
 
   /* ---------- Giai đoạn 2–4 ---------- */
   /* SCR-22 — TTMS xác nhận danh sách CQCM (task 17, N07). */
   function scr22() {
-    const cs = U().cqcmSel || D.cqcm.map((c) => c.id);
+    const cs = Flow.cqcmSel();
     const fn = { PC: 'Pháp lý, hợp đồng, quy chế LCNT', TC: 'Tài chính kế toán, nguồn vốn, cơ cấu chi phí', CL: 'Chất lượng, chỉ tiêu kỹ thuật thiết bị đo' };
+    /* Thành phần AI đối chiếu: < 160 tỷ cần Tài chính (bắt buộc, QT B8.2) và Chất lượng; ≥ 160 tỷ cần thêm Ban Pháp chế. */
+    const need = [['TC', small() ? 'Hồ sơ dưới 160 tỷ → CQCM Tài chính bắt buộc (QT B8.2)' : 'Hồ sơ có hạng mục dịch vụ và nguồn vốn → cần CQCM Tài chính'],
+      ['CL', 'Có hàng hoá cần chỉ tiêu kỹ thuật → cần CQCM Chất lượng']].concat(small() ? [] : [['PC', 'Áp dụng Quy chế LCNT → cần Ban Pháp chế']]);
+    const full = need.every(([id]) => cs.includes(id));
     qChip('P-05');
+    if (small()) qChip('P-25');
     ba('Đúng, đủ → hệ thống trình ký BM-03 và gửi yêu cầu tới các CQCM (task 18). Chưa đúng/đủ → trả ĐVĐX cập nhật (task 16).');
     return `${card('Danh sách CQCM do đơn vị đề xuất chọn', table('<th>CQCM</th><th>Chức năng liên quan</th><th style="width:170px">Người xử lý</th><th style="width:150px">Đánh giá</th>',
         D.cqcm.filter((c) => cs.includes(c.id)).map((c) => `<tr><td><b>${esc(c.unit)}</b></td><td>${esc(fn[c.id] || '')}</td><td><span class="row">${avatar(c.doer, 'sm')} ${esc(persona(c.doer).short)}</span></td><td>${badge('Đúng chức năng', 'success')}</td></tr>`).join('')))}
-      ${ai('AI đối chiếu thành phần CQCM', '<ul class="plain"><li>Hồ sơ có hạng mục dịch vụ và nguồn vốn KHCN → cần CQCM Tài chính: <b>có</b>.</li><li>Có thiết bị đo cần chỉ tiêu kỹ thuật → cần CQCM Chất lượng: <b>có</b>.</li><li>Áp dụng Quy chế LCNT → cần Ban Pháp chế: <b>có</b>.</li></ul>', 'pass', 'Đủ thành phần')}
+      ${ai('AI đối chiếu thành phần CQCM', `<ul class="plain">${need.map(([id, t]) => `<li>${esc(t)}: <b>${cs.includes(id) ? 'có' : 'chưa có'}</b>.</li>`).join('')}</ul>`, full ? 'pass' : 'fail', full ? 'Đủ thành phần' : 'Thiếu thành phần')}
       ${card('Phiếu yêu cầu thẩm định (BM-03)', `<div class="ginfo">${kv('Hồ sơ', esc(Flow.ci().code))}${kv('Hạn góp ý', Flow.dateOf(Flow.state.clock + 5))}${kv('Tệp ký nháy', `<span class="file">${icon('file')} BM-03_${fileCode()}_ky-nhay.pdf</span>`, true)}</div>`)}`;
   }
 
@@ -341,14 +383,29 @@
     return taskDone ? badge('Đã ký', 'success') : badge(name || 'Đang chờ', 'warning');
   }
 
+  /* Hồ sơ vừa bị trả về task 25 → 26 từ bước ký / phê duyệt (BM-05, BM-09, Tập đoàn, Thủ trưởng): lượt xử lý có lý do ngay trước task 25. */
+  function returnedFrom() {
+    const h = Flow.state.history, i = h.map((x) => x.task).lastIndexOf(25);
+    for (let k = i - 1; k >= 0; k--) {
+      if (h[k].system) { if (h[k].task === 24 || h[k].task === 23) return null; continue; }
+      return h[k].reason ? h[k] : null;
+    }
+    return null;
+  }
+
   function scr12() {
-    const list = nok();
+    const list = nok(), back = returnedFrom();
     const signedBy = Flow.state.history.filter((h) => h.task === 20 && /^Đồng ý/.test(h.action)).map((h) => h.cqcm);
     qChip('P-22');
     ba('Có ý kiến "Không đồng ý" → lập giải trình (task 28), hồ sơ quay lại chỉ huy ĐVĐX (task 13) rồi gửi CQCM lập lại BM-04; đồng ý sửa toàn bộ → hoàn chỉnh hồ sơ (task 27). AI kiểm tra xung đột ở task 24, tóm tắt ở task 25.');
     if (Flow.state.vars.round > 0) ba(`Đây là kết quả BM-04 lần ${pad2(bm04Round())}, sau khi ĐVĐX giải trình.`);
-    return `${card('Trạng thái phiếu BM-04', table('<th>CQCM</th><th>Người lập / chỉ huy</th><th style="width:70px">Lần</th><th style="width:120px">Ký</th><th style="width:100px">Không OK</th>',
-        D.cqcm.map((c) => `<tr><td><b>${esc(c.unit)}</b></td><td>${esc(persona(c.doer).short)} / ${esc(persona(c.signer).short)}</td><td>${pad2(bm04Round())}</td><td>${signStatus(signedBy.includes(c.id))}</td><td>${opinionsOf(c.id).filter((o) => !o.ok).length}</td></tr>`).join('')),
+    if (back) {
+      if (small()) qChip('P-18');
+      ba(`Hồ sơ bị trả lại từ task ${esc(String(back.task))} → AI tóm tắt nội dung cần sửa (task 25) → ĐVĐX cập nhật ${tt()} (task 26, 27), CQCM kiểm tra và ký lại theo phiên bản mới (MS01 v1.1).`);
+    }
+    return `${back ? `<div class="banner-bad">Hồ sơ bị trả lại ở bước “${esc(Flow.taskName(back.task))}” — ${esc(persona(back.who).name)}: “${esc(back.reason)}”</div>` : ''}
+      ${card('Trạng thái phiếu BM-04', table('<th>CQCM</th><th>Người lập / chỉ huy</th><th style="width:70px">Lần</th><th style="width:120px">Ký</th><th style="width:100px">Không OK</th>',
+        selCqcm().map((c) => `<tr><td><b>${esc(c.unit)}</b></td><td>${esc(persona(c.doer).short)} / ${esc(persona(c.signer).short)}</td><td>${pad2(bm04Round())}</td><td>${signStatus(signedBy.includes(c.id))}</td><td>${opinionsOf(c.id).filter((o) => !o.ok).length}</td></tr>`).join('')),
         Flow.state.vars.round > 0 ? roundBadge() : '')}
       ${ai('AI kiểm tra xung đột giữa các BM-04', '<p class="msg">Không có cặp ý kiến mâu thuẫn giữa các CQCM trên cùng một mục của BM-01.</p>', 'pass', 'Không có xung đột')}
       ${ai(`AI tóm tắt ${list.length} ý kiến Không OK`, table('<th style="width:150px">CQCM</th><th style="width:130px">Mục</th><th>Ý kiến</th><th style="width:210px">Quyết định của đơn vị</th>',
@@ -359,9 +416,9 @@
   function explainTable(editable) {
     const list = nok();
     return table('<th class="ord">STT</th><th>Ý kiến nhận xét</th><th style="width:130px">Tiếp thu / Bảo lưu</th><th>Nội dung giải trình</th><th style="width:130px">Tham chiếu</th>',
-      list.map((o, i) => { const d = respOf(o.cqcm); const r = D.responses[o.cqcm] || {}; return `<tr><td class="ord">${i + 1}</td><td><b>${esc(cqcmUnit(o.cqcm))}</b> · ${esc(o.sec)}<div class="sub">${esc(o.text)}</div></td>
+      list.map((o, i) => { const d = respOf(o.cqcm); const r = D.responses[o.cqcm] || {}; const txt = (d === 'Bảo lưu' && r.keepText) || r.text || ''; return `<tr><td class="ord">${i + 1}</td><td><b>${esc(cqcmUnit(o.cqcm))}</b> · ${esc(o.sec)}<div class="sub">${esc(o.text)}</div></td>
         <td>${d === 'Bảo lưu' ? badge('Bảo lưu', 'warning') : badge('Tiếp thu', 'success')}</td>
-        <td>${editable ? `<textarea class="vctl ta" rows="2">${esc(r.text || '')}</textarea>` : esc(r.text || '')}</td><td>${esc(r.ref || '')}</td></tr>`; }).join(''));
+        <td>${editable ? `<textarea class="vctl ta" rows="2">${esc(txt)}</textarea>` : esc(txt)}</td><td>${esc(r.ref || '')}</td></tr>`; }).join(''));
   }
 
   function diffTable() {
@@ -371,8 +428,9 @@
 
   function scr13(tok) {
     if (tok.task === 27) {
-      ba('Các phiên bản sửa phải được CQCM kiểm tra và ký lại BM-04 cùng Checklist 01 (task 35–37).');
-      return `${ai('Việc cần sửa theo ý kiến đã tiếp thu', `<ul class="plain">${nok().filter((o) => respOf(o.cqcm) === 'Tiếp thu').map((o) => `<li>${esc(o.sec)}: ${esc(o.guide || o.text)}</li>`).join('')}<li>Nguồn vốn (CQCM đã chấp nhận giải trình): ghi chú loại chi phí để làm rõ.</li></ul>`)}
+      ba(`Các phiên bản sửa phải được CQCM kiểm tra và ký lại BM-04 cùng ${clName()} (task 35–37). Sửa trên ${tt()}.`);
+      const accepted = Flow.state.vars.round > 0 ? selCqcm().filter((c) => respOf(c.id) === 'Bảo lưu') : [];
+      return `${ai('Việc cần sửa theo ý kiến đã tiếp thu', `<ul class="plain">${nok().filter((o) => respOf(o.cqcm) === 'Tiếp thu').map((o) => `<li>${esc(o.sec)}: ${esc(o.guide || o.text)}</li>`).join('')}${accepted.map((c) => `<li>${esc(c.unit)} đã chấp nhận giải trình: ghi chú làm rõ trong hồ sơ.</li>`).join('')}</ul>`)}
         ${card('So sánh phiên bản', diffTable(), badge('Tạo phiên bản mới khi gửi', 'info'))}`;
     }
     qChip('P-08'); qChip('P-22');
@@ -388,27 +446,30 @@
       ba('Task 30 (hệ thống) đã gửi cảnh báo và yêu cầu họp tới ĐVĐX, các CQCM, TTMS.');
       return `${ai('Cảnh báo vượt số vòng giải trình', `<p>Hồ sơ ${esc(Flow.ci().code)} đã qua <b>${Flow.state.vars.round}</b> vòng giải trình, vượt ngưỡng 2. Đã gửi yêu cầu họp tới đơn vị đề xuất, các CQCM và TTMS.</p>`, 'fail', 'Vượt ngưỡng')}
         ${card('Tổ chức họp thống nhất', `<div class="grid2">${field('Thời gian', input(`${Flow.dateOf(Flow.state.clock + 1)} · 14:00`))}${field('Địa điểm', input('Phòng họp 3, tầng 5'))}</div>
-          ${field('Thành phần', `<div class="row">${['minh', 'hai', 'hoa', 'thu', 'quang', 'lan'].map((p) => `<span class="chip">${avatar(p, 'sm')} ${esc(persona(p).short)}</span>`).join('')}</div>`)}`)}
+          ${field('Thành phần', `<div class="row">${['minh', 'hai'].concat(selCqcm().map((c) => c.doer), ['lan']).map((p) => `<span class="chip">${avatar(p, 'sm')} ${esc(persona(p).short)}</span>`).join('')}</div>`)}`)}
         ${card('Nội dung còn vướng mắc', explainTable(false))}`;
     }
     if (n === 32) {
       ba('Đã thống nhất → ĐVĐX hoàn chỉnh hồ sơ (task 27). Chưa thống nhất → TTMS trình cấp cao hơn (task 33).');
       return card('Cập nhật kết quả cuộc họp', `${field('Biên bản họp', `<div>${fileBtn('minutesFile', `Bien-ban-hop-${fileCode()}.pdf`)}</div>`, true)}
-        ${field('Kết luận', area('Các bên thống nhất: đơn vị bổ sung ghi chú loại chi phí; Ban Tài chính chấp nhận giải trình về TSCĐ.'))}`);
+        ${field('Kết luận', area('Các bên thống nhất phương án xử lý các ý kiến còn vướng mắc; đơn vị hoàn chỉnh hồ sơ theo kết luận cuộc họp.'))}`);
     }
     if (n === 33) {
       ba('Sau họp vẫn chưa thống nhất: hồ sơ, biên bản và bảng giải trình được trình Thủ trưởng VHT kết luận (task 34).');
       return card('Trình cấp cao hơn kết luận', explainTable(false));
     }
-    ba('Thống nhất phương án → ĐVĐX hoàn chỉnh hồ sơ (task 27). Yêu cầu xử lý lại → hồ sơ về bước hoàn thiện dự thảo (task 12).');
+    ba(`Thống nhất phương án → ĐVĐX hoàn chỉnh hồ sơ (task 27). Yêu cầu xử lý lại → hồ sơ về bước hoàn thiện dự thảo (task ${pad2(draftTask())}).`);
+    if (small()) { qChip('P-23'); ba('BPMN v1.1 chỉ vẽ "Yêu cầu xử lý lại" nối về task 12 (≥ 160 tỷ); hồ sơ < 160 tỷ về task 11 (dự thảo BM-09) — P-23.'); }
     return card('Kết luận nội dung chưa thống nhất', `${explainTable(false)}${field('Kết luận', area('Chấp nhận giải trình của đơn vị; đơn vị hoàn chỉnh hồ sơ theo kết luận.'))}`);
   }
 
   function scr15(tok) {
     const c = tok.cqcm;
     if (tok.task === 36) {
-      ba(`Ký theo phiên bản v${version()}; không dùng lại kết quả ký của phiên bản cũ (N05). Luồng ≥ 160 tỷ dùng Checklist 01. Các CQCM ký đủ → AI soạn BM-05 (task 41).`);
-      return card(`Checklist 01 — ${esc(cqcmUnit(c))}`, checklistTable(`Chữ ký CQCM trên Checklist 01 gắn với phiên bản v${version()}.`), badge(`Phiên bản v${version()}`, 'info'));
+      ba(`Ký theo phiên bản v${version()}; không dùng lại kết quả ký của phiên bản cũ (N05). ` + (small()
+        ? 'Luồng < 160 tỷ ký BM-04 + Checklist 02. Các CQCM ký đủ → TTMS ‖ Phó TGĐ ký thẩm định trực tiếp trên BM-09 (task 38 ‖ 39).'
+        : 'Luồng ≥ 160 tỷ dùng Checklist 01. Các CQCM ký đủ → AI soạn BM-05 (task 41).'));
+      return card(`${clName()} — ${esc(cqcmUnit(c))}`, checklistTable(`Chữ ký CQCM trên ${clName()} gắn với phiên bản v${version()}.`), badge(`Phiên bản v${version()}`, 'info'));
     }
     ba('Chưa đạt → hồ sơ quay về ĐVĐX hoàn chỉnh (task 27) và các phiếu kiểm tra song song bị huỷ.');
     const firstNok = Object.entries(D.opinions[c] || {}).filter(([, o]) => !o.ok);
@@ -426,9 +487,12 @@
   function scr16(tok) {
     const n = tok.task;
     if (n === 48) {
+      const doc = basisDoc(), lock = (Flow.choices(48).find((c) => c.lockWhen) || { lockWhen: () => null }).lockWhen(Flow.state.vars);
       ba('TTMS tự quyết định có báo cáo TGĐ Tập đoàn hay không; hệ thống không tự suy theo giá trị (N06). Có → AI soạn Công văn BM-06 (task 49). Không → hệ thống sinh dự thảo Quyết định BM-08 (task 57).');
+      if (lock) { qChip('P-24'); ba('MS01.02: căn cứ đã được CT/TGĐ Tập đoàn phê duyệt nên lựa chọn "Có báo cáo TGĐ Tập đoàn" bị khoá; hồ sơ bỏ task 49–56 (P-24 — v1.1 không có nhánh riêng cho MS01.02).'); }
       return `${ai('BM-05 đã ký đủ', '<ul class="plain"><li>TTMS ký với tư cách CQCM về ĐTXD.</li><li>CQCM Tài chính/liên quan và Phó TGĐ chuyên trách đã ký.</li></ul>', 'pass', 'Đã ký đủ')}
-        ${card('Xác định có cần báo cáo TGĐ Tập đoàn', `<div class="ginfo">${kv('Căn cứ', '1482/QĐ-VHT — <b>chưa</b> được CT/TGĐ Tập đoàn phê duyệt', true)}${kv('Tổng giá trị', '182,90 tỷ đồng (≥ 160 tỷ)')}</div>`)}`;
+        ${lock ? `<div class="banner-moved">${esc(lock)}</div>` : ''}
+        ${card('Xác định có cần báo cáo TGĐ Tập đoàn', `<div class="ginfo">${kv('Căn cứ', `${esc(doc.no)} — <b>${doc.group ? 'đã' : 'chưa'}</b> được CT/TGĐ Tập đoàn phê duyệt`, true)}${kv('Tổng giá trị', `${ty(D.caseInfo.total)} tỷ đồng (≥ 160 tỷ)`)}</div>`)}`;
     }
     qChip('P-10');
     ba('AI soạn dự thảo BM-05 từ hồ sơ, BM-04 và bảng giải trình (task 41). Xác nhận đủ điều kiện → hệ thống trình ký BM-05 cho TTMS qua VOffice (task 44); TTMS ký xong mới giao ký các thành phần còn lại (task 45).');
@@ -439,7 +503,7 @@
   }
 
   function scr17() {
-    const cs = U().cqcmSel || D.cqcm.map((c) => c.id);
+    const cs = Flow.cqcmSel();
     const ttms = Flow.lastOf(43);
     qChip('P-11'); qChip('P-12');
     ba('TTMS ký trước (task 44); CQCM Tài chính/liên quan (task 46) ‖ Phó TGĐ chuyên trách (task 47) ký song song. Ba trạng thái hiển thị riêng: Không ký / Chưa ký / Không đồng ý. Một bên không đồng ý → hệ thống tóm tắt lý do, trả ĐVĐX (task 25).');
@@ -458,7 +522,7 @@
       ba('AI soạn BM-06 từ BM-05 và hồ sơ (task 49).');
       if (n === 51) ba('BBLV 22/09: đính kèm tệp ở cả hai lựa chọn Đồng ý / Không đồng ý.');
       body = `${card('BM-06 Công văn báo cáo TGĐ Tập đoàn', `<div class="ai-inline">${icon('spark')} AI soạn từ BM-05 và hồ sơ</div><div class="doc paper">
-        <p>Kính gửi: Tổng Giám đốc Tập đoàn (qua Ban Đầu tư - Xây dựng)</p><p>VHT báo cáo đề xuất mua sắm <b>${esc(Flow.ci().title)}</b>, giá trị 182,90 tỷ đồng, căn cứ QĐ 1482/QĐ-VHT (chưa được CT/TGĐ Tập đoàn phê duyệt), đã được thẩm định theo BM-05.</p>
+        <p>Kính gửi: Tổng Giám đốc Tập đoàn (qua Ban Đầu tư - Xây dựng)</p><p>VHT báo cáo đề xuất mua sắm <b>${esc(Flow.ci().title)}</b>, giá trị ${ty(D.caseInfo.total)} tỷ đồng, căn cứ ${esc(basisDoc().no)} (${basisDoc().group ? 'đã' : 'chưa'} được CT/TGĐ Tập đoàn phê duyệt), đã được thẩm định theo BM-05.</p>
         <p>VHT kính đề nghị Tổng Giám đốc Tập đoàn cho ý kiến để VHT phê duyệt ĐXMS.</p></div>`)}
         ${n === 51 ? card('Tệp đính kèm khi xác nhận <span class="req">*</span>', `<div>${fileBtn('bm06File', 'BM-06_ky-nhay.pdf')}</div>`) : ''}`;
     } else {
@@ -474,17 +538,62 @@
     const n = tok.task;
     if (n === 60) { qChip('P-14'); ba('Sau phê duyệt: nút "Tạo gói thầu (Đợt 2)" liên thông sang Kế hoạch LCNT — ngoài phạm vi nên không hiện. Yêu cầu hoàn chỉnh → AI tóm tắt nội dung cần sửa, trả ĐVĐX (task 25).'); }
     ba('Dự thảo BM-08 do hệ thống tự sinh (task 57).');
-    const attach = [`Checklist 01 (đã ký v${version()})`, 'BM-02 kèm phụ lục giải trình', 'BM-04 × 3 CQCM', 'BM-05 Báo cáo thẩm định (đã ký đủ)'].concat(Flow.state.vars.reportTD ? ['BM-06, BM-07, ý kiến TGĐ Tập đoàn'] : []);
+    if (Flow.state.vars.process === 'MS01.02') ba('MS01.02: hồ sơ kèm không có BM-06, BM-07 (không báo cáo Tập đoàn — P-24).');
+    const attach = [`Checklist 01 (đã ký v${version()})`, 'BM-02 kèm phụ lục giải trình', `BM-04 × ${selCqcm().length} CQCM`, 'BM-05 Báo cáo thẩm định (đã ký đủ)'].concat(Flow.state.vars.reportTD ? ['BM-06, BM-07, ý kiến TGĐ Tập đoàn'] : []);
     return `${card('BM-08 Quyết định phê duyệt ĐXMS (dự thảo)', `<div class="doc paper"><p class="c"><b>QUYẾT ĐỊNH</b><br>Về việc phê duyệt đề xuất mua sắm ${esc(Flow.ci().title.toLowerCase())}</p>
-        <p><b>Điều 1.</b> Phê duyệt đề xuất mua sắm với nội dung: tên ${esc(Flow.ci().title)}; tổng giá trị 182.900.000.000 đồng (gồm VAT); nguồn vốn ${esc(D.caseInfo.fund)}; thời gian ${esc(D.caseInfo.period)}; danh mục 5 hạng mục (phụ lục kèm theo).</p>
-        <p><b>Điều 2.</b> Trung tâm Vô tuyến chủ trì tổ chức lựa chọn nhà thầu theo Quy chế LCNT của Tập đoàn; TTMS, Ban Tài chính phối hợp.</p>
+        <p><b>Điều 1.</b> Phê duyệt đề xuất mua sắm với nội dung: tên ${esc(Flow.ci().title)}; tổng giá trị ${vnd(D.caseInfo.total)} đồng (gồm VAT); nguồn vốn ${esc(D.caseInfo.fund)}; thời gian ${esc(D.caseInfo.period)}; danh mục ${buyItems().length} hạng mục (phụ lục kèm theo).</p>
+        <p><b>Điều 2.</b> ${esc(D.caseInfo.unit)} chủ trì tổ chức lựa chọn nhà thầu theo Quy chế LCNT của Tập đoàn; TTMS, Ban Tài chính phối hợp.</p>
         <p><b>Điều 3.</b> Quyết định có hiệu lực từ ngày ký.</p><p class="r">TỔNG GIÁM ĐỐC<br><br><i>${esc(persona('tgd').name)}</i></p></div>`)}
       ${card('Hồ sơ kèm theo', `<ul class="plain files">${attach.map((a) => `<li>${icon('file')} ${esc(a)}</li>`).join('')}</ul>`)}`;
   }
 
-  const MAP = { 1: scr03, '10a': scr26, 4: scr04, 5: scr05, 7: scr06, 8: scr07a, 10: scr07b, 12: scr08, 13: scr09, 16: scr10, 17: scr22, 19: scr11, 20: scr11, 26: scr12,
-    27: scr13, 28: scr13, 31: scr14, 32: scr14, 33: scr14, 34: scr14, 35: scr15, 36: scr15, 42: scr16, 43: scr16, 48: scr16,
-    46: scr17, 47: scr17, 50: scr18, 51: scr18, 53: scr18, 54: scr18, 55: scr18, 56: scr18, 58: scr19, 59: scr19, 60: scr19 };
+  /* ---------- Nhánh < 160 tỷ (MS01.03): ký thẩm định và phê duyệt trực tiếp trên BM-09 ---------- */
+  /* Kết quả ký của phiên bản hiện tại: chỉ tính lượt sau lần dự thảo / hoàn chỉnh gần nhất (task 11, 27) — N05. */
+  function signOf(task) {
+    const h = Flow.state.history;
+    let from = 0;
+    h.forEach((x, i) => { if ((x.task === 11 || x.task === 27) && x.who) from = i + 1; });
+    const done = h.slice(from).filter((x) => String(x.task) === String(task) && x.who).pop();
+    if (done) return { st: /^Không|^Yêu cầu|^Chỉ đạo/.test(done.action) ? 'Không đồng ý' : 'Đã ký', at: Flow.dateOf(done.t) };
+    return { st: Flow.state.tokens.some((t) => String(t.task) === String(task)) ? 'Chưa ký' : 'Chưa trình ký', at: null };
+  }
+  const bm09Signs = () => ({ ttms: signOf(38), ptgd: signOf(39), tgd: signOf(60) });
+  const signBadge = (s) => badge(s.st, { 'Đã ký': 'success', 'Không đồng ý': 'error', 'Chưa ký': 'warning' }[s.st] || 'default');
+
+  function bm09SignCard(approve) {
+    const s = bm09Signs();
+    const row = (who, role, st, at) => `<tr><td><span class="row">${avatar(who, 'sm')} ${esc(persona(who).name)}</span></td><td>${esc(role)}</td><td>${st}</td><td class="num">${at || '-'}</td></tr>`;
+    return card('Khối chữ ký BM-09', table('<th style="width:230px">Người ký</th><th>Tư cách</th><th style="width:230px">Trạng thái</th><th style="width:120px">Thời điểm</th>',
+      row('lan', 'CQCM về ĐTXD (TTMS)', signBadge(s.ttms), s.ttms.at) + row('binh', 'Phó Tổng Giám đốc', signBadge(s.ptgd), s.ptgd.at)
+      + selCqcm().map((c) => row(c.doer, `CQCM ${c.unit}`, badge('Đã thể hiện qua BM-04 + Checklist 02', 'info'), null)).join('')
+      + (approve ? row('tgd', 'Người có thẩm quyền — ô PHÊ DUYỆT', signBadge(s.tgd), s.tgd.at) : '')));
+  }
+
+  /* SCR-23 — task 38 (TTMS) ‖ 39 (Phó TGĐ): ký thẩm định trực tiếp trên BM-09. */
+  function scr23() {
+    qChip('P-20');
+    ba('Luồng < 160 tỷ không lập BM-05: sau khi các CQCM ký BM-04 + Checklist 02 (task 36–37), TTMS và Phó TGĐ ký song song trên BM-09 (task 38 ‖ 39); hệ thống tổng hợp kết quả ký từ VOffice (task 40) rồi trình Thủ trưởng (task 60).');
+    ba('Ô CQCM Tài chính và CQCM liên quan trên mẫu BM-09 không ký riêng: ý kiến đã thể hiện qua BM-04 + Checklist 02 (P-20). Không đồng ý → hệ thống huỷ lượt ký còn lại, AI tóm tắt lý do, trả ĐVĐX (task 25 → 26 — P-18).');
+    return `${bm09SignCard(false)}
+      ${card('BM-09 Tờ trình đề xuất mua sắm (bản trình ký)', docBody(true), badge(`Phiên bản v${version()}`, 'info'))}
+      ${card('Hồ sơ kèm theo', `<ul class="plain files">${[`Checklist 02 (đã ký v${version()})`, `BM-04 × ${selCqcm().length} CQCM`, 'BM-02 kèm phụ lục chi phí'].map((a) => `<li>${icon('file')} ${esc(a)}</li>`).join('')}</ul>`)}`;
+  }
+
+  /* SCR-24 — task 60 nhánh < 160 tỷ: Thủ trưởng phê duyệt trên chính Tờ trình BM-09 (không có Quyết định BM-08). */
+  function scr24() {
+    const kpi = Flow.kpiUsed(), lim = D.kpiLimit[proc()] || 20;
+    qChip('P-18'); qChip('P-21');
+    ba('Không có Quyết định riêng (BM-08): Thủ trưởng ký vào ô "PHÊ DUYỆT" trên Tờ trình BM-09 đã đủ chữ ký thẩm định. Yêu cầu hoàn chỉnh → AI tóm tắt nội dung cần sửa, trả ĐVĐX (task 25 → 26, P-18).');
+    ba(`KPI thẩm định MS01.03: ${lim} NLV từ lúc gửi CQCM (task 18) tới phê duyệt (task 60) — QT 10.2.1, v1.1 không ghi (P-21).`);
+    return `${card('Tình trạng hồ sơ', `<div class="ginfo">${kv('KPI thẩm định', kpi === null ? '-' : `${ty(kpi, 1)} / ${lim} ngày làm việc ${kpi <= lim ? badge('Trong hạn', 'success') : badge('Quá hạn', 'error')}`)}${kv('Phiên bản trình', 'v' + version())}</div>`)}
+      ${bm09SignCard(true)}
+      ${card('BM-09 Tờ trình đề xuất mua sắm (đã đủ chữ ký thẩm định)', docBody(true))}
+      ${card('Hồ sơ kèm theo', `<ul class="plain files">${[`Checklist 02 (đã ký v${version()})`, `BM-04 × ${selCqcm().length} CQCM`, 'BM-02 kèm phụ lục chi phí'].map((a) => `<li>${icon('file')} ${esc(a)}</li>`).join('')}</ul>`)}`;
+  }
+
+  const MAP = { 1: scr03, '10a': scr26, 4: scr04, 5: scr05, 7: scr06, 8: scr07a, 10: scr07b, 11: scr08, 12: scr08, 13: scr09, 16: scr10, 17: scr22, 19: scr11, 20: scr11, 26: scr12,
+    27: scr13, 28: scr13, 31: scr14, 32: scr14, 33: scr14, 34: scr14, 35: scr15, 36: scr15, 38: scr23, 39: scr23, 42: scr16, 43: scr16, 48: scr16,
+    46: scr17, 47: scr17, 50: scr18, 51: scr18, 53: scr18, 54: scr18, 55: scr18, 56: scr18, 58: scr19, 59: scr19, 60: (tok) => (small() ? scr24(tok) : scr19(tok)) };
 
   function validate(tok, choice) {
     const n = tok.task, lbl = choice ? choice.label : '';
@@ -492,7 +601,7 @@
     if (n === 8 && !nccSel().length) return 'Bạn cần chọn ít nhất một nhà cung cấp.';
     if (n === 5 && D.items.some((i) => lineRemain(i) != null && propOf(i) > lineRemain(i)) && lbl.startsWith('Xác nhận')) return 'Có dòng vượt số lượng còn lại sau trừ lùi.';
     if (n === 10 && quoteFail() && lbl.startsWith('Báo giá đạt')) return 'Kết quả kiểm tra báo giá: Không đạt. Chọn “Không đạt — gửi lại YCBG”.';
-    if (n === 12 && !U().necessity) { Flow.setUi('aiFail', true); return 'AI kiểm tra hồ sơ: Fail — BM-01 thiếu mục “Sự cần thiết”. Hồ sơ chưa được gửi.'; }
+    if ((n === 11 || n === 12) && !U().necessity) { Flow.setUi('aiFail', true); return `AI kiểm tra hồ sơ: Fail — ${tt()} thiếu mục “Sự cần thiết”. Hồ sơ chưa được gửi.`; }
     if (n === 16) {
       if (!(U().cqcmSel || ['x']).length) return 'Bạn cần chọn ít nhất một CQCM.';
       if (!U().bm03File) return 'Bạn cần tải lên Phiếu yêu cầu thẩm định (BM-03) đã ký nháy.';

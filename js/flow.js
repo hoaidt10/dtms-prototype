@@ -50,10 +50,12 @@
     for (let n = 127; ; n++) { const c = 'ĐXMS-2026-' + String(n).padStart(4, '0'); if (!used.has(c)) return c; }
   }
 
-  /* Lưu ở SCR-25 = sinh mã hồ sơ + start instance của quy trình đã chọn; task 1 giao cho người tạo. */
+  /* Lưu ở SCR-25 = sinh mã hồ sơ + start instance của quy trình đã chọn; task 1 giao cho người tạo.
+     Dữ liệu mẫu (danh mục, báo giá, BM-04…) theo ĐXMS của hồ sơ (D.useCase — plan MS01.02/.03 §8.3 việc 3). */
   function start(opts) {
     opts = opts || {};
     S.dxms = opts.dxms || D.dxmsCode0;
+    D.useCase(S.dxms);
     if (!Flow.findDxms(S.dxms)) S.dxmsUser.push(demoDxms());
     S.code = opts.code || nextCaseCode(S.dxms, 'PD');
     S.name = opts.name || null;
@@ -87,7 +89,7 @@
     const r = rules().find((x) => total >= x.from && (x.to == null || total < x.to));
     if (!r) return S.vars.process;
     if (r.procs.length === 1) return r.procs[0];
-    const doc = D.basisDocs.find((d) => d.id === ((S.ui || {}).basisDoc || D.basisDocs[0].id));
+    const doc = D.basisDocs.find((d) => d.id === ((S.ui || {}).basisDoc || D.caseRef.basisDoc));
     const want = doc && doc.group ? 'MS01.02' : 'MS01.01';
     return r.procs.includes(want) ? want : r.procs[0];
   }
@@ -139,8 +141,8 @@
     if (f.fork) {
       if (isTask(key)) log(key, { system: true, action: T[key].name });
       if (f.kpiStart && S.kpiStart === null) S.kpiStart = S.clock;
-      const sel = S.ui && S.ui.cqcmSel;
-      window.D.cqcm.filter((c) => !sel || sel.includes(c.id)).forEach((c) => addToken(f.to, { group: f.fork, cqcm: c.id }));
+      const sel = Flow.cqcmSel();
+      window.D.cqcm.filter((c) => sel.includes(c.id)).forEach((c) => addToken(f.to, { group: f.fork, cqcm: c.id }));
       (f.also || []).forEach((b) => addToken(b.task, { group: f.fork }, b.who));
       return;
     }
@@ -202,18 +204,32 @@
     emit();
   }
 
-  /* Nút chính của task: `mainWhen(vars)` (tuỳ trạng thái) được ưu tiên hơn cờ `main`. */
+  /* Hồ sơ đi nhánh < 160 tỷ (MS01.03): nhãn / văn bản ký / màn thay thế theo `small`, `scrSmall` của D.flow. */
+  const isSmall = () => S.vars.big === false;
+  const choiceOf = (c) => (c && c.small && isSmall() ? Object.assign({}, c, c.small, { small: null }) : c);
+  const choicesOf = (key) => (F[key].choices || []).map(choiceOf);
+  const scrOf = (key) => (isSmall() && F[key].scrSmall) || F[key].scr;
+
+  /* Nút chính của task: `mainWhen(vars, ui)` (tuỳ trạng thái) được ưu tiên hơn cờ `main`. */
   function mainChoice(key) {
     const f = F[key];
     if (!f.choices) return null;
-    return f.choices.find((c) => (c.mainWhen ? c.mainWhen(S.vars) : c.main)) || null;
+    return choicesOf(key).find((c) => (c.mainWhen ? c.mainWhen(S.vars, S.ui) : c.main)) || null;
   }
 
-  /* Tua nhanh từ đầu theo nhánh chính cho tới khi có token ở task `target` (hoặc kết thúc). */
-  function fastForward(target, process) {
+  /* Bộ demo (D.demoSets): theo ĐXMS của hồ sơ đang chạy; chưa có hồ sơ thì theo bộ vừa chọn ở công cụ demo. */
+  const setOf = (key) => D.demoSets.find((d) => d.key === key) || D.demoSets[0];
+  const demoSet = () => (S.dxms && D.demoSets.find((d) => d.dxms === S.dxms)) || setOf(S.demoKey);
+
+  /* Tua nhanh từ đầu theo nhánh chính cho tới khi có token ở task `target` (hoặc kết thúc).
+     dxms = ĐXMS của hồ sơ (bộ dữ liệu mẫu); ui = lựa chọn đặt sẵn trên màn (vd. ĐVĐX bảo lưu ý kiến ở task 26). */
+  function fastForward(target, process, dxms, ui) {
+    const key = (D.demoSets.find((d) => d.dxms === (dxms || D.dxmsCode0)) || D.demoSets[0]).key;
     S = carry({ qNotes: S ? S.qNotes : {} }, fresh(process || 'MS01.01'));
-    if (target === 'NEW') { S.vars.process = null; return; }
-    start();
+    S.demoKey = key;
+    if (ui) S.ui = JSON.parse(JSON.stringify(ui));
+    if (target === 'NEW') { S.vars.process = null; D.useCase(dxms || D.dxmsCode0); return; }
+    start({ dxms });
     let guard = 0;
     while (S.status === 'running' && guard++ < 400) {
       if (target !== 'END' && S.tokens.some((t) => String(t.task) === String(target))) break;
@@ -237,10 +253,11 @@
     init() {
       S = load();
       if (!S || !S.tokens) { S = fresh(); save(); }
+      D.useCase(S.dxms || demoSet().dxms);
     },
     onChange(fn) { listeners.push(fn); },
     /* Về trạng thái chưa tạo hồ sơ — chạy lại từ SCR-25. */
-    reset() { const keep = S ? S.qNotes : {}; const p = S ? S.persona : 'minh'; S = fresh(); S.qNotes = keep; S.persona = p; emit(); },
+    reset() { const keep = S ? S.qNotes : {}; const p = S ? S.persona : 'minh'; S = fresh(); S.qNotes = keep; S.persona = p; D.useCase(D.dxmsCode0); emit(); },
     /* SCR-25 Lưu (loại Phê duyệt): start instance theo quy trình người dùng chọn; sau đó không đổi được quy trình.
        opts: { dxms, name }. Prototype chạy một hồ sơ: hồ sơ đang chạy trước đó (nếu có) được thay. */
     create(process, opts) {
@@ -293,20 +310,33 @@
       start({ code: to.code, dxms: old.dxms, name: old.title });
       emit();
     },
-    jumpToScene(n) {
-      const sc = window.D.scenes.find((s) => s.n === n);
+    /* Cảnh `n` của bộ demo `key` (mặc định bộ đang dùng). Trả về cảnh. */
+    jumpToScene(n, key) {
+      const set = key ? setOf(key) : demoSet();
+      const sc = set.scenes.find((s) => String(s.n) === String(n));
       const keep = S.qNotes;
-      fastForward(sc.start);
+      fastForward(sc.start, set.key, set.dxms);
       S.qNotes = keep; S.persona = sc.who; S.lastScene = n;
       emit();
+      return sc;
     },
-    /* Nhánh phụ: tua tới `task` (hồ sơ tạo theo `process`, mặc định MS01.01), đặt biến (vd. round) và vai. */
-    jumpTo(task, who, vars, process) {
+    /* Nhánh phụ: tua tới `task` (hồ sơ của `dxms` tạo theo `process`, mặc định ĐXMS-2026-0117 · MS01.01), đặt lựa chọn trên màn (ui),
+       biến (vd. round) và vai. */
+    jumpTo(task, who, vars, process, dxms, ui) {
       const keep = S.qNotes;
-      fastForward(task, process);
+      fastForward(task, process, dxms, ui);
       S.qNotes = keep; S.persona = who; Object.assign(S.vars, vars || {});
       emit();
     },
+    /* Công cụ demo › Chọn hồ sơ demo: đặt lại luồng về trước bước tạo hồ sơ của bộ `key` (ý kiến ❓ giữ nguyên). */
+    pickDemo(key) { return Flow.jumpToScene(setOf(key).scenes[0].n, key); },
+    demoSet,
+    /* CQCM đơn vị chọn ở task 16; chưa chọn thì theo hồ sơ mẫu (D.caseRef.cqcm). */
+    cqcmSel() { return (S.ui && S.ui.cqcmSel) || D.caseRef.cqcm; },
+    isSmall,
+    choices: choicesOf,
+    choiceOf,
+    scrOf,
     /* Hồ sơ đang chạy: dữ liệu mẫu + mã, tên, quy trình của instance. */
     /* Hồ sơ đang chạy: dữ liệu mẫu + mã, tên, quy trình của instance + thông tin ĐXMS cha (title = tên ĐXMS, name = tên hồ sơ). */
     ci() {

@@ -18,6 +18,7 @@
     if (r.startsWith('dmdc')) return 'dmdc';
     if (r.startsWith('quy-trinh')) return 'quy-trinh';
     if (r.startsWith('ma-tran')) return 'ma-tran';
+    if (r.startsWith('eform')) return 'eform';
     return r;
   }
 
@@ -63,8 +64,8 @@
     return null;
   }
 
-  /* Route cũ của Quy trình BPMN / Ma trận hành động trước khi tách menu Quản trị quy trình (D-2). */
-  const MOVED = { 'ph/quy-trinh': 'quy-trinh', 'ph/ma-tran': 'ma-tran/display-rule', 'ma-tran': 'ma-tran/display-rule', 'ph/dieu-chinh': 'ho-so-dxms' };
+  /* Route cũ của Quy trình BPMN / Ma trận hành động trước khi tách menu Quản trị quy trình (D-2); E-Form trước khi có màn thật (D-4). */
+  const MOVED = { 'ph/quy-trinh': 'quy-trinh', 'ph/ma-tran': 'ma-tran/display-rule', 'ma-tran': 'ma-tran/display-rule', 'ph/dieu-chinh': 'ho-so-dxms', 'ph/eform': 'eform' };
 
   function content(r) {
     const [a, b, c] = r.split('/');
@@ -88,37 +89,42 @@
     if (a === 'tong-quan') return S.tongQuan();
     if (a === 'cho-chot') return S.choChot();
     if (a === 'dmdc') return b ? window.Catalog.list(b) : window.Catalog.overview();
+    /* E-Form (D-4): SCR-49 danh sách; SCR-51 thiết kế eform/<id>/thiet-ke (B3). */
+    if (a === 'eform' && b && c === 'thiet-ke') return window.EForm.design(b);
+    if (a === 'eform') return window.EForm.list();
     const m = findMenu(r);
     if (m) return S.phanHe(m.item, m.group);
     return S.viecCuaToi();
   }
 
+  /* Công cụ demo: chọn hồ sơ demo (bộ D.demoSets — plan MS01.02/.03 §8.1), cảnh và nhánh phụ của bộ đang chọn. */
   function demoPanel() {
-    const st = Flow.state;
+    const st = Flow.state, set = Flow.demoSet();
     return `<div class="demo-fab"><button class="demo-btn ${demoOpen ? 'on' : ''}" id="demo" aria-label="Công cụ demo" title="Công cụ demo">${icon('tool')}</button>
       ${demoOpen ? `<div class="demo-panel">
         <h4>Công cụ demo (không thuộc giao diện app)</h4>
         <div class="row"><a class="btn sm secondary" href="#/chon-vai">Chọn vai</a></div>
+        <h4>Hồ sơ demo</h4>
+        <div class="row">${D.demoSets.map((d) => `<button class="btn sm ${d.key === set.key ? 'primary' : 'secondary'}" data-demo-set="${d.key}">${esc(d.label)}</button>`).join('')}</div>
         <h4>Việc đang chờ</h4>
         <div class="scene-list">${st.tokens.length ? st.tokens.map((k) => `<button data-persona="${k.who}"><span class="n">${esc(persona(k.who).short.slice(0, 2))}</span>${esc(persona(k.who).short)} · ${esc(Flow.taskName(k.task))}<span class="tk">task ${String(k.task).padStart(2, '0')}</span></button>`).join('') : '<span class="faint" style="font-size:12px">Không có việc đang chờ.</span>'}</div>
-        <h4>Nhảy tới cảnh (§2.4)</h4>
-        <div class="scene-list">${D.scenes.map((s) => `<button data-scene="${s.n}"><span class="n">${s.n}</span>${esc(s.name)}<span class="tk">task ${s.tasks}</span></button>`).join('')}</div>
-        <h4>Nhánh phụ (mở khi khách hỏi)</h4>
-        <div class="scene-list">${BRANCHES.map((b, i) => `<button data-branch="${i}"><span class="n">↳</span>${esc(b.name)}<span class="tk">task ${b.tasks}</span></button>`).join('')}</div>
+        <h4>Nhảy tới cảnh · ${esc(set.label)}</h4>
+        <div class="scene-list">${set.scenes.map((s) => `<button data-scene="${s.n}"><span class="n">${s.n}</span>${esc(s.name)}<span class="tk">task ${s.tasks}</span></button>`).join('')}</div>
+        ${set.branches.length ? `<h4>Nhánh phụ (mở khi khách hỏi)</h4>
+        <div class="scene-list">${set.branches.map((b, i) => `<button data-branch="${i}"><span class="n">↳</span>${esc(b.name)}<span class="tk">task ${b.tasks}</span></button>`).join('')}</div>` : ''}
         <h4>Hồ sơ</h4>
         <div class="row"><button class="btn sm secondary" id="reset">Reset luồng</button><a class="btn sm secondary" href="#/ho-so">Chi tiết hồ sơ</a><a class="btn sm secondary" href="#/cho-chot">Điểm ❓ (${Object.keys(st.qNotes).length}/${Object.keys(D.openPoints).length})</a></div>
-        <div class="faint" style="font-size:12px;margin-top:8px">Nhảy cảnh sẽ chạy lại từ đầu theo nhánh chính và giữ nguyên ý kiến ❓ đã ghi.</div>
+        <div class="row"><button class="btn sm secondary" id="reset-eform">Khôi phục dữ liệu E-Form</button></div>
+        <div class="faint" style="font-size:12px;margin-top:8px">Đổi hồ sơ demo hoặc nhảy cảnh sẽ chạy lại từ đầu theo nhánh chính và giữ nguyên ý kiến ❓ đã ghi.</div>
       </div>` : ''}</div>`;
   }
 
-  const BRANCHES = [
-    { name: 'Chọn nhầm quy trình MS01.03 → chuyển quy trình (B-3e)', tasks: '10 → 10a → 10b', task: '10a', who: 'minh', process: 'MS01.03' },
-    { name: 'Chỉ huy ĐVĐX không đồng ý', tasks: '13 → 14 → 12', task: 13, who: 'hai' },
-    { name: 'TTMS trả lại danh sách CQCM', tasks: '17 → 16', task: 17, who: 'lan' },
-    { name: 'Giải trình vòng 3/2 → cảnh báo, họp', tasks: '28 → 29–34', task: 28, who: 'minh', vars: { round: 2 } },
-    { name: 'TTMS chọn Không báo cáo Tập đoàn', tasks: '48 → 57', task: 48, who: 'lan' },
-    { name: 'Thủ trưởng VHT yêu cầu hoàn chỉnh', tasks: '60 → 25 → 26', task: 60, who: 'tgd' },
-  ];
+  /* Cảnh bắt đầu trước khi có hồ sơ: bộ MS01.01 mở Thêm mới ĐXMS (SCR-28); bộ có ĐXMS mẫu mở Thêm mới hồ sơ khoá ĐXMS đó (SCR-25). */
+  function openStart(set) {
+    if (set.dxms === D.dxmsCode0) { openCreate('dxms'); return; }
+    const h = '#/ho-so-dxms/create/' + encodeURIComponent(set.dxms);
+    if (location.hash === h) { S.enter(h.slice(2)); render(); } else location.hash = h;
+  }
 
   /* Màn mở Chi tiết hồ sơ mẫu (#/ho-so-dxms/<mã>…): Giám sát tiến trình, Chi tiết/Chỉnh sửa ĐXMS thì nút quay lại về đó, còn lại về Danh sách hồ sơ. */
   let lastRoute = null, detailFrom = null;
@@ -165,7 +171,8 @@
     const tok = Flow.token(tokenId);
     if (!tok) return;
     const f = D.flow[tok.task];
-    const choice = idx >= 0 ? f.choices[idx] : null;
+    const choice = idx >= 0 ? Flow.choices(tok.task)[idx] : null;
+    if (choice && choice.lockWhen && choice.lockWhen(Flow.state.vars)) return;
     const err = window.Bodies && window.Bodies.validate(tok, choice);
     if (err) { toast(esc(err), 'warn'); return; }
     let reason = null;
@@ -234,21 +241,29 @@
     if (t.closest('[data-create]')) { e.preventDefault(); openCreate(t.closest('[data-create]').dataset.create); return; }
     if (t.closest('[data-open-new]')) { e.preventDefault(); openReplacement(); return; }
     if (t.closest('[data-back]')) { e.preventDefault(); if (history.length > 1) history.back(); else location.hash = '#/viec-cua-toi'; return; }
+    const ds = t.closest('[data-demo-set]');
+    if (ds) {
+      const set = D.demoSets.find((d) => d.key === ds.dataset.demoSet);
+      Flow.pickDemo(set.key);
+      toast(`Hồ sơ demo: ${esc(set.label)} — vai ${esc(persona(Flow.state.persona).name)}`, 'info');
+      demoOpen = false;
+      openStart(set); return;
+    }
     const sc = t.closest('[data-scene]');
     if (sc) {
-      Flow.jumpToScene(Number(sc.dataset.scene));
-      const s = D.scenes.find((x) => x.n === Number(sc.dataset.scene));
+      const set = Flow.demoSet();
+      const s = Flow.jumpToScene(sc.dataset.scene, set.key);
       toast(`Cảnh ${s.n} · ${esc(s.name)} — vai ${esc(persona(Flow.state.persona).name)}`, 'info');
       demoOpen = false;
-      if (s.start === 'NEW') { openCreate('dxms'); return; }
-      const mine = Flow.tokensFor(Flow.state.persona)[0];
+      if (s.start === 'NEW') { openStart(set); return; }
+      const mine = Flow.tokensFor(Flow.state.persona).find((k) => String(k.task) === String(s.start)) || Flow.tokensFor(Flow.state.persona)[0];
       location.hash = mine ? `#/task/${mine.id}` : '#/ho-so';
       render(); return;
     }
     const br = t.closest('[data-branch]');
     if (br) {
-      const b = BRANCHES[Number(br.dataset.branch)];
-      Flow.jumpTo(b.task, b.who, b.vars, b.process);
+      const b = Flow.demoSet().branches[Number(br.dataset.branch)];
+      Flow.jumpTo(b.task, b.who, b.vars, b.process, b.dxms, b.ui);
       demoOpen = false;
       const mine = Flow.tokensFor(b.who).find((k) => String(k.task) === String(b.task));
       toast(`Nhánh phụ: ${esc(b.name)} — vai ${esc(persona(b.who).name)}`, 'info');
@@ -261,6 +276,8 @@
       m.el.querySelector('#rs').onclick = () => { m.close(); Flow.reset(); Flow.setPersona('minh'); demoOpen = false; location.hash = '#/viec-cua-toi'; toast('Đã reset luồng.'); };
       return;
     }
+    /* Reset luồng không đụng dữ liệu E-Form (như DMDC); khôi phục riêng ở đây. */
+    if (t.closest('#reset-eform')) { window.EForm.reset(); demoOpen = false; render(); toast('Đã khôi phục dữ liệu E-Form.'); return; }
     const a = t.closest('[data-act]');
     if (a && !a.disabled) { act(a.dataset.act, Number(a.dataset.choice)); return; }
     const ex = t.closest('[data-export]');

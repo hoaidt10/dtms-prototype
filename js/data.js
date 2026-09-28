@@ -391,6 +391,14 @@
     'P-39': { q: 'Luật hiển thị có quyết định thật nút trên màn xử lý task không (đổi tên hiển thị, vô hiệu hoá → ẩn nút)', src: 'UR-WF-11', def: 'Không nối; chỉ xem trước trong form luật', scr: 'SCR-44' },
     'P-40': { q: 'Ai được retry / xử lý incident, có cần phê duyệt không (UR-WF-05 retry có kiểm soát)', src: 'UR-WF-05', def: 'Không có — Giám sát tiến trình chỉ xem', scr: 'SCR-48' },
     'P-41': { q: 'Vai trò nào thấy menu Quản trị quy trình: chỉ Quản trị hệ thống, hay TTMS cũng xem Giám sát tiến trình', src: 'UC-02-01…03 (A21), UR-WF-12', def: 'Quản trị hệ thống thấy cả ba mục; Chuyên viên TTMS chỉ xem Giám sát tiến trình', scr: 'SCR-48' },
+    /* Quản lý E-Form — docs/dtms/prototype-EFORM-chuan-bi.md §4. */
+    'P-43': { q: 'Danh sách Loại biểu mẫu và Loại hồ sơ cho ĐTMS; Loại hồ sơ của Khoản đầu tư (MS13/MS14)', src: 'ecat option KHCN, D-10', def: 'Loại biểu mẫu: Tờ trình, Thuyết minh, Phiếu, Báo cáo, Công văn, Quyết định, Checklist; Loại hồ sơ: Phê duyệt ĐXMS / Điều chỉnh ĐXMS', scr: 'SCR-50' },
+    'P-44': { q: 'Mã biểu mẫu dùng mã BM trong quy chế (BM-01): nếu MS02, MS13 cũng có "BM-01" thì mã duy nhất theo cặp (Loại hồ sơ, Mã) hay thêm tiền tố (MS01-BM-01)', src: 'QT ĐXMS, QT DADT/KĐT', def: 'Duy nhất theo cặp (Loại hồ sơ, Mã)', scr: 'SCR-50' },
+    'P-45': { q: 'Sửa thiết kế biểu mẫu đang dùng: hồ sơ đang chạy giữ phiên bản cũ hay nhận bản mới; có cần xem/khôi phục bản cũ', src: 'UR-DOC-01 (phiên bản)', def: 'Mỗi lần lưu thiết kế tăng phiên bản; hồ sơ đã tạo giữ bản cũ; lịch sử chỉ xem', scr: 'SCR-53' },
+    'P-46': { q: 'Word template: map biến ↔ khoá trường E-Form ở đâu, ai cấu hình, định dạng biến (${soCongVan})', src: 'UR-DOC-03, file chức năng r416–423', def: 'Chỉ tải File mẫu; chưa có màn map biến (D-5)', scr: 'SCR-50' },
+    'P-47': { q: 'Biểu mẫu đang gắn bước quy trình BPMN / hồ sơ đang chạy có được xoá không', src: 'P-33 (DMDC)', def: 'Không; chỉ Dừng hoạt động', scr: 'SCR-49' },
+    'P-48': { q: 'Vai nào quản lý E-Form: chỉ Quản trị hệ thống, hay TTMS (chủ quy chế biểu mẫu) cũng được sửa', src: 'R-ADMIN, UC-12-01 (A21)', def: 'Chỉ Quản trị hệ thống', scr: 'SCR-49' },
+    'P-49': { q: 'Cần nút Nhân bản biểu mẫu không (source có xử lý, chưa có nút); Biểu thức tự tính và điều kiện FEEL do BA hay dev cấu hình', src: 'ecat handleDuplicate, dock thuộc tính', def: 'Không có Nhân bản; Biểu thức/FEEL nhập tự do', scr: 'SCR-49' },
   };
   /* Màn → điểm ❓ gắn trên màn đó. */
   D.screenQ = {};
@@ -437,7 +445,8 @@
       { label: 'Kiểm kê', path: 'ph/kiem-ke', uc: ['UC-11-10'] }] },
     { label: 'Hồ sơ & biểu mẫu', icon: 'phan_he_dmdc', ph: '12', children: [
       { label: 'Kho hồ sơ', path: 'ph/kho-ho-so', uc: ['UC-12-04'] },
-      { label: 'E-Form & mẫu Word', path: 'ph/eform', uc: ['UC-12-01', 'UC-12-03'] },
+      /* D-4 (người dùng chốt 2026-09-28): E-Form ở Hồ sơ & biểu mẫu, không vào Danh mục dùng chung. */
+      { label: 'E-Form & mẫu Word', path: 'eform', scr: 'SCR-49' },
       { label: 'Bộ hồ sơ & checklist', path: 'ph/checklist', uc: ['UC-12-02'] },
       { label: 'Trình ký VOffice', path: 'ph/voffice', uc: ['UC-12-06'] },
       { label: 'AI kiểm tra hồ sơ', path: 'ph/ai', uc: ['UC-12-07'] }] },

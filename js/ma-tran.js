@@ -28,7 +28,8 @@
   ];
   const actionBy = (code) => ACTIONS.find((a) => a.code === code);
   const SCREENS = [{ value: 'TASK', label: 'Xử lý công việc' }, { value: 'DETAIL', label: 'Chi tiết hồ sơ' }, { value: 'CREATE', label: 'Thêm mới hồ sơ' }];
-  const FORMS = ['BM-01', 'BM-02', 'BM-03', 'BM-04', 'BM-05', 'BM-06', 'BM-07', 'BM-08', 'BM-09', 'Checklist 01', 'Checklist 02'].map((v) => ({ value: v, label: v }));
+  /* Biểu mẫu sử dụng (T10 B4): biểu mẫu đang hoạt động của Quản lý E-Form, giá trị = mã biểu mẫu. */
+  const formOptions = (cur) => window.EForm.activeOptions(cur);
   /* Vai trò thực hiện — mã vai trò URD + tên, như DISPLAY_RULE_ROLE_OPTIONS ("PM - Chủ nhiệm NV KHCN"). */
   const ROLES = [['R-DVDX-CQ', 'Chuyên quản ĐVĐX'], ['R-DVDX-CH', 'Chỉ huy ĐVĐX'], ['R-TTMS', 'Chuyên viên TTMS'], ['R-CQCM', 'Chuyên viên CQCM'],
     ['R-CQCM-CH', 'Trưởng ban CQCM'], ['R-TC', 'Chuyên viên Tài chính'], ['R-PTGD', 'Phó Tổng Giám đốc'], ['R-TGD-VHT', 'Tổng Giám đốc VHT'],
@@ -70,8 +71,8 @@
   }
   const formOf = (task, c) => {
     const src = (c && c.sign) || (window.BPMN_TASKS[task] || {}).form || '';
-    const m = /BM-0\d|Checklist 0\d/.exec(src);
-    return m ? m[0] : null;
+    const m = /BM-(0\d)|Checklist (0\d)/.exec(src);
+    return m ? (m[1] ? 'BM-' + m[1] : 'CL-' + m[2]) : null;
   };
   /* Nhánh kết quả (outgoing branch key, vd "Gui_duyet"): nhãn nút bỏ dấu, phần trước " — ". */
   const branchKey = (label) => {
@@ -497,7 +498,7 @@
         'Mã luật hành động: tự viết hoa, chỉ chữ không dấu, số, "-", "_", tối đa 50 ký tự; không sửa được khi Chỉnh sửa; trùng mã → báo lỗi, giữ nguyên form. Tên hiển thị tối đa 50 ký tự.',
         'Huỷ / quay lại khi đã nhập → hỏi "Bạn có chắc muốn hủy?". Màn Xem có nút Chỉnh sửa; tiêu đề "Xem chi tiết luật hiển thị nút" lấy nguyên chuỗi source.',
         'Xem trước = nút như sẽ hiện trên màn Xử lý công việc + các vai trò thấy nút; chưa nối vào màn xử lý việc thật (P-39).',
-        'Quy trình áp dụng: 6 quy trình của Danh sách quy trình (MS01.01 / .02 / .03 là ba quy trình riêng — P-37 đã chốt); Bước trong điều kiện chỉ gồm bước áp dụng cho quy trình. Biểu mẫu sử dụng: các mẫu BM / Checklist của ĐXMS. Vai trò thực hiện: vai trò theo URD.',
+        'Quy trình áp dụng: 6 quy trình của Danh sách quy trình (MS01.01 / .02 / .03 là ba quy trình riêng — P-37 đã chốt); Bước trong điều kiện chỉ gồm bước áp dụng cho quy trình. Biểu mẫu sử dụng: biểu mẫu đang hoạt động ở Quản lý E-Form (Mã - Tên; Checklist 01/02 = CL-01/02); luật đang gắn biểu mẫu đã dừng hoạt động vẫn hiện biểu mẫu đó kèm "(Dừng hoạt động)". Vai trò thực hiện: vai trò theo URD.',
       ],
       q: ['P-39'], src: 'action-matrix/catalogs/display-rule/display-rule-form · /action-matrix/display-rule/create | :id/edit | :id/view',
     };
@@ -529,7 +530,7 @@
     if (view) {
       const ro = (k, val) => `<div class="mt-ro"><div class="k">${LABELS[k]}</div>${k === 'roles' ? chips(rolesLabels) : `<div class="mt-v clamp">${esc(val || '-')}</div>`}</div>`;
       general = `<div class="grid3">${ro('action', labelOf(actionOpts, v.action))}${ro('name', v.name)}${ro('type', labelOf(TYPES, typeOf(v.action)))}${ro('code', v.code)}
-        ${ro('screen', labelOf(SCREENS, v.screen))}${ro('proc', procLabel(v.proc))}${ro('step', labelOf(stepOptions(v.proc), v.step))}${ro('form', labelOf(FORMS, v.form))}${ro('roles')}</div>`;
+        ${ro('screen', labelOf(SCREENS, v.screen))}${ro('proc', procLabel(v.proc))}${ro('step', labelOf(stepOptions(v.proc), v.step))}${ro('form', labelOf(formOptions(v.form), v.form))}${ro('roles')}</div>`;
     } else {
       general = `<div class="grid3 mt-form">
         ${sel('action', actionOpts, 'Chọn hành động', { searchable: true })}
@@ -539,7 +540,7 @@
         ${sel('screen', SCREENS, 'Chọn màn hình')}
         ${sel('proc', processOptions(), 'Chọn quy trình áp dụng', { searchable: true, after: () => { v.step = null; } })}
         ${sel('step', stepOptions(v.proc), 'Chọn bước', { searchable: true })}
-        ${sel('form', FORMS, 'Chọn biểu mẫu sử dụng', { searchable: true })}
+        ${sel('form', formOptions(v.form), 'Chọn biểu mẫu sử dụng', { searchable: true })}
         ${sel('roles', ROLES, 'Chọn vai trò thực hiện', { multi: true, searchable: true })}</div>`;
     }
     const status = mode === 'create' ? '' : `<div class="mt-ro"><div class="k">Trạng thái</div>

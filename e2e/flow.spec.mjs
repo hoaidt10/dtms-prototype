@@ -4,7 +4,7 @@
 import { test, expect } from '@playwright/test';
 import { fresh, primary, lastToast, state, createDxms, createCase } from './helpers.mjs';
 
-test('SCR-28 → SCR-25: tạo ĐXMS không start quy trình; Tạo hồ sơ khoá ĐXMS, chọn sẵn loại Phê duyệt; bắt buộc quy trình; MS01.02 chưa mở; Lưu là start task 01', async ({ page }) => {
+test('SCR-28 → SCR-25: tạo ĐXMS không start quy trình; Tạo hồ sơ khoá ĐXMS, chọn sẵn loại Phê duyệt; bắt buộc quy trình; đủ 3 quy trình; Lưu là start task 01', async ({ page }) => {
   await fresh(page, '#/dxms');
   expect((await state(page)).s).toBe('new');
   await page.locator('[data-create="dxms"]').click();
@@ -40,7 +40,8 @@ test('SCR-28 → SCR-25: tạo ĐXMS không start quy trình; Tạo hồ sơ kho
   await page.locator('#c-save').click();
   await expect(page.locator('.vfield.invalid .msg')).toHaveText(['Bạn cần chọn Quy trình.']);
   await page.locator('[data-vsel="c-proc"]').click();
-  await expect(page.locator('.vsel-panel .vsel-opt.dis')).toHaveCount(1);
+  await expect(page.locator('.vsel-panel .vsel-opt')).toHaveCount(3);
+  await expect(page.locator('.vsel-panel .vsel-opt.dis')).toHaveCount(0);
   await page.locator('.vsel-panel [data-opt="MS01.01"]').click();
   await page.locator('#c-save').click();
   await expect(page).toHaveURL(/#\/task\//);
