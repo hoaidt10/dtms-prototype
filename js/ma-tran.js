@@ -181,7 +181,7 @@
     // Theo: fe/repo-khcn-bpmn-fe/src/app/features/action-matrix/catalogs/bpmn-reconcile/bpmn-reconcile.component.html
     //       + bpmn-reconcile.facade.ts, constants/bpmn-reconcile-columns.constants.ts
     const info = reconInfo();
-    if (!ROLES_ALLOWED.includes(Flow.state.persona)) return noAccess(`<h1 class="pg-title">Ma trận hành động${infoBtn(info)}</h1>`);
+    if (!(ROLES_ALLOWED.includes(Flow.state.persona) || D.allAccess(Flow.state.persona))) return noAccess(`<h1 class="pg-title">Ma trận hành động${infoBtn(info)}</h1>`);
     if (!R.wf) R.wf = processOptions()[0].value;
     const rows = reconRows(R.wf).filter((x) => !R.kw || norm(x.rule ? x.rule.code : '').includes(norm(R.kw)) || norm(x.stepName).includes(norm(R.kw)));
     const { from, rows: pg } = slice(R, rows);
@@ -255,7 +255,7 @@
     // Theo: fe/repo-khcn-bpmn-fe/src/app/features/action-matrix/catalogs/action-catalog/action-catalog-list.component.html
     //       + action-catalog.facade.ts, constants/action-catalog-columns.constants.ts, action-catalog.constants.ts
     const info = catInfo();
-    if (!ROLES_ALLOWED.includes(Flow.state.persona)) return noAccess(`<h1 class="pg-title">Ma trận hành động${infoBtn(info)}</h1>`);
+    if (!(ROLES_ALLOWED.includes(Flow.state.persona) || D.allAccess(Flow.state.persona))) return noAccess(`<h1 class="pg-title">Ma trận hành động${infoBtn(info)}</h1>`);
     const rows = catRows();
     const { from, rows: pg } = slice(C, rows);
     const cols = [['Mã hành động', 200], ['Tên hành động', 220], ['Mã luật áp dụng', 420], ['Outcome BPMN', 180]];
@@ -292,7 +292,7 @@
       src: 'action-matrix/catalogs/action-catalog/action-catalog-detail · /action-matrix/action-catalog/:id',
     };
     const head = `<div class="pg-head"><div class="l"><button type="button" class="vbtn back" data-mt-back aria-label="Quay lại">${icon('back')}</button><h1 class="pg-title">Xem chi tiết hành động${infoBtn(info)}</h1></div></div>`;
-    if (!ROLES_ALLOWED.includes(Flow.state.persona)) return noAccess(head);
+    if (!(ROLES_ALLOWED.includes(Flow.state.persona) || D.allAccess(Flow.state.persona))) return noAccess(head);
     const a = actionBy(code);
     if (!a) return `<div class="pg">${head}<div class="vcard pad24"><div class="empty-t">Không tìm thấy dữ liệu.</div></div></div>`;
     const procs = [...new Set(RULES.filter((r) => r.action === code).map((r) => r.proc))].map((p) => workflows().find((w) => w.code === p)).filter(Boolean);
@@ -359,7 +359,7 @@
     // Theo: fe/repo-khcn-bpmn-fe/src/app/features/action-matrix/catalogs/display-rule/display-rule-list.component.html
     //       + display-rule.facade.ts, constants/display-rule-columns.constants.ts, action-matrix.constants.ts (10/20/50)
     const info = listInfo();
-    if (!ROLES_ALLOWED.includes(Flow.state.persona)) return noAccess(`<h1 class="pg-title">Ma trận hành động${infoBtn(info)}</h1>`);
+    if (!(ROLES_ALLOWED.includes(Flow.state.persona) || D.allAccess(Flow.state.persona))) return noAccess(`<h1 class="pg-title">Ma trận hành động${infoBtn(info)}</h1>`);
     const rows = filtered();
     const pages = Math.max(1, Math.ceil(rows.length / L.size));
     if (L.page > pages) L.page = pages;
@@ -503,7 +503,7 @@
       q: ['P-39'], src: 'action-matrix/catalogs/display-rule/display-rule-form · /action-matrix/display-rule/create | :id/edit | :id/view',
     };
     const headL = `<div class="l"><button type="button" class="vbtn back" data-mt-cancel aria-label="Quay lại">${icon('back')}</button><h1 class="pg-title">${esc(title)}${infoBtn(info)}</h1></div>`;
-    if (!ROLES_ALLOWED.includes(Flow.state.persona)) return noAccess(`<div class="pg-head">${headL}</div>`);
+    if (!(ROLES_ALLOWED.includes(Flow.state.persona) || D.allAccess(Flow.state.persona))) return noAccess(`<div class="pg-head">${headL}</div>`);
     const rule = id != null ? byId(id) : null;
     if (id != null && !rule) return `<div class="pg"><div class="pg-head">${headL}</div><div class="vcard pad24"><div class="empty-t">Không tìm thấy dữ liệu.</div></div></div>`;
     const route = `${mode}/${id || ''}`;

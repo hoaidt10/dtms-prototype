@@ -111,18 +111,20 @@
   function signDialog(doc, who) {
     return new Promise((resolve) => {
       const p = persona(who);
+      /* Hồ sơ Mật: mặc định ký cứng (bản giấy) — P-60. */
+      const secret = !!window.Flow.ci().secret;
       const kv = (k, v) => `<div><div class="k">${k}</div><div class="v">${v}</div></div>`;
       const m = vModal({ title: `Trình ký ${doc}`, size: 'md', body: `
           <div class="ginfo">${kv('Mã hồ sơ', esc(window.Flow.ci().code))}${kv('Người ký', esc(p ? p.name + ' — ' + p.role : ''))}
-            ${kv('Phiên bản trình ký', 'v' + (window.Bodies ? window.Bodies.version() : 1))}${kv('Người sửa hồ sơ sau khi CQCM nhất trí', 'Không có')}</div>
+            ${kv('Phiên bản trình ký', 'v' + (window.TaskForms ? window.TaskForms.version() : 1))}${kv('Người sửa hồ sơ sau khi CQCM nhất trí', 'Không có')}</div>
           <div class="vfield"><div class="lr"><label>Hình thức ký</label></div>
-            <div class="vradio">${vRadio('Ký mềm qua VOffice', true, 'data-mode="soft"')}${vRadio('Ký cứng (bản giấy)', false, 'data-mode="hard"')}</div></div>
-          <div id="hard" class="stack" style="display:none">
+            <div class="vradio">${vRadio('Ký mềm qua VOffice', !secret, 'data-mode="soft"')}${vRadio('Ký cứng (bản giấy)', secret, 'data-mode="hard"')}</div></div>
+          <div id="hard" class="stack" ${secret ? '' : 'style="display:none"'}>
             <div class="vfield"><div class="lr"><label>Lý do ký cứng</label><span class="req">*</span></div><textarea class="vctl ta" id="hr" rows="3" placeholder="Nội dung"></textarea></div>
             <div class="vfield"><div class="lr"><label>Bản scan đã ký</label><span class="req">*</span></div><div><button class="vbtn sm red" id="up">${icon('upload')} Tải file lên</button></div></div>
           </div>`,
         actions: `<button class="vbtn secondary" data-close>Hủy</button><button class="vbtn primary" id="go">Trình ký</button>` });
-      let mode = 'soft', file = false;
+      let mode = secret ? 'hard' : 'soft', file = false;
       m.el.querySelectorAll('[data-mode]').forEach((c) => c.onclick = (e) => {
         e.preventDefault();
         m.el.querySelectorAll('[data-mode]').forEach((x) => x.classList.remove('on'));
@@ -131,8 +133,10 @@
       });
       m.el.querySelector('#up').onclick = (e) => { file = true; e.currentTarget.outerHTML = `<span class="file">${icon('file')} ban-scan-da-ky.pdf</span>`; };
       m.el.querySelector('#go').onclick = () => {
-        if (mode === 'hard' && (!m.el.querySelector('#hr').value.trim() || !file)) { toast('Bạn cần nhập lý do ký cứng và tải lên bản scan đã ký.', 'warn'); return; }
-        m.close(); resolve(mode);
+        const hr = m.el.querySelector('#hr').value.trim();
+        if (mode === 'hard' && (!hr || !file)) { toast('Bạn cần nhập lý do ký cứng và tải lên bản scan đã ký.', 'warn'); return; }
+        /* Comment #11: trả hình thức ký + lý do ký cứng để lưu theo task (thống kê số lần ký cứng — module Báo cáo). */
+        m.close(); resolve({ mode, reason: mode === 'hard' ? hr : null });
       };
       m.el.addEventListener('click', (e) => { if (e.target.closest('[data-close]') || e.target === m.el) resolve(null); });
     });

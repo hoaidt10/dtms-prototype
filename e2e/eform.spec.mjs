@@ -21,9 +21,10 @@ const asAdmin = async (page, hash) => {
 const row = (page, code) => page.locator(`.ef-table tbody tr[data-code="${code}"]`);
 const rows = (page) => page.locator('.ef-table tbody tr[data-code]');
 
-test('D-4: mục E-Form & mẫu Word dưới Hồ sơ & biểu mẫu mở #/eform; route cũ #/ph/eform chuyển hướng', async ({ page }) => {
+test('D-16: mục Quản lý E-form dưới Danh mục dùng chung mở #/eform; route cũ #/ph/eform chuyển hướng', async ({ page }) => {
   await asAdmin(page, '#/viec-cua-toi');
-  await page.locator('.sb-nav [data-toggle="Hồ sơ & biểu mẫu"]').click();
+  await page.locator('.sb-nav [data-toggle="Danh mục dùng chung"]').click();
+  await expect(page.locator('.sb-nav [data-go="eform"] .l')).toHaveText('Quản lý E-form');
   await page.locator('.sb-nav [data-go="eform"]').click();
   await expect(page).toHaveURL(/#\/eform$/);
   await expect(page.locator('.pg-title')).toHaveText('Danh sách biểu mẫu e-form');
@@ -43,7 +44,7 @@ test('P-48: vai khác Quản trị hệ thống thấy thông báo chưa đượ
 
 test('SCR-49: tiêu đề, nút, cột theo e-form-list; 12 biểu mẫu, phân trang 20 → 10', async ({ page }) => {
   await asAdmin(page, '#/eform');
-  await expect(page.locator('.pg-head .r .vbtn')).toHaveText([/Xuất excel/, /Thêm mới/]);
+  await expect(page.locator('.pg-head .r .vbtn')).toHaveText([/Nhập biểu mẫu/, /Xuất excel/, /Thêm mới/]);
   await expect(page.locator('.ef-table th')).toHaveText(['STT', 'Thao tác', 'Trạng thái', 'Mã biểu mẫu', 'Tên biểu mẫu', 'Loại', 'Số trường']);
   await expect(page.locator('#ef-kw')).toHaveAttribute('placeholder', 'Tìm kiếm theo mã biểu mẫu, tên...');
   await expect(page.locator('.vpager')).toContainText('Tổng số bản ghi: 12');

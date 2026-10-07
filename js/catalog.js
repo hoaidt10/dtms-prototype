@@ -1,4 +1,4 @@
-/* Danh mục dùng chung (DMDC) — Quản trị hệ thống › Danh mục dùng chung (#/dmdc, D-1).
+/* Danh mục dùng chung (DMDC) — menu cấp cha Danh mục dùng chung (#/dmdc, D-14 thay D-1).
    Khuôn theo fe/repo-khcn-ecat-fe/src/app/features/common-catalog: mỗi danh mục chỉ khai báo cấu hình
    (như CatalogConfig), khuôn chung dựng danh sách, bộ lọc, hộp thoại Thêm mới/Chỉnh sửa, xác nhận và toast. */
 (function () {
@@ -93,7 +93,8 @@
   const FLOW_GROUP = [{ value: 'DXMS', label: 'Đề xuất mua sắm (MS01)' }, { value: 'KDT', label: 'Khoản đầu tư (MS13, MS14)' }];
   const FLOW_PROC = {
     DXMS: Object.keys(D.processes).map((k) => [k, D.processes[k].name]),
-    KDT: [['MS13.01', 'Phê duyệt chủ trương khoản đầu tư đơn giản'], ['MS13.03', 'Phê duyệt khoản đầu tư đơn giản'], ['MS14', 'Phê duyệt khoản đầu tư thông thường']],
+    /* MS13-TO BE là một quy trình (plan KĐT §6 #1): nhánh gộp BM-00 / hai giai đoạn do cổng trong BPMN chọn, không do ngưỡng. */
+    KDT: [['MS13', 'Phê duyệt khoản đầu tư đơn giản'], ['MS14', 'Phê duyệt khoản đầu tư thông thường']],
   };
   const procOptions = (cur, all, vals) => {
     const g = vals && vals.group;
@@ -148,20 +149,123 @@
     seedRows: () => [
       ['DXMS', '*', '*', 0, 160, ['MS01.03'], 9],
       ['DXMS', '*', '*', 160, null, ['MS01.01', 'MS01.02'], 5],
-      ['KDT', 'VTCNTT', 'NGUYEN_CHIEC', 0, 160, ['MS13.01'], 0],
-      ['KDT', 'KHAC', 'NGUYEN_CHIEC', 0, 90, ['MS13.01'], 0],
-      ['KDT', 'VTCNTT', 'TICH_HOP', 0, 160, ['MS13.03'], 0],
+      ['KDT', 'VTCNTT', '*', 0, 160, ['MS13'], 8],
+      ['KDT', 'KHAC', '*', 0, 90, ['MS13'], 3],
       ['KDT', 'VTCNTT', '*', 160, 1000, ['MS14'], 0],
-      ['KDT', 'KHAC', '*', 90, 500, ['MS14'], 0],
+      ['KDT', 'KHAC', '*', 90, 500, ['MS14'], 1],
     ].map(([group, field, asset, from, to, procs, used], i) => ({ id: i + 1, group, field, asset, from, to, procs, eff: '01/07/2026', used, active: true })),
   };
+  /* Dữ liệu lưu từ trước B1 KĐT còn quy trình MS13.01 / MS13.03 (8 trang con cũ) → nạp lại ngưỡng mẫu. */
+  const staleTH = (list) => list.some((r) => (r.procs || []).some((p) => /^MS13\.0/.test(p)));
   const meets = (a, b) => a === '*' || b === '*' || a === b;
   const overlapOf = (v, row, list) => list.find((r) => r !== row && r.active && r.group === v.group && meets(r.field, v.field) && meets(r.asset, v.asset)
     && v.from < (r.to == null ? Infinity : r.to) && r.from < (v.to == null ? Infinity : v.to));
 
+  /* ---------- 6 danh mục thêm ở T16 B1 theo Backlog W1_T10 (SCR-67…72): khuôn chung Mã / Tên / trường riêng / Mô tả ---------- */
+  const UOM_GROUP = [{ value: 'SO_LUONG', label: 'Số lượng' }, { value: 'DO_LUONG', label: 'Đo lường' }, { value: 'THOI_GIAN', label: 'Thời gian' }];
+  const DECIMALS = [{ value: '0', label: '0' }, { value: '2', label: '2' }];
+  const EVAL_GROUP = [{ value: 'KY_THUAT', label: 'Đánh giá kỹ thuật' }, { value: 'TAI_CHINH', label: 'Đánh giá tài chính' }, { value: 'TONG_HOP', label: 'Xếp hạng tổng hợp' }];
+  const GUAR_USE = [{ value: 'DU_THAU', label: 'Bảo đảm dự thầu' }, { value: 'THUC_HIEN', label: 'Bảo đảm thực hiện hợp đồng' },
+    { value: 'TAM_UNG', label: 'Bảo lãnh tạm ứng' }, { value: 'BAO_HANH', label: 'Bảo đảm bảo hành' }];
+  const PKG_FIELD = [{ value: 'HANG_HOA', label: 'Hàng hoá' }, { value: 'XAY_LAP', label: 'Xây lắp' }, { value: 'TU_VAN', label: 'Tư vấn' },
+    { value: 'PHI_TU_VAN', label: 'Phi tư vấn' }, { value: 'HON_HOP', label: 'Hỗn hợp' }];
+  const B1_CATALOGS = {
+    'loai-doi-tac': { key: 'loai-doi-tac', scr: 'SCR-67', title: 'Loại đối tác', entity: 'loại đối tác', icon: 'doi_tac', roles: ['lan'], built: true,
+      use: 'Phân loại đối tác trong danh mục Nhà cung cấp / Nhà thầu, lọc đối tác khi gửi yêu cầu báo giá, lựa chọn nhà thầu và hợp đồng.',
+      fields: [F.code('Mã loại đối tác'), F.name('Tên loại đối tác', 260), F.desc()],
+      seed: [
+        ['NCC', 'Nhà cung cấp hàng hoá', 'Cung cấp thiết bị, vật tư, linh kiện', true, 12],
+        ['NHA_THAU', 'Nhà thầu xây lắp, lắp đặt', '', true, 3],
+        ['TU_VAN', 'Đơn vị tư vấn', 'Tư vấn lập dự án, thiết kế, thẩm tra, giám sát', true, 2],
+        ['DICH_VU', 'Nhà cung cấp dịch vụ', 'Dịch vụ phi tư vấn: vận chuyển, bảo trì, đào tạo', true, 1],
+        ['CHIEN_LUOC', 'Đối tác chiến lược', 'Đối tác có thoả thuận hợp tác dài hạn với VHT', true, 0],
+        ['NOI_BO', 'Đơn vị trong Tập đoàn', '', false, 0],
+      ] },
+    'don-vi-tinh': { key: 'don-vi-tinh', scr: 'SCR-68', title: 'Đơn vị tính', entity: 'đơn vị tính', icon: 'view_grid', roles: ['lan'], built: true,
+      use: 'Đơn vị tính của hạng mục ĐXMS / KĐT, yêu cầu báo giá, gói thầu và hợp đồng.',
+      fields: [F.code('Mã đơn vị tính'), F.name('Tên đơn vị tính', 220),
+        { key: 'group', label: 'Nhóm', type: 'select', required: true, options: UOM_GROUP, width: 140 }, F.desc()],
+      seed: [
+        ['BO', 'Bộ', '', true, 9, { group: 'SO_LUONG' }],
+        ['CAI', 'Cái', '', true, 6, { group: 'SO_LUONG' }],
+        ['CHIEC', 'Chiếc', '', true, 4, { group: 'SO_LUONG' }],
+        ['HE_THONG', 'Hệ thống', 'Thiết bị gồm nhiều thành phần lắp đặt đồng bộ', true, 5, { group: 'SO_LUONG' }],
+        ['GOI', 'Gói', 'Dịch vụ, bản quyền theo gói', true, 7, { group: 'SO_LUONG' }],
+        ['BAN_QUYEN', 'Bản quyền', 'License phần mềm', true, 2, { group: 'SO_LUONG' }],
+        ['MET', 'Mét', '', true, 1, { group: 'DO_LUONG' }],
+        ['KG', 'Kilôgam', '', true, 0, { group: 'DO_LUONG' }],
+        ['THANG', 'Tháng', 'Dịch vụ thuê theo tháng', true, 1, { group: 'THOI_GIAN' }],
+        ['NGUOI_THANG', 'Người-tháng', 'Dịch vụ tư vấn tính theo nhân công', false, 0, { group: 'THOI_GIAN' }],
+      ] },
+    'tien-te': { key: 'tien-te', scr: 'SCR-69', title: 'Tiền tệ', entity: 'tiền tệ', icon: 'nguon_kinh_phi', roles: ['lan'], built: true,
+      use: 'Loại tiền của báo giá, giá gói thầu và giá hợp đồng; quy đổi về VNĐ khi tổng hợp giá trị.',
+      fields: [{ key: 'code', label: 'Mã tiền tệ', type: 'code', required: true, max: 3, width: 120, placeholder: 'Mã ISO 4217, vd USD' },
+        F.name('Tên tiền tệ', 220), { key: 'symbol', label: 'Ký hiệu', type: 'text', required: true, max: 10, width: 100 },
+        { key: 'decimals', label: 'Số chữ số thập phân', type: 'select', required: true, options: DECIMALS, width: 170 }, F.desc()],
+      seed: [
+        ['VND', 'Việt Nam đồng', 'Đồng tiền hạch toán', true, 15, { symbol: '₫', decimals: '0' }],
+        ['USD', 'Đô la Mỹ', '', true, 4, { symbol: '$', decimals: '2' }],
+        ['EUR', 'Euro', '', true, 1, { symbol: '€', decimals: '2' }],
+        ['JPY', 'Yên Nhật', '', true, 0, { symbol: '¥', decimals: '0' }],
+        ['KRW', 'Won Hàn Quốc', '', true, 0, { symbol: '₩', decimals: '0' }],
+        ['CNY', 'Nhân dân tệ', '', false, 0, { symbol: 'CN¥', decimals: '2' }],
+      ] },
+    'loai-goi-thau': { key: 'loai-goi-thau', scr: 'SCR-70', title: 'Loại gói thầu', entity: 'loại gói thầu', icon: 'menu_square', built: true,
+      use: 'Phân loại gói thầu trong Kế hoạch lựa chọn nhà thầu và tổ chức lựa chọn nhà thầu.',
+      fields: [F.code('Mã loại gói thầu'), F.name('Tên loại gói thầu', 260),
+        { key: 'field', label: 'Lĩnh vực đấu thầu', type: 'select', required: true, options: PKG_FIELD, width: 160 }, F.desc()],
+      seed: [
+        ['MS_HH', 'Mua sắm hàng hoá', 'Thiết bị, vật tư, linh kiện', true, 6, { field: 'HANG_HOA' }],
+        ['XL', 'Xây lắp', 'Xây dựng, lắp đặt công trình', true, 0, { field: 'XAY_LAP' }],
+        ['TV', 'Dịch vụ tư vấn', '', true, 2, { field: 'TU_VAN' }],
+        ['PTV', 'Dịch vụ phi tư vấn', 'Vận chuyển, bảo trì, đào tạo', true, 1, { field: 'PHI_TU_VAN' }],
+        ['HH_LD', 'Cung cấp và lắp đặt thiết bị', 'Gói hỗn hợp hàng hoá và xây lắp', true, 1, { field: 'HON_HOP' }],
+        ['PM', 'Mua sắm phần mềm, bản quyền', '', true, 1, { field: 'HANG_HOA' }],
+      ] },
+    'phuong-phap-danh-gia': { key: 'phuong-phap-danh-gia', scr: 'SCR-71', title: 'Phương pháp đánh giá', entity: 'phương pháp đánh giá', icon: 'linh_vuc', built: true,
+      use: 'Phương pháp đánh giá hồ sơ dự thầu trong hồ sơ mời thầu và đánh giá, xếp hạng nhà thầu.',
+      fields: [F.code('Mã phương pháp'), F.name('Tên phương pháp', 280),
+        { key: 'group', label: 'Bước đánh giá', type: 'select', required: true, options: EVAL_GROUP, width: 170 }, F.desc()],
+      seed: [
+        ['DAT_KHONG_DAT', 'Đạt / Không đạt', 'Đánh giá năng lực, kỹ thuật theo tiêu chí Đạt / Không đạt', true, 5, { group: 'KY_THUAT' }],
+        ['CHAM_DIEM', 'Chấm điểm', 'Đánh giá kỹ thuật theo thang điểm, có điểm tối thiểu', true, 2, { group: 'KY_THUAT' }],
+        ['GIA_THAP_NHAT', 'Giá thấp nhất', '', true, 4, { group: 'TONG_HOP' }],
+        ['GIA_DANH_GIA', 'Giá đánh giá', 'Quy đổi các yếu tố kỹ thuật, tài chính về cùng mặt bằng giá', true, 1, { group: 'TONG_HOP' }],
+        ['KET_HOP', 'Kết hợp giữa kỹ thuật và giá', 'Thường dùng cho gói tư vấn', true, 1, { group: 'TONG_HOP' }],
+        ['DUA_TREN_KT', 'Dựa trên kỹ thuật', 'Gói tư vấn có yêu cầu kỹ thuật cao', true, 0, { group: 'TONG_HOP' }],
+        ['SO_SANH_GIA', 'So sánh giá chào', 'Đối chiếu đơn giá chào với giá gói thầu, cơ sở giá', true, 0, { group: 'TAI_CHINH' }],
+      ] },
+    'hinh-thuc-bao-dam': { key: 'hinh-thuc-bao-dam', scr: 'SCR-72', title: 'Hình thức bảo đảm', entity: 'hình thức bảo đảm', icon: 'chuc_danh_khoa_hoc', built: true,
+      use: 'Bảo đảm dự thầu (hồ sơ mời thầu) và bảo đảm thực hiện, tạm ứng, bảo hành của hợp đồng.',
+      fields: [F.code('Mã hình thức bảo đảm'), F.name('Tên hình thức bảo đảm', 260),
+        { key: 'scope', label: 'Áp dụng cho', type: 'select', multi: true, required: true, options: GUAR_USE, minWidth: 260 }, F.desc()],
+      seed: [
+        ['BL_NH', 'Thư bảo lãnh của ngân hàng', 'Do tổ chức tín dụng hoạt động tại Việt Nam phát hành', true, 6, { scope: ['DU_THAU', 'THUC_HIEN', 'TAM_UNG', 'BAO_HANH'] }],
+        ['BH_BL', 'Chứng thư bảo hiểm bảo lãnh', 'Do doanh nghiệp bảo hiểm phi nhân thọ phát hành', true, 1, { scope: ['DU_THAU', 'THUC_HIEN'] }],
+        ['DAT_COC', 'Đặt cọc', '', true, 0, { scope: ['DU_THAU'] }],
+        ['KY_QUY', 'Ký quỹ', '', true, 0, { scope: ['DU_THAU', 'THUC_HIEN'] }],
+        ['GIU_LAI', 'Giữ lại một phần giá trị thanh toán', 'Thay cho bảo đảm bảo hành khi hợp đồng cho phép', false, 0, { scope: ['BAO_HANH'] }],
+      ] },
+  };
+
   const CATALOGS = [
     Object.assign({ key: 'nha-cung-cap', scr: 'SCR-31', title: 'Nhà cung cấp / Nhà thầu', entity: 'nhà cung cấp', icon: 'doi_tac', roles: ['lan'], built: true,
       use: 'Chọn nhà cung cấp nhận yêu cầu báo giá (lọc theo ngành hàng), bảng báo giá và cơ sở giá; sau này lựa chọn nhà thầu và hợp đồng.' }, NCC),
+    B1_CATALOGS['loai-doi-tac'],
+    { key: 'loai-hang-hoa', scr: 'SCR-36', title: 'Loại hàng hoá / dịch vụ', entity: 'loại hàng hoá, dịch vụ', icon: 'view_grid', roles: ['lan'], built: true,
+      use: 'Ngành hàng của nhà cung cấp; lọc nhà cung cấp khi gửi yêu cầu báo giá. Bốn ngành hàng đầu theo biểu mẫu import ngành hàng MS27.01.',
+      fields: [F.code('Mã loại hàng hoá, dịch vụ'), F.name('Tên loại hàng hoá, dịch vụ', 300),
+        { key: 'group', label: 'Nhóm', type: 'select', required: true, options: GOODS_GROUP, width: 140 }, F.desc()],
+      seed: [
+        ['VTCNTT', 'Viễn thông - CNTT', 'Thiết bị viễn thông, máy chủ, phần mềm', true, 7, { group: 'HANG_HOA' }],
+        ['PTVT_TBQL', 'Phương tiện vận tải - Thiết bị dụng cụ quản lý', '', true, 2, { group: 'HANG_HOA' }],
+        ['NCSX', 'Nghiên cứu sản xuất', 'Vật tư, linh kiện phục vụ nghiên cứu sản xuất', true, 5, { group: 'HANG_HOA' }],
+        ['HHKD', 'Hàng hoá kinh doanh', '', true, 0, { group: 'HANG_HOA' }],
+        ['DVTV', 'Dịch vụ tư vấn', 'Tư vấn lập dự án, thiết kế, thẩm tra, giám sát', true, 1, { group: 'DICH_VU' }],
+        ['DVPTV', 'Dịch vụ phi tư vấn', 'Vận chuyển, lắp đặt, bảo trì, đào tạo', true, 0, { group: 'DICH_VU' }],
+      ] },
+    B1_CATALOGS['don-vi-tinh'],
+    B1_CATALOGS['tien-te'],
     { key: 'nguon-von', scr: 'SCR-32', title: 'Nguồn vốn', entity: 'nguồn vốn', icon: 'nguon_kinh_phi', built: true,
       fields: [
         { key: 'code', label: 'Mã nguồn vốn', type: 'code', required: true, max: 50, width: 220 },
@@ -184,15 +288,15 @@
         ['BDS', 'Bất động sản', 'Đất đai, nhà xưởng, công trình xây dựng', true, 0],
         ['KHAC', 'Lĩnh vực khác', 'Các lĩnh vực không thuộc nhóm trên', true, 2],
       ] },
-    { key: 'loai-kdt', scr: 'SCR-34', title: 'Loại khoản đầu tư', entity: 'loại khoản đầu tư', icon: 'view_flow', built: true, q: ['P-29'],
-      use: 'Phân luồng và báo cáo khoản đầu tư. Cấp xử lý "Luôn cấp Tập đoàn" được ưu tiên hơn Ngưỡng phân luồng (P-29).',
+    { key: 'loai-kdt', scr: 'SCR-34', title: 'Loại khoản đầu tư', entity: 'loại khoản đầu tư', icon: 'view_flow', built: true, q: ['P-29', 'P-68'],
+      use: 'Phân luồng và báo cáo khoản đầu tư. Sáu loại theo QT-8.6.5 (định nghĩa KĐT). Cấp xử lý "Luôn cấp Tập đoàn" được ưu tiên hơn Ngưỡng phân luồng (P-29).',
       fields: [F.code('Mã loại khoản đầu tư'), F.name('Tên loại khoản đầu tư', 260),
         { key: 'level', label: 'Cấp xử lý', type: 'select', required: true, options: PROC_LEVEL, width: 180 }, F.desc()],
       seed: [
         ['KHCN', 'Khoa học công nghệ', 'Nhiệm vụ, đề tài, dự án khoa học công nghệ', true, 12, { level: 'THEO_NGUONG' }],
         ['TBNB', 'Trang bị nội bộ', 'Máy móc, thiết bị phục vụ hoạt động nội bộ', true, 4, { level: 'THEO_NGUONG' }],
-        ['SXKD', 'Khoản đầu tư sản xuất kinh doanh', 'Luôn trình và phê duyệt ở cấp Tập đoàn', true, 0, { level: 'TAP_DOAN' }],
-        ['BDS', 'Khoản đầu tư bất động sản', '', true, 0, { level: 'THEO_NGUONG' }],
+        ['SXKD', 'Kinh doanh', 'Sản xuất kinh doanh: luôn xử lý ở cấp Tập đoàn (BB-1509 §2.5)', true, 0, { level: 'TAP_DOAN' }],
+        ['BDS', 'Bất động sản', 'Luôn là KĐT phức tạp, không phân cấp cho đơn vị (QT-8.6.5)', true, 0, { level: 'TAP_DOAN' }],
         ['PTVT', 'Phương tiện vận tải', 'Xe, phương tiện vận chuyển', true, 1, { level: 'THEO_NGUONG' }],
         ['KHAC', 'Khác', '', true, 0, { level: 'THEO_NGUONG' }],
       ] },
@@ -203,54 +307,46 @@
         ['NGUYEN_CHIEC', 'Nguyên chiếc', 'Tài sản dùng được ngay khi bàn giao', true, 8],
         ['TICH_HOP', 'Cần tích hợp hệ thống trước khi sử dụng', 'Tài sản phải lắp đặt, tích hợp với hệ thống hiện có', true, 3],
       ] },
-    { key: 'loai-hang-hoa', scr: 'SCR-36', title: 'Loại hàng hoá / dịch vụ', entity: 'loại hàng hoá, dịch vụ', icon: 'view_grid', roles: ['lan'], built: true,
-      use: 'Ngành hàng của nhà cung cấp; lọc nhà cung cấp khi gửi yêu cầu báo giá. Bốn ngành hàng đầu theo biểu mẫu import ngành hàng MS27.01.',
-      fields: [F.code('Mã loại hàng hoá, dịch vụ'), F.name('Tên loại hàng hoá, dịch vụ', 300),
-        { key: 'group', label: 'Nhóm', type: 'select', required: true, options: GOODS_GROUP, width: 140 }, F.desc()],
-      seed: [
-        ['VTCNTT', 'Viễn thông - CNTT', 'Thiết bị viễn thông, máy chủ, phần mềm', true, 7, { group: 'HANG_HOA' }],
-        ['PTVT_TBQL', 'Phương tiện vận tải - Thiết bị dụng cụ quản lý', '', true, 2, { group: 'HANG_HOA' }],
-        ['NCSX', 'Nghiên cứu sản xuất', 'Vật tư, linh kiện phục vụ nghiên cứu sản xuất', true, 5, { group: 'HANG_HOA' }],
-        ['HHKD', 'Hàng hoá kinh doanh', '', true, 0, { group: 'HANG_HOA' }],
-        ['DVTV', 'Dịch vụ tư vấn', 'Tư vấn lập dự án, thiết kế, thẩm tra, giám sát', true, 1, { group: 'DICH_VU' }],
-        ['DVPTV', 'Dịch vụ phi tư vấn', 'Vận chuyển, lắp đặt, bảo trì, đào tạo', true, 0, { group: 'DICH_VU' }],
-      ] },
+    B1_CATALOGS['loai-goi-thau'],
     { key: 'hinh-thuc-lcnt', scr: 'SCR-37', title: 'Hình thức lựa chọn nhà thầu', entity: 'hình thức lựa chọn nhà thầu', icon: 'chuc_danh_khoa_hoc', built: true,
-      use: 'Kế hoạch lựa chọn nhà thầu (BR-16: 11 hình thức). Tên viết tắt theo khuôn Chức danh khoa học của ecat.',
+      use: 'Kế hoạch lựa chọn nhà thầu. Hình thức theo QC-12869 Điều 12–21; chỉ định thầu tách trình tự rút gọn / thông thường (Điều 16 khoản 3) → 11 dòng như BR-16. Tên viết tắt theo khuôn Chức danh khoa học của ecat.',
       fields: [F.code('Mã hình thức'), F.name('Tên hình thức', 260),
         { key: 'abbreviation', label: 'Tên viết tắt', type: 'abbr', required: true, max: 100, width: 140 }, F.desc()],
       seed: [
         ['DTRR', 'Đấu thầu rộng rãi', '', true, 3, { abbreviation: 'ĐTRR' }],
         ['DTHC', 'Đấu thầu hạn chế', '', true, 0, { abbreviation: 'ĐTHC' }],
         ['CGTT', 'Chào giá trực tuyến', '', true, 1, { abbreviation: 'CGTT' }],
-        ['MSTT', 'Mua sắm trực tuyến', '', true, 0, { abbreviation: 'MSTT' }],
+        ['MSTT', 'Mua sắm trực tiếp', '', true, 0, { abbreviation: 'MSTT' }],
         ['CDT_RG', 'Chỉ định thầu rút gọn', '', true, 4, { abbreviation: 'CĐT RG' }],
         ['CDT_TT', 'Chỉ định thầu thông thường', '', true, 1, { abbreviation: 'CĐT TT' }],
-        ['DPTT', 'Đàm phán trực tiếp', 'Tên đầy đủ chờ VHT xác nhận', true, 0, { abbreviation: 'ĐPTT' }],
+        ['DPTT', 'Đàm phán trực tiếp', '', true, 0, { abbreviation: 'ĐPTT' }],
         ['DAT_HANG', 'Đặt hàng', '', true, 0, { abbreviation: 'ĐH' }],
         ['GIAO_NV', 'Giao nhiệm vụ', '', true, 0, { abbreviation: 'GNV' }],
         ['TU_TH', 'Tự thực hiện', '', true, 0, { abbreviation: 'TTH' }],
         ['DAC_BIET', 'Trường hợp đặc biệt', '', true, 0, { abbreviation: 'THĐB' }],
       ] },
     { key: 'phuong-thuc-lcnt', scr: 'SCR-38', title: 'Phương thức lựa chọn nhà thầu', entity: 'phương thức lựa chọn nhà thầu', icon: 'phan_he_quy_trinh', built: true, q: ['P-35'],
-      use: 'Kế hoạch lựa chọn nhà thầu. Danh sách theo Luật Đấu thầu (P-35).',
+      use: 'Kế hoạch lựa chọn nhà thầu. Danh sách theo QC-12869 Điều 11: chỉ có hai phương thức một giai đoạn (P-35).',
       fields: [F.code('Mã phương thức'), F.name('Tên phương thức', 300), F.desc()],
       seed: [
         ['1GD1T', 'Một giai đoạn một túi hồ sơ', '', true, 5],
         ['1GD2T', 'Một giai đoạn hai túi hồ sơ', 'Hồ sơ đề xuất kỹ thuật và tài chính nộp riêng', true, 1],
-        ['2GD1T', 'Hai giai đoạn một túi hồ sơ', '', true, 0],
-        ['2GD2T', 'Hai giai đoạn hai túi hồ sơ', '', true, 0],
       ] },
+    B1_CATALOGS['phuong-phap-danh-gia'],
     { key: 'loai-hop-dong', scr: 'SCR-39', title: 'Loại hợp đồng', entity: 'loại hợp đồng', icon: 'menu_square', built: true, q: ['P-35'],
-      use: 'Hợp đồng (phân hệ chưa dựng). Danh sách theo Luật Đấu thầu (P-35).',
+      use: 'Hợp đồng (phân hệ chưa dựng). Tám loại theo QC-12869 Điều 43 khoản 2, hướng dẫn tại Phụ lục 3 (P-35).',
       fields: [F.code('Mã loại hợp đồng'), F.name('Tên loại hợp đồng'), F.desc()],
       seed: [
         ['TRON_GOI', 'Trọn gói', 'Giá hợp đồng không đổi trong suốt thời gian thực hiện', true, 6],
         ['DG_CD', 'Theo đơn giá cố định', '', true, 1],
         ['DG_DC', 'Theo đơn giá điều chỉnh', '', true, 0],
         ['THOI_GIAN', 'Theo thời gian', 'Thường dùng cho dịch vụ tư vấn', true, 0],
-        ['HON_HOP', 'Hỗn hợp', '', false, 0],
+        ['CP_CONG_PHI', 'Theo chi phí cộng phí', 'Thường dùng khi khẩn cấp, sửa chữa chưa xác định được khối lượng', true, 0],
+        ['KET_QUA', 'Theo kết quả đầu ra', '', true, 0],
+        ['TY_LE', 'Theo tỷ lệ phần trăm', '', true, 0],
+        ['HON_HOP', 'Hỗn hợp', 'Kết hợp các loại trên; ghi rõ phạm vi áp dụng từng loại', true, 0],
       ] },
+    B1_CATALOGS['hinh-thuc-bao-dam'],
     Object.assign({ key: 'nguong-phan-luong', scr: 'SCR-40', title: 'Ngưỡng phân luồng', entity: 'ngưỡng phân luồng', icon: 'danh_muc_dung_chung', built: true }, TH),
   ];
   const byKey = (k) => CATALOGS.find((c) => c.key === k);
@@ -260,31 +356,43 @@
   let DATA = {};
   try { DATA = JSON.parse(localStorage.getItem(STORE) || '{}'); } catch (e) { DATA = {}; }
   function rows(c) {
+    if (c.key === 'nguong-phan-luong' && DATA[c.key] && staleTH(DATA[c.key])) delete DATA[c.key];
     if (!DATA[c.key]) DATA[c.key] = c.seedRows ? c.seedRows() : c.seed.map(([code, name, description, active, used, extra], i) => Object.assign({ id: i + 1, code, name, description, active, used }, extra));
     return DATA[c.key];
   }
   function save() { try { localStorage.setItem(STORE, JSON.stringify(DATA)); } catch (e) { /* bỏ qua */ } }
+  /* Công cụ demo › Khôi phục dữ liệu mẫu: bỏ mọi thay đổi, các danh mục lấy lại dữ liệu mẫu khi mở lần sau. */
+  function reset() { DATA = {}; try { localStorage.removeItem(STORE); } catch (e) { /* bỏ qua */ } }
   /* Bản ghi đang hoạt động — nguồn cho ô chọn ở luồng nghiệp vụ. */
   const activeOptions = (key) => rows(byKey(key)).filter((r) => r.active).map((r) => ({ value: r.code, label: r.name }));
   /* Nối vào luồng MS01 (§5.4, §6): ngưỡng ĐXMS đang hoạt động, đã có hiệu lực ở ngày `date` (mặc định hôm nay), thay D.dxmsRules mặc định;
      tên, loại tiền của nhà cung cấp theo mã (D.quotes). */
   D.dxmsRules = (date) => rows(byKey('nguong-phan-luong')).filter((r) => r.group === 'DXMS' && r.active && dateKey(r.eff) <= dateKey(date || today()))
     .sort((a, b) => a.from - b.from).map((r) => ({ from: r.from, to: r.to, procs: r.procs.slice() }));
+  /* Ngưỡng KĐT (cổng "Tổng mức vốn thực tế thuộc MS13?" — plan KĐT §6 #1): lĩnh vực, tính chất tài sản, khoảng giá trị → nhóm. */
+  D.kdtRules = (date) => rows(byKey('nguong-phan-luong')).filter((r) => r.group === 'KDT' && r.active && dateKey(r.eff) <= dateKey(date || today()))
+    .sort((a, b) => a.from - b.from).map((r) => ({ field: r.field, asset: r.asset, from: r.from, to: r.to, procs: r.procs.slice() }));
   const nccDefault = D.nccOf;
   D.nccOf = (code) => rows(byKey('nha-cung-cap')).find((r) => r.code === code) || nccDefault(code);
 
   /* ---------- SCR-30 Tổng quan ---------- */
   const ARROW = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M20 12H4M15.5 16.5S20 13.186 20 12s-4.5-4.5-4.5-4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-  const visible = () => { const p = Flow.state.persona; return CATALOGS.filter((c) => p === 'qt' || (c.roles || []).includes(p)); };
+  const canSee = (key) => { const p = Flow.state.persona, c = byKey(key); return !!c && (p === 'qt' || D.allAccess(p) || (c.roles || []).includes(p)); };
+  const visible = () => CATALOGS.filter((c) => canSee(c.key));
+  /* Mục con của menu cha Danh mục dùng chung (D-14): Tổng quan, Quản lý E-form (D-16) + từng danh mục, cùng thứ tự với ô trên Tổng quan. */
+  const menuGroup = D.menu.find((m) => m.dmdc);
+  if (menuGroup) menuGroup.children = menuGroup.children.slice(0, 2).concat(CATALOGS.map((c) => ({ label: c.title, path: 'dmdc/' + c.key, scr: c.scr, dmdc: c.key })));
 
   function overview() {
     // Theo: fe/repo-khcn-ecat-fe/src/app/features/common-catalog/overview/common-catalog-overview.component.html
     const info = {
       scr: 'SCR-30', name: 'Tổng quan Danh mục dùng chung', uc: 'UC-12-05 · UR-DOC-05, UR-DOC-06, BR-04',
       notes: [
-        'Vị trí theo D-1: một mục "Danh mục dùng chung" dưới Quản trị hệ thống; từng danh mục không có dòng riêng trên sidebar, vào qua ô.',
+        'Vị trí (D-14, thay D-1): Danh mục dùng chung là menu cấp cha như ecat common-catalog; mục con là Tổng quan và từng danh mục. Căn cứ: CN sheet "WBS pha 1" mục 1.0 để Danh mục dùng chung là module riêng.',
+        'Menu con và ô trên Tổng quan cùng lọc theo vai (P-36).',
         'Ô lọc theo vai (P-36): Quản trị hệ thống thấy mọi danh mục; Chuyên viên TTMS thấy Nhà cung cấp / Nhà thầu và Loại hàng hoá / dịch vụ; vai khác thấy thông báo chưa được cấp quyền.',
-        'Đã dựng đủ 10 danh mục (SCR-31…40); Ngưỡng phân luồng là bảng quy tắc, dùng cùng khuôn danh sách.',
+        'Đã dựng 16 danh mục: 10 danh mục SCR-31…40 và 6 danh mục thêm theo Backlog W1_T10 (T16 B1): Loại đối tác, Đơn vị tính, Tiền tệ, Loại gói thầu, Phương pháp đánh giá, Hình thức bảo đảm (SCR-67…72). Ngưỡng phân luồng là bảng quy tắc, dùng cùng khuôn danh sách.',
+        'Thứ tự menu và ô theo Backlog; Nhà cung cấp / Nhà thầu, Nguồn vốn, Lĩnh vực đầu tư, Ngưỡng phân luồng không có trong Backlog nhưng luồng MS01 / MS13 đang dùng nên giữ. Backlog ghi "Tính chất KĐT" = danh mục Tính chất tài sản hình thành.',
       ],
       q: ['P-36', 'P-27'], src: 'ecat common-catalog/overview · /common-catalog',
     };
@@ -348,6 +456,7 @@
         'ĐTMS giữ danh sách gốc, không đồng bộ SAP/Ariba; nhà cung cấp không đăng nhập hệ thống, mọi yêu cầu báo giá gửi qua email — vì vậy Email nhận yêu cầu báo giá là bắt buộc (chốt 28/09/2026).',
         'Khuôn chung ecat, khác: hộp thoại vht-modal lg 720px lưới 2 cột; tìm kiếm nâng cao như màn Đối tác của ecat; nút Nhập từ Excel dùng vht-import-dialog (2 bước: chọn file → kết quả kiểm tra từng dòng → Xác nhận nhập).',
         'Mã nhà cung cấp do hệ thống tự sinh NCC-000123 (P-30); mã số thuế là khoá chống trùng.',
+        'Bấm Mã nhà cung cấp mở hộp thoại Xem chi tiết (chỉ xem, nút Đóng / Chỉnh sửa).',
         'Trong nước: Mã số thuế bắt buộc, 10 số hoặc 10 số-3 số (chi nhánh), Quốc gia khoá ở Việt Nam. Nước ngoài: mã định danh nước sở tại tuỳ chọn, nhập tự do (P-32).',
         'Nới khuôn của ecat: Tên nhận thêm & . , ( ) cho tên doanh nghiệp; Số điện thoại nhận +, số, khoảng trắng, 8–20 ký tự (số bàn, số nước ngoài).',
         'Ngành hàng lấy từ danh mục Loại hàng hoá / dịch vụ, dùng để lọc nhà cung cấp khi gửi yêu cầu báo giá (task 09).',
@@ -367,13 +476,15 @@
         'Khuôn chung ecat (danh sách + hộp thoại 520px), không có Mã/Tên. Khoảng giá trị tính theo tỷ đồng, gồm "Giá trị từ", không gồm "Đến dưới"; để trống "Đến dưới" = không giới hạn. Trên bảng, hai trường gộp thành cột "Khoảng giá trị" để 7 cột vừa màn 1440.',
         'Khi Lưu: hai ngưỡng đang hoạt động cùng nhóm quy trình không được có khoảng giá trị giao nhau nếu lĩnh vực và tính chất tài sản trùng nhau ("Tất cả" trùng với mọi giá trị). Lỗi hiện dưới "Giá trị từ". Kích hoạt lại ngưỡng đã dừng cũng kiểm tra như vậy.',
         'Khoản đầu tư gộp MS13 và MS14 làm một nhóm để kiểm tra chồng khoảng giữa hai quy trình (tài liệu chuẩn bị ghi 2 nhóm).',
+        'Bảng không có Mã: bấm Nhóm quy trình mở hộp thoại Xem chi tiết (chỉ xem, nút Đóng / Chỉnh sửa).',
         'Hiệu lực từ ngày (P-34): hồ sơ đã tạo giữ ngưỡng tại thời điểm tạo; ngưỡng mới chỉ áp dụng cho hồ sơ tạo từ ngày hiệu lực. Đổi điều kiện hoặc quy trình thì ngày hiệu lực không được trước ngày hiện tại. Ngày hiệu lực ở tương lai hiện nhãn "Chưa hiệu lực"; prototype chưa giữ bản cũ cho giai đoạn chờ.',
-        'Đề xuất mua sắm: dưới 160 tỷ → MS01.03; từ 160 tỷ → MS01.01 hoặc MS01.02, chọn theo căn cứ chứ không theo ngưỡng. Loại khoản đầu tư có Cấp xử lý "Luôn cấp Tập đoàn" (SXKD) được ưu tiên hơn bảng ngưỡng (P-29).',
-        'Ngưỡng MS13/MS14 theo BBLV 24/09: Viễn thông - CNTT dưới 160 tỷ, lĩnh vực khác (trừ BĐS) dưới 90 tỷ; BBLV 15/09 ghi ngược lại (P-28). Chưa có ngưỡng cho Bất động sản và Quốc phòng.',
+        'Đề xuất mua sắm: dưới 160 tỷ → MS01.03; từ 160 tỷ → MS01.01 hoặc MS01.02, chọn theo căn cứ chứ không theo ngưỡng. Loại khoản đầu tư có Cấp xử lý "Luôn cấp Tập đoàn" (Kinh doanh, Bất động sản) được ưu tiên hơn bảng ngưỡng (P-29).',
+        'Ngưỡng MS13/MS14 theo QT-8.6.5 (trường hợp 1, 2): Viễn thông - CNTT dưới 160 tỷ / 160 – dưới 1.000 tỷ; lĩnh vực khác (trừ KĐT bất động sản) dưới 90 tỷ / 90 – dưới 500 tỷ. Khớp BB-2409; BB-1509 ghi ngược (P-28). Trên mức đó và KĐT bất động sản là KĐT phức tạp (MS15, Pha 2) — chưa có dòng ngưỡng. Lĩnh vực Quốc phòng thuộc "lĩnh vực khác" nhưng chưa có dòng ngưỡng riêng (P-67).',
+        'Khoản đầu tư: MS13 là <b>một</b> quy trình (trang MS13-TO BE), áp cho mọi tính chất tài sản. Nhánh gộp BM-00 (Nguyên chiếc + Trang bị nội bộ) hay hai giai đoạn BM-01 → BM-03 do cổng trong BPMN chọn sau khi TTMS xác nhận 04 yếu tố, không do bảng ngưỡng. Hệ thống xác định nhóm KĐT theo ngưỡng này sau bước 12 (D-7).',
         'Ngưỡng của Đề xuất mua sắm đang được hồ sơ dùng: không xoá được, chỉ Dừng hoạt động (P-33). Dữ liệu mẫu; thay đổi được lưu trên trình duyệt.',
         'Dùng ở: nhãn điều kiện của từng quy trình khi Thêm mới hồ sơ Phê duyệt ĐXMS, cảnh báo mềm ở task 04, cổng "Giá trị khớp quy trình đã chọn?" sau task 10 và gợi ý quy trình ở task 10a. Hồ sơ giữ ngưỡng tại lúc tạo; tên quy trình (vd "Phê duyệt ĐXMS ≥ 160 tỷ") là tên trong BPMN, không đổi theo ngưỡng.',
       ],
-      q: ['P-28', 'P-34', 'P-29', 'P-33', 'P-27'], src: 'ecat common-catalog/base/catalog-list · khcn sys_config.TASK_LEVEL',
+      q: ['P-28', 'P-67', 'P-34', 'P-29', 'P-33', 'P-27'], src: 'ecat common-catalog/base/catalog-list · khcn sys_config.TASK_LEVEL',
     };
   }
 
@@ -384,6 +495,8 @@
     const c = byKey(key);
     if (!c) return window.Screens.viecCuaToi();
     if (!c.built) return window.Screens.phanHe({ label: 'Danh mục ' + c.title, uc: ['UC-12-05'] }, { ph: '12' });
+    if (!canSee(key)) return `<div class="pg"><div class="pg-head"><div class="l"><h1 class="pg-title">Danh sách ${esc(c.entity)}</h1></div></div>
+      <div class="vcard pad24"><p class="ov-empty">Bạn chưa được cấp quyền truy cập chức năng này</p></div></div>`;
     const s = ls(key);
     const all = filtered(c);
     const pages = Math.max(1, Math.ceil(all.length / s.size));
@@ -391,7 +504,9 @@
     const from = (s.page - 1) * s.size;
     const cols = c.columns || c.fields;
     const th = (f) => `<th class="${f.cls || ''}" style="${f.width ? `width:${f.width}px;min-width:${f.width}px;max-width:${f.width}px` : `min-width:${f.minWidth || 180}px`}">${esc(f.label)}</th>`;
+    /* Cột đầu (Mã) là link đỏ mở hộp thoại Xem chi tiết (Backlog "Xem chi tiết", B5); Ngưỡng không có Mã → link ở cột Nhóm quy trình. */
     const td = (f, r) => {
+      if (f === cols[0]) return `<td><a class="link" data-cat-view="${r.id}">${f.render ? f.render(r) : esc(f.type === 'select' ? labelOf(f, r[f.key]) : r[f.key])}</a></td>`;
       if (f.render) return `<td class="${f.cls || ''}">${f.render(r)}</td>`;
       const v = f.type === 'select' ? labelOf(f, r[f.key]) : r[f.key];
       if (!v) return '<td><span class="dash">-</span></td>';
@@ -409,8 +524,9 @@
       scr: c.scr, name: 'Danh sách ' + c.entity, uc: 'UC-12-05 · UR-DOC-05, BR-04',
       notes: [
         'Khuôn chung theo ecat common-catalog: Thêm mới / Chỉnh sửa là hộp thoại vht-modal 520px — ngoại lệ so với rule B6 (trang riêng) vì màn tương đương trong ecat dùng hộp thoại.',
-        'Nút quay lại về Tổng quan: ecat không có vì mỗi danh mục có dòng riêng trên sidebar; ĐTMS để danh mục dưới Quản trị hệ thống và vào qua ô (D-1).',
+        'Vị trí (D-14): mỗi danh mục có dòng riêng dưới menu cha Danh mục dùng chung, như ecat; vì vậy không có nút quay lại. Vai không được xem danh mục (P-36) thấy thông báo chưa được cấp quyền.',
         'Lọc Trạng thái áp ngay khi chọn; ô tìm kiếm (mã hoặc tên) áp khi nhấn Enter. Phân trang 10 / 25 / 50 như ecat.',
+        'Xem chi tiết (Backlog): bấm Mã mở cùng hộp thoại ở chế độ chỉ xem, nút Đóng / Chỉnh sửa. ecat chưa có chế độ này — làm theo mode view của display-rule-form (FE thêm tham số mode cho catalog-form-dialog, BE dùng API lấy chi tiết sẵn có).',
         'Mã: chữ không dấu, số, "-", "_"; dấu và khoảng trắng tự bỏ, tự viết hoa; không sửa được khi Chỉnh sửa; không trùng. Tên: chữ, số, khoảng trắng, "-".',
         'Bản ghi đang được hồ sơ dùng (vd Vốn KHCN) không xoá được, chỉ Dừng hoạt động (P-33). Bản ghi dừng hoạt động không hiện trong ô chọn ở luồng nghiệp vụ.',
         ...(c.use ? ['Dùng ở: ' + c.use] : []),
@@ -419,8 +535,7 @@
       q: ['P-27', 'P-33'].concat(c.q || []), src: 'ecat common-catalog/base/catalog-list · /common-catalog/funding-source',
     };
     return `<div class="pg">
-      <div class="pg-head"><div class="l"><button class="vbtn back" data-go="dmdc" aria-label="Quay lại">${icon('back')}</button>
-        <h1 class="pg-title">Danh sách ${esc(c.entity)}${infoBtn(info)}</h1></div>
+      <div class="pg-head"><div class="l"><h1 class="pg-title">Danh sách ${esc(c.entity)}${infoBtn(info)}</h1></div>
         <div class="r">${c.importable ? `<button class="vbtn secondary" data-cat-import>${icon('upload')} Nhập từ Excel</button>` : ''}<button class="vbtn primary" data-cat-new="${key}">${icon('add')} Thêm mới</button></div></div>
       <div class="vcard">
         ${c.advanced ? advFilter(c) : `<div class="cat-filter">
@@ -474,33 +589,39 @@
     return '';
   }
 
-  function openForm(c, row) {
+  /* view: chế độ Xem chi tiết — cùng hộp thoại, mọi trường khoá, nút Đóng + Chỉnh sửa (ecat chưa có; theo mode view của display-rule-form). */
+  function openForm(c, row, view) {
     /* Trường select: vht-select; searchable / multi theo cấu hình (Quốc gia, Ngành hàng của Nhà cung cấp). */
     const sel = {};
     const fields = c.fields.filter((f) => f.type !== 'blank');
     const vals = () => { const o = {}; fields.forEach((f) => { o[f.key] = valueOf(f); }); return o; };
     const selHtml = (f, invalid) => vSelect({ id: 'cf-' + f.key, options: optsOf(f, sel[f.key], false, sel), value: sel[f.key], multi: f.multi, searchable: f.searchable,
-      placeholder: 'Chọn ' + f.label.toLowerCase(), invalid, disabled: f.locked && f.locked(sel),
+      placeholder: view ? '' : 'Chọn ' + f.label.toLowerCase(), invalid, disabled: view || (f.locked && f.locked(sel)),
       onChange: (v) => { sel[f.key] = v; if (f.onChange) { f.onChange(v, sel); sync(); } check(f); } });
     const ctl = (f) => {
       if (f.type === 'select') { sel[f.key] = row ? row[f.key] : f.default || (f.multi ? [] : null); return `<div data-cf="${f.key}">${selHtml(f)}</div>`; }
       const raw = row ? row[f.key] : typeof f.default === 'function' ? f.default() : f.default;
       const v = esc(f.type === 'num' ? fmtNum(raw) : raw || '');
-      const dis = f.type === 'auto' || (row && f.type === 'code') ? 'disabled' : '';
-      const ph = f.placeholder ? `placeholder="${esc(f.placeholder)}"` : '';
-      if (f.type === 'textarea') return `<textarea class="vctl ta" data-cf="${f.key}" maxlength="${f.max}" rows="3">${v}</textarea>`;
+      const dis = view || f.type === 'auto' || (row && f.type === 'code') ? 'disabled' : '';
+      const ph = f.placeholder && !view ? `placeholder="${esc(f.placeholder)}"` : '';
+      if (f.type === 'textarea') return `<textarea class="vctl ta" data-cf="${f.key}" maxlength="${f.max}" rows="3" ${dis}>${v}</textarea>`;
       // vht-calendar: ô nhập DD/MM/YYYY + icon lịch bên phải (mở bộ chọn ngày của trình duyệt).
-      if (f.type === 'date') return `<div class="vdate"><input class="vctl" data-cf="${f.key}" maxlength="10" inputmode="numeric" placeholder="DD/MM/YYYY" value="${v}">
+      if (f.type === 'date') return `<div class="vdate"><input class="vctl" data-cf="${f.key}" maxlength="10" inputmode="numeric" placeholder="DD/MM/YYYY" value="${v}" ${dis}>
           <button type="button" class="vdate-ic" data-date-pick tabindex="-1" aria-label="Chọn ngày">${CAL}</button><input type="date" class="vdate-native" tabindex="-1" aria-hidden="true"></div>`;
       return `<input class="vctl" data-cf="${f.key}" ${f.max ? `maxlength="${f.max}"` : ''} ${f.type === 'num' ? 'inputmode="decimal"' : ''} value="${v}" ${ph} ${dis}>`;
     };
     const lg = c.formSize === 'lg';
     const m = vModal({
-      title: (row ? 'Chỉnh sửa ' : 'Thêm mới ') + c.entity, size: lg ? 'lg' : 'w520',
+      title: (view ? 'Xem chi tiết ' : row ? 'Chỉnh sửa ' : 'Thêm mới ') + c.entity, size: lg ? 'lg' : 'w520',
       body: `<form class="cat-form ${lg || c.formGrid ? 'g2' : ''}" novalidate>${c.fields.map((f) => (f.type === 'blank' ? '<div class="g2-blank"></div>' : `<div class="vfield ${f.span === 2 ? 'span2' : ''}" data-ff="${f.key}">
-          <div class="lr"><label>${esc(f.label)}</label><span class="req" ${isReq(f, row || {}) ? '' : 'hidden'}>*</span></div>${ctl(f)}<p class="msg" hidden></p></div>`)).join('')}</form>`,
-      actions: '<button class="vbtn secondary" data-close>Hủy</button><button class="vbtn primary" id="cat-save">Lưu</button>',
+          <div class="lr"><label>${esc(f.label)}</label><span class="req" ${!view && isReq(f, row || {}) ? '' : 'hidden'}>*</span></div>${ctl(f)}<p class="msg" hidden></p></div>`)).join('')}</form>`,
+      actions: view ? '<button class="vbtn secondary" data-close>Đóng</button><button class="vbtn primary" id="cat-edit">Chỉnh sửa</button>'
+        : '<button class="vbtn secondary" data-close>Hủy</button><button class="vbtn primary" id="cat-save">Lưu</button>',
     });
+    if (view) {
+      m.el.querySelector('#cat-edit').onclick = () => { m.close(); openForm(c, row); };
+      return;
+    }
     const el = (k) => m.el.querySelector(`[data-cf="${k}"]`);
     const wrap = (f) => m.el.querySelector(`[data-ff="${f.key}"]`);
     const show = (f, err) => {
@@ -733,6 +854,8 @@
     if (t.closest('[data-adv-reset]')) { s.draft = ADV0(); s.adv = ADV0(); s.st = null; s.kw = ''; s.kwInput = ''; s.page = 1; rerender(); return; }
     const ed = t.closest('[data-cat-edit]');
     if (ed) { openForm(c, rowOf(c, ed.dataset.catEdit)); return; }
+    const vw = t.closest('[data-cat-view]');
+    if (vw) { openForm(c, rowOf(c, vw.dataset.catView), true); return; }
     const dl = t.closest('[data-cat-del]');
     if (dl) { del(c, rowOf(c, dl.dataset.catDel)); return; }
     const tg = t.closest('[data-cat-tg]');
@@ -767,5 +890,5 @@
     if (n) { n.focus(); n.setSelectionRange(n.value.length, n.value.length); }
   });
 
-  window.Catalog = { overview, list, activeOptions, rows: (key) => rows(byKey(key)), CATALOGS, confirm: confirmDlg };
+  window.Catalog = { overview, list, activeOptions, canSee, rows: (key) => rows(byKey(key)), CATALOGS, confirm: confirmDlg, reset };
 })();

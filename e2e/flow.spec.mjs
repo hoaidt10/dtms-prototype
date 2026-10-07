@@ -2,7 +2,7 @@
 // (BPMN MS01 v1.1, 61 task) tới phê duyệt, rồi thử 6 nhánh phụ (gồm B-3e: chọn nhầm quy trình → 10a → 10b → mở hồ sơ mới của cùng ĐXMS).
 // Bản Playwright của tools/e2e.mjs (bỏ phần chụp ảnh từng màn).
 import { test, expect } from '@playwright/test';
-import { fresh, primary, lastToast, state, createDxms, createCase } from './helpers.mjs';
+import { fresh, primary, lastToast, state, createDxms, createCase, openForm, aiDecide, closeForm, uploadReq } from './helpers.mjs';
 
 test('SCR-28 → SCR-25: tạo ĐXMS không start quy trình; Tạo hồ sơ khoá ĐXMS, chọn sẵn loại Phê duyệt; bắt buộc quy trình; đủ 3 quy trình; Lưu là start task 01', async ({ page }) => {
   await fresh(page, '#/dxms');
@@ -11,7 +11,9 @@ test('SCR-28 → SCR-25: tạo ĐXMS không start quy trình; Tạo hồ sơ kho
   await expect(page.locator('.pg-title')).toContainText('Thêm mới ĐXMS');
   await expect(page.locator('input[placeholder="Hệ thống tự sinh"]')).toBeDisabled();
   await page.locator('#x-save').click();
-  await expect(page.locator('.vfield.invalid .msg')).toHaveText(['Bạn cần nhập Tên ĐXMS.']);
+  await expect(page.locator('.vfield.invalid .msg')).toHaveText(['Bạn cần nhập Tên ĐXMS.', 'Bạn cần chọn Nhiệm vụ / Đề tài, dự án.']);
+  await page.locator('[data-vsel="x-nv"]').click();
+  await page.locator('.vsel-panel [data-opt="NV-KHCN-2026-014"]').click();
   await page.locator('#x-est').fill('abc');
   await page.locator('#x-title').fill('Mua sắm thiết bị đo kiểm phục vụ phát triển trạm gNodeB thế hệ 2');
   await page.locator('#x-save').click();
@@ -48,8 +50,13 @@ test('SCR-28 → SCR-25: tạo ĐXMS không start quy trình; Tạo hồ sơ kho
   expect(await lastToast(page)).toContain('Thêm mới thành công');
   await expect(page.locator('.tmain .ginfo')).toContainText('MS01.01');
   await expect(page.locator('.tmain .ginfo')).toContainText('Mã ĐXMSĐXMS-2026-0117');
-  // Task 1 chỉ hiện căn cứ chưa được TĐ duyệt (qd1, qd2 — loại QĐ nhiệm vụ KHCN có 1482 và 0917).
-  await expect(page.locator('tr[data-ui="basisDoc"]')).toHaveCount(2);
+  // Task 1 (eForm): chỉ có căn cứ chưa được TĐ duyệt (qd1, qd2 — loại QĐ nhiệm vụ KHCN có 1482 và 0917); không còn nội dung bước trên trang.
+  await expect(page.locator('.tmain > section > h3, .tmain > section > .vcard-h > h3')).toHaveText(['Thông tin chung', 'Quy trình', 'Danh sách tài liệu', 'Văn bản đầu ra']);
+  const f1 = await openForm(page);
+  await expect(f1.locator('.vmodal-h h3')).toHaveText('Hoàn thành');
+  await expect(f1.locator('.ef-table tbody tr')).toHaveCount(2);
+  await expect(f1.locator('.ef-table tbody')).toContainText('1482/QĐ-VHT');
+  await closeForm(page);
   const s = await page.evaluate(() => ({ code: Flow.ci().code, dxms: Flow.ci().dxms, flow: Flow.ci().flow, tok: Flow.state.tokens.map((t) => [t.task, t.who]) }));
   expect(s).toEqual({ code: 'HS-2026-0117', dxms: 'ĐXMS-2026-0117', flow: 'MS01.01', tok: [[1, 'minh']] });
   // ĐXMS giờ Đang phê duyệt, không xoá được; Danh sách hồ sơ của ĐXMS có hồ sơ vừa tạo.
@@ -119,26 +126,33 @@ test('luồng chính tới phê duyệt', async ({ page }) => {
     await expect(page.locator('.task-acts [data-act]').first()).toBeVisible();
 
     // Điều kiện trước của kịch bản
-    if (tok.task === 4) await page.locator('[data-ai-all]').click();
+    if (tok.task === 10) await uploadReq(page, 'quote_');
+    // DX-03: lần YCBG đầu AI Không đạt — bấm "Báo giá đạt" vẫn quay lại task 09 (cổng đọc quoteCheck).
     if (tok.task === 10 && (await page.evaluate(() => Flow.doneCount(9))) === 1) {
       await primary(page);
-      expect(await lastToast(page), 'T10 lần 1 phải chặn "Báo giá đạt"').toContain('Không đạt');
-      await primary(page, 'Không đạt');
+      expect(await lastToast(page), 'T10 lần 1: AI Không đạt → về task 09').toContain('Không đạt');
       continue;
     }
+    // DX-01: thiếu "Sự cần thiết" → AI kiểm tra Không đạt, hồ sơ ở lại task 12; chọn Chấp nhận gợi ý AI rồi gửi lại.
     if (tok.task === 12 && !(await page.evaluate(() => !!Flow.ui.necessity))) {
       await primary(page);
       expect(await lastToast(page), 'T12 phải báo AI Fail khi thiếu Sự cần thiết').toContain('Fail');
       await page.evaluate((id) => { location.hash = `#/task/${id}`; }, tok.id);
-      await page.locator('[data-ui="necessity"]').click();
+      const f = await openForm(page);
+      await expect(f.locator('.banner-bad')).toContainText('Không đạt');
+      await aiDecide(f, 'Sự cần thiết');
+      await f.locator('#ok').click();
+      continue;
     }
+    // E3: tài liệu bắt buộc tải lên ở Danh sách tài liệu.
     if (tok.task === 16 && !(await page.evaluate(() => !!Flow.ui.bm03File))) {
       await primary(page);
       expect(await lastToast(page), 'T16 phải yêu cầu đính kèm BM-03').toContain('BM-03');
-      await page.locator('[data-ui="bm03File"]').click();
+      await page.locator('.vmodal.ef [data-close]').first().click();
+      await page.locator('[data-req-up="bm03File"]').click();
     }
-    if (tok.task === 32) await page.locator('[data-ui="minutesFile"]').click();
-    if (tok.task === 51) await page.locator('[data-ui="bm06File"]').click();
+    if (tok.task === 32) await page.locator('[data-req-up="minutesFile"]').click();
+    if (tok.task === 51) await page.locator('[data-req-up="bm06File"]').click();
 
     expect(await primary(page), `Kẹt ở task ${tok.task}`).toBe(true);
   }
@@ -180,13 +194,18 @@ test('B-3e: Sửa lại ở 10a về task 10; Chuyển quy trình → hồ sơ c
   await fresh(page, '#/viec-cua-toi');
   await page.locator('#demo').click();
   await page.locator('[data-branch="0"]').click();
-  await expect(page.locator('.banner-bad')).toBeVisible();
-  await expect(page.locator('.cmp')).toContainText('MS01.01');
+  const fa = await openForm(page, 'Sửa lại');
+  await expect(fa.locator('.banner-bad')).toBeVisible();
+  await expect(fa.locator('.ef-text').first()).toContainText('MS01.01');
+  await closeForm(page);
   await primary(page, 'Sửa lại');
   await expect.poll(async () => (await state(page)).mine.map((t) => t.task)).toContain(10);
   const tok10 = (await state(page)).mine.find((t) => t.task === 10);
   await page.evaluate((id) => { location.hash = `#/task/${id}`; }, tok10.id);
-  await expect(page.locator('.flow-label')).toContainText('Không khớp');
+  const f10 = await openForm(page, 'Báo giá đạt');
+  await expect(f10).toContainText('Không khớp');
+  await closeForm(page);
+  await uploadReq(page, 'quote_');
   await primary(page, 'Báo giá đạt');
   await expect.poll(async () => (await state(page)).mine.map((t) => t.task)).toContain('10a');
   const tokA = (await state(page)).mine.find((t) => t.task === '10a');

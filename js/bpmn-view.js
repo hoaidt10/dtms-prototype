@@ -60,14 +60,15 @@
   }
 
   /* Khung xem: key giữ vị trí pan/zoom theo màn; active = số task đang xử lý (có thể nhiều task song song).
-     o: { page (trang drawio, mặc định MS01 v1.1), toolbar, select (bấm chọn phần tử), selected (id phần tử đang chọn) }. */
+     o: { page (trang drawio, mặc định MS01 v1.1), toolbar, select (bấm chọn phần tử), selected (id phần tử đang chọn),
+          focus (task để canh giữa khi mở — mặc định mọi task active; dùng khi các task active nằm xa nhau, vd. quy trình con KĐT 41 + bước 24) }. */
   function html(key, active, height, o) {
     o = Object.assign({ page: DEF_PAGE }, o);
     G = diagram(o.page);
     if (!G) return `<div class="bp-vp bp-msg" style="height:${height || 520}px">Chưa có sơ đồ để hiển thị.</div>`;
-    if (document.body.classList.contains('cap')) return `<div class="bp-vp" style="height:${height || 520}px">${capSvg(active, height || 520)}</div>`;
+    if (document.body.classList.contains('cap')) return `<div class="bp-vp" style="height:${height || 520}px">${capSvg(active, height || 520, o.focus)}</div>`;
     const tb = o.toolbar ? `<div class="bp-tb"><button type="button" class="bp-tbb" data-bpz="in" aria-label="Phóng to">${ZOOM_IN}</button><button type="button" class="bp-tbb" data-bpz="out" aria-label="Thu nhỏ">${ZOOM_OUT}</button></div>` : '';
-    return `<div class="bp-vp${o.select ? ' pick' : ''}" data-bpmn="${esc(key)}" data-page="${esc(o.page)}" data-active="${esc(active.join(','))}" style="height:${height || 520}px">${svg(active, o)}${tb}</div>`;
+    return `<div class="bp-vp${o.select ? ' pick' : ''}" data-bpmn="${esc(key)}" data-page="${esc(o.page)}" data-active="${esc(active.join(','))}"${o.focus ? ` data-focus="${esc(o.focus.join(','))}"` : ''} style="height:${height || 520}px">${svg(active, o)}${tb}</div>`;
   }
   const ZOOM_IN = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3M11 8v6M8 11h6"/></svg>';
   const ZOOM_OUT = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3M8 11h6"/></svg>';
@@ -75,8 +76,8 @@
   /* ?capture=1 (xuất Figma): Figma không đọc foreignObject và sơ đồ đầy đủ quá nặng → chỉ vẽ vùng đang nhìn, chữ bằng <text>. */
   const plain = (h) => h.replace(/<br\s*\/?>|<\/div>/gi, '\n').replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>');
   const wrap = (t, n) => { const out = []; let line = ''; for (const w of t.split(/\s+/)) { if ((line + ' ' + w).trim().length > n && line) { out.push(line); line = w; } else line = (line + ' ' + w).trim(); } if (line) out.push(line); return out; };
-  function capSvg(active, H) {
-    const W = 1100, v = initial({ clientWidth: W, clientHeight: H }, active.map(String));
+  function capSvg(active, H, focus) {
+    const W = 1100, v = initial({ clientWidth: W, clientHeight: H }, (focus || active).map(String));
     const vx = -v.tx / v.s, vy = -v.ty / v.s, vw = W / v.s, vh = H / v.s;
     const hit = (x, y, w, h) => x < vx + vw && x + w > vx && y < vy + vh && y + h > vy;
     const on = new Set(active.map(String));
@@ -138,7 +139,7 @@
       const key = vp.dataset.bpmn, active = vp.dataset.active ? vp.dataset.active.split(',') : [];
       G = diagram(vp.dataset.page);
       const vk = key + '|' + vp.dataset.page + '|' + vp.dataset.active;
-      const v = views[vk] || (views[vk] = initial(vp, active));
+      const v = views[vk] || (views[vk] = initial(vp, vp.dataset.focus ? vp.dataset.focus.split(',') : active));
       apply(vp, v);
       /* Toolbar (bpmn-viewer handleZoomIn/Out): phóng quanh tâm khung. Source cộng/trừ 0,1 mức zoom; sơ đồ ĐTMS mở ở ~0,04 nên nhân 1,25. */
       vp.querySelectorAll('[data-bpz]').forEach((b) => {

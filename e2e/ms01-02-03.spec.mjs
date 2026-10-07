@@ -1,7 +1,7 @@
 // T6 — MS01.02 (ĐXMS-2026-0124) và MS01.03 (ĐXMS-2026-0098) bằng click thật, theo docs/dtms/prototype-MS01-02-03-chuan-bi.md §3.4:
 // chọn hồ sơ demo ở công cụ demo → Thêm mới hồ sơ (ĐXMS khoá) → chọn quy trình → chạy luồng chính tới phê duyệt; nhánh phụ B-3a…d.
 import { test, expect } from '@playwright/test';
-import { fresh, primary, lastToast, state } from './helpers.mjs';
+import { fresh, primary, lastToast, state, openForm, aiDecide, closeForm, uploadReq } from './helpers.mjs';
 
 // Công cụ demo › Hồ sơ demo: mở Thêm mới hồ sơ khoá ĐXMS của bộ, chọn quy trình rồi Lưu.
 async function startDemo(page, key) {
@@ -33,11 +33,16 @@ async function runMain(page, onTask) {
     await expect(page.locator('.task-acts [data-act]').first()).toBeVisible();
     seen.push(tok.task);
     if (onTask) await onTask(tok);
-    if (tok.task === 4) await page.locator('[data-ai-all]').click();
-    if ((tok.task === 11 || tok.task === 12) && !(await page.evaluate(() => !!Flow.ui.necessity))) await page.locator('[data-ui="necessity"]').click();
-    if (tok.task === 16 && !(await page.evaluate(() => !!Flow.ui.bm03File))) await page.locator('[data-ui="bm03File"]').click();
-    if (tok.task === 32) await page.locator('[data-ui="minutesFile"]').click();
-    if (tok.task === 51) await page.locator('[data-ui="bm06File"]').click();
+    if ((tok.task === 11 || tok.task === 12) && !(await page.evaluate(() => !!Flow.ui.necessity))) {
+      const f = await openForm(page);
+      await aiDecide(f, 'Sự cần thiết');
+      await f.locator('#ok').click();
+      continue;
+    }
+    if (tok.task === 10) await uploadReq(page, 'quote_');
+    if (tok.task === 16 && !(await page.evaluate(() => !!Flow.ui.bm03File))) await page.locator('[data-req-up="bm03File"]').click();
+    if (tok.task === 32) await page.locator('[data-req-up="minutesFile"]').click();
+    if (tok.task === 51) await page.locator('[data-req-up="bm06File"]').click();
     expect(await primary(page), `Kẹt ở task ${tok.task}`).toBe(true);
   }
   return seen;
@@ -47,21 +52,21 @@ test('MS01.02 (ĐXMS-2026-0124): chỉ căn cứ đã được TĐ duyệt; kh�
   test.setTimeout(120_000);
   await fresh(page, '#/viec-cua-toi');
   await startDemo(page, 'MS01.02');
-  // Task 01: loại Kế hoạch SXKD năm bị khoá; văn bản chọn sẵn 1876/QĐ-TĐ (đã duyệt).
-  await expect(page.locator('tr[data-ui="basisDoc"].sel')).toContainText('1876/QĐ-TĐ');
-  await expect(page.locator('tr[data-ui="basisDoc"] .vbadge', { hasText: 'Chưa duyệt' })).toHaveCount(0);
-  await page.locator('[data-vsel="b-type"]').click();
-  await expect(page.locator('.vsel-panel [data-opt="khsx"]')).toHaveClass(/dis/);
-  await page.locator('[data-vsel="b-type"]').click();
+  // Task 01 (eForm của quy trình MS01.02): không có loại Kế hoạch SXKD năm; văn bản chọn sẵn 1876/QĐ-TĐ (đã duyệt).
+  const f1 = await openForm(page);
+  await expect(f1.locator('[data-vsel="ef-basisDoc"]')).toContainText('1876/QĐ-TĐ');
+  await expect(f1.locator('.ef-table .vbadge', { hasText: 'Chưa duyệt' })).toHaveCount(0);
+  await f1.locator('[data-vsel="ef-basisType"]').click();
+  await expect(page.locator('.vsel-panel [data-opt="khsx"]')).toHaveCount(0);
+  await f1.locator('[data-vsel="ef-basisType"]').click();
+  await closeForm(page);
 
   const seen = await runMain(page, async (tok) => {
-    if (tok.task === 10) await expect(page.locator('.flow-label')).toContainText('Khớp');
+    if (tok.task === 10) { const f = await openForm(page); await expect(f).toContainText('Khớp'); await closeForm(page); }
     if (tok.task === 48) {
       await expect(page.locator('.task-acts [data-act]', { hasText: 'Có báo cáo' })).toBeDisabled();
       await expect(page.locator('.task-acts [data-act].primary')).toHaveText('Không báo cáo TGĐ Tập đoàn');
-      await expect(page.locator('main .banner-moved')).toContainText('không báo cáo Tập đoàn');
     }
-    if (tok.task === 60) await expect(page.locator('main')).not.toContainText('BM-06, BM-07');
   });
   const fin = await page.evaluate(() => ({ s: Flow.state.status, code: Flow.ci().code, flow: Flow.ci().flow, q9: Flow.doneCount(9), na: [49, 53, 56].map((n) => Flow.taskStatus(n)) }));
   expect(fin).toEqual({ s: 'approved', code: 'HS-2026-0124', flow: 'MS01.02', q9: 1, na: ['na', 'na', 'na'] });
@@ -75,30 +80,51 @@ test('MS01.03 (ĐXMS-2026-0098): BM-09 + Checklist 02, Ban Tài chính bắt bu�
   test.setTimeout(120_000);
   await fresh(page, '#/viec-cua-toi');
   await startDemo(page, 'MS01.03');
-  await expect(page.locator('tr[data-ui="basisDoc"].sel')).toContainText('0412/QĐ-VHT');
+  const f1 = await openForm(page);
+  await expect(f1.locator('[data-vsel="ef-basisDoc"]')).toContainText('0412/QĐ-VHT');
+  await closeForm(page);
 
   const seen = await runMain(page, async (tok) => {
-    if (tok.task === 7) await expect(page.locator('.hl-row')).toContainText('Bộ kit hiệu chuẩn');
+    if (tok.task === 7) {
+      const f = await openForm(page);
+      await expect(f.locator('.ef-row', { hasText: 'Bộ kit hiệu chuẩn' }).locator('[data-ef$="fromStock"]')).toHaveCount(1);
+      await closeForm(page);
+    }
     if (tok.task === 11) {
-      await expect(page.locator('.tabs.in-card')).toContainText('BM-09 Tờ trình');
-      await expect(page.locator('.tabs.in-card')).toContainText('Checklist 02');
-      await expect(page.locator('.doc')).toContainText('PHÊ DUYỆT');
+      const f = await openForm(page);
+      await expect(f.locator('.ef-group > .ef-gh')).toContainText('Tờ trình BM-09');
+      await expect(f.locator('.ef-table .ef-lbl', { hasText: 'Checklist 02' })).toHaveCount(1);
+      await closeForm(page);
+      await page.locator('[data-preview]', { hasText: 'BM-09' }).click();
+      await expect(page.locator('.pdf-view')).toContainText('PHÊ DUYỆT');
+      await page.locator('.overlay [data-close]').first().click();
     }
     if (tok.task === 16) {
-      await expect(page.locator('input[data-k="TC"]')).toBeDisabled();
-      await expect(page.locator('input[data-k="TC"]')).toBeChecked();
-      await expect(page.locator('input[data-k="PC"]')).not.toBeChecked();
+      // G3: Ban Tài chính chọn sẵn; bỏ chọn thì BE từ chối khi Xác nhận.
+      await page.locator('[data-req-up="bm03File"]').click();
+      const f = await openForm(page);
+      const tc = f.locator('[data-ef-list="cqcmSel"][data-v=\'"TC"\']');
+      await expect(tc).toBeChecked();
+      await expect(f.locator('[data-ef-list="cqcmSel"][data-v=\'"PC"\']')).not.toBeChecked();
+      await tc.uncheck();
+      await f.locator('#ok').click();
+      expect(await lastToast(page)).toContain('CQCM Tài chính bắt buộc');
+      await closeForm(page);
     }
     if (tok.task === 36) await expect(page.locator('.task-acts [data-act].primary')).toHaveText('Xác nhận ký BM-04 & Checklist 02');
     if (tok.task === 38 || tok.task === 39) {
-      await expect(page.locator('main')).toContainText('Khối chữ ký BM-09');
-      await expect(page.locator('main')).toContainText('Đã thể hiện qua BM-04 + Checklist 02');
       await expect(page.locator('.task-acts [data-act].primary')).toHaveText('Ký thẩm định BM-09');
+      const f = await openForm(page);
+      await expect(f).toContainText('Khối chữ ký BM-09');
+      await expect(f).toContainText('Đã thể hiện qua BM-04 + Checklist 02');
+      await closeForm(page);
     }
     if (tok.task === 60) {
-      await expect(page.locator('main')).toContainText('BM-09 Tờ trình đề xuất mua sắm (đã đủ chữ ký thẩm định)');
-      await expect(page.locator('main')).not.toContainText('BM-08 Quyết định');
-      await expect(page.locator('main .vbadge', { hasText: 'Trong hạn' })).toHaveCount(1);
+      await expect(page.locator('[data-preview]', { hasText: 'BM-09' })).toHaveCount(1);
+      await expect(page.locator('[data-preview]', { hasText: 'BM-08' })).toHaveCount(0);
+      const f = await openForm(page);
+      await expect(f).toContainText('trong hạn');
+      await closeForm(page);
     }
   });
   expect(seen).toEqual(expect.arrayContaining([11, 38, 39, 60]));
@@ -135,7 +161,8 @@ for (const [i, from, who, label, expected] of branches) {
     if (expected === 26) {
       const tok = await page.evaluate(() => Flow.state.tokens.find((k) => k.task === 26).id);
       await page.evaluate((id) => { Flow.setPersona('minh'); location.hash = `#/task/${id}`; }, tok);
-      await expect(page.locator('main .banner-bad')).toContainText('Nội dung thử');
+      const f = await openForm(page);
+      await expect(f.locator('.banner-bad')).toContainText('Nội dung thử');
     }
     expect(page.errors).toEqual([]);
   });
@@ -151,7 +178,9 @@ test('công cụ demo: cảnh của bộ đang chọn; đổi bộ thì đặt l
   await page.locator('.demo-panel [data-scene="3-5"]').click();
   await expect(page).toHaveURL(/#\/task\//);
   expect(await page.evaluate(() => [Flow.state.persona, Flow.ci().code, Flow.state.tokens.map((t) => t.task).sort()])).toEqual(['lan', 'HS-2026-0098', [38, 39]]);
-  await expect(page.locator('main')).toContainText('Khối chữ ký BM-09');
+  const f = await openForm(page);
+  await expect(f).toContainText('Khối chữ ký BM-09');
+  await closeForm(page);
   await page.locator('#demo').click();
   await page.locator('[data-demo-set="MS01.02"]').click();
   await expect(page).toHaveURL(/#\/ho-so-dxms\/create\/%C4%90XMS-2026-0124$/);

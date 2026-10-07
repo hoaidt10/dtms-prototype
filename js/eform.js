@@ -4,7 +4,7 @@
    B3: SCR-51 Thiết kế + SCR-52 Xem trước; B4: mở SCR-51 từ panel "Biểu mẫu phần tử" của SCR-42 (chỉ xem khi Dừng hoạt động), biểu mẫu cho SCR-44. */
 (function () {
   const D = window.D, Flow = window.Flow;
-  const { esc, icon, infoBtn, vSelect, vModal, toast, pager, norm } = window.UI;
+  const { esc, icon, infoBtn, vSelect, vModal, toast, pager, norm, badge } = window.UI;
   const rerender = () => window.App.render();
   const STORE = 'dtms-proto-eform';
   const ROLES = ['qt'];
@@ -142,6 +142,7 @@
       'Hộp thoại Thêm mới / Chỉnh sửa (SCR-50, e-form-dialog): Loại biểu mẫu, Loại hồ sơ theo danh mục ĐTMS (P-43); Mã tự bỏ dấu, viết hoa, khoá khi sửa; mã duy nhất theo cặp (Loại hồ sơ, Mã) — trùng báo lỗi dưới ô Mã (P-44). File mẫu .xlsx .xls .doc .docx ≤ 5MB, chỉ lưu tệp, chưa map biến (D-5, P-46). Tạo & thiết kế → mở màn Thiết kế của biểu mẫu mới.',
       'Khác source: lỗi bỏ trống ghi "Bạn cần chọn / nhập …" (source dùng chung câu "… không đúng định dạng."); Chỉnh sửa hiện File mẫu đã tải để xoá / thay.',
       'Xuất excel tải tệp CSV của danh sách đang lọc (cột STT, Mã, Tên, Loại, Số trường, Trạng thái) như source.',
+      'Nhập biểu mẫu (Backlog "Import biểu mẫu Eform", T16 B1): ecat chưa có. Theo vht-import-dialog: chọn tệp schema Camunda Form (.form / .json, mỗi tệp một hoặc nhiều biểu mẫu) → bảng kiểm tra từng biểu mẫu (mã trùng theo cặp Loại hồ sơ + Mã thì lỗi, P-44) → Xác nhận nhập. Biểu mẫu nhập vào ở trạng thái Dừng hoạt động để Quản trị rà lại thiết kế trước khi kích hoạt. Cần dev: API nhập schema (BE kiểm tra JSON, mã trùng).',
       'Khác source: biểu mẫu đang gắn với bước quy trình BPMN không xoá được, chỉ Dừng hoạt động (P-47). Số trường tính từ thiết kế.',
       'Loại hồ sơ theo D-10 (Phê duyệt ĐXMS / Điều chỉnh ĐXMS); không có ô quy trình áp dụng — biểu mẫu dùng ở bước nào lấy từ BPMN (D-13).',
       'Không có nút Nhân bản (source có xử lý nhưng chưa có nút — P-49). Quyền: chỉ Quản trị hệ thống (P-48).',
@@ -154,7 +155,7 @@
     // Theo: fe/repo-khcn-ecat-fe/src/app/features/common-catalog/catalogs/e-form/e-form-list.component.html
     //       + e-form.facade.ts setupListColumns (Thao tác 150 → Trạng thái 120 → Mã 140 → Tên min 280 → Loại 160 → Số trường 100)
     const title = `<div class="pg-head"><div class="l"><h1 class="pg-title">Danh sách biểu mẫu e-form${infoBtn(INFO)}</h1></div>`;
-    if (!ROLES.includes(Flow.state.persona)) return noAccess(title + '</div>');
+    if (!(ROLES.includes(Flow.state.persona) || D.allAccess(Flow.state.persona))) return noAccess(title + '</div>');
     const all = filtered();
     const pages = Math.max(1, Math.ceil(all.length / S.size));
     if (S.page > pages) S.page = pages;
@@ -170,7 +171,7 @@
       <td>${esc(r.type)}</td>
       <td class="c">${fieldCount(r)}</td></tr>`).join('');
     return `<div class="pg ef">
-      ${title}<div class="r"><button class="vbtn secondary" data-ef-export>${icon('excel')} Xuất excel</button><button class="vbtn primary" data-ef-new>${icon('add')} Thêm mới</button></div></div>
+      ${title}<div class="r"><button class="vbtn secondary" data-ef-import>${icon('upload')} Nhập biểu mẫu</button><button class="vbtn secondary" data-ef-export>${icon('excel')} Xuất excel</button><button class="vbtn primary" data-ef-new>${icon('add')} Thêm mới</button></div></div>
       <div class="vcard">
         <div class="cat-filter ef-filter">
           <div class="ef-st">${vSelect({ id: 'ef-st', options: STATUS, value: S.st, placeholder: 'Trạng thái', clear: true, onChange: (v) => { S.st = v; S.page = 1; rerender(); } })}</div>
@@ -183,6 +184,56 @@
           <tbody>${body || '<tr><td class="vtable-empty" colspan="7"><img src="assets/empty-table.svg" alt="">Chưa có dữ liệu</td></tr>'}</tbody></table></div>
         ${pager({ id: 'eform', total: all.length, page: S.page, size: S.size, open: S.psOpen, sizes: [10, 20, 50, 100] })}
       </div></div>`;
+  }
+
+  /* ---------- Nhập biểu mẫu từ tệp schema (vht-import-dialog 2 bước, như Nhập nhà cung cấp của DMDC) ----------
+     Tệp mẫu chứa 3 biểu mẫu: BM-10, BM-11 mới; BM-04 trùng mã với biểu mẫu đang có → lỗi. */
+  const IMPORT_FILE = { name: 'bieu-mau-dtms-bo-sung.form', size: '24,6 KB' };
+  const importForms = () => {
+    fid = 1000;
+    return [
+      ['BM-10', 'Phiếu đề nghị gửi yêu cầu báo giá', 'Phiếu', [TA('Danh mục hàng hoá, dịch vụ', 'danhMucHangHoa', req), fld('TAGLIST', 'Nhà cung cấp nhận yêu cầu', 'nhaCungCap', req),
+        fld('DATETIME', 'Hạn gửi báo giá', 'hanBaoGia', { required: true, dateFormat: 'DD/MM/YYYY' }), TA('Ghi chú', 'ghiChu')]],
+      ['BM-11', 'Biên bản so sánh báo giá', 'Báo cáo', [TA('Bảng so sánh', 'bangSoSanh', req), TA('Đề xuất cơ sở giá', 'deXuatCoSoGia', req), KET_LUAN()]],
+      ['BM-04', 'Phiếu nhận xét', 'Phiếu', D.bm04Sections.map((x) => TA(x, camel(x), req))],
+    ].map(([code, name, type, fields]) => ({ code, name, type, fields, err: byCode(code) ? `Mã biểu mẫu ${code} đã tồn tại.` : '' }));
+  };
+  function importDlg() {
+    let file = null;
+    const pick = () => {
+      const m = vModal({ title: 'Nhập biểu mẫu', size: 'w780', body: `<div class="imp">
+          <div class="imp-banner"><span class="imp-bl">${icon('file')}Tệp schema biểu mẫu (Camunda Form)</span>
+            <button type="button" class="imp-tpl" data-imp-tpl>${icon('download')}Tải tệp mẫu</button></div>
+          <button type="button" class="imp-zone" data-imp-zone><span class="imp-glyph">${icon('upload')}</span>
+            <span class="imp-hint">${file ? esc(file.name) : 'Kéo thả file vào đây hoặc bấm để chọn'}</span>
+            <span class="imp-sub">${file ? esc(file.size) : 'Hỗ trợ định dạng .form, .json (tối đa 5MB)'}</span></button></div>`,
+        actions: `<button class="vbtn secondary" data-close>Hủy</button><button class="vbtn primary" id="imp-go" ${file ? '' : 'disabled'}>Nhập dữ liệu</button>` });
+      m.el.querySelector('[data-imp-tpl]').onclick = () => toast('<b>Thành công</b><br>Đã tải file mau-bieu-mau.form');
+      m.el.querySelector('[data-imp-zone]').onclick = () => { file = IMPORT_FILE; m.close(); pick(); };
+      m.el.querySelector('#imp-go').onclick = () => { m.close(); result(); };
+    };
+    const result = () => {
+      const res = importForms(), ok = res.filter((r) => !r.err);
+      const body = res.map((r, i) => `<tr><td class="ord">${i + 1}</td><td class="c">${r.err ? badge('Lỗi', 'error') : badge('Hợp lệ', 'success')}</td>
+          <td>${r.err ? `<span class="imp-err">${esc(r.err)}</span>` : '<span class="dash">-</span>'}</td><td>${esc(r.code)}</td><td>${esc(r.name)}</td><td>${esc(r.type)}</td><td class="c">${r.fields.length}</td></tr>`).join('');
+      const m = vModal({ title: 'Kết quả nhập dữ liệu', size: 'xl', body: `<div class="imp-res">
+          <div class="imp-top"><span class="imp-sum">${ok.length}/${res.length} biểu mẫu hợp lệ</span><button type="button" class="vbtn primary" data-imp-again>${icon('upload')} Nhập file mới</button></div>
+          <div class="vtable-vp"><table class="vtable cat"><thead><tr><th class="ord">STT</th><th class="c" style="min-width:110px">Kết quả</th><th style="min-width:220px">Nội dung lỗi</th>
+            <th style="min-width:120px">Mã biểu mẫu</th><th style="min-width:260px">Tên biểu mẫu</th><th style="min-width:120px">Loại</th><th class="c" style="min-width:100px">Số trường</th></tr></thead>
+            <tbody>${body}</tbody></table></div></div>`,
+        actions: `<button class="vbtn secondary" data-close>Hủy</button><button class="vbtn primary" id="imp-ok" ${ok.length ? '' : 'disabled'}>Xác nhận nhập</button>` });
+      m.el.querySelector('[data-imp-again]').onclick = () => { file = null; m.close(); pick(); };
+      m.el.querySelector('#imp-ok').onclick = () => {
+        const list = rows(), now = Flow.dateOf(Flow.state.clock) + ' 09:00:00';
+        ok.forEach((r) => list.unshift({ id: Math.max(0, ...list.map((x) => x.id)) + 1, code: r.code, name: r.name, type: r.type, docType: 'Phê duyệt ĐXMS', file: '',
+          description: '', fields: r.fields, active: false,
+          history: [{ version: 'v1.0', at: now, by: QT(), action: 'Nhập biểu mẫu', desc: `Nhập từ tệp ${IMPORT_FILE.name}.` }] }));
+        save(); m.close(); S.page = 1;
+        toast(`<b>Thành công</b><br>Nhập biểu mẫu thành công (${ok.length} biểu mẫu)`);
+        rerender();
+      };
+    };
+    pick();
   }
 
   /* ---------- SCR-53 Lịch sử cập nhật biểu mẫu (e-form-history-dialog, vht-modal 580) ---------- */
@@ -535,7 +586,7 @@
     // Theo: fe/repo-khcn-ecat-fe/src/app/features/common-catalog/catalogs/e-form/components/e-form-designer/e-form-designer.component.html (+ .ts)
     const r = rowOf(id);
     if (!r) { location.hash = '#/eform'; return ''; }
-    if (!ROLES.includes(Flow.state.persona)) return noAccess(`<div class="pg-head"><div class="l"><h1 class="pg-title">Thiết kế biểu mẫu</h1></div></div>`);
+    if (!(ROLES.includes(Flow.state.persona) || D.allAccess(Flow.state.persona))) return noAccess(`<div class="pg-head"><div class="l"><h1 class="pg-title">Thiết kế biểu mẫu</h1></div></div>`);
     const ds = dsFor(r);
     const meta = (k, v, cls) => `<div><span class="k">${k}</span><span class="v ${cls || ''}">${v}</span></div>`;
     const tools = ds.ro ? '<button type="button" class="vbtn secondary" data-efd-preview>Xem trước</button>'
@@ -790,6 +841,7 @@
     }
     if (S.psOpen) { S.psOpen = false; rerender(); }
     if (t.closest('[data-ef-export]')) { exportCsv(); return; }
+    if (t.closest('[data-ef-import]')) { importDlg(); return; }
     if (t.closest('[data-ef-new]')) { openForm(null); return; }
     const ed = t.closest('[data-ef-edit]');
     if (ed) { e.preventDefault(); openForm(rowOf(ed.dataset.efEdit)); return; }

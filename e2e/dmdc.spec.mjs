@@ -1,7 +1,7 @@
-// T8 — Danh mục dùng chung: Tổng quan SCR-30 + khuôn danh mục (thử với Nguồn vốn SCR-32) theo ecat common-catalog;
+// T8 — Danh mục dùng chung (D-14: menu cấp cha): Tổng quan SCR-30 + khuôn danh mục (thử với Nguồn vốn SCR-32) theo ecat common-catalog;
 // B2 7 danh mục SCR-33…39; B3 Nhà cung cấp SCR-31 (hộp thoại lg, tìm kiếm nâng cao, nhập Excel); B4 Ngưỡng phân luồng SCR-40.
 import { test, expect } from '@playwright/test';
-import { fresh, lastToast } from './helpers.mjs';
+import { fresh, lastToast, openForm, closeForm } from './helpers.mjs';
 
 const BA = /SCR-\d|UC-\d|task \d|Prototype|minh hoạ|giả lập/i;
 const mainText = (page) => page.evaluate(() => {
@@ -17,20 +17,37 @@ const asAdmin = async (page, hash) => {
 };
 const row = (page, code) => page.locator('.vtable tbody tr', { hasText: code });
 
-test('D-1: mục Danh mục dùng chung dưới Quản trị hệ thống mở Tổng quan; sidebar vẫn sáng khi vào danh mục', async ({ page }) => {
+test('D-14: Danh mục dùng chung là menu cấp cha — Tổng quan + Quản lý E-form (D-16) + 16 danh mục (T16 B1); mục con sáng theo route; không có nút quay lại', async ({ page }) => {
   await asAdmin(page, '#/viec-cua-toi');
-  await page.locator('.sb-nav [data-toggle="Quản trị hệ thống"]').click();
+  const tops = await page.locator('.sb-nav > .nav:not(.child) .l').allInnerTexts();
+  expect(tops).toContain('Danh mục dùng chung');
+  await page.locator('.sb-nav [data-toggle="Danh mục dùng chung"]').click();
+  const kids = page.locator('.sb-nav .nav.child[data-go^="dmdc"] .l');
+  await expect(kids).toHaveCount(17);
+  await expect(kids.first()).toHaveText('Tổng quan');
+  await expect(page.locator('.sb-nav [data-go="dmdc"] + .nav.child')).toHaveAttribute('data-go', 'eform');
   await page.locator('.sb-nav [data-go="dmdc"]').click();
   await expect(page).toHaveURL(/#\/dmdc$/);
   await expect(page.locator('.ov-title')).toHaveText('Các module trong phân hệ');
-  await expect(page.locator('.ov-tile')).toHaveCount(10);
-  await expect(page.locator('.ov-tile').nth(1)).toContainText('Danh mục Nguồn vốn');
-  await expect(page.locator('.ov-tile').nth(1).locator('.n')).toHaveText('5');
+  await expect(page.locator('.ov-tile')).toHaveCount(16);
+  await expect(page.locator('.ov-tile').nth(5)).toContainText('Danh mục Nguồn vốn');
+  await expect(page.locator('.ov-tile').nth(5).locator('.n')).toHaveText('5');
   await page.locator('.ov-tile', { hasText: 'Nguồn vốn' }).click();
   await expect(page).toHaveURL(/#\/dmdc\/nguon-von$/);
-  await expect(page.locator('.sb-nav [data-go="dmdc"]')).toHaveClass(/active/);
-  await page.locator('.pg-head .vbtn.back').click();
-  await expect(page).toHaveURL(/#\/dmdc$/);
+  await expect(page.locator('.sb-nav [data-go="dmdc/nguon-von"]')).toHaveClass(/active/);
+  await expect(page.locator('.pg-head .vbtn.back')).toHaveCount(0);
+  await page.locator('.sb-nav [data-go="dmdc/loai-hop-dong"]').click();
+  await expect(page).toHaveURL(/#\/dmdc\/loai-hop-dong$/);
+  await expect(page.locator('.pg-title')).toHaveText('Danh sách loại hợp đồng');
+});
+
+test('P-36: menu con lọc theo vai; vào thẳng danh mục không được xem thì báo chưa được cấp quyền', async ({ page }) => {
+  await fresh(page, '#/dmdc/nguon-von');
+  await expect(page.locator('main .ov-empty')).toHaveText('Bạn chưa được cấp quyền truy cập chức năng này');
+  await page.evaluate(() => Flow.setPersona('lan'));
+  await page.locator('.sb-nav [data-toggle="Danh mục dùng chung"]').click();
+  await expect(page.locator('.sb-nav .nav.child[data-go^="dmdc"] .l')).toHaveText(['Tổng quan', 'Nhà cung cấp / Nhà thầu', 'Loại đối tác', 'Loại hàng hoá / dịch vụ', 'Đơn vị tính', 'Tiền tệ']);
+  await expect(page.locator('.sb-nav .nav.child[data-go="eform"]')).toHaveCount(1);
 });
 
 test('P-36: Tổng quan lọc ô theo vai', async ({ page }) => {
@@ -38,7 +55,7 @@ test('P-36: Tổng quan lọc ô theo vai', async ({ page }) => {
   await expect(page.locator('.ov-tile')).toHaveCount(0);
   await expect(page.locator('.ov-empty')).toHaveText('Bạn chưa được cấp quyền truy cập module nào trong phân hệ này');
   await page.evaluate(() => Flow.setPersona('lan'));
-  await expect(page.locator('.ov-tile .t')).toHaveText(['Danh mục Nhà cung cấp / Nhà thầu', 'Danh mục Loại hàng hoá / dịch vụ']);
+  await expect(page.locator('.ov-tile .t')).toHaveText(['Danh mục Nhà cung cấp / Nhà thầu', 'Danh mục Loại đối tác', 'Danh mục Loại hàng hoá / dịch vụ', 'Danh mục Đơn vị tính', 'Danh mục Tiền tệ']);
 });
 
 test('B1 ecat: danh sách Nguồn vốn — cột, lọc Trạng thái, tìm kiếm, phân trang 10/25/50', async ({ page }) => {
@@ -136,6 +153,11 @@ test('P-33: xoá bản ghi đang dùng bị chặn; bản ghi chưa dùng xoá �
   await page.locator('.vconfirm #cf-ok').click();
   expect(await lastToast(page)).toContain('Xoá nguồn vốn thành công');
   await expect(row(page, 'SXKD')).toHaveCount(0);
+  // Công cụ demo › Khôi phục dữ liệu mẫu đưa danh mục về dữ liệu mẫu.
+  await page.locator('#demo').click();
+  await page.locator('#reset-eform').click();
+  expect(await lastToast(page)).toContain('DMDC');
+  await expect(row(page, 'SXKD')).toHaveCount(1);
 });
 
 const B2 = [
@@ -144,8 +166,8 @@ const B2 = [
   ['tinh-chat-tai-san', 'Danh sách tính chất tài sản', ['Mã tính chất tài sản', 'Tên tính chất tài sản', 'Mô tả'], 2],
   ['loai-hang-hoa', 'Danh sách loại hàng hoá, dịch vụ', ['Mã loại hàng hoá, dịch vụ', 'Tên loại hàng hoá, dịch vụ', 'Nhóm', 'Mô tả'], 6],
   ['hinh-thuc-lcnt', 'Danh sách hình thức lựa chọn nhà thầu', ['Mã hình thức', 'Tên hình thức', 'Tên viết tắt', 'Mô tả'], 10],
-  ['phuong-thuc-lcnt', 'Danh sách phương thức lựa chọn nhà thầu', ['Mã phương thức', 'Tên phương thức', 'Mô tả'], 4],
-  ['loai-hop-dong', 'Danh sách loại hợp đồng', ['Mã loại hợp đồng', 'Tên loại hợp đồng', 'Mô tả'], 5],
+  ['phuong-thuc-lcnt', 'Danh sách phương thức lựa chọn nhà thầu', ['Mã phương thức', 'Tên phương thức', 'Mô tả'], 2],
+  ['loai-hop-dong', 'Danh sách loại hợp đồng', ['Mã loại hợp đồng', 'Tên loại hợp đồng', 'Mô tả'], 8],
 ];
 
 test('B2: 7 danh mục SCR-33…39 — tiêu đề, cột, dữ liệu mẫu; số bản ghi trên Tổng quan khớp', async ({ page }) => {
@@ -158,17 +180,21 @@ test('B2: 7 danh mục SCR-33…39 — tiêu đề, cột, dữ liệu mẫu; s�
     await expect(page.locator('.vtable tbody tr')).toHaveCount(n);
   }
   // Trang cuối vòng lặp là Loại hợp đồng.
-  await expect(page.locator('.vpager .tot')).toHaveText('Tổng số bản ghi: 5');
+  await expect(page.locator('.vpager .tot')).toHaveText('Tổng số bản ghi: 8');
 });
 
 test('B2: trường thêm của nhóm A+ hiện nhãn — Cấp xử lý, Nhóm, Tên viết tắt', async ({ page }) => {
   await asAdmin(page, '#/dmdc/loai-kdt');
   await expect(row(page, 'SXKD')).toContainText('Luôn cấp Tập đoàn');
   await expect(row(page, 'KHCN')).toContainText('Theo ngưỡng');
+  // QT-8.6.5: KĐT bất động sản luôn là KĐT phức tạp → cấp Tập đoàn.
+  await expect(row(page, 'BDS')).toContainText('Luôn cấp Tập đoàn');
   await page.goto(page.url().replace(/#.*$/, '') + '#/dmdc/loai-hang-hoa');
   await expect(row(page, 'DVTV')).toContainText('Dịch vụ');
   await page.goto(page.url().replace(/#.*$/, '') + '#/dmdc/hinh-thuc-lcnt');
   await expect(row(page, 'CDT_RG')).toContainText('CĐT RG');
+  // QC-12869 Điều 15: Mua sắm trực tiếp (không phải trực tuyến).
+  await expect(row(page, 'MSTT')).toContainText('Mua sắm trực tiếp');
   await expect(page.locator('.vpager .tot')).toHaveText('Tổng số bản ghi: 11');
 });
 
@@ -393,19 +419,21 @@ const thNew = async (page) => {
 
 test('B4: danh sách ngưỡng phân luồng — cột, thứ tự theo nhóm/lĩnh vực/giá trị, không giới hạn, tìm theo quy trình', async ({ page }) => {
   await asAdmin(page, '#/dmdc');
-  await expect(page.locator('.ov-tile', { hasText: 'Ngưỡng phân luồng' }).locator('.n')).toHaveText('7');
+  await expect(page.locator('.ov-tile', { hasText: 'Ngưỡng phân luồng' }).locator('.n')).toHaveText('6');
   await page.locator('.ov-tile', { hasText: 'Ngưỡng phân luồng' }).click();
   await expect(page).toHaveURL(/#\/dmdc\/nguong-phan-luong$/);
-  await expect(page.locator('.sb-nav [data-go="dmdc"]')).toHaveClass(/active/);
+  await expect(page.locator('.sb-nav [data-go="dmdc/nguong-phan-luong"]')).toHaveClass(/active/);
   await expect(page.locator('.pg-title')).toHaveText('Danh sách ngưỡng phân luồng');
   await expect(page.locator('.vtable th')).toHaveText(['STT', 'Thao tác', 'Trạng thái', 'Nhóm quy trình', 'Lĩnh vực', 'Tính chất tài sản',
     'Khoảng giá trị (tỷ đồng)', 'Quy trình áp dụng', 'Hiệu lực từ ngày']);
-  await expect(page.locator('.vtable tbody tr')).toHaveCount(7);
-  expect(await page.locator('.vtable tbody tr').evaluateAll((trs) => trs.map((t) => t.dataset.id))).toEqual(['1', '2', '4', '7', '3', '5', '6']);
+  await expect(page.locator('.vtable tbody tr')).toHaveCount(6);
+  expect(await page.locator('.vtable tbody tr').evaluateAll((trs) => trs.map((t) => t.dataset.id))).toEqual(['1', '2', '4', '6', '3', '5']);
   await expect(TH(page, 1).locator('td')).toHaveText(['1', '', '', 'Đề xuất mua sắm', 'Tất cả', 'Tất cả', '0 – dưới 160', 'MS01.03', '01/07/2026']);
   await expect(TH(page, 2)).toContainText('Từ 160 trở lên');
   await expect(TH(page, 2)).toContainText('MS01.01, MS01.02');
-  await expect(TH(page, 6)).toContainText('160 – dưới 1.000');
+  await expect(TH(page, 5)).toContainText('160 – dưới 1.000');
+  // KĐT: MS13 là một quy trình, áp cho mọi tính chất tài sản (plan KĐT §6 #1).
+  await expect(TH(page, 3).locator('td')).toHaveText(['5', '', '', 'Khoản đầu tư', 'Viễn thông - CNTT', 'Tất cả', '0 – dưới 160', 'MS13', '01/07/2026']);
   // 7 cột dữ liệu vừa bảng ở màn 1440 (không cuộn ngang).
   await page.setViewportSize({ width: 1440, height: 900 });
   expect(await page.locator('.vtable-vp').evaluate((v) => v.scrollWidth <= v.clientWidth)).toBe(true);
@@ -435,7 +463,7 @@ test('B4: Thêm mới — bắt buộc, định dạng số và ngày, Đến d�
   await pick(page, 'cf-group', 'Khoản đầu tư');
   await expect(dlg.locator('[data-vsel="cf-procs"] .vsel-label')).toHaveClass(/ph/);
   await page.locator('[data-vsel="cf-procs"]').click();
-  await expect(page.locator('.vsel-opt')).toHaveText([/^MS13\.01/, /^MS13\.03/, /^MS14/]);
+  await expect(page.locator('.vsel-opt')).toHaveText([/^MS13 — /, /^MS14 — /]);
   await page.locator('.vsel-opt', { hasText: 'MS14' }).click();
   await dlg.locator('.vmodal-h h3').click();
   // Số kiểu Việt Nam: chấm phân nghìn, phẩy thập phân; chữ bị bỏ khi gõ.
@@ -467,13 +495,13 @@ test('B4: Thêm mới — bắt buộc, định dạng số và ngày, Đến d�
   await dlg.locator('#cat-save').click();
   await expect(dlg).toHaveCount(0);
   expect(await lastToast(page)).toContain('Thêm mới ngưỡng phân luồng thành công');
-  await expect(page.locator('.vtable tbody tr')).toHaveCount(8);
-  const added = TH(page, 8);
+  await expect(page.locator('.vtable tbody tr')).toHaveCount(7);
+  const added = TH(page, 7);
   await expect(added).toContainText('Từ 500 trở lên');
   await expect(added.locator('.vbadge')).toHaveText('Chưa hiệu lực');
   // Lưu trên trình duyệt.
   await page.reload();
-  await expect(page.locator('.vtable tbody tr')).toHaveCount(8);
+  await expect(page.locator('.vtable tbody tr')).toHaveCount(7);
   expect(page.errors).toEqual([]);
 });
 
@@ -505,35 +533,35 @@ test('B4 P-34: sửa ngưỡng MS01 160 → 150 — đổi giá trị thì hiệ
 
 test('B4: kích hoạt lại ngưỡng bị chồng khoảng thì bị chặn; ngưỡng đang dùng không xoá được (P-33)', async ({ page }) => {
   await asAdmin(page, '#/dmdc/nguong-phan-luong');
-  // Dừng MS13.01 VT-CNTT nguyên chiếc [0, 160), thêm [0, 150) thay thế.
-  await TH(page, 3).locator('[data-cat-tg]').click();
-  await expect(page.locator('.vconfirm p')).toContainText('Khoản đầu tư (MS13, MS14) · Viễn thông - CNTT · Nguyên chiếc · 0 – dưới 160 tỷ');
+  // Dừng MS14 VT-CNTT [160, 1000), thêm [160, 900) thay thế.
+  await TH(page, 5).locator('[data-cat-tg]').click();
+  await expect(page.locator('.vconfirm p')).toContainText('Khoản đầu tư (MS13, MS14) · Viễn thông - CNTT · Tất cả · 160 – dưới 1.000 tỷ');
   await page.locator('.vconfirm #cf-ok').click();
-  await expect(TH(page, 3).locator('.vswitch')).not.toHaveClass(/on/);
+  await expect(TH(page, 5).locator('.vswitch')).not.toHaveClass(/on/);
   const dlg = await thNew(page);
   await pick(page, 'cf-group', 'Khoản đầu tư');
   await pick(page, 'cf-field', 'Viễn thông - CNTT');
-  await pick(page, 'cf-asset', 'Nguyên chiếc');
-  await dlg.locator('[data-cf="from"]').fill('0');
-  await dlg.locator('[data-cf="to"]').fill('150');
-  await pick(page, 'cf-procs', 'MS13.01');
+  await dlg.locator('[data-cf="from"]').fill('160');
+  await dlg.locator('[data-cf="to"]').fill('900');
+  await pick(page, 'cf-procs', 'MS14');
   await dlg.locator('.vmodal-h h3').click();
+  await dlg.locator('[data-cf="eff"]').fill('01/10/2026');
   await dlg.locator('#cat-save').click();
   await expect(dlg).toHaveCount(0);
-  await TH(page, 3).locator('[data-cat-tg]').click();
+  await TH(page, 5).locator('[data-cat-tg]').click();
   await expect(page.locator('.vconfirm h2')).toHaveText('Kích hoạt');
   await page.locator('.vconfirm #cf-ok').click();
-  expect(await lastToast(page)).toContain('Không thể kích hoạt: khoảng giá trị giao với ngưỡng đang hoạt động Khoản đầu tư (MS13, MS14) · Viễn thông - CNTT · Nguyên chiếc · 0 – dưới 150 tỷ.');
-  await expect(TH(page, 3).locator('.vswitch')).not.toHaveClass(/on/);
+  expect(await lastToast(page)).toContain('Không thể kích hoạt: khoảng giá trị giao với ngưỡng đang hoạt động Khoản đầu tư (MS13, MS14) · Viễn thông - CNTT · Tất cả · 160 – dưới 900 tỷ.');
+  await expect(TH(page, 5).locator('.vswitch')).not.toHaveClass(/on/);
   // Ngưỡng của ĐXMS đang được hồ sơ dùng.
   await TH(page, 1).locator('[data-cat-del]').click();
   await page.locator('.vconfirm #cf-ok').click();
   expect(await lastToast(page)).toContain('Ngưỡng phân luồng Đề xuất mua sắm (MS01) · Tất cả · Tất cả · 0 – dưới 160 tỷ đang được sử dụng trong 9 hồ sơ, không thể xoá');
   // Ngưỡng chưa dùng xoá được.
-  await TH(page, 3).locator('[data-cat-del]').click();
+  await TH(page, 5).locator('[data-cat-del]').click();
   await page.locator('.vconfirm #cf-ok').click();
   expect(await lastToast(page)).toContain('Xoá ngưỡng phân luồng thành công');
-  await expect(page.locator('.vtable tbody tr')).toHaveCount(7);
+  await expect(page.locator('.vtable tbody tr')).toHaveCount(6);
   expect(page.errors).toEqual([]);
 });
 
@@ -608,52 +636,55 @@ test('B5 §5.4: ngưỡng dừng hoạt động không áp dụng; cổng kiểm
   expect(page.errors).toEqual([]);
 });
 
-test('B5 §6: Nguồn vốn ở task 04 chọn từ danh mục; nguồn vốn dừng hoạt động không hiện; chấp nhận AI chọn Vốn KHCN', async ({ page }) => {
+test('B5 §6: Nguồn vốn ở task 04 chọn từ danh mục; nguồn vốn dừng hoạt động không hiện; mặc định theo gợi ý AI (Vốn KHCN)', async ({ page }) => {
   await asAdmin(page, '#/viec-cua-toi');
   await openTask(page, 4, 'minh');
-  await expect(page.locator('[data-vsel="b-fund"] .vsel-label')).toHaveText('Chọn nguồn vốn');
-  expect(await optLabels(page, 'b-fund')).toEqual(['Vốn KHCN', 'Vốn đầu tư phát triển', 'Vốn SXKD', 'Chi phí thường xuyên']);
-  await page.locator('[data-ai-all]').click();
-  await expect(page.locator('[data-vsel="b-fund"] .vsel-label')).toHaveText('Vốn KHCN');
-  await pick(page, 'b-fund', 'Vốn SXKD');
-  await expect(page.locator('[data-vsel="b-fund"] .vsel-label')).toHaveText('Vốn SXKD');
-  // Quản trị dừng hoạt động Vốn SXKD: hồ sơ vẫn hiện giá trị đang giữ; ô chọn không còn Vốn SXKD cho lựa chọn mới (P-33).
+  // eForm task 04: ô Nguồn vốn = select, options đọc từ biến fundOptions (E1); mặc định là nguồn vốn AI trích từ căn cứ (G2 mặc định Chấp nhận).
+  await openForm(page);
+  await expect(page.locator('[data-vsel="ef-fund"] .vsel-label')).toHaveText('Vốn KHCN');
+  expect(await optLabels(page, 'ef-fund')).toEqual(['Vốn KHCN', 'Vốn đầu tư phát triển', 'Vốn SXKD', 'Chi phí thường xuyên']);
+  await pick(page, 'ef-fund', 'Vốn SXKD');
+  await expect(page.locator('[data-vsel="ef-fund"] .vsel-label')).toHaveText('Vốn SXKD');
+  await closeForm(page);
+  // Hồ sơ đang giữ Vốn SXKD; Quản trị dừng hoạt động Vốn SXKD: form vẫn hiện giá trị đang giữ; lựa chọn mới không còn Vốn SXKD (P-33).
+  await page.evaluate(() => Flow.setUi('fund', 'SXKD'));
   await page.evaluate(() => { Flow.setPersona('qt'); location.hash = '#/dmdc/nguon-von'; });
   await row(page, 'SXKD').locator('[data-cat-tg]').click();
   await page.locator('.vconfirm #cf-ok').click();
   await expect(row(page, 'SXKD').locator('.vswitch')).not.toHaveClass(/on/);
   await page.evaluate(() => { Flow.setPersona('minh'); location.hash = '#/task/' + Flow.state.tokens.find((k) => k.task === 4).id; });
-  await expect(page.locator('[data-vsel="b-fund"] .vsel-label')).toHaveText('Vốn SXKD');
-  await page.evaluate(() => Flow.setUi('fund', null));
-  expect(await optLabels(page, 'b-fund')).toEqual(['Vốn KHCN', 'Vốn đầu tư phát triển', 'Chi phí thường xuyên']);
+  await openForm(page);
+  await expect(page.locator('[data-vsel="ef-fund"] .vsel-label')).toHaveText('Vốn SXKD');
+  await closeForm(page);
+  await page.evaluate(() => Flow.setUi('fund', 'KHCN'));
+  await openForm(page);
+  expect(await optLabels(page, 'ef-fund')).toEqual(['Vốn KHCN', 'Vốn đầu tư phát triển', 'Chi phí thường xuyên']);
   expect(page.errors).toEqual([]);
 });
 
 test('B5 §6: task 08 chọn nhà cung cấp nhận YCBG từ danh mục — lọc ngành hàng, bị cấm không chọn được, dừng hoạt động không hiện', async ({ page }) => {
   await asAdmin(page, '#/viec-cua-toi');
   await openTask(page, 8, 'minh');
-  const card = page.locator('section.vcard', { hasText: 'Nhà cung cấp nhận YCBG' });
-  const rows = card.locator('tbody tr');
-  // Ngành hàng của hạng mục: Viễn thông - CNTT, Nghiên cứu sản xuất, Dịch vụ phi tư vấn → 8 NCC; Mu (dừng hoạt động) không hiện.
-  await expect(rows).toHaveCount(8);
-  await expect(card.locator('tbody')).not.toContainText('Mu Network');
-  await expect(card.locator('thead th')).toHaveText(['', 'Mã nhà cung cấp', 'Tên nhà cung cấp', 'Ngành hàng', 'Tình trạng']);
-  for (const c of ['NCC-000001', 'NCC-000002', 'NCC-000003']) await expect(card.locator(`tr[data-ncc="${c}"] input`)).toBeChecked();
-  await expect(card.locator('tr[data-ncc="NCC-000007"] input')).toBeDisabled();
-  await expect(card.locator('tr[data-ncc="NCC-000007"]')).toContainText('Cấm đến 31/12/2026');
-  await expect(card.locator('tr[data-ncc="NCC-000003"]')).toContainText('quotation@gammatech.sg');
-  await expect(card.locator('.vcard-h .vbadge')).toHaveText('Đã chọn 3 nhà cung cấp');
-  await pick(page, 'b-ncc-goods', 'Nghiên cứu sản xuất');
-  await expect(rows).toHaveCount(4);
-  await card.locator('[data-vsel-clear="b-ncc-goods"]').click();
-  await expect(rows).toHaveCount(8);
-  // Chọn thêm Delta, rồi bỏ cả 4 → không gửi được.
-  await card.locator('tr[data-ncc="NCC-000004"] input').click();
-  await expect(card.locator('.vcard-h .vbadge')).toHaveText('Đã chọn 4 nhà cung cấp');
-  for (const c of ['NCC-000001', 'NCC-000002', 'NCC-000003', 'NCC-000004']) await card.locator(`tr[data-ncc="${c}"] input`).click();
-  await expect(card.locator('.vcard-h .vbadge')).toHaveText('Đã chọn 0 nhà cung cấp');
-  await page.locator('.task-acts [data-act].primary').click();
-  expect(await lastToast(page)).toContain('Bạn cần chọn ít nhất một nhà cung cấp.');
+  const f = await openForm(page);
+  // Bảng tình trạng (chỉ xem): NCC theo ngành hàng của hạng mục (Viễn thông - CNTT, Nghiên cứu sản xuất, Dịch vụ phi tư vấn) → 8; Mu (dừng hoạt động) không có.
+  const tb = f.locator('.ef-table', { hasText: 'Tình trạng nhà cung cấp' });
+  await expect(tb.locator('tbody tr')).toHaveCount(8);
+  await expect(tb.locator('tbody')).not.toContainText('Mu Network');
+  await expect(tb.locator('thead th')).toHaveText(['Mã nhà cung cấp', 'Tên nhà cung cấp', 'Email nhận YCBG', 'Ngành hàng', 'Tình trạng']);
+  await expect(tb.locator('tbody tr', { hasText: 'NCC-000007' })).toContainText('Cấm đến 31/12/2026');
+  await expect(tb.locator('tbody tr', { hasText: 'NCC-000003' })).toContainText('quotation@gammatech.sg');
+  // Ô chọn (checklist, options = nccOptions do BE lọc): NCC bị cấm không có trong lựa chọn; mặc định 3 NCC của kịch bản.
+  const opt = (c) => f.locator(`[data-ef-list="nccSel"][data-v='"${c}"']`);
+  await expect(f.locator('[data-ef-list="nccSel"]')).toHaveCount(7);
+  await expect(opt('NCC-000007')).toHaveCount(0);
+  for (const c of ['NCC-000001', 'NCC-000002', 'NCC-000003']) await expect(opt(c)).toBeChecked();
+  await expect(f).toContainText('Đã chọn 3 nhà cung cấp');
+  await opt('NCC-000004').check();
+  await expect(f).toContainText('Đã chọn 4 nhà cung cấp');
+  for (const c of ['NCC-000001', 'NCC-000002', 'NCC-000003', 'NCC-000004']) await opt(c).uncheck();
+  await expect(f).toContainText('Đã chọn 0 nhà cung cấp');
+  await f.locator('#ok').click();
+  await expect(f.locator('.vfield.invalid .msg')).toHaveText('Bạn cần chọn nhà cung cấp nhận ycbg');
   expect(page.errors).toEqual([]);
 });
 
@@ -665,9 +696,11 @@ test('B5 §6: báo giá lấy tên và loại tiền của nhà cung cấp từ 
   await dlg.locator('#cat-save').click();
   await expect(dlg).toHaveCount(0);
   await openTask(page, 10, 'minh');
-  const q = page.locator('section.vcard', { hasText: 'So sánh báo giá' });
-  await expect(q.locator('tbody tr td:first-child b')).toHaveText(['Alpha Tech', 'NCC Beta', 'NCC Gamma']);
-  await expect(q.locator('tbody tr').nth(2)).toContainText('USD → VNĐ');
-  await expect(q.locator('tbody tr').nth(0)).not.toContainText('→');
+  const f = await openForm(page);
+  const q = f.locator('.ef-table', { hasText: 'So sánh báo giá' });
+  const names = [...new Set(await q.locator('tbody tr td:first-child').allInnerTexts())];
+  expect(names).toEqual(['Alpha Tech', 'NCC Beta', 'NCC Gamma']);
+  await expect(q.locator('tbody tr', { hasText: 'NCC Gamma' }).first()).toContainText('USD');
+  await expect(q.locator('tbody tr', { hasText: 'Alpha Tech' }).first()).toContainText('VNĐ');
   expect(page.errors).toEqual([]);
 });

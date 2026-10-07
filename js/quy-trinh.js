@@ -32,10 +32,10 @@
       { key: '2251799813690540', version: 1, modeler: 'v1.1', deploy: 1, status: 'ACTIVE', page: 'MS02 ver1.1', at: '15/07/2026' }],
       history: [{ version: 'v1.1', at: '2026-07-15T14:05', current: true, desc: 'Điều chỉnh ĐXMS theo cùng khung MS01 v1.1.' }] },
     { code: 'MS13', id: 'DTMS_MS13', name: 'Chủ trương khoản đầu tư', versions: [
-      { key: '2251799813691208', version: 1, modeler: 'v1.0', deploy: 1, status: 'ACTIVE', page: 'MS13-TO BE' }],
+      { key: '2251799813691208', version: 1, modeler: 'v1.0', deploy: 1, status: 'ACTIVE', page: 'MS13-TO BE', at: '04/08/2026' }],
       history: [{ version: 'v1.0', at: '2026-08-04T08:30', current: true, desc: 'Quy trình TO-BE lập, thẩm định, phê duyệt chủ trương khoản đầu tư.' }] },
     { code: 'MS14', id: 'DTMS_MS14', name: 'Dự án đầu tư', versions: [
-      { key: '2251799813691536', version: 1, modeler: 'v1.0', deploy: 1, status: 'ACTIVE', page: 'MS14-TO BE' }],
+      { key: '2251799813691536', version: 1, modeler: 'v1.0', deploy: 1, status: 'ACTIVE', page: 'MS14-TO BE', at: '04/08/2026' }],
       history: [{ version: 'v1.0', at: '2026-08-04T08:45', current: true, desc: 'Quy trình TO-BE lập, thẩm định, phê duyệt dự án đầu tư.' }] },
   ];
   /* SL hồ sơ đang xử lý: đếm từ Giám sát tiến trình (hồ sơ Đang chạy / Quá hạn theo quy trình + phiên bản); quy trình chưa dựng = 0. */
@@ -48,13 +48,23 @@
   };
 
   /* ---------- SCR-41 Danh sách quy trình ---------- */
-  const L = { kw: '', st: null, page: 1, size: 10, psOpen: false, open: new Set(), syncing: false };
+  /* Tìm kiếm nâng cao (Backlog QLQT, T16 B1): f = tiêu chí đã áp, d = đang nhập; mode 'kw' (ô tìm + lọc Trạng thái) hoặc 'adv', như Giám sát tiến trình. */
+  const emptyWf = () => ({ code: '', id: '', name: '', st: null, from: '', to: '', busy: null });
+  const L = { kw: '', st: null, page: 1, size: 10, psOpen: false, open: new Set(), syncing: false, adv: false, mode: 'kw', f: emptyWf(), d: emptyWf() };
+  const dkey = (s) => { const [d, m, y] = String(s || '').split('/'); return y ? `${y}${m}${d}` : ''; };
 
   function listRows() {
-    const kw = norm(L.kw);
-    return WORKFLOWS.filter((w) => (!kw || norm(`${w.code} ${w.id} ${w.name}`).includes(kw)) && (!L.st || w.versions.some((v) => v.status === L.st)))
+    const kw = norm(L.kw), f = L.f, adv = L.mode === 'adv';
+    const st = adv ? f.st : L.st;
+    /* Phiên bản khớp: trạng thái + khoảng ngày deploy (nâng cao). */
+    const verOk = (w, v) => (!st || v.status === st) && (!adv || ((!f.from || dkey(v.at) >= dkey(f.from)) && (!f.to || dkey(v.at) <= dkey(f.to))
+      && (!f.busy || (processingCount(w, v) > 0) === (f.busy === 'YES'))));
+    const wfOk = (w) => (adv
+      ? (!f.code || norm(w.code).includes(norm(f.code))) && (!f.id || norm(w.id).includes(norm(f.id))) && (!f.name || norm(w.name).includes(norm(f.name)))
+      : !kw || norm(`${w.code} ${w.id} ${w.name}`).includes(kw));
+    return WORKFLOWS.filter((w) => wfOk(w) && w.versions.some((v) => verOk(w, v)))
       .map((w) => {
-        const vers = w.versions.filter((v) => !L.st || v.status === L.st);
+        const vers = w.versions.filter((v) => verOk(w, v));
         const latest = w.versions.reduce((a, b) => (b.version > a.version ? b : a));
         return { key: w.id, w, version: latest.version, count: w.versions.reduce((s, v) => s + processingCount(w, v), 0), hasChildren: vers.length > 0,
           children: vers.map((v) => ({ key: v.key, w, v, isVersion: true, version: v.version, count: processingCount(w, v) })) };
@@ -73,12 +83,14 @@
         'SL hồ sơ đang xử lý đếm từ hồ sơ đang chạy của từng quy trình (cùng số với Giám sát tiến trình: Đang chạy + Quá hạn); hồ sơ MS01.01 tạo trước 01/07/2026 chạy phiên bản 1 (đã dừng hoạt động nhưng vẫn xử lý nốt). MS02 đếm hồ sơ Điều chỉnh ĐXMS; MS13, MS14 chưa có hồ sơ.',
         'Dữ liệu: 6 quy trình theo các trang của ĐTMS.drawio — MS01.01 (phiên bản 2: MS01 v1.1, phiên bản 1: MS01), MS01.02 và MS01.03 (MS01 v1.1), MS02 ver1.1, MS13-TO BE, MS14-TO BE. Mã Camunda = BPMN process id.',
         'Quyền (P-41): chỉ Quản trị hệ thống; vai khác thấy thông báo chưa được cấp quyền.',
+        'Tìm kiếm nâng cao (Backlog, T16 B1 — source chưa có): Mã quy trình, Mã Camunda, Tên quy trình, Trạng thái, Ngày deploy từ / đến, Có hồ sơ đang xử lý. Mở panel thì ẩn ô tìm và ô Trạng thái như các màn danh sách khác (B5); dòng con chỉ còn phiên bản khớp điều kiện. BE: thêm tham số lọc cho API danh sách quy trình.',
+        'Quy trình bị xoá trên Camunda (Backlog Tích hợp › "Đánh dấu quy trình đã bị xóa từ Camunda"): Camunda chỉ có Hoạt động / Xoá, app ghi trạng thái DELETED và hiện <b>Dừng hoạt động</b> — đúng WORKFLOW_STATUS_LABEL_MAP của source (MS01.01 phiên bản 1). Không thêm trạng thái mới.',
       ],
       q: [], src: 'workflow-management/workflow-management.component · /workflow-management',
     };
     const title = `<div class="pg-head"><div class="l"><h1 class="pg-title lg">Danh sách quy trình${infoBtn(info)}</h1></div>
-      ${WORKFLOW_ROLES.includes(Flow.state.persona) ? `<div class="r"><button type="button" class="vbtn primary" data-wf="sync" ${L.syncing ? 'disabled' : ''}>Đồng bộ từ Camunda</button></div>` : ''}</div>`;
-    if (!WORKFLOW_ROLES.includes(Flow.state.persona)) return noAccess(title);
+      ${(WORKFLOW_ROLES.includes(Flow.state.persona) || D.allAccess(Flow.state.persona)) ? `<div class="r"><button type="button" class="vbtn primary" data-wf="sync" ${L.syncing ? 'disabled' : ''}>Đồng bộ từ Camunda</button></div>` : ''}</div>`;
+    if (!(WORKFLOW_ROLES.includes(Flow.state.persona) || D.allAccess(Flow.state.persona))) return noAccess(title);
     const rows = listRows();
     const pages = Math.max(1, Math.ceil(rows.length / L.size));
     if (L.page > pages) L.page = pages;
@@ -96,14 +108,31 @@
       ${title}
       <div class="vcard pad24">
         <div class="pg-head"><h2 class="blk-t"><span class="bar"></span>Danh sách quy trình</h2><div class="r">
-          <div style="width:260px">${vSelect({ id: 'wf-st', value: L.st, clear: true, placeholder: 'Trạng thái',
+          ${L.adv ? '' : `<div style="width:260px">${vSelect({ id: 'wf-st', value: L.st, clear: true, placeholder: 'Trạng thái',
             options: Object.entries(WF_STATUS).map(([value, [label]]) => ({ value, label })),
-            onChange: (v) => { L.st = v; L.page = 1; L.open.clear(); rerender(); } })}</div>
-          <label class="vsearch" style="width:264px">${icon('search')}<input id="wf-kw" maxlength="255" placeholder="Tìm kiếm theo mã, tên quy trình" value="${esc(L.kw)}"></label></div></div>
+            onChange: (v) => { L.st = v; L.mode = 'kw'; L.page = 1; L.open.clear(); rerender(); } })}</div>
+          <label class="vsearch" style="width:264px">${icon('search')}<input id="wf-kw" maxlength="255" placeholder="Tìm kiếm theo mã, tên quy trình" value="${esc(L.kw)}"></label>`}
+          <button type="button" class="vbtn ${L.adv ? 'active' : 'secondary'}" data-wf="adv">${L.adv ? 'Ẩn tìm kiếm nâng cao' : 'Tìm kiếm nâng cao'}</button></div></div>
+        ${L.adv ? wfAdvPanel() : ''}
         ${vTreeTable({ id: 'wf', columns, rows: rows.slice(from, from + L.size), from, expanded: L.open, click: true, maxH: 'calc(100vh - 380px)',
           onToggle: (k) => { if (L.open.has(k)) L.open.delete(k); else L.open.add(k); rerender(); } })}
         ${pager({ id: 'wf', total: rows.length, page: L.page, size: L.size, open: L.psOpen })}
       </div></div>`;
+  }
+
+  function wfAdvPanel() {
+    const d = L.d;
+    const txt = (k, label, ph) => `<div class="vfield"><div class="lr"><label>${label}</label></div><input class="vctl" data-wff="${k}" maxlength="255" placeholder="${ph}" value="${esc(d[k])}"></div>`;
+    const sel = (k, label, ph, options) => `<div class="vfield"><div class="lr"><label>${label}</label></div>${vSelect({ id: 'wfa-' + k, value: d[k], clear: true, placeholder: ph, options,
+      onChange: (v) => { d[k] = v; rerender(); } })}</div>`;
+    return `<form class="adv" data-wfadv>
+      <div class="grid3">
+        ${txt('code', 'Mã quy trình', 'Nhập mã quy trình')}${txt('id', 'Mã Camunda', 'Nhập mã Camunda')}${txt('name', 'Tên quy trình', 'Nhập tên quy trình')}
+        ${sel('st', 'Trạng thái', 'Tất cả trạng thái', Object.entries(WF_STATUS).map(([value, [label]]) => ({ value, label })))}
+        ${txt('from', 'Ngày deploy từ', 'DD/MM/YYYY')}${txt('to', 'Ngày deploy đến', 'DD/MM/YYYY')}
+        ${sel('busy', 'Có hồ sơ đang xử lý', 'Tất cả', [{ value: 'YES', label: 'Có' }, { value: 'NO', label: 'Không' }])}
+      </div>
+      <div class="acts"><button type="button" class="vbtn secondary" data-wf="adv-reset">Làm mới</button><button type="submit" class="vbtn primary">Tìm kiếm</button></div></form>`;
   }
 
   /* ---------- SCR-42 Chi tiết quy trình ---------- */
@@ -146,7 +175,7 @@
     };
     const head = `<div class="pg-head"><div class="l"><button class="vbtn back" data-go="quy-trinh" aria-label="Quay lại">${icon('back')}</button>
       <h1 class="pg-title lg">Chi tiết quy trình${infoBtn(info)}</h1></div></div>`;
-    if (!WORKFLOW_ROLES.includes(Flow.state.persona)) return noAccess(head);
+    if (!(WORKFLOW_ROLES.includes(Flow.state.persona) || D.allAccess(Flow.state.persona))) return noAccess(head);
     const found = findVersion(key);
     if (!found) return `<div class="pg">${head}<div class="vcard pad24"><div class="empty-t">Không tìm thấy quy trình.</div></div></div>`;
     const { w, v } = found;
@@ -199,15 +228,26 @@
     const b = t.closest('[data-wf]');
     if (!b) return;
     if (b.dataset.wf === 'close-el') { DT.sel = null; rerender(); return; }
+    if (b.dataset.wf === 'adv') { L.adv = !L.adv; rerender(); return; }
+    if (b.dataset.wf === 'adv-reset') { L.d = emptyWf(); L.f = emptyWf(); L.mode = 'adv'; L.page = 1; L.open.clear(); rerender(); return; }
     if (b.dataset.wf === 'sync' && !L.syncing) {
       /* handleSyncFromCamunda: khoá nút khi đang gọi, xong thì toast và tải lại danh sách. */
       L.syncing = true; rerender();
       setTimeout(() => { L.syncing = false; toast('<b>Thành công</b><br>Đã đồng bộ danh sách quy trình từ Camunda.'); rerender(); }, 800);
     }
   });
+  document.addEventListener('submit', (e) => {
+    if (!e.target.matches('[data-wfadv]')) return;
+    e.preventDefault();
+    L.f = Object.assign({}, L.d, { code: L.d.code.trim(), id: L.d.id.trim(), name: L.d.name.trim() }); L.mode = 'adv'; L.page = 1; L.open.clear(); rerender();
+  });
+  document.addEventListener('input', (e) => {
+    const f = e.target.closest && e.target.closest('[data-wff]');
+    if (f) L.d[f.dataset.wff] = f.value;
+  });
   document.addEventListener('keydown', (e) => {
     if (e.key !== 'Enter' || e.target.id !== 'wf-kw') return;
-    L.kw = e.target.value.trim(); L.page = 1; L.open.clear(); rerender();
+    L.kw = e.target.value.trim(); L.mode = 'kw'; L.page = 1; L.open.clear(); rerender();
     const k = document.getElementById('wf-kw');
     if (k) { k.focus(); k.setSelectionRange(k.value.length, k.value.length); }
   });
@@ -227,6 +267,24 @@
   /* Mã Camunda (process instance key) 16 chữ số, cố định theo mã hồ sơ. */
   const camundaKey = (code) => '2251799813' + String(685000 + Number(code.replace(/\D/g, '').slice(-4)) * 37).padStart(6, '0');
 
+  /* Hồ sơ KĐT (B5): instance MS13-TO BE (cả khi chưa xác định nhóm, D-7) hoặc MS14 (hồ sơ mới sau chuyển luồng). */
+  function kdtRows() {
+    const clock = Flow.state.clock;
+    return Flow.kdtCases().map((c) => {
+      let status = { done: 'Hoàn thành', moved: 'Đã hủy', stopped: 'Đã hủy' }[c.st] || 'Đang chạy';
+      let step = '';
+      if (c.st === 'processing') {
+        const live = c.live && c.code === Flow.state.code;
+        const names = live ? [...new Set(Flow.state.tokens.map((t) => Flow.taskName(t.sub || t.task)))] : window.Kdt.stepName(c).split(', ').filter(Boolean);
+        step = names.length ? names[0] + (names.length > 1 ? ` (+${names.length - 1})` : '') : '';
+        if (live ? Flow.state.tokens.some((t) => S.dueOf(t.task, t.since) < clock) : c.late) status = 'Quá hạn';
+      }
+      const proc = c.flow === 'MS14' ? 'MS14' : 'MS13', w = wfOf(proc);
+      return { status, key: camundaKey(c.code), code: c.code, href: 'ho-so-kdt/' + encodeURIComponent(c.code), step, proc, name: w.name,
+        version: versionAt(w, c.created), created: c.created, updated: c.updated };
+    });
+  }
+
   function monitorRows() {
     const clock = Flow.state.clock;
     return S.allCases().map((c) => {
@@ -245,7 +303,7 @@
       const w = wfOf(c.flow);
       return { status, key: camundaKey(c.code), code: c.code, href: S.caseHref(c), step, proc: c.flow, name: w ? w.name : c.flow,
         version: w ? versionAt(w, c.created) : 1, created: c.created, updated: c.updated };
-    }).sort((a, b) => parseDate(b.created) - parseDate(a.created));
+    }).concat(kdtRows()).sort((a, b) => parseDate(b.created) - parseDate(a.created));
   }
 
   const emptyFilter = () => ({ key: '', code: '', proc: '', st: null });
@@ -282,7 +340,8 @@
       scr: 'SCR-48', name: 'Giám sát tiến trình', uc: 'UC-02-03 · UR-WF-05, UR-WF-12',
       notes: [
         'Màn chỉ xem (D-3): không có nút trên hàng tiêu đề, không có cột Thao tác, bấm dòng không mở gì. Chỉ <b>Mã hồ sơ</b> là liên kết, mở Chi tiết hồ sơ (SCR-20); nút quay lại của Chi tiết hồ sơ về lại đúng trang và bộ lọc đang xem (khác source: profile-detail luôn về Danh sách hồ sơ).',
-        'Mỗi dòng là một process instance của một ĐXMS: hồ sơ đang chạy luồng, hồ sơ đã chuyển quy trình và 12 hồ sơ mẫu. Mã Camunda là process instance key (dữ liệu mẫu).',
+        'Mỗi dòng là một process instance của một hồ sơ ĐXMS hoặc hồ sơ KĐT: hồ sơ đang chạy luồng, hồ sơ đã chuyển quy trình / chuyển luồng và hồ sơ mẫu. Mã Camunda là process instance key (dữ liệu mẫu).',
+        'Hồ sơ KĐT: quy trình là MS13 (instance start khi Lưu hồ sơ, cả khi nhóm KĐT chưa xác định — D-7), hồ sơ mới sau chuyển luồng là MS14; mã hồ sơ mở Chi tiết hồ sơ KĐT. Việc trong quy trình con 41 / 49 hiện tên bước quy trình con. Hồ sơ MS13 chuyển luồng hiện Đã hủy như hồ sơ ĐXMS chuyển quy trình (P-38).',
         'Trạng thái: Đang chạy; Quá hạn khi bước hiện tại quá hạn xử lý; Hoàn thành khi đã phê duyệt; Đã hủy khi hồ sơ kết thúc do Chuyển quy trình (10b) hoặc Dừng xử lý (P-38). Ô lọc Trạng thái không có "Đã hủy" như source (BE loại khỏi danh sách trạng thái lọc).',
         'Quy trình: quy trình người tạo chọn cho hồ sơ (MS01.01 / .02 / .03 là ba quy trình riêng — P-37 đã chốt), dòng phụ là mã quy trình và phiên bản. Hồ sơ MS01.01 tạo trước 01/07/2026 chạy v1.0 (58 task), sau đó v2.0 (61 task, trang MS01 v1.1); MS01.02, MS01.03 mới có v1.0.',
         'Bước hiện tại: nhiều nhánh song song thì hiện bước đầu và (+N).',
@@ -292,7 +351,7 @@
       q: D.screenQ['SCR-48'], src: 'process-monitoring/process-monitoring.component · /process-monitoring',
     };
     const title = `<div class="pg-head"><div class="l"><h1 class="pg-title lg">Giám sát tiến trình${infoBtn(info)}</h1></div></div>`;
-    if (!MONITOR_ROLES.includes(Flow.state.persona)) {
+    if (!(MONITOR_ROLES.includes(Flow.state.persona) || D.allAccess(Flow.state.persona))) {
       return `<div class="pg">${title}<div class="vcard pad24"><p class="ov-empty">Bạn chưa được cấp quyền truy cập chức năng này</p></div></div>`;
     }
     const rows = filtered();

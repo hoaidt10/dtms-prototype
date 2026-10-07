@@ -93,7 +93,8 @@ function extract(PAGE, conf) {
     if (s.spacingLeft) n.pl = Number(s.spacingLeft);
     if (s.spacingTop) n.pt = Number(s.spacingTop);
     if (s.taskMarker) n.mk = s.taskMarker;
-    const no = c.taskNo || (k === 'task' && (/^(\d{1,2}[ab]?)\.\s/.exec(label.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()) || [])[1]);
+    /* Số task: số đầu nhãn (cái người xem thấy) trước thuộc tính TaskNo — MS13-TO BE task "64." vẫn còn TaskNo="60". */
+    const no = (k === 'task' && (/^(\d{1,2}[ab]?)\.\s/.exec(label.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()) || [])[1]) || c.taskNo;
     if (no && k === 'task') n.t = no;
     nodes.push(n);
     nodeOf[id] = n;

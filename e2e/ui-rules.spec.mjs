@@ -167,7 +167,7 @@ test('B5: Việc của tôi theo my-tasks — không tab, cột, lọc Trạng t
   await expect(page.locator('.pg-title')).toHaveText('Danh sách việc của tôi');
   await expect(page.locator('main .tab')).toHaveCount(0);
   await expect(page.locator('main [data-create]')).toHaveCount(0);
-  await expect(page.locator('.vtable th')).toHaveText(['STT', 'Trạng thái', 'Mã hồ sơ', 'Mã ĐXMS', 'Hành động', 'Ngày tạo',
+  await expect(page.locator('.vtable th')).toHaveText(['STT', 'Trạng thái', 'Mã hồ sơ', 'Mã ĐXMS / KĐT', 'Hành động', 'Ngày tạo',
     'Hạn xử lý', 'Loại hồ sơ', 'Mức ưu tiên', 'Quy trình']);
   await expect(page.locator('#my-kw')).toHaveAttribute('placeholder', /Tìm kiếm theo tên công việc/);
   const first = page.locator('.vtable tbody tr').first();

@@ -9,8 +9,12 @@ const [cap, cmd, a1, a2, a3] = process.argv.slice(2);
 const M = JSON.parse(readFileSync(join(cap, 'manifest.json'), 'utf8'));
 const load = (f) => JSON.parse(readFileSync(join(cap, f.replace('.json', '.c.json')), 'utf8'));
 
-export const PAGES = { demo: '01 · Demo MS01.01 (9 cảnh)', khung: '02 · Khung & màn khác', nhanh: '03 · Nhánh phụ', comp: '99 · Components' };
-const pageOf = (sec) => (sec.startsWith('Cảnh') ? PAGES.demo : sec === 'Nhánh phụ' ? PAGES.nhanh : PAGES.khung);
+export const PAGES = { demo: '01 · Demo MS01.01 (9 cảnh)', khung: '02 · Khung & màn khác', nhanh: '03 · Nhánh phụ',
+  qtqt: '04 · Quản trị quy trình', dmdc: '05 · Danh mục dùng chung', eform: '06 · Quản lý E-Form', kdt: '07 · Khoản đầu tư', ms0123: '08 · MS01.02 & MS01.03', comp: '99 · Components' };
+const SEC_PAGE = { 'Nhánh phụ': 'nhanh', 'Quản trị quy trình': 'qtqt', 'Danh mục dùng chung': 'dmdc', 'Quản lý E-Form': 'eform', 'Khoản đầu tư': 'kdt' };
+const pageOfSec = (sec) => (sec.startsWith('MS01.02') || sec.startsWith('MS01.03') ? PAGES.ms0123 : null);
+const pageOf = (sec) => (sec.startsWith('Cảnh') ? PAGES.demo : pageOfSec(sec) || PAGES[SEC_PAGE[sec]] || PAGES.khung);
+const PER_ROW = 12;
 const GAP = 160, PAD = 120, HEAD = 120;
 
 // Bố cục: mỗi section một hàng ngang; các section trên cùng page xếp dọc.
@@ -23,10 +27,17 @@ function layout() {
   }
   const yByPage = {};
   for (const s of secs) {
-    s.w = PAD * 2 + s.items.length * 1440 + (s.items.length - 1) * GAP;
-    s.h = HEAD + Math.max(...s.items.map((m) => m.h)) + PAD;
+    // Section dài (vd Khoản đầu tư 46 màn) xuống hàng sau mỗi PER_ROW màn.
+    const cols = Math.min(PER_ROW, s.items.length);
+    s.w = PAD * 2 + cols * 1440 + (cols - 1) * GAP;
+    let y = HEAD;
+    for (let r = 0; r * PER_ROW < s.items.length; r++) {
+      const row = s.items.slice(r * PER_ROW, (r + 1) * PER_ROW);
+      row.forEach((m, i) => { m.fx = PAD + i * (1440 + GAP); m.fy = y; });
+      y += Math.max(...row.map((m) => m.h)) + GAP;
+    }
+    s.h = y - GAP + PAD;
     s.x = 0; s.y = yByPage[s.page] || 0; yByPage[s.page] = s.y + s.h + 240;
-    s.items.forEach((m, i) => { m.fx = PAD + i * (1440 + GAP); m.fy = HEAD; });
   }
   return secs;
 }
@@ -212,6 +223,96 @@ function reset() {
 return {removedSections:n};`;
 }
 
+
+/* ---- Xuất qua ảnh dữ liệu (2026-09-30): dữ liệu 143 màn ~2,3 MB vượt giới hạn 50 KB/lần gọi use_figma.
+   bundle → figma-pack.mjs đóng PNG → upload_assets tô vào hình "__data" → mỗi lần gọi chỉ gửi mã ngắn, đọc dữ liệu từ ảnh.
+   Mỗi skey (mục đang chọn + nhóm menu mở) có một component Sidebar riêng, dựng đúng như app. */
+import { DECODE } from './figma-pack.mjs';
+
+function shells() {
+  const out = [];
+  for (let i = 0; ; i++) { try { out.push(JSON.parse(readFileSync(join(cap, `shell-${i}.json`), 'utf8')).skey); } catch { break; } }
+  return out;
+}
+function bundle() {
+  const secs = layout();
+  const sk = shells();
+  const base = sk.findIndex((k) => k.startsWith('Việc của tôi'));
+  const sides = sk.map((k, i) => ({ skey: k, sb: load(`shell-${i}.json`).sidebar }));
+  const screens = M.map((m) => {
+    const sec = secs.find((s) => s.items.includes(m));
+    const p = JSON.parse(readFileSync(join(cap, m.file), 'utf8')).meta;
+    return { cfg: { page: sec.page, sec: sec.name, name: m.id + ' · ' + m.title, x: m.fx, y: m.fy, h: m.h, side: sk.indexOf(m.skey),
+      pn: p.p.name, pr: p.p.role, pi: p.p.short.replace('TGĐ ', '').slice(0, 2).toUpperCase(), bell: p.bell }, d: load(m.file) };
+  });
+  return JSON.stringify({ top: load(`shell-${base}.json`).topbar, sides, screens });
+}
+const LOAD = `${DECODE}
+const RECT=await figma.getNodeByIdAsync(IDS.data);const IMG=figma.getImageByHash(RECT.fills[0].imageHash);
+const DATA=JSON.parse(unpack(await IMG.getBytesAsync()));`;
+
+// Bước 1: page + hình chứa ảnh dữ liệu trên page Components. In ra id hình để upload_assets.
+function pinit() {
+  const want = Object.values(PAGES);
+  return `const first=figma.root.children[0];
+const pages={};for(const name of ${JSON.stringify(want)}){pages[name]=figma.root.children.find(p=>p.name===name)||(()=>{const p=figma.createPage();p.name=name;return p;})();}
+const pc=pages[${JSON.stringify(PAGES.comp)}];await figma.setCurrentPageAsync(pc);
+let r=pc.children.find(n=>n.name==='__data');if(!r){r=figma.createRectangle();r.name='__data';pc.appendChild(r);}
+r.resize(400,60);r.x=-600;r.y=0;r.locked=true;
+return {data:r.id,pages:Object.fromEntries(Object.entries(pages).map(([k,v])=>[k,v.id]))};`;
+}
+// Bước 2: runtime (__runtime2) + component Topbar và Sidebar theo skey trên page Components.
+const RT2 = `${RUNTIME}
+${LOAD}
+const S=DATA.screens;const out=[];
+const page=figma.root.children.find(p=>p.name===S[LIST[0]].cfg.page);await figma.setCurrentPageAsync(page);
+for(const i of LIST){const {cfg:CFG,d:D}=S[i];
+const sec=page.children.find(n=>n.type==='SECTION'&&n.name===CFG.sec);
+for(const old of sec.children.filter(n=>n.name===CFG.name))old.remove();
+const fr=figma.createFrame();fr.name=CFG.name;sec.appendChild(fr);fr.x=CFG.x;fr.y=CFG.y;fr.resize(1440,CFG.h);fr.fills=[paint('#f5f5f5')];fr.clipsContent=true;
+const top=(await figma.getNodeByIdAsync(IDS.top)).createInstance();fr.appendChild(top);top.x=0;top.y=0;
+const side=(await figma.getNodeByIdAsync(IDS.sides[CFG.side])).createInstance();fr.appendChild(side);side.x=0;side.y=60;side.resize(256,Math.max(CFG.h-60,side.height));
+const TX={'Nguyễn Văn Minh':CFG.pn,'Chuyên quản ĐVĐX':CFG.pr,'MI':CFG.pi};
+for(const t of top.findAll(n=>n.type==='TEXT'))if(TX[t.characters]!=null&&TX[t.characters]!==t.characters)t.characters=TX[t.characters];
+const cnt=top.findOne(n=>n.name==='span.count');if(cnt){if(CFG.bell>0){cnt.findOne(n=>n.type==='TEXT').characters=String(CFG.bell);}else cnt.visible=false;}
+{const v=side.findOne(n=>n.name==='nav:Việc của tôi');const b=v&&v.findOne(n=>n.name==='span.badge-n');if(b){if(CFG.bell>0)b.findOne(n=>n.type==='TEXT').characters=String(CFG.bell);else b.visible=false;}}
+const main=build(D.main,D.main.t,fr,256,60);main.name='Nội dung';
+if(D.overlay){const ov=build(D.overlay,D.overlay.t,fr,0,0);ov.name='Hộp thoại';}
+raiseIcons(main);if(D.overlay)raiseIcons(fr.children[fr.children.length-1]);
+out.push({i,frame:fr.id,nodes:fr.findAll(()=>true).length});}
+return out;`;
+function pcomp(dataId) {
+  return `${RUNTIME}
+const IDS={data:'${dataId}'};
+${LOAD}
+const pc=figma.root.children.find(p=>p.name===${JSON.stringify(PAGES.comp)});await figma.setCurrentPageAsync(pc);
+for(const old of pc.children.filter(n=>n.type==='COMPONENT'&&n.name.startsWith('Shell/')))old.remove();
+const top=figma.createComponent();top.name='Shell/Topbar';pc.appendChild(top);top.resize(1440,60);top.fills=[];build(DATA.top,DATA.top.t,top);raiseIcons(top);
+top.description='Topbar VHT (vht-topbar, fe/repo-khcn-core-fe). Override tên, vai trò, chữ tắt avatar và số thông báo theo persona.';
+top.x=0;top.y=0;const sides=[];let x=0;
+for(const s of DATA.sides){const c=figma.createComponent();c.name='Shell/Sidebar/'+String(sides.length).padStart(2,'0')+' '+s.skey.split('|')[0].trim().split(' ').map(w=>w.trim()).filter(w=>w&&!/^[0-9]+$/.test(w)).join(' ')+' | '+s.skey.split('|')[1];pc.appendChild(c);
+ c.resize(256,s.sb.t[4]);c.fills=[];build(s.sb,s.sb.t,c);raiseIcons(c);const inner=c.children[0];if(inner)inner.constraints={horizontal:'MIN',vertical:'STRETCH'};
+ c.description='Sidebar ĐTMS (management-sidebar), mục đang chọn | nhóm menu mở: '+s.skey;c.x=x;c.y=200;x+=300;sides.push(c.id);}
+let t=pc.children.find(n=>n.type==='TEXT'&&n.name==='__runtime2');await figma.loadFontAsync({family:'Roboto',style:'Regular'});
+if(!t){t=figma.createText();t.name='__runtime2';pc.appendChild(t);}t.locked=false;
+t.fontName={family:'Roboto',style:'Regular'};t.fontSize=8;t.characters=${JSON.stringify(RT2)};t.x=-600;t.y=200;t.visible=false;t.locked=true;
+return {top:top.id,sides,runtime:t.id,screens:DATA.screens.length};`;
+}
+// Bước 4: dựng màn LIST (chỉ số 0-based, cùng page). ids = file JSON {data, top, sides, runtime}.
+function pscreens(idsFile, list) {
+  const I = JSON.parse(readFileSync(idsFile, 'utf8'));
+  return `const IDS=${JSON.stringify({ data: I.data, top: I.top, sides: I.sides })};const LIST=${JSON.stringify(list)};
+const AF=Object.getPrototypeOf(async function(){}).constructor;
+return await (new AF('figma','IDS','LIST',(await figma.getNodeByIdAsync('${I.runtime}')).characters))(figma,IDS,LIST);`;
+}
+// Chia lô: mỗi lô cùng page, tối đa n màn.
+function plan(n) {
+  const secs = layout(); const lots = []; let cur = null;
+  M.forEach((m, i) => { const pg = secs.find((s) => s.items.includes(m)).page;
+    if (!cur || cur.page !== pg || cur.list.length >= n) { cur = { page: pg, list: [] }; lots.push(cur); } cur.list.push(i); });
+  return lots;
+}
+
 if (cmd === 'reset') process.stdout.write(reset());
 else if (cmd === 'batch') process.stdout.write(batch(Number(a1), Number(a2), a3, process.argv[7], process.argv[8]));
 else if (cmd === 'fixicons') process.stdout.write(fixIcons(a1));
@@ -221,4 +322,9 @@ else if (cmd === 'screen') process.stdout.write(screen(Number(a1), a2, a3));
 else if (cmd === 'links') process.stdout.write(links());
 else if (cmd === 'runtime') process.stdout.write(storeRuntime());
 else if (cmd === 'call') process.stdout.write(screenCall(Number(a1), a2, a3, process.argv[7]));
+else if (cmd === 'bundle') process.stdout.write(bundle());
+else if (cmd === 'pinit') process.stdout.write(pinit());
+else if (cmd === 'pcomp') process.stdout.write(pcomp(a1));
+else if (cmd === 'pscreens') process.stdout.write(pscreens(a1, a2.split(',').map(Number)));
+else if (cmd === 'plan') console.log(JSON.stringify(plan(Number(a1) || 6)));
 else if (cmd === 'list') console.log(M.map((m, i) => `${i + 1}\t${m.id}\t${m.page}\t${m.h}`).join('\n'));

@@ -28,6 +28,9 @@ export async function createDxms(page, title = 'Mua sắm thiết bị đo kiể
   await page.locator('[data-create="dxms"]').click();
   await expect(page).toHaveURL(/#\/dxms\/create$/);
   await page.locator('#x-title').fill(title);
+  // Comment Figma #1: ĐXMS bắt buộc chọn nhiệm vụ / đề tài, dự án.
+  await page.locator('[data-vsel="x-nv"]').click();
+  await page.locator('.vsel-panel [data-opt="NV-KHCN-2026-014"]').click();
   await page.locator('#x-save').click();
   await expect(page).toHaveURL(/#\/dxms$/);
   return page.evaluate(() => Flow.dxmsAll()[0].code);
@@ -65,9 +68,34 @@ export async function primary(page, label) {
   for (let i = 0; i < 2; i++) {
     const overlay = page.locator('.overlay');
     if (!(await overlay.count())) break;
+    // Task 13 (comment #6–8): nút từ chối mở eForm duyệt từng phần → chấm Không đạt phần đầu tiên.
+    const parts = overlay.locator('[data-ef-form="dtms-ms01-t13-chi-huy-duyet"] [data-ef-radio$="ketQua"]', { hasText: 'Không đạt' });
+    if (label && /^Không/.test(label) && (await parts.count())) await parts.first().click();
     const ta = overlay.locator('textarea:visible');
     if (await ta.count()) await ta.first().fill('Nội dung thử');
     await overlay.locator('#ok, #go').first().click();
   }
   return true;
 }
+
+// Màn xử lý task (B0.4 (2)): bấm nút hành động mở dialog eForm của task (my-task-eform-dialog). Trả locator dialog.
+export async function openForm(page, label) {
+  const find = () => (label ? page.locator('.task-acts [data-act]', { hasText: label }).first() : page.locator('.task-acts [data-act].primary').first());
+  let btn = find();
+  if (!(await btn.count()) && label && (await page.locator('[data-more]').count())) { await page.locator('[data-more]').click(); btn = find(); }
+  await btn.click();
+  const form = page.locator('.vmodal.ef');
+  await expect(form).toBeVisible();
+  return form;
+}
+// Chọn quyết định (Chấp nhận / Sửa / Bỏ) cho dòng gợi ý AI có mục `muc` trong bảng quyết định G2.
+export async function aiDecide(form, muc, decision = 'Chấp nhận') {
+  await form.locator('.ef-row', { hasText: muc }).locator('[data-ef-radio$="quyetDinh"]', { hasText: decision }).click();
+}
+// Tải lên mọi tài liệu bắt buộc có key bắt đầu bằng `prefix` ở Danh sách tài liệu (vd. 'quote_' = báo giá theo NCC, comment #5).
+export async function uploadReq(page, prefix) {
+  const sel = `[data-req-up^="${prefix}"]`;
+  for (let i = 0; i < 10 && (await page.locator(sel).count()); i++) await page.locator(sel).first().click();
+}
+// Đóng dialog eForm không lưu.
+export const closeForm = (page) => page.locator('.vmodal.ef [data-close]').first().click();
