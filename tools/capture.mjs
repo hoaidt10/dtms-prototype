@@ -306,4 +306,74 @@ add(P12, 'SCR-82-hc', 'Chi tiết GT-2026-0024 (đấu thầu hạn chế) — d
 // Công khai & tích hợp đấu thầu SCR-94 (QC-12869 Điều 26, BPMN-MS18 bước 54–60).
 [['dt', 'Theo dõi đăng tải'], ['log', 'Nhật ký đồng bộ'], ['cfg', 'Kết nối & thời hạn']]
   .forEach(([k, name]) => add(P12, 'SCR-94-' + k, 'Công khai & tích hợp đấu thầu — ' + name, [...dx('#/cong-khai-thau'), click(`[data-ck-tab="${k}"]`)]));
-add(P12, 'SCR-94-gui-lai', 'Công khai & tích hợp đấu thầu — Gửi lại tin lỗi', [...dx('#/cong-khai-thau'), click('[data-ck-tab="dt"]'), click('[data-ck-pub="KHLCNT:KHLCNT-2026-0009:v2"]')]);
+add(P12, 'SCR-94-gui-lai', 'Công khai & tích hợp đấu thầu — Gửi lại tin lỗi', [...dx('#/cong-khai-thau'), click('[data-ck-tab="dt"]'), click('[data-ck-pub="KHLCNT:KHLCNT-2026-0009:v2"]')], { overlay: true });
+
+// T16 B3 (Backlog W1_T10): Quản lý hợp đồng SCR-84…87, Thông báo SCR-88…91, Tổng quan SCR-92, Báo cáo SCR-93. Màn tĩnh (D-17, D-22).
+const P13 = 'Hợp đồng, Thông báo, Tổng quan & Báo cáo · Backlog W1_T10';
+const HD87 = '#/hop-dong/' + encodeURIComponent('HĐ-2025-0187'), HD52 = '#/hop-dong/' + encodeURIComponent('HĐ-2026-0052');
+const qtb = (h) => [J.jump(1, 'minh'), J.persona('qt'), J.hash(h)];
+add(P13, 'SCR-84', 'Danh sách hợp đồng', dx('#/hop-dong'), { link: 'SCR-86-info', linkSel: `main .vtable tbody a.link[data-go="hop-dong/${encodeURIComponent('HĐ-2025-0187')}"]` });
+add(P13, 'SCR-84-adv', 'Danh sách hợp đồng — tìm kiếm nâng cao', [...dx('#/hop-dong'), click('[data-tl="hdl:adv"]')]);
+add(P13, 'SCR-85', 'Thêm mới hợp đồng từ KQLCNT (GT-2026-0027)', dx('#/hop-dong/create/GT-2026-0027'));
+[['info', 'Thông tin chung'], ['dt', 'Đối tác'], ['hm', 'Hạng mục'], ['tt', 'Thương thảo & ký kết'], ['bd', 'Bảo đảm & bảo hành'], ['td', 'Tiến độ thực hiện'], ['bg', 'Bàn giao & nghiệm thu'], ['pay', 'Thanh toán'], ['vb', 'Văn bản phát sinh'], ['tl', 'Thanh lý']]
+  .forEach(([k, name], i, a) => add(P13, 'SCR-86-' + k, 'Chi tiết HĐ-2025-0187 — tab ' + name, [...dx(HD87), click(`[data-ttab="${k}"]`)],
+    i < a.length - 1 ? { link: 'SCR-86-' + a[i + 1][0], linkSel: `[data-ttab="${a[i + 1][0]}"]` } : {}));
+add(P13, 'SCR-86-tt52', 'Chi tiết HĐ-2026-0052 — thương thảo, tạm dừng ký', [...dx(HD52), click('[data-ttab="tt"]')]);
+add(P13, 'SCR-86-pl', 'HĐ-2026-0012 — Thêm phụ lục', [...dx('#/hop-dong/' + encodeURIComponent('HĐ-2026-0012')), click('[data-ttab="vb"]'), click('[data-hd-annex]')], { overlay: true });
+add(P13, 'SCR-86-tl', 'Chi tiết HĐ-2025-0152 — đã thanh lý', [...dx('#/hop-dong/' + encodeURIComponent('HĐ-2025-0152')), click('[data-ttab="tl"]')]);
+add(P13, 'SCR-87', 'Danh sách thỏa thuận khung', dx('#/thoa-thuan-khung'), { link: 'SCR-87-d', linkSel: 'main .vtable tbody a.link' });
+add(P13, 'SCR-87-d', 'Chi tiết thỏa thuận khung TTK-2026-0003', dx('#/thoa-thuan-khung/TTK-2026-0003'));
+add(P13, 'SCR-88', 'Mẫu thông báo', qtb('#/mau-thong-bao'), { link: 'SCR-89-d', linkSel: 'main .vtable tbody a.link' });
+add(P13, 'SCR-89-c', 'Tạo mới mẫu thông báo', qtb('#/mau-thong-bao/create'));
+add(P13, 'SCR-89-d', 'Xem chi tiết mẫu thông báo', qtb('#/mau-thong-bao/detail/1'));
+add(P13, 'SCR-90', 'Kênh thông báo', qtb('#/kenh-thong-bao'));
+add(P13, 'SCR-90-cfg', 'Cấu hình kênh Email', [...qtb('#/kenh-thong-bao'), click('[data-ch-cfg="EMAIL"]')], { overlay: true });
+add(P13, 'SCR-91', 'Trigger thông báo', qtb('#/trigger-thong-bao'), { link: 'SCR-91-d', linkSel: 'main .vtable tbody tr:nth-child(3) a.link' });
+add(P13, 'SCR-91-d', 'Chi tiết trigger TASK_OVERDUE', qtb('#/trigger-thong-bao/TASK_OVERDUE'));
+add(P13, 'SCR-91-e', 'Chỉnh sửa trigger TASK_OVERDUE', qtb('#/trigger-thong-bao/TASK_OVERDUE/edit'));
+[['kpi', 'Chỉ số tổng quan'], ['td', 'Tiến độ nghiệp vụ'], ['gt', 'Phân tích giá trị'], ['dt', 'Phân tích đấu thầu'], ['hd', 'Phân tích hợp đồng'], ['tt', 'Thanh toán'], ['cb', 'Cảnh báo']]
+  .forEach(([k, name]) => add(P13, 'SCR-92-' + k, 'Tổng quan — ' + name, [...dx('#/tong-quan'), click(`[data-tqtab="${k}"]`)]));
+[['tong-hop', 'dtms'], ['tong-hop', 'chuoi'], ['dxms', 'dxms'], ['kdt', 'kdt'], ['lcnt', 'khlcnt'], ['lcnt', 'to-chuc'], ['lcnt', 'kq'], ['lcnt', 'hieu-qua'], ['lcnt', 'nha-thau'], ['lcnt', 'kpi'],
+  ['hop-dong', 'tinh-hinh'], ['hop-dong', 'thanh-toan'], ['tien-do', 'qua-han'], ['tien-do', 'kien-nghi'], ['tien-do', 'kpi-buoc']]
+  .forEach(([g, k]) => add(P13, `SCR-93-${g}-${k}`, `Báo cáo — ${g} / ${k}`, [...dx('#/bao-cao/' + g), `document.querySelector('[data-rptab="${g}:${k}"]') && document.querySelector('[data-rptab="${g}:${k}"]').click()`]));
+
+const manifest = [];
+for (let i = 0; i < S.length; i++) {
+  const s = S[i];
+  for (const st of s.steps) { await ev(st); await sleep(40); }
+  await sleep(250);
+  await ev(`document.querySelectorAll('.toast-wrap').forEach((t) => t.remove())`);
+  // Cao theo nội dung; rộng cố định 1440.
+  const h = await ev(`Math.max(900, document.querySelector('.main').scrollHeight + 60)`);
+  await send('Emulation.setDeviceMetricsOverride', { width: 1440, height: h, deviceScaleFactor: 1, mobile: false });
+  await sleep(150);
+  // Mục menu thành khung riêng để instance sidebar đổi được mục đang chọn
+  await ev(`document.querySelectorAll('.nav').forEach((n) => { n.dataset.figName = 'nav:' + n.querySelector('.l').textContent.trim(); })`);
+  // Đánh dấu điểm bấm để nối prototype
+  if (s.link) {
+    await ev(`(() => {
+      let el = ${s.linkSel ? `document.querySelector(${JSON.stringify(s.linkSel)})` : s.linkLabel ? `[...document.querySelectorAll('.task-acts [data-act], .tab, .vbtn, .btn')].find((x) => x.textContent.includes(${JSON.stringify(s.linkLabel)}))` : `document.querySelector('.task-acts [data-act].primary') || document.querySelector('tr.click')`};
+      if (el) { el.dataset.figName = 'link→${s.link}'; el.dataset.figLink = '${s.link}'; }
+    })()`);
+  }
+  const main = JSON.parse(await ev(`JSON.stringify(__serialize('.main'))`));
+  const overlay = s.overlay ? JSON.parse(await ev(`JSON.stringify(__serialize('.overlay'))`)) : null;
+  const meta = JSON.parse(await ev(`JSON.stringify({ persona: Flow.state.persona, bell: Flow.tokensFor(Flow.state.persona).length, active: (document.querySelector('.nav.active') || {}).textContent?.trim() || '', openGroups: [...document.querySelectorAll('.nav.open')].map((n) => n.textContent.trim()) })`));
+  const P = await ev(`JSON.stringify(UI.persona(Flow.state.persona))`);
+  const file = `${String(i + 1).padStart(2, '0')}-${s.id}.json`;
+  const data = { id: s.id, title: s.title, page: s.page, link: s.link || null, h, meta: Object.assign(meta, { p: JSON.parse(P) }), main, overlay };
+  writeFileSync(join(out, file), JSON.stringify(data));
+  // Shell: chụp một lần cho mỗi trạng thái sidebar khác nhau
+  const skey = `${meta.active}|${meta.openGroups.join(',')}`;
+  if (!manifest.some((m) => m.skey === skey)) {
+    const shell = { topbar: JSON.parse(await ev(`JSON.stringify(__serialize('.topbar'))`)), sidebar: JSON.parse(await ev(`JSON.stringify(__serialize('.sidebar'))`)) };
+    writeFileSync(join(out, `shell-${manifest.filter((m, j, a) => a.findIndex((x) => x.skey === m.skey) === j).length}.json`), JSON.stringify(Object.assign({ skey }, shell)));
+  }
+  manifest.push({ file, id: s.id, title: s.title, page: s.page, link: s.link || null, h, skey, persona: meta.persona, bell: meta.bell, bytes: JSON.stringify(data).length });
+  await send('Emulation.setDeviceMetricsOverride', { width: 1440, height: 900, deviceScaleFactor: 1, mobile: false });
+  await ev(`document.querySelectorAll('.overlay').forEach((o) => o.remove())`);
+}
+writeFileSync(join(out, 'manifest.json'), JSON.stringify(manifest, null, 1));
+console.log(manifest.map((m) => `${m.file.padEnd(28)} ${String(m.bytes).padStart(6)}B h=${m.h} ${m.skey}`).join('\n'), '\nerrors', b.errors);
+b.close();
+process.exit(0);
