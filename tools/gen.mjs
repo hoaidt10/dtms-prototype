@@ -10,8 +10,10 @@ const M = JSON.parse(readFileSync(join(cap, 'manifest.json'), 'utf8'));
 const load = (f) => JSON.parse(readFileSync(join(cap, f.replace('.json', '.c.json')), 'utf8'));
 
 export const PAGES = { demo: '01 · Demo MS01.01 (9 cảnh)', khung: '02 · Khung & màn khác', nhanh: '03 · Nhánh phụ',
-  qtqt: '04 · Quản trị quy trình', dmdc: '05 · Danh mục dùng chung', eform: '06 · Quản lý E-Form', kdt: '07 · Khoản đầu tư', ms0123: '08 · MS01.02 & MS01.03', comp: '99 · Components' };
-const SEC_PAGE = { 'Nhánh phụ': 'nhanh', 'Quản trị quy trình': 'qtqt', 'Danh mục dùng chung': 'dmdc', 'Quản lý E-Form': 'eform', 'Khoản đầu tư': 'kdt' };
+  qtqt: '04 · Quản trị quy trình', dmdc: '05 · Danh mục dùng chung', eform: '06 · Quản lý E-Form', kdt: '07 · Khoản đầu tư', ms0123: '08 · MS01.02 & MS01.03',
+  bl1: '09 · Quản lý ĐXMS (Backlog W1_T10)', bl2: '10 · KĐT & Thầu (Backlog W1_T10)', bl3: '11 · Hợp đồng, Thông báo, Báo cáo (Backlog W1_T10)', comp: '99 · Components' };
+const SEC_PAGE = { 'Nhánh phụ': 'nhanh', 'Quản trị quy trình': 'qtqt', 'Danh mục dùng chung': 'dmdc', 'Quản lý E-Form': 'eform', 'Khoản đầu tư': 'kdt',
+  'Quản lý ĐXMS · Backlog W1_T10': 'bl1', 'KĐT & Thầu · Backlog W1_T10': 'bl2', 'Hợp đồng, Thông báo, Tổng quan & Báo cáo · Backlog W1_T10': 'bl3' };
 const pageOfSec = (sec) => (sec.startsWith('MS01.02') || sec.startsWith('MS01.03') ? PAGES.ms0123 : null);
 const pageOf = (sec) => (sec.startsWith('Cảnh') ? PAGES.demo : pageOfSec(sec) || PAGES[SEC_PAGE[sec]] || PAGES.khung);
 const PER_ROW = 12;
