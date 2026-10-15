@@ -68,7 +68,7 @@ test('SCR-28 → SCR-25: tạo ĐXMS không start quy trình; Tạo hồ sơ kho
   expect(page.errors).toEqual([]);
 });
 
-test('SCR-25 luật R1–R3: ĐXMS đã phê duyệt chỉ tạo được Điều chỉnh; đang có hồ sơ xử lý thì chặn; hồ sơ Điều chỉnh mở ở chế độ xem', async ({ page }) => {
+test('SCR-25 luật R1–R3: ĐXMS đã phê duyệt chỉ tạo được Điều chỉnh; đang có hồ sơ xử lý thì chặn; hồ sơ Điều chỉnh khởi tạo luồng MS02', async ({ page }) => {
   await fresh(page, '#/ho-so-dxms');
   await page.locator('[data-create="hs"]').click();
   await expect(page).toHaveURL(/#\/ho-so-dxms\/create$/);
@@ -93,15 +93,16 @@ test('SCR-25 luật R1–R3: ĐXMS đã phê duyệt chỉ tạo được Điề
   await page.locator('.vsel-panel [data-opt="DC"]').click();
   await page.locator('#c-save').click();
   await expect(page.locator('.vfield.invalid .msg')).toHaveText(['ĐXMS đang có hồ sơ đang xử lý.']);
-  // ĐXMS-2026-0103: tạo hồ sơ Điều chỉnh → mở chi tiết hồ sơ ở chế độ xem, ĐXMS chuyển Đang điều chỉnh.
+  // ĐXMS-2026-0103: tạo hồ sơ Điều chỉnh → khởi tạo luồng MS02 (T21 D-36), mở bước 1; ĐXMS chuyển Đang điều chỉnh.
   await page.locator('[data-vsel="c-dxms"]').click();
   await page.locator('.vsel-panel [data-opt="ĐXMS-2026-0103"]').click();
   await page.locator('#c-save').click();
-  await expect(page).toHaveURL(/#\/ho-so-dxms\/HS-2026-0127$/);
+  await expect(page).toHaveURL(/#\/task\/k\d+$/);
+  expect((await state(page)).s, 'hồ sơ Điều chỉnh chạy luồng').toBe('running');
+  await page.evaluate(() => { location.hash = '#/ho-so-dxms/HS-2026-0127'; });
   await expect(page.locator('.ginfo')).toContainText('Loại hồ sơĐiều chỉnh ĐXMS');
   await expect(page.locator('.ginfo')).toContainText('MS02 — Điều chỉnh đề xuất mua sắm');
   await expect(page.locator('.ginfo')).toContainText('Giá trị sau điều chỉnh (gồm VAT)210,50 tỷ đồng');
-  expect((await state(page)).s, 'hồ sơ Điều chỉnh không chạy luồng').toBe('new');
   await page.evaluate(() => { location.hash = '#/dxms'; });
   await expect(page.locator('tr[data-code="ĐXMS-2026-0103"]')).toContainText('Đang điều chỉnh');
   expect(page.errors).toEqual([]);

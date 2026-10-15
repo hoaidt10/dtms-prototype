@@ -235,7 +235,7 @@ textarea.input { height: auto; min-height: 88px; padding: 10px 12px; width: 100%
 .toast-wrap { position: fixed; top: 72px; right: 16px; display: flex; flex-direction: column; gap: 8px; z-index: 200; }
 .toast { background: #fff; border-radius: var(--radius); box-shadow: var(--shadow-lg); border-left: 4px solid var(--ok); padding: 12px 14px; min-width: 280px; max-width: 380px; font-size: 13px; }
 .toast.info { border-left-color: var(--info); }
-.menu-pop { position: fixed; background: #fff; border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow-md); z-index: 150; min-width: 252px; overflow: hidden; }
+.menu-pop { position: fixed; background: #fff; border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow-md); z-index: 150; min-width: 252px; max-height: calc(100vh - 80px); overflow-y: auto; }
 .menu-pop .hd { padding: 12px 16px; border-bottom: 1px solid var(--border); }
 .menu-pop button { display: flex; width: 100%; gap: 10px; align-items: center; padding: 9px 16px; border: 0; background: #fff; cursor: pointer; text-align: left; font-size: 14px; }
 .menu-pop button:hover { background: #F7F7F8; }
@@ -318,6 +318,7 @@ ul.files { list-style: none; padding: 0; }
 .doc p { margin: 4px 0; } .doc .missing { color: var(--danger); font-style: italic; } .doc .auto { background: #F9F5FF; border-radius: 6px; padding: 6px 8px; }
 .doc.paper { background: #fff; border: 1px solid var(--border); border-radius: 4px; padding: 24px 28px; font-family: 'Times New Roman', Times, serif; font-size: 15px; line-height: 1.55; box-shadow: var(--shadow-sm); }
 .doc.paper .c { text-align: center; } .doc.paper .r { text-align: right; }
+.doc .doc-t { width: 100%; border-collapse: collapse; margin: 6px 0; } .doc .doc-t th, .doc .doc-t td { border: 1px solid var(--border); padding: 4px 8px; text-align: left; vertical-align: top; } .doc .doc-t th { background: #F9FAFB; }
 .flow-label { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; padding: 12px 16px; border-radius: var(--radius); background: #1A1C1E0A; border: 1px solid var(--border); font-size: 13px; }
 .round { display: inline-flex; align-items: baseline; gap: 2px; padding: 6px 12px; border-radius: var(--radius); background: var(--warn-bg); color: var(--warn); font-size: 13px; }
 .round b { font-size: 22px; line-height: 1; } .round span { margin-left: 6px; font-size: 12px; }
@@ -1068,3 +1069,17 @@ a.rp-tile, button.rp-tile { cursor: pointer; } .rp-tile.on { border-color: #EE00
 .t-err { color: #d92d20; }
 .vmodal .ck-err { margin-bottom: 16px; }
 .vmodal .ck-dlg { margin-bottom: 20px; }
+
+/* T17 Luồng mua sắm (phương án Gộp) — SCR-96 Tạo luồng */
+.lf-err { color: #d92d20; font-size: 13px; margin: 0 0 12px; }
+.lf-empty { padding: 24px 0 8px; color: #76777A; font-size: 14px; }
+[data-lf-members] .vfield .msg { margin: 4px 0 0; }
+[data-lf-members] .vtable { table-layout: fixed; width: 100%; }
+/* T17 B2 — SCR-98 Cập nhật nhân sự: khối Ảnh hưởng của thay đổi */
+.um-impact { border: 1px solid #E4E5E7; border-radius: 8px; background: #F9FAFB; padding: 12px 16px; }
+.um-impact-h { font-weight: 600; font-size: 14px; line-height: 20px; margin-bottom: 8px; }
+.um-impact ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; font-size: 13px; line-height: 18px; }
+.um-impact li { display: grid; grid-template-columns: 180px 1fr; gap: 12px; }
+.um-impact .k { color: #76777A; }
+.um-file { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; }
+.um-file svg { width: 16px; height: 16px; }

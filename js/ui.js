@@ -107,36 +107,42 @@
     });
   }
 
-  /* ---------- Hộp thoại trình ký (vht-modal) ---------- */
+  /* ---------- Hộp thoại trình ký (vht-modal) ----------
+     MS01: ký cứng ghi lý do + bản scan ngay tại hộp thoại (comment #11). Hồ sơ KĐT (MS13): hộp thoại là bước 75 "Chọn hình thức ký" của khối ký chung
+     (D-34, B3-1) — hồ sơ Mật khoá VOffice (G1 bắt buộc bản cứng); Bản cứng thì in, trình ký ở bước 77 và người phụ trách hồ sơ đính scan ở bước 78. */
   function signDialog(doc, who) {
     return new Promise((resolve) => {
       const p = persona(who);
-      /* Hồ sơ Mật: mặc định ký cứng (bản giấy) — P-60. */
-      const secret = !!window.Flow.ci().secret;
+      const F = window.Flow, kdt = !!F.state.kdt;
+      /* Hồ sơ Mật: mặc định ký cứng (bản giấy) — P-60; KĐT: bắt buộc. */
+      const secret = kdt ? F.isMat() : !!F.ci().secret;
       const kv = (k, v) => `<div><div class="k">${k}</div><div class="v">${v}</div></div>`;
+      const hardMs01 = `<div class="vfield"><div class="lr"><label>Lý do ký cứng</label><span class="req">*</span></div><textarea class="vctl ta" id="hr" rows="3" placeholder="Nội dung"></textarea></div>
+            <div class="vfield"><div class="lr"><label>Bản scan đã ký</label><span class="req">*</span></div><div><button class="vbtn sm red" id="up">${icon('upload')} Tải file lên</button></div></div>`;
+      const hardKdt = `<div class="banner-moved">${secret ? '<b>Hồ sơ Mật</b> — bắt buộc ký bản cứng, không gửi qua VOffice. ' : ''}Sau khi xác nhận: in và trình bản cứng theo đúng người ký, thứ tự ký (bước 77); người phụ trách hồ sơ cập nhật kết quả, đính kèm bản scan (bước 78), xong mới đi tiếp.</div>
+            ${secret ? '' : '<div class="vfield"><div class="lr"><label>Lý do ký bản cứng</label></div><textarea class="vctl ta" id="hr" rows="2" placeholder="Nội dung"></textarea></div>'}`;
       const m = vModal({ title: `Trình ký ${doc}`, size: 'md', body: `
-          <div class="ginfo">${kv('Mã hồ sơ', esc(window.Flow.ci().code))}${kv('Người ký', esc(p ? p.name + ' — ' + p.role : ''))}
-            ${kv('Phiên bản trình ký', 'v' + (window.TaskForms ? window.TaskForms.version() : 1))}${kv('Người sửa hồ sơ sau khi CQCM nhất trí', 'Không có')}</div>
+          <div class="ginfo">${kv('Mã hồ sơ', esc(F.ci().code))}${kv('Người ký', esc(p ? p.name + ' — ' + p.role : ''))}
+            ${kv('Phiên bản trình ký', 'v' + (window.TaskForms ? window.TaskForms.version() : 1))}${kdt ? kv('Mật', secret ? 'Có' : 'Không') : kv('Người sửa hồ sơ sau khi CQCM nhất trí', 'Không có')}</div>
           <div class="vfield"><div class="lr"><label>Hình thức ký</label></div>
-            <div class="vradio">${vRadio('Ký mềm qua VOffice', !secret, 'data-mode="soft"')}${vRadio('Ký cứng (bản giấy)', secret, 'data-mode="hard"')}</div></div>
-          <div id="hard" class="stack" ${secret ? '' : 'style="display:none"'}>
-            <div class="vfield"><div class="lr"><label>Lý do ký cứng</label><span class="req">*</span></div><textarea class="vctl ta" id="hr" rows="3" placeholder="Nội dung"></textarea></div>
-            <div class="vfield"><div class="lr"><label>Bản scan đã ký</label><span class="req">*</span></div><div><button class="vbtn sm red" id="up">${icon('upload')} Tải file lên</button></div></div>
-          </div>`,
+            <div class="vradio">${vRadio(kdt ? 'VOffice' : 'Ký mềm qua VOffice', !secret, 'data-mode="soft"', kdt && secret)}${vRadio(kdt ? 'Bản cứng' : 'Ký cứng (bản giấy)', secret, 'data-mode="hard"')}</div></div>
+          <div id="hard" class="stack" ${secret ? '' : 'style="display:none"'}>${kdt ? hardKdt : hardMs01}</div>`,
         actions: `<button class="vbtn secondary" data-close>Hủy</button><button class="vbtn primary" id="go">Trình ký</button>` });
       let mode = secret ? 'hard' : 'soft', file = false;
       m.el.querySelectorAll('[data-mode]').forEach((c) => c.onclick = (e) => {
         e.preventDefault();
+        if (kdt && secret) return;
         m.el.querySelectorAll('[data-mode]').forEach((x) => x.classList.remove('on'));
         c.classList.add('on'); mode = c.dataset.mode;
         m.el.querySelector('#hard').style.display = mode === 'hard' ? '' : 'none';
       });
-      m.el.querySelector('#up').onclick = (e) => { file = true; e.currentTarget.outerHTML = `<span class="file">${icon('file')} ban-scan-da-ky.pdf</span>`; };
+      const up = m.el.querySelector('#up');
+      if (up) up.onclick = (e) => { file = true; e.currentTarget.outerHTML = `<span class="file">${icon('file')} ban-scan-da-ky.pdf</span>`; };
       m.el.querySelector('#go').onclick = () => {
-        const hr = m.el.querySelector('#hr').value.trim();
-        if (mode === 'hard' && (!hr || !file)) { toast('Bạn cần nhập lý do ký cứng và tải lên bản scan đã ký.', 'warn'); return; }
+        const hrEl = m.el.querySelector('#hr'), hr = hrEl ? hrEl.value.trim() : '';
+        if (!kdt && mode === 'hard' && (!hr || !file)) { toast('Bạn cần nhập lý do ký cứng và tải lên bản scan đã ký.', 'warn'); return; }
         /* Comment #11: trả hình thức ký + lý do ký cứng để lưu theo task (thống kê số lần ký cứng — module Báo cáo). */
-        m.close(); resolve({ mode, reason: mode === 'hard' ? hr : null });
+        m.close(); resolve({ mode, reason: mode === 'hard' ? (hr || (secret ? 'Hồ sơ Mật' : null)) : null });
       };
       m.el.addEventListener('click', (e) => { if (e.target.closest('[data-close]') || e.target === m.el) resolve(null); });
     });
@@ -234,7 +240,7 @@
   function selLabel(o) {
     if (o.multi) return (o.value || []).map((v) => (o.options.find((x) => x.value === v) || {}).label).filter(Boolean).join(', ');
     const f = o.options.find((x) => x.value === o.value);
-    return f ? f.label : '';
+    return f ? (f.short || f.label) : '';
   }
   function vSelect(o) {
     SEL.set(o.id, o);
@@ -257,7 +263,7 @@
     const el = document.createElement('div');
     el.className = 'vsel-panel';
     const r = trig.getBoundingClientRect();
-    el.style.top = (r.bottom + 4) + 'px'; el.style.left = r.left + 'px'; el.style.width = r.width + 'px';
+    el.style.top = (r.bottom + 4) + 'px'; el.style.left = r.left + 'px'; el.style.width = Math.max(r.width, o.panelWidth || 0) + 'px';
     const list = () => o.options.filter((x) => norm(x.label).includes(norm(el.querySelector('input') ? el.querySelector('input').value : ''))).map((x) => {
       const on = o.multi ? (o.value || []).includes(x.value) : o.value === x.value;
       return `<div class="vsel-opt ${on ? 'on' : ''} ${x.disabled ? 'dis' : ''}" data-opt="${esc(x.value)}" role="option" aria-selected="${on}">${o.multi ? `<span class="cb">${on ? icon('check') : ''}</span>` : ''}<span>${esc(x.label)}</span></div>`;

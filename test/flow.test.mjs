@@ -17,7 +17,7 @@ function boot(process = 'MS01.01', total) {
     localStorage: { getItem: (k) => store[k] ?? null, setItem: (k, v) => { store[k] = v; } },
     console,
   });
-  for (const f of ['bpmn-tasks.js', 'bpmn-tasks-ms13.js', 'data.js', 'flow.js']) {
+  for (const f of ['bpmn-tasks.js', 'bpmn-tasks-ms13.js', 'bpmn-tasks-ms02.js', 'data.js', 'flow.js']) {
     vm.runInContext(readFileSync(new URL(f, dir), 'utf8'), ctx, { filename: f });
   }
   if (total != null) window.D.caseInfo.total = total;
@@ -461,12 +461,12 @@ test('bộ demo: mỗi cảnh của ba hồ sơ demo đặt đúng task, vai và
       assert.equal(Flow.demoSet().key, set.key, `cảnh ${s.n}: bộ demo`);
       if (s.start === 'NEW') { assert.equal(Flow.state.status, 'new'); continue; }
       if (s.start === 'END') { assert.equal(Flow.state.status, 'approved', `cảnh ${s.n}`); continue; }
-      assert.equal(Flow.ci().dxms, s.kdt || set.dxms || set.kdt);
+      assert.equal(Flow.ci().dxms, s.kdt || s.dxms || set.dxms || set.kdt);
       assert.equal(Flow.state.vars.process === set.key || Flow.ci().flow === set.key, true, `cảnh ${s.n}: quy trình`);
       assert.ok(Flow.state.tokens.find((t) => String(t.task) === String(s.start) && t.who === s.who), `cảnh ${s.n}: ${s.who} phải có việc ở task ${s.start}`);
     }
     for (const b of set.branches) {
-      Flow.jumpTo(b.task, b.who, b.vars, b.process, b.dxms, b.ui, b.settle);
+      Flow.jumpTo(b.task, b.who, b.vars, b.process, b.dxms, b.ui, b.settle, b.pre);
       assert.ok(Flow.state.tokens.find((t) => String(t.task) === String(b.task) && t.who === b.who), `${set.key} · ${b.name}`);
     }
   }
@@ -485,6 +485,7 @@ test('P-34: đổi ngưỡng sau khi tạo hồ sơ không ảnh hưởng hồ s
 });
 
 // T11 B1 — engine luồng theo quy trình (plan KĐT §6 #2): MS01.0x dùng D.flow / BPMN_TASKS; MS13 dùng D.flows.MS13 + BPMN_FLOWS.MS13.
+// T18 — luồng MS13 viết lại theo BPMN bản 12/10 (ĐTMS-121026.drawio trang MS13, 78 bước; plan prototype-T18 §1).
 test('B1 KĐT: engine chọn định nghĩa luồng theo quy trình; tạo KĐT không start quy trình, tạo hồ sơ KĐT start MS13', () => {
   const w = boot(null);
   const { Flow, D } = w;
@@ -492,8 +493,9 @@ test('B1 KĐT: engine chọn định nghĩa luồng theo quy trình; tạo KĐT 
   Flow.create('MS01.03');
   assert.equal(Flow.def(), D.flow);
   assert.equal(Flow.tasks(), w.BPMN_TASKS);
-  assert.equal(Object.keys(w.BPMN_FLOWS.MS13.tasks).length, 64);
-  // KĐT: mã đầu tiên KĐT-2026-0032, tạo KĐT không đổi luồng đang chạy; hồ sơ Phê duyệt giữ 4 số của KĐT, start MS13 ở bước 1, chưa xác định nhóm (B2).
+  assert.equal(w.BPMN_FLOWS.MS13.page, 'MS13');
+  assert.equal(Object.keys(w.BPMN_FLOWS.MS13.tasks).length, 78);
+  // KĐT: mã đầu tiên KĐT-2026-0032, tạo KĐT không đổi luồng đang chạy; hồ sơ Phê duyệt giữ 4 số của KĐT, start MS13 ở bước 1, chưa xác định nhóm.
   const code = Flow.createKdt({ title: 'KĐT thử', unit: 'Trung tâm Vô tuyến', field: 'VTCNTT', type: 'KHCN', nature: 'TICH_HOP', est: 10 });
   assert.equal(code, 'KĐT-2026-0032');
   assert.equal(Flow.state.vars.process, 'MS01.03');
@@ -505,11 +507,30 @@ test('B1 KĐT: engine chọn định nghĩa luồng theo quy trình; tạo KĐT 
   assert.equal(Flow.createKdt({ title: 'KĐT thử 2' }), 'KĐT-2026-0034');
 });
 
-// T11 B2 — cảnh 1–3 của plan KĐT: task 1–13, xác nhận song song 11 ‖ 12, cổng phân luồng / báo giá / gộp, nhánh chuyển MS14.
+test('T18: mọi bước của luồng MS13 (cấp VHT + tuyến Tập đoàn) có trong BPMN 12/10; mỗi mũi tên đích của định nghĩa luồng là bước / cổng có thật', () => {
+  const w = boot(null);
+  const { D } = w;
+  const T = w.BPMN_FLOWS.MS13.tasks, K = D.flows.MS13;
+  const keys = new Set(Object.keys(K));
+  for (const [k, f] of Object.entries(K)) {
+    if (/^\d+$/.test(k)) assert.ok(T[k], `bước ${k} có trong BPMN`);
+    const to = [f.next].concat((f.choices || []).map((c) => c.to), f.varGate ? Object.values(Object.values(f.varGate)[0]) : [],
+      f.groupGate ? [f.groupGate.yes, f.groupGate.no] : [], f.mergeGate ? [f.mergeGate.yes, f.mergeGate.no] : [], f.capGate ? [f.capGate.vht, f.capGate.td] : [],
+      f.forkTo ? f.forkTo.map((b) => b.task) : [], f.fork ? [f.to] : []).filter((x) => x != null);
+    for (const t of to) assert.ok(keys.has(String(t)) || /^END/.test(t), `${k} → ${t}`);
+  }
+  // Bước 1–74 đều có cấu hình (T18 B4: tuyến Tập đoàn 63–74 dựng đủ, không còn bước wip); 75 gộp vào hộp thoại ký (B3-1).
+  for (let n = 1; n <= 78; n++) if (n !== 75) assert.ok(K[n], `bước ${n}`);
+  assert.ok(!Object.values(K).some((f) => f.wip), 'không còn bước chưa dựng');
+  for (const n of [13, 25, 28, 30, 33, 44, 45, 49, 54, 58, 63, 66, 74]) assert.equal(T[n].type, 'service', `bước ${n} là service task`);
+  for (const n of [67, 70, 71, 72, 73]) assert.equal(K[n].who, 'td', `bước ${n} của Tập đoàn — tài khoản giả lập (P-96)`);
+});
+
+// T11 B2 / T18 — bước 1–17: xác nhận song song 11 ‖ 12, thẩm quyền 13, cổng phân luồng / báo giá / gộp, nhánh chuyển MS14.
 function kdtStep(w, task, label) {
   const { Flow } = w;
   const tok = Flow.state.tokens.find((t) => String(t.task) === String(task));
-  assert.ok(tok, `phải còn token ở task ${task}`);
+  assert.ok(tok, `phải còn token ở task ${task} (đang có ${Flow.state.tokens.map((t) => t.task).join(', ')})`);
   const f = Flow.def()[tok.task];
   const choice = f.choices ? (label ? Flow.choices(tok.task).find((c) => c.label.startsWith(label)) : Flow.mainChoice(tok.task)) : null;
   if (f.choices) assert.ok(choice, `task ${task}: ${label}`);
@@ -522,8 +543,9 @@ function kdtCase(w, data) {
   return code;
 }
 const tasksOf = (w) => plain(w.Flow.state.tokens.map((t) => `${t.task}:${t.who}`).sort());
+const sysLog = (w, n) => w.Flow.state.history.filter((h) => String(h.task) === String(n) && h.system);
 
-test('B2 KĐT: task 1–10 → 11 ‖ 12 song song, chờ đủ 02 kết quả → MS13 hai giai đoạn, sang task 14', () => {
+test('B2 KĐT: task 1–10 → G5 báo giá → 11 ‖ 12 song song, chờ đủ 02 kết quả → 13 thẩm quyền → MS13 hai giai đoạn, sang bước 15', () => {
   const w = boot(null);
   const { Flow } = w;
   const code = kdtCase(w);
@@ -534,48 +556,59 @@ test('B2 KĐT: task 1–10 → 11 ‖ 12 song song, chờ đủ 02 kết quả �
   assert.deepEqual(tasksOf(w), ['12:lan'], 'chờ TTMS');
   assert.equal(Flow.state.vars.group, undefined);
   kdtStep(w, 12);
-  assert.deepEqual(tasksOf(w), ['14:minh']);
+  assert.deepEqual(tasksOf(w), ['15:minh']);
+  // Bước 13 (D-33, P-90): KHCN 118,5 tỷ ≥ 45 → chủ trương VHT, KĐT VHT (UQ-GUQ §1.2.2); ghi vào nhật ký.
+  assert.deepEqual(plain(Flow.state.vars.cap), { ct: 'VHT', kdt: 'VHT', basis: 'UQ-GUQ §1.2.2' });
+  assert.match(sysLog(w, 13)[0].action, /chủ trương: VHT, KĐT: VHT/);
   assert.deepEqual(plain([Flow.state.vars.group, Flow.state.vars.branch, Flow.kdtStage()]), ['MS13', '2GD', 'CT']);
   const hs = Flow.kdtCases().find((c) => c.kdt === code);
-  assert.deepEqual(plain([hs.flow, hs.branch, hs.stage, hs.task]), ['MS13', '2GD', 'CT', 14]);
+  assert.deepEqual(plain([hs.flow, hs.branch, hs.stage, hs.task]), ['MS13', '2GD', 'CT', 15]);
   assert.equal(Flow.ci().flow, 'MS13');
-  // Nhánh gộp BM-00 không áp dụng cho hồ sơ hai giai đoạn; nhánh Tập đoàn luôn không áp dụng (P-56).
-  assert.equal(Flow.taskStatus(17), 'na');
-  assert.equal(Flow.taskStatus(57), 'na');
-  assert.equal(Flow.taskStatus(36), 'todo');
-  // Cổng gộp sau task 16 → 36 (BM-01).
-  kdtStep(w, 14); kdtStep(w, 16);
-  assert.deepEqual(tasksOf(w), ['36:minh']);
+  // Nhánh gộp BM-00 không áp dụng cho hồ sơ hai giai đoạn; tuyến Tập đoàn (63–74) chưa dựng. Khối ký chung: 75 chờ tới bước ký, 77–78 theo điều kiện (không Mật).
+  for (const n of [18, 24, 61, 62, 63, 70]) assert.equal(Flow.taskStatus(n), 'na', `bước ${n}`);
+  assert.deepEqual(plain([75, 77, 78].map(Flow.taskStatus)), ['todo', 'cond', 'cond']);
+  assert.equal(Flow.taskStatus(39), 'todo');
+  assert.equal(Flow.taskStatus(27), 'todo', 'khối chung 25–38 dùng cho cả hai nhánh');
+  // G10 cổng gộp sau 17 → 39 (BM-01).
+  kdtStep(w, 15); kdtStep(w, 17);
+  assert.ok(sysLog(w, 16).length, 'AI hỗ trợ soạn (16) là service');
+  assert.deepEqual(tasksOf(w), ['39:minh']);
+  assert.equal(Flow.state.vars.td, 'CT');
 });
 
-test('B2 KĐT: Trang bị nội bộ + Nguyên chiếc + mức vốn MS13 → gộp BM-00 (task 17 → 18)', () => {
+test('B2 KĐT: Trang bị nội bộ + Nguyên chiếc + mức vốn MS13 → gộp BM-00 (AI 18 → bước 19)', () => {
   const w = boot(null);
   const { Flow } = w;
   kdtCase(w, { type: 'TBNB', nature: 'NGUYEN_CHIEC' });
   kdtStep(w, 12); kdtStep(w, 11);
   assert.deepEqual(plain([Flow.state.vars.group, Flow.state.vars.branch, Flow.kdtStage()]), ['MS13', 'BM00', 'GOP']);
   assert.equal(Flow.kdtCheck().merge, true);
-  kdtStep(w, 14); kdtStep(w, 16);
-  assert.deepEqual(tasksOf(w), ['18:minh']);
-  assert.ok(Flow.state.history.some((h) => String(h.task) === '17' && h.system));
+  kdtStep(w, 15); kdtStep(w, 17);
+  assert.deepEqual(tasksOf(w), ['19:minh']);
+  assert.ok(sysLog(w, 18).length);
+  assert.equal(Flow.state.vars.td, 'GOP');
+  for (const n of [39, 48, 60]) assert.equal(Flow.taskStatus(n), 'na', `bước ${n}`);
 });
 
-test('B2 KĐT: xác nhận Không OK → AI gợi ý (13) → task 10; báo giá chưa đạt → sau xác nhận về task 08', () => {
+test('B2 KĐT: xác nhận Không OK → AI gợi ý (14) → bước 10; báo giá chưa đạt → G5 về bước 08 trước khi gửi xác nhận', () => {
   const w = boot(null);
   const { Flow } = w;
   kdtCase(w);
   kdtStep(w, 11);
   kdtStep(w, 12, 'Không OK');
   assert.deepEqual(tasksOf(w), ['10:minh']);
-  assert.ok(Flow.state.history.some((h) => String(h.task) === '13' && h.system));
+  assert.ok(sysLog(w, 14).length);
+  assert.equal(sysLog(w, 13).length, 0, 'chưa xác định thẩm quyền');
   assert.equal(Flow.state.vars.group, undefined, 'chưa phân luồng');
   kdtStep(w, 10, 'Báo giá chưa đạt');
+  assert.deepEqual(tasksOf(w), ['8:minh'], 'bản 12/10: G5 nằm ngay sau 10');
+  kdtStep(w, 8); kdtStep(w, 10);
+  assert.deepEqual(tasksOf(w), ['11:thu', '12:lan']);
   kdtStep(w, 11); kdtStep(w, 12);
-  assert.deepEqual(tasksOf(w), ['8:minh']);
   assert.equal(Flow.state.vars.group, 'MS13');
 });
 
-test('B2 KĐT: KĐT-2026-0033 (lĩnh vực Khác, 96 tỷ ≥ 90) → chuyển luồng MS14, hồ sơ mới của cùng KĐT', () => {
+test('B2 KĐT: KĐT-2026-0033 (lĩnh vực Khác, 96 tỷ ≥ 90) → 13 → G9 chuyển luồng MS14, hồ sơ mới của cùng KĐT', () => {
   const w = boot(null);
   const { Flow, D } = w;
   const b = D.demoSets.find((d) => d.key === 'MS13').branches[0];
@@ -583,6 +616,7 @@ test('B2 KĐT: KĐT-2026-0033 (lĩnh vực Khác, 96 tỷ ≥ 90) → chuyển l
   assert.deepEqual(tasksOf(w), ['12:lan'], 'Ban Tài chính đã xác nhận (settle)');
   assert.equal(Flow.kdtCheck().group, 'MS14');
   kdtStep(w, 12);
+  assert.ok(sysLog(w, 13).length, 'xác định thẩm quyền trước cổng phân luồng');
   assert.equal(Flow.state.status, 'moved');
   assert.deepEqual(plain(Flow.state.movedTo), { code: 'HS-2026-0127', process: 'MS14' });
   const hs = Flow.kdtCases().filter((c) => c.kdt === 'KĐT-2026-0033');
@@ -601,152 +635,172 @@ test('B2 KĐT: ngưỡng KĐT hồ sơ giữ lúc tạo (như P-34)', () => {
   assert.equal(Flow.kdtCheck().group, 'MS13');
 });
 
-// T11 B3 — cảnh 4–6 của plan KĐT: dự thảo (14–16), chủ trương BM-01 (36–40), quy trình con 41 chạy khối thẩm định 22–35, ký 42 / 44.
+// T18 — chủ trương BM-01 (39–45) → khối chung 25–38 vòng BM-01 → 46 → ký 47 / 48.
 const two = (w) => { kdtStep(w, 11); kdtStep(w, 12); };
-// Hồ sơ KĐT-2026-0032 (hai giai đoạn) đã qua dự thảo, tới bước 24 của quy trình con 41.
-function toReview(w) {
+// Hồ sơ KĐT-2026-0032 (hai giai đoạn) đã qua dự thảo, trình BM-01 tới bước 43 (chưa trình).
+function toSubmit(w) {
   kdtCase(w);
   two(w);
-  for (const n of [14, 16, 36, 37, 38, 39]) kdtStep(w, n);
+  for (const n of [15, 17, 39, 40, 41, 42]) kdtStep(w, n);
+  assert.deepEqual(tasksOf(w), ['43:minh']);
 }
 const counts = (w) => plain([w.Flow.tdCount('chk'), w.Flow.tdCount('meet')]);
 
-test('B3 KĐT: 14–16 → cổng gộp → 36–40 → quy trình con 41 (lượt 1 cần sửa, lượt 2 giải trình → họp 1, xác nhận, cập nhật) → 42 → 44 → 46', () => {
+test('B3 KĐT: 39–43 → HT/AI kiểm tra (44) → mở vòng BM-01 (45) → khối chung (lượt 1 cần sửa, lượt 2 giải trình → họp 1, xác nhận, cập nhật) → 46 → 47 → 48 → 50', () => {
   const w = boot(null);
   const { Flow } = w;
-  toReview(w);
-  assert.deepEqual(tasksOf(w), ['24:lan']);
-  assert.equal(Flow.state.vars.sub, 41);
-  assert.equal(Flow.state.tokens[0].sub, 41);
-  assert.equal(Flow.taskStatus(41), 'active', 'việc trong khối thẩm định tính là bước 41');
-  assert.equal(Flow.taskStatus(24), 'na', 'khối 22–35 vẽ cho hồ sơ gộp — hai giai đoạn không hiện riêng');
+  toSubmit(w);
+  kdtStep(w, 43);
+  assert.deepEqual(tasksOf(w), ['27:lan']);
+  assert.ok(sysLog(w, 44).length && sysLog(w, 45).length);
+  assert.equal(Flow.state.vars.td, 'CT');
+  assert.equal(Flow.state.tokens[0].sub, undefined, 'không còn quy trình con (D-32)');
+  assert.equal(Flow.taskStatus(27), 'active', 'khối chung tô đúng bước');
   assert.equal(Flow.kdtStage(), 'TDCT');
-  assert.equal(Flow.kdtCases()[0].task, 41);
-  // Lượt 1: CQCM Tài chính ‖ Pháp chế; Tài chính cần sửa → ĐVĐX bổ sung → TTMS rà soát lại.
-  kdtStep(w, 24);
-  assert.deepEqual(tasksOf(w), ['26:hoa', '26:thu']);
-  kdtStep(w, 26); kdtStep(w, 26);
-  assert.deepEqual(tasksOf(w), ['28:minh']);
-  assert.equal(Flow.mainChoice(28).label, 'Bổ sung hồ sơ theo ý kiến');
-  kdtStep(w, 28);
-  assert.deepEqual(tasksOf(w), ['24:lan']);
-  assert.deepEqual(counts(w), [1, 0]);
-  // Lượt 2: vẫn cần sửa → ĐVĐX giải trình → chưa thống nhất → họp lần 1 → Chuyên quản → Chỉ huy → cập nhật → lượt 3 thống nhất.
-  kdtStep(w, 24); kdtStep(w, 26); kdtStep(w, 26);
-  assert.equal(Flow.mainChoice(28).label, 'Giải trình, bảo lưu ý kiến');
-  kdtStep(w, 28);
-  assert.deepEqual(tasksOf(w), ['29:lan']);
-  kdtStep(w, 29);
-  assert.deepEqual(counts(w), [2, 1]);
+  assert.equal(Flow.kdtCases()[0].task, 27);
+  // Lượt 1: CQCM Tài chính ‖ Pháp chế (AI gợi ý 28); Tài chính cần sửa → AI (30) → ĐVĐX bổ sung (31) → thẩm định lại.
+  kdtStep(w, 27);
+  assert.deepEqual(tasksOf(w), ['29:hoa', '29:thu']);
+  assert.ok(sysLog(w, 28).length);
+  kdtStep(w, 29); kdtStep(w, 29);
   assert.deepEqual(tasksOf(w), ['31:minh']);
+  assert.equal(Flow.mainChoice(31).label, 'Bổ sung hồ sơ theo ý kiến');
   kdtStep(w, 31);
-  assert.deepEqual(tasksOf(w), ['32:hai']);
-  kdtStep(w, 32); kdtStep(w, 33);
-  assert.deepEqual(tasksOf(w), ['24:lan']);
-  kdtStep(w, 24); kdtStep(w, 26); kdtStep(w, 26);
-  assert.deepEqual(tasksOf(w), ['42:lan'], 'không còn ý kiến cần sửa → ra khỏi quy trình con');
-  assert.equal(Flow.state.vars.sub, null);
-  assert.equal(Flow.taskStatus(41), 'done');
+  assert.deepEqual(tasksOf(w), ['27:lan']);
+  assert.deepEqual(counts(w), [1, 0]);
+  // Lượt 2: vẫn cần sửa → ĐVĐX giải trình → chưa thống nhất → họp lần 1 (32, 33 ghi nhận) → Chuyên quản (34) → Chỉ huy (35) → cập nhật (36) → lượt 3 thống nhất.
+  kdtStep(w, 27); kdtStep(w, 29); kdtStep(w, 29);
+  assert.equal(Flow.mainChoice(31).label, 'Giải trình, bảo lưu ý kiến');
+  kdtStep(w, 31);
+  assert.deepEqual(tasksOf(w), ['32:lan']);
+  kdtStep(w, 32);
+  assert.ok(sysLog(w, 33).length);
+  assert.deepEqual(counts(w), [2, 1]);
+  assert.deepEqual(tasksOf(w), ['34:minh']);
+  kdtStep(w, 34);
+  assert.deepEqual(tasksOf(w), ['35:hai']);
+  kdtStep(w, 35); kdtStep(w, 36);
+  assert.deepEqual(tasksOf(w), ['27:lan']);
+  kdtStep(w, 27); kdtStep(w, 29); kdtStep(w, 29);
+  assert.deepEqual(tasksOf(w), ['46:lan'], 'không còn ý kiến cần sửa → G16 vòng BM-01 → 46');
   assert.equal(Flow.kdtStage(), 'TDCT');
-  kdtStep(w, 42);
-  assert.deepEqual(tasksOf(w), ['44:tgd'], 'cấp VHT (P-56): không qua bước 43');
+  kdtStep(w, 46);
+  assert.deepEqual(tasksOf(w), ['47:lan'], 'G23 chủ trương cấp VHT');
   assert.equal(Flow.kdtStage(), 'KYCT');
-  kdtStep(w, 44);
-  assert.deepEqual(tasksOf(w), ['46:minh']);
+  kdtStep(w, 47);
+  assert.deepEqual(tasksOf(w), ['48:tgd']);
+  kdtStep(w, 48);
+  assert.deepEqual(tasksOf(w), ['50:minh']);
   assert.equal(Flow.kdtStage(), 'HS');
-  assert.ok(Flow.state.history.some((h) => String(h.task) === '45' && h.system));
-  assert.deepEqual(plain([Flow.state.vars.chk.CT, Flow.state.vars.meet.CT]), [2, 1], 'bộ đếm giai đoạn chủ trương giữ nguyên');
-  assert.deepEqual(counts(w), [0, 0], 'bước 45 sang giai đoạn KĐT — bộ đếm riêng (P-54)');
+  assert.ok(sysLog(w, 49).length);
+  assert.deepEqual(plain([Flow.state.vars.chk.CT, Flow.state.vars.meet.CT]), [2, 1], 'bộ đếm vòng BM-01 giữ nguyên');
 });
 
-test('B3 KĐT: TTMS trả lại danh sách CQCM → bước 38 (ra khỏi quy trình con); không chọn CQCM → bỏ bước 25–26', () => {
+test('B3 KĐT: CQCM chủ trì không đồng ý DS CQCM → 41; không chọn CQCM → bỏ 28–29; G13 chưa đủ điều kiện → 25 → 26 → về chọn CQCM đúng vòng; G22 AI không đạt → 39', () => {
   const w = boot(null);
   const { Flow } = w;
-  toReview(w);
-  kdtStep(w, 24, 'Danh sách CQCM');
-  assert.deepEqual(tasksOf(w), ['38:minh']);
-  assert.equal(Flow.state.vars.sub, null);
+  kdtCase(w); two(w);
+  for (const n of [15, 17, 39, 40, 41]) kdtStep(w, n);
+  kdtStep(w, 42, 'Không đồng ý');
+  assert.deepEqual(tasksOf(w), ['41:minh']);
   Flow.setUi('cqcmSel', []);
-  kdtStep(w, 38); kdtStep(w, 39);
-  assert.deepEqual(tasksOf(w), ['24:lan']);
-  kdtStep(w, 24);
-  assert.deepEqual(tasksOf(w), ['42:lan'], 'TTMS đồng ý, không có CQCM phối hợp');
-  // Hồ sơ chưa đủ điều kiện → AI gợi ý (22) → ĐVĐX bổ sung (23) → TTMS.
+  kdtStep(w, 41); kdtStep(w, 42); kdtStep(w, 43);
+  assert.deepEqual(tasksOf(w), ['27:lan']);
+  kdtStep(w, 27);
+  assert.deepEqual(tasksOf(w), ['46:lan'], 'CQCM chủ trì đồng ý, không có CQCM phối hợp');
+  // Hồ sơ chưa đủ điều kiện (kiểm tra của hệ thống khi mở vòng) → AI (25) → ĐVĐX bổ sung (26) → G12 vòng BM-01 → 41; lần sau đủ điều kiện.
   const w2 = boot(null);
-  toReview(w2);
-  kdtStep(w2, 24, 'Hồ sơ chưa đủ');
-  assert.deepEqual(tasksOf(w2), ['23:minh']);
-  assert.ok(w2.Flow.state.history.some((h) => String(h.task) === '22' && h.system && h.sub === 41));
-  kdtStep(w2, 23);
-  assert.deepEqual(tasksOf(w2), ['24:lan']);
+  toSubmit(w2);
+  w2.Flow.setUi('inc', { CT: true });
+  kdtStep(w2, 43);
+  assert.deepEqual(tasksOf(w2), ['26:minh']);
+  assert.equal(sysLog(w2, 25)[0].td, 'CT');
+  kdtStep(w2, 26);
+  assert.deepEqual(tasksOf(w2), ['41:minh']);
+  kdtStep(w2, 41); kdtStep(w2, 42); kdtStep(w2, 43);
+  assert.deepEqual(tasksOf(w2), ['27:lan']);
+  // HT/AI kiểm tra trước khi gửi không đạt → sửa hồ sơ (39).
+  const w3 = boot(null);
+  toSubmit(w3);
+  w3.Flow.setUi('ai44Fail', true);
+  kdtStep(w3, 43);
+  assert.deepEqual(tasksOf(w3), ['39:minh']);
+  assert.equal(sysLog(w3, 45).length, 0, 'chưa mở vòng BM-01');
 });
 
-test('B3 KĐT: họp đủ 02 lần vẫn chưa thống nhất → báo cáo (34) → Thủ trưởng kết luận (35); chỉ đạo xử lý → 28, chỉ đạo dừng → kết thúc', () => {
+test('B3 KĐT: họp đủ 02 lần vẫn chưa thống nhất → báo cáo (37) → Thủ trưởng kết luận (38); chỉ đạo xử lý → 31, chỉ đạo dừng → kết thúc', () => {
   const w = boot(null);
   const { Flow, D } = w;
   const b = D.demoSets.find((d) => d.key === 'MS13').branches[3];
   Flow.jumpTo(b.task, b.who, b.vars, b.process, b.dxms, b.ui, b.settle);
-  assert.deepEqual(tasksOf(w), ['29:lan']);
+  assert.deepEqual(tasksOf(w), ['32:lan']);
   assert.deepEqual(counts(w), [2, 1]);
-  kdtStep(w, 29, 'Chưa thống nhất');
+  kdtStep(w, 32, 'Chưa thống nhất');
   assert.deepEqual(counts(w), [2, 2]);
-  assert.deepEqual(tasksOf(w), ['34:lan'], 'không tổ chức họp lần 3');
-  kdtStep(w, 34);
-  assert.deepEqual(tasksOf(w), ['35:tgd']);
-  kdtStep(w, 35);
-  assert.deepEqual(tasksOf(w), ['28:minh']);
-  assert.equal(Flow.mainChoice(28).label, 'Bổ sung hồ sơ theo ý kiến', 'làm theo kết luận');
-  kdtStep(w, 28);
-  assert.deepEqual(tasksOf(w), ['24:lan']);
+  assert.deepEqual(tasksOf(w), ['37:lan'], 'không tổ chức họp lần 3');
+  kdtStep(w, 37);
+  assert.deepEqual(tasksOf(w), ['38:tgd']);
+  kdtStep(w, 38);
+  assert.deepEqual(tasksOf(w), ['31:minh']);
+  assert.equal(Flow.mainChoice(31).label, 'Bổ sung hồ sơ theo ý kiến', 'làm theo kết luận');
+  kdtStep(w, 31);
+  assert.deepEqual(tasksOf(w), ['27:lan']);
   Flow.jumpTo(b.task, b.who, b.vars, b.process, b.dxms, b.ui, b.settle);
-  kdtStep(w, 29, 'Chưa thống nhất'); kdtStep(w, 34); kdtStep(w, 35, 'Chỉ đạo dừng');
+  kdtStep(w, 32, 'Chưa thống nhất'); kdtStep(w, 37); kdtStep(w, 38, 'Chỉ đạo dừng');
   assert.equal(Flow.state.status, 'stopped');
   assert.equal(Flow.kdtStage(), 'STOP');
 });
 
-test('B3 KĐT: Thủ trưởng không ký — chỉ đạo xử lý → cổng gộp → 36 (bộ đếm không đặt lại); cảnh K4–K6 đặt đúng việc', () => {
+test('B3 KĐT: TGĐ VHT không đồng ý chủ trương — tiếp tục xử lý → G10 → 39 (bộ đếm không đặt lại), chỉ đạo dừng → kết thúc; cảnh K4–K6 đặt đúng việc', () => {
   const w = boot(null);
   const { Flow, D } = w;
   const set = D.demoSets.find((d) => d.key === 'MS13');
   const b = set.branches[4];
   Flow.jumpTo(b.task, b.who, b.vars, b.process, b.dxms, b.ui, b.settle);
-  assert.deepEqual(tasksOf(w), ['44:tgd']);
-  kdtStep(w, 44, 'Không ký — chỉ đạo xử lý');
-  assert.deepEqual(tasksOf(w), ['36:minh']);
+  assert.deepEqual(tasksOf(w), ['48:tgd']);
+  kdtStep(w, 48, 'Không đồng ý — chỉ đạo xử lý');
+  assert.deepEqual(tasksOf(w), ['39:minh']);
   assert.deepEqual(counts(w), [2, 1]);
-  for (const [n, task, who] of [['K4', 14, 'minh'], ['K5', 24, 'lan'], ['K6', 42, 'lan']]) {
+  Flow.jumpTo(b.task, b.who, b.vars, b.process, b.dxms, b.ui, b.settle);
+  kdtStep(w, 48, 'Không đồng ý — chỉ đạo dừng');
+  assert.equal(Flow.state.status, 'stopped');
+  for (const [n, task, who] of [['K4', 15, 'minh'], ['K5', 27, 'lan'], ['K6', 47, 'lan']]) {
     Flow.jumpToScene(n, 'MS13');
     assert.deepEqual(plain([Flow.state.persona, Flow.state.tokens.map((t) => t.task)]), [who, [task]], `cảnh ${n}`);
   }
 });
 
-// T11 B4 — cảnh 7–9 của plan KĐT: hồ sơ KĐT BM-03 (45–48) → quy trình con 49 → BM-14 (51) → ký BM-18 (54); nhánh gộp BM-00 (17–21 → khối E → 55–56).
+// T18 — hồ sơ KĐT BM-03 (49–54) → khối chung vòng BM-03 → 55 → 56 → 57 BM-14 → 60 ký BM-18; nhánh gộp BM-00 (18–24 → khối chung → 61–62).
 const docsOf = (w) => plain(w.Flow.kdtDocs().map((d) => d.code));
-test('B4 KĐT: 45 → 46–48 → quy trình con 49 (1 lượt thống nhất) → 51 BM-14 → 54 ký BM-18 → Đã phê duyệt; văn bản đầu ra BM-01, BM-14, BM-18', () => {
+test('B4 KĐT: 50–53 → mở vòng BM-03 (54, bộ đếm riêng) → 27 → 55 → 56 → 57 BM-14 → 60 ký BM-18 → Đã phê duyệt; văn bản đầu ra BM-01, BM-14, BM-18', () => {
   const w = boot(null);
   const { Flow } = w;
   Flow.jumpToScene('K7', 'MS13');
-  assert.deepEqual(tasksOf(w), ['46:minh']);
-  assert.equal(Flow.state.vars.td, 'KDT');
+  assert.deepEqual(tasksOf(w), ['50:minh']);
   assert.deepEqual(docsOf(w), ['BM-01']);
-  kdtStep(w, 46); kdtStep(w, 47);
+  kdtStep(w, 50); kdtStep(w, 51);
   assert.equal(Flow.kdtStage(), 'HS');
-  kdtStep(w, 48);
-  assert.deepEqual(tasksOf(w), ['24:lan']);
-  assert.equal(Flow.state.vars.sub, 49);
-  assert.equal(Flow.taskStatus(49), 'active');
+  kdtStep(w, 52);
+  assert.deepEqual(tasksOf(w), ['53:lan']);
+  kdtStep(w, 53);
+  assert.deepEqual(tasksOf(w), ['27:lan']);
+  assert.ok(sysLog(w, 54).length);
+  assert.equal(Flow.state.vars.td, 'KDT');
   assert.equal(Flow.kdtStage(), 'TDKDT');
-  kdtStep(w, 24);
-  assert.deepEqual(tasksOf(w), ['26:hoa', '26:thu']);
-  kdtStep(w, 26); kdtStep(w, 26);
-  assert.deepEqual(tasksOf(w), ['51:lan'], 'không còn ý kiến cần sửa → ra khỏi quy trình con, cấp VHT (không qua bước 50)');
-  assert.equal(Flow.state.vars.sub, null);
-  assert.deepEqual(counts(w), [0, 0]);
-  kdtStep(w, 51);
-  assert.deepEqual(tasksOf(w), ['54:tgd']);
+  assert.deepEqual(counts(w), [0, 0], 'vòng BM-03 đếm riêng');
+  kdtStep(w, 27);
+  assert.deepEqual(tasksOf(w), ['29:hoa', '29:thu']);
+  kdtStep(w, 29); kdtStep(w, 29);
+  assert.deepEqual(tasksOf(w), ['55:lan'], 'không còn ý kiến cần sửa → G16 vòng BM-03 → 55');
+  kdtStep(w, 55);
+  assert.deepEqual(tasksOf(w), ['56:hai'], 'G27 KĐT cấp VHT → Chỉ huy ĐVĐX ký tờ trình');
+  kdtStep(w, 56);
+  assert.deepEqual(tasksOf(w), ['57:lan']);
+  kdtStep(w, 57);
+  assert.deepEqual(tasksOf(w), ['60:tgd']);
   assert.equal(Flow.kdtStage(), 'KYQD');
   assert.deepEqual(docsOf(w), ['BM-01', 'BM-14']);
-  kdtStep(w, 54);
+  kdtStep(w, 60);
   assert.equal(Flow.state.status, 'approved');
   assert.equal(Flow.kdtStage(), 'OK');
   assert.deepEqual(docsOf(w), ['BM-01', 'BM-14', 'BM-18']);
@@ -755,63 +809,95 @@ test('B4 KĐT: 45 → 46–48 → quy trình con 49 (1 lượt thống nhất) �
   assert.match(Flow.state.history.slice(-1)[0].action, /Quyết định phê duyệt KĐT/);
 });
 
-test('B4 KĐT: báo cáo chưa thông qua → 52 → 53 → 46 (BM-03 lên v2); TTMS trả lại danh sách CQCM trong 49 → 48; Thủ trưởng không ký BM-18 → cổng gộp → 36', () => {
+test('B4 KĐT: BM-14 không thông qua → 58 → 59 → 50; DS CQCM BM-03 không đồng ý → 52; TGĐ VHT không đồng ý BM-18 → 50 (giữ vòng BM-03)', () => {
   const w = boot(null);
   const { Flow, D } = w;
   const b = D.demoSets.find((d) => d.key === 'MS13').branches[5];
   Flow.jumpTo(b.task, b.who, b.vars, b.process, b.dxms, b.ui, b.settle);
-  assert.deepEqual(tasksOf(w), ['51:lan']);
-  kdtStep(w, 51, 'Báo cáo chưa');
-  assert.deepEqual(tasksOf(w), ['53:minh']);
-  assert.ok(Flow.state.history.some((h) => String(h.task) === '52' && h.system));
-  kdtStep(w, 53);
-  assert.deepEqual(tasksOf(w), ['46:minh']);
-  kdtStep(w, 46); kdtStep(w, 47); kdtStep(w, 48);
-  kdtStep(w, 24, 'Danh sách CQCM');
-  assert.deepEqual(tasksOf(w), ['48:minh'], 'trả lại danh sách CQCM → bước 48, ra khỏi quy trình con 49');
-  assert.equal(Flow.state.vars.sub, null);
+  assert.deepEqual(tasksOf(w), ['57:lan']);
+  kdtStep(w, 57, 'Báo cáo không');
+  assert.deepEqual(tasksOf(w), ['59:minh']);
+  assert.ok(sysLog(w, 58).length);
+  kdtStep(w, 59);
+  assert.deepEqual(tasksOf(w), ['50:minh']);
+  kdtStep(w, 50); kdtStep(w, 51); kdtStep(w, 52);
+  kdtStep(w, 53, 'Không đồng ý');
+  assert.deepEqual(tasksOf(w), ['52:minh']);
   Flow.jumpToScene('K8', 'MS13');
-  kdtStep(w, 51);
-  kdtStep(w, 54, 'Không ký');
-  assert.deepEqual(tasksOf(w), ['36:minh'], 'G21 Không → cổng gộp → hai giai đoạn');
-  assert.equal(Flow.state.vars.td, 'CT');
+  assert.deepEqual(tasksOf(w), ['56:hai']);
+  kdtStep(w, 56); kdtStep(w, 57);
+  kdtStep(w, 60, 'Không đồng ý');
+  assert.deepEqual(tasksOf(w), ['50:minh'], 'G29 Không đồng ý: sửa BM-03');
+  assert.equal(Flow.state.vars.td, 'KDT');
 });
 
-test('B4 KĐT: nhánh gộp BM-00 trên KĐT-2026-0031 (chạy lại hồ sơ mẫu HS-2026-0031) — 18–21 → thẩm định GOP → 55 → 56 ký BM-00; không ký → 17 → 18', () => {
+test('B4 KĐT: nhánh gộp BM-00 trên KĐT-2026-0031 (chạy lại hồ sơ mẫu HS-2026-0031) — 19–24 → vòng BM-00 → G30 VHT → 61 → 62; không đồng ý → 19', () => {
   const w = boot(null);
   const { Flow, D } = w;
   Flow.jumpToScene('K9', 'MS13');
   assert.deepEqual(plain([Flow.state.kdt, Flow.state.code, Flow.state.vars.branch, Flow.state.vars.td]), ['KĐT-2026-0031', 'HS-2026-0031', 'BM00', 'GOP']);
   assert.equal(Flow.kdtCases().filter((c) => c.code === 'HS-2026-0031').length, 1, 'bản ghi mẫu trùng mã bị thay bằng hồ sơ đang chạy');
-  assert.equal(Flow.taskStatus(36), 'na');
-  assert.equal(Flow.taskStatus(55), 'todo');
-  assert.deepEqual(tasksOf(w), ['18:minh']);
-  kdtStep(w, 18); kdtStep(w, 19);
-  assert.deepEqual(tasksOf(w), ['20:hai']);
-  kdtStep(w, 20);
-  assert.deepEqual(tasksOf(w), ['21:minh'], 'bước 20 không có cổng đồng ý / không');
+  assert.equal(Flow.taskStatus(39), 'na');
+  assert.equal(Flow.taskStatus(61), 'todo');
+  assert.deepEqual(tasksOf(w), ['19:minh']);
+  kdtStep(w, 19); kdtStep(w, 20);
+  assert.deepEqual(tasksOf(w), ['21:hai']);
   kdtStep(w, 21);
-  assert.deepEqual(tasksOf(w), ['24:lan']);
-  assert.ok(!Flow.state.vars.sub, 'nhánh gộp chạy khối E trực tiếp, không qua quy trình con');
+  assert.deepEqual(tasksOf(w), ['22:minh'], 'bước 21 không có nhánh trả lại (P-92)');
+  kdtStep(w, 22);
+  assert.deepEqual(tasksOf(w), ['23:lan']);
+  kdtStep(w, 23);
+  assert.deepEqual(tasksOf(w), ['24:hai']);
+  kdtStep(w, 24);
+  assert.deepEqual(tasksOf(w), ['27:lan']);
   assert.equal(Flow.kdtStage(), 'TDGOP');
-  kdtStep(w, 24); kdtStep(w, 26); kdtStep(w, 26);
-  assert.deepEqual(tasksOf(w), ['55:minh'], 'không cần sửa → phân cấp VHT → ĐVĐX trình ký');
+  kdtStep(w, 27); kdtStep(w, 29); kdtStep(w, 29);
+  assert.deepEqual(tasksOf(w), ['61:lan'], 'không cần sửa → G16 BM-00 → G30 cấp VHT → TTMS ký BM-14');
   assert.equal(Flow.kdtStage(), 'KYGOP');
-  kdtStep(w, 55); kdtStep(w, 56);
+  kdtStep(w, 61); kdtStep(w, 62);
   assert.equal(Flow.state.status, 'approved');
-  assert.deepEqual(docsOf(w), ['BM-00']);
+  assert.deepEqual(docsOf(w), ['BM-14', 'BM-00', 'BM-18']);
   assert.match(Flow.state.history.slice(-1)[0].action, /hồ sơ gộp BM-00/);
-  // Không ký: "Kết quả phê duyệt / chỉ đạo?" Không → cổng gộp → 17 (AI) → 18; TTMS trả lại danh sách CQCM → 21.
   const b = D.demoSets.find((d) => d.key === 'MS13').branches[6];
   Flow.jumpTo(b.task, b.who, b.vars, b.process, b.dxms, b.ui, b.settle);
-  kdtStep(w, 56, 'Không ký');
-  assert.deepEqual(tasksOf(w), ['18:minh']);
-  Flow.jumpTo(24, 'lan', null, 'MS13', 'KĐT-2026-0031');
-  kdtStep(w, 24, 'Danh sách CQCM');
-  assert.deepEqual(tasksOf(w), ['21:minh']);
+  kdtStep(w, 62, 'Không đồng ý');
+  assert.deepEqual(tasksOf(w), ['19:minh']);
+  Flow.jumpTo(23, 'lan', null, 'MS13', 'KĐT-2026-0031');
+  kdtStep(w, 23, 'Không đồng ý');
+  assert.deepEqual(tasksOf(w), ['22:minh']);
 });
 
-test('B5 KĐT: cảnh K10 tua KĐT-2026-0032 tới Quyết định phê duyệt — hồ sơ Hoàn thành, KĐT Đã phê duyệt, văn bản BM-01, BM-14, BM-18; bộ đếm theo giai đoạn', () => {
+test('T18 D-33: thẩm quyền tính lại ở cổng cấp duyệt — chủ trương thuộc Tập đoàn → 63 AI dự thảo công văn → 64; P-90 KHCN < 45 tỷ → chủ trương Tập đoàn', () => {
+  const w = boot(null);
+  const { Flow, D } = w;
+  assert.deepEqual(plain(D.kdtAuthOf({ type: 'KHCN', field: 'VTCNTT' }, 30)), { ct: 'TD', kdt: 'VHT', basis: 'UQ-GUQ §1.2.1' });
+  assert.deepEqual(plain(D.kdtAuthOf({ type: 'BDS', field: 'BDS' }, 5)).ct, 'TD');
+  assert.deepEqual(plain(D.kdtAuthOf({ type: 'TBNB', field: 'VTCNTT' }, 12.4)), { ct: 'VHT', kdt: 'VHT', basis: 'UQ-GUQ §1.2.2' });
+  assert.match(D.kdtAuthOf({ type: 'XYZ' }, 1).basis, /mặc định VHT/);
+  kdtCase(w); two(w);
+  assert.equal(Flow.state.vars.cap.ct, 'VHT');
+  for (const n of [15, 17, 39, 40, 41, 42, 43]) kdtStep(w, n);
+  kdtStep(w, 27); kdtStep(w, 29); kdtStep(w, 29); kdtStep(w, 31);
+  // Phân cấp đổi trước trình ký (danh mục SCR-100) → G23 tính lại → Tập đoàn.
+  D.kdtAuthRules = () => [{ type: 'KHCN', field: '*', from: 0, to: null, ct: 'TD', kdt: 'VHT', basis: 'thử' }];
+  for (;;) { const t = Flow.state.tokens[0]; if (!t || t.task === 46) break; kdtStep(w, t.task); }
+  kdtStep(w, 46);
+  assert.deepEqual(tasksOf(w), ['64:minh']);
+  assert.equal(Flow.state.vars.cap.ct, 'TD');
+  assert.deepEqual(plain([Flow.state.vars.tdKind, Flow.state.vars.tdKinds]), ['CT', ['CT']]);
+  assert.equal(Flow.kdtStage(), 'TD');
+  assert.match(sysLog(w, 63)[0].action, /AI hỗ trợ dự thảo công văn/);
+  assert.deepEqual(plain([63, 64, 47, 48, 71, 72].map(Flow.taskStatus)), ['done', 'active', 'na', 'na', 'todo', 'na'], 'chủ trương lên Tập đoàn: bỏ 47–48 và 72');
+  // Hồ sơ gộp: G30 lên Tập đoàn khi một trong hai cấp là Tập đoàn.
+  const w2 = boot(null);
+  w2.D.kdtAuthRules = () => [{ type: 'TBNB', field: '*', from: 0, to: null, ct: 'VHT', kdt: 'TD', basis: 'thử' }];
+  w2.Flow.jumpTo(64, 'minh', null, 'MS13', 'KĐT-2026-0031');
+  assert.deepEqual(tasksOf(w2), ['64:minh']);
+  assert.equal(w2.Flow.state.vars.tdKind, 'GOP');
+  assert.deepEqual(plain([61, 62, 71, 72].map(w2.Flow.taskStatus)), ['na', 'na', 'na', 'todo']);
+});
+
+test('B5 KĐT: cảnh K10 tua KĐT-2026-0032 tới Quyết định phê duyệt — hồ sơ Hoàn thành, KĐT Đã phê duyệt, văn bản BM-01, BM-14, BM-18; bộ đếm theo vòng', () => {
   const w = boot(null);
   const { Flow, D } = w;
   const sc = Flow.jumpToScene('K10', 'MS13');
@@ -821,7 +907,175 @@ test('B5 KĐT: cảnh K10 tua KĐT-2026-0032 tới Quyết định phê duyệt 
   assert.deepEqual(docsOf(w), ['BM-01', 'BM-14', 'BM-18']);
   const rec = Flow.kdtCases().find((c) => c.code === Flow.state.code);
   assert.deepEqual(plain([rec.st, rec.flow, rec.branch, rec.live]), ['done', 'MS13', '2GD', true]);
-  assert.deepEqual(plain([Flow.state.vars.chk, Flow.state.vars.meet]), [{ CT: 2 }, { CT: 1 }], 'chủ trương: vòng check 2/2, họp 1/2 (§2.3); KĐT 1 lượt thống nhất');
-  assert.equal(Flow.taskStatus(54), 'done');
-  assert.equal(Flow.taskStatus(17), 'na', 'hồ sơ hai giai đoạn không đi nhánh gộp');
+  assert.deepEqual(plain([Flow.state.vars.chk, Flow.state.vars.meet]), [{ CT: 2 }, { CT: 1 }], 'vòng BM-01: 2 lượt bổ sung / giải trình, họp 1/2; vòng BM-03 1 lượt thống nhất');
+  assert.equal(Flow.taskStatus(60), 'done');
+  assert.equal(Flow.taskStatus(18), 'na', 'hồ sơ hai giai đoạn không đi nhánh gộp');
+});
+
+test('T18 B2 nhánh phụ: hồ sơ chưa đủ điều kiện thẩm định → 26 → chọn lại CQCM vòng BM-01 (41); chủ trương thuộc Tập đoàn (bản chụp danh mục) → 63 → 64', () => {
+  const w = boot(null);
+  const { Flow, D } = w;
+  const bs = D.demoSets.find((d) => d.key === 'MS13').branches;
+  const go = (i) => { const b = bs[i]; Flow.jumpTo(b.task, b.who, b.vars, b.process, b.dxms, b.ui, b.settle, b.pre); };
+  go(8);
+  assert.deepEqual(tasksOf(w), ['26:minh']);
+  assert.equal(Flow.state.vars.td, 'CT');
+  kdtStep(w, 26);
+  assert.deepEqual(tasksOf(w), ['41:minh'], 'G12 vòng BM-01 → chọn lại CQCM');
+  kdtStep(w, 41); kdtStep(w, 42); kdtStep(w, 43);
+  assert.deepEqual(tasksOf(w), ['27:lan'], 'cờ kiểm tra dùng một lần — lần mở vòng sau đủ điều kiện');
+  go(9);
+  assert.deepEqual(tasksOf(w), ['64:minh']);
+  assert.deepEqual(plain([Flow.state.vars.cap.ct, Flow.state.vars.cap.kdt, Flow.kdtStage()]), ['TD', 'VHT', 'TD']);
+  assert.ok(Flow.state.history.some((h) => String(h.task) === '46' && h.who), 'đi qua thẩm định và hoàn chỉnh chủ trương trước khi rẽ Tập đoàn');
+});
+
+// T18 B3 — khối ký chung 75–78 (D-34): bước ký MS13 (P-91) đi qua S2 → G1 Mật? → 75 → G2 → 76 VOffice | 77 → 78 → G3 → về đích của nút.
+test('T18 B3: ký VOffice (mặc định) — 75 ghi hình thức, 76 nhận callback, về đúng bước tiếp theo; văn bản chỉ có khi khối ký xong', () => {
+  const w = boot(null);
+  const { Flow } = w;
+  Flow.jumpToScene('K6', 'MS13');
+  assert.deepEqual(tasksOf(w), ['47:lan']);
+  kdtStep(w, 47);
+  assert.deepEqual(tasksOf(w), ['48:tgd'], 'VOffice không tạo việc chờ');
+  const h75 = Flow.state.history.filter((h) => String(h.task) === '75');
+  assert.deepEqual(plain(h75.map((h) => [h.who, h.action])), [['lan', 'Chọn hình thức ký BM-01: VOffice']]);
+  assert.match(sysLog(w, 76)[0].action, /callback/);
+  assert.deepEqual(plain(Flow.state.vars.kyLog.map((k) => [k.task, k.doc, k.mode])), [[47, 'BM-01', 'soft']]);
+  assert.equal(Flow.state.vars.ky, undefined);
+  assert.deepEqual(plain([75, 76, 77, 78].map(Flow.taskStatus)), ['done', 'done', 'cond', 'cond']);
+  // Không Mật chọn Bản cứng ở hộp thoại trình ký → 77 (người ký) → 78 (người phụ trách) → 49; BM-01 chỉ thành văn bản đầu ra khi 78 xong.
+  const tok = Flow.state.tokens[0];
+  Flow.complete(tok.id, Flow.mainChoice(48), null, { mode: 'hard' });
+  assert.deepEqual(tasksOf(w), ['77:tgd']);
+  assert.equal(Flow.kdtStage(), 'KYCT', 'đang ở khối ký: trạng thái theo bước ký 48');
+  assert.deepEqual(docsOf(w), [], 'BM-01 chưa có khi đang ký bản cứng');
+  assert.equal(Flow.taskStatus(77), 'active');
+  kdtStep(w, 77);
+  assert.deepEqual(tasksOf(w), ['78:minh']);
+  kdtStep(w, 78);
+  assert.deepEqual(tasksOf(w), ['50:minh'], 'G3 → về đích của nút ký 48 (49 AI → 50)');
+  assert.deepEqual(docsOf(w), ['BM-01']);
+  assert.deepEqual(plain(Flow.state.vars.kyLog.map((k) => [k.task, k.mode])), [[47, 'soft'], [48, 'hard']]);
+});
+
+test('T18 B3: hồ sơ Mật — G1 bắt buộc bản cứng (bỏ qua 75–76, kể cả khi chọn VOffice); lỗi gửi VOffice → 76 Gửi lại (P-94); nút không ký không vào khối', () => {
+  const w = boot(null);
+  const { Flow, D } = w;
+  const bs = D.demoSets.find((d) => d.key === 'MS13').branches;
+  const go = (i) => { const b = bs[i]; Flow.jumpTo(b.task, b.who, b.vars, b.process, b.dxms, b.ui, b.settle, b.pre); };
+  go(10);
+  assert.deepEqual(tasksOf(w), ['47:lan']);
+  assert.equal(Flow.isMat(), true);
+  Flow.complete(Flow.state.tokens[0].id, Flow.mainChoice(47), null, { mode: 'soft' });
+  assert.deepEqual(tasksOf(w), ['77:lan'], 'Mật → 77 dù chọn VOffice');
+  assert.equal(Flow.state.history.filter((h) => String(h.task) === '75').length, 0);
+  assert.deepEqual(plain([75, 76].map(Flow.taskStatus)), ['na', 'na']);
+  assert.equal(Flow.taskStatus(78), 'todo');
+  kdtStep(w, 77); kdtStep(w, 78);
+  assert.deepEqual(tasksOf(w), ['48:tgd']);
+  // Cảnh tua nhanh qua bước ký của hồ sơ Mật cũng đi 77 → 78.
+  Flow.jumpTo(48, 'tgd', null, 'MS13', null, { secret: true });
+  assert.deepEqual(plain(Flow.state.vars.kyLog.map((k) => [k.task, k.mode])), [[47, 'hard']]);
+  assert.ok(Flow.state.history.some((h) => String(h.task) === '78' && h.who === 'minh'));
+  // Lỗi gửi VOffice.
+  go(11);
+  kdtStep(w, 47);
+  assert.deepEqual(tasksOf(w), ['76:lan'], 'lỗi gửi → việc Gửi lại cho người trình');
+  assert.match(sysLog(w, 76)[0].action, /Lỗi gửi VOffice/);
+  assert.equal(Flow.kdtStage(), 'KYCT');
+  kdtStep(w, 76);
+  assert.deepEqual(tasksOf(w), ['48:tgd']);
+  // Nút không đồng ý của bước ký không đi qua khối.
+  kdtStep(w, 48, 'Không đồng ý — chỉ đạo dừng');
+  assert.equal(Flow.state.status, 'stopped');
+  assert.equal(Flow.state.vars.ky, undefined);
+});
+
+// T18 B4 — tuyến Tập đoàn 63–74 (người dùng mở D-8, 12/10).
+test('T18 B4: chủ trương thuộc Tập đoàn — 64 → 65 ký công văn (khối ký) → 66 → 67 → 68 → 69 → 70 (chưa đạt → 68) → 71 → 73 (không đồng ý → 68) → 74 → 49 lập hồ sơ KĐT cấp VHT', () => {
+  const w = boot(null);
+  const { Flow, D } = w;
+  const bs = D.demoSets.find((d) => d.key === 'MS13').branches;
+  const b = bs[9];
+  Flow.jumpTo(b.task, b.who, b.vars, b.process, b.dxms, b.ui, b.settle, b.pre);
+  kdtStep(w, 64);
+  assert.deepEqual(tasksOf(w), ['65:tgd']);
+  kdtStep(w, 65, 'Không đồng ý');
+  assert.deepEqual(tasksOf(w), ['64:minh'], 'TGĐ VHT không ký công văn → hoàn thiện công văn');
+  kdtStep(w, 64); kdtStep(w, 65);
+  // 65 đi qua khối ký chung (VOffice mặc định) → 66 chuyển hồ sơ (service) → 67 các Ban Tập đoàn.
+  assert.deepEqual(tasksOf(w), ['67:td']);
+  assert.deepEqual(plain(Flow.state.vars.kyLog.map((k) => [k.task, k.doc, k.mode])).slice(-1), [[65, 'Công văn trình Tập đoàn', 'soft']]);
+  assert.match(sysLog(w, 66)[0].action, /gửi qua tích hợp VOffice/);
+  assert.equal(Flow.kdtStage(), 'TDTD');
+  assert.deepEqual(docsOf(w), ['CV-TD']);
+  kdtStep(w, 67);
+  assert.deepEqual(tasksOf(w), ['68:minh']);
+  assert.equal(Flow.kdtStage(), 'TD');
+  kdtStep(w, 68); kdtStep(w, 69);
+  assert.deepEqual(tasksOf(w), ['70:td'], '69 ký trình lại qua khối ký, về 70');
+  assert.deepEqual(docsOf(w), ['CV-TD', 'BM-06']);
+  kdtStep(w, 70, 'Chưa đạt');
+  assert.deepEqual(tasksOf(w), ['68:minh'], 'Ban ĐTXD trả trực tiếp ĐVĐX');
+  kdtStep(w, 68); kdtStep(w, 69); kdtStep(w, 70);
+  assert.deepEqual(tasksOf(w), ['71:td'], 'G34 chủ trương riêng → 71');
+  kdtStep(w, 71);
+  kdtStep(w, 73, 'Không đồng ý');
+  assert.deepEqual(tasksOf(w), ['68:minh']);
+  for (const n of [68, 69, 70, 71, 73]) kdtStep(w, n);
+  // 74 lưu kết quả (BM-01 do TGĐ Tập đoàn ký) → G36 chủ trương → 49 AI → 50.
+  assert.deepEqual(tasksOf(w), ['50:minh']);
+  assert.match(sysLog(w, 74)[0].action, /BM-01 đã ký/);
+  assert.deepEqual(docsOf(w), ['CV-TD', 'BM-06', 'BM-01']);
+  assert.equal(Flow.state.status, 'running');
+  assert.equal(Flow.kdtStage(), 'HS');
+  // KĐT cấp VHT (KHCN, UQ-GUQ §1.2.1) → tua tiếp tới kết thúc qua 56 → 57 → 60.
+  for (let i = 0; i < 80 && Flow.state.status === 'running'; i++) kdtStep(w, Flow.state.tokens[0].task);
+  assert.equal(Flow.state.status, 'approved');
+  assert.ok(Flow.state.history.some((h) => String(h.task) === '60' && h.who === 'tgd'), 'KĐT do TGĐ VHT ký');
+  assert.match(Flow.state.history.slice(-1)[0].action, /^Kết thúc — Quyết định phê duyệt KĐT/);
+  assert.deepEqual(plain([47, 48, 72, 60].map(Flow.taskStatus)), ['na', 'na', 'na', 'done']);
+});
+
+test('T18 B4: hồ sơ gộp thuộc Tập đoàn — 72 Ban ĐTXD lập BM-14 + dự thảo BM-18 → 73 → 74 → kết thúc cấp Tập đoàn; công văn ký bản cứng → 66 chuyển bộ hồ sơ giấy', () => {
+  const w = boot(null);
+  const { Flow, D } = w;
+  const bs = D.demoSets.find((d) => d.key === 'MS13').branches;
+  const go = (i) => { const b = bs[i]; Flow.jumpTo(b.task, b.who, b.vars, b.process, b.dxms, b.ui, b.settle, b.pre); };
+  go(15);
+  assert.deepEqual(tasksOf(w), ['72:td']);
+  assert.deepEqual(plain([Flow.state.vars.branch, Flow.state.vars.tdKind]), ['BM00', 'GOP']);
+  kdtStep(w, 72); kdtStep(w, 73);
+  assert.equal(Flow.state.status, 'approved');
+  assert.match(Flow.state.history.slice(-1)[0].action, /hoàn tất phê duyệt cấp Tập đoàn: hồ sơ gộp BM-00/);
+  assert.deepEqual(docsOf(w), ['CV-TD', 'BM-06', 'BM-00', 'BM-14', 'BM-18']);
+  assert.ok(Flow.kdtDocs().filter((d) => d.td).every((d) => d.by === 74));
+  assert.deepEqual(plain([61, 62, 71, 72, 73, 74].map(Flow.taskStatus)), ['na', 'na', 'na', 'done', 'done', 'done']);
+  assert.equal(Flow.kdtStage(), 'OK');
+  // Hồ sơ Mật: TGĐ VHT ký công văn bản cứng (77 → 78) → 66 ghi chuyển bộ hồ sơ giấy (P-99).
+  Flow.jumpTo(65, 'tgd', null, 'MS13', null, { secret: true }, false, bs[9].pre);
+  kdtStep(w, 65);
+  assert.deepEqual(tasksOf(w), ['77:tgd']);
+  kdtStep(w, 77); kdtStep(w, 78);
+  assert.deepEqual(tasksOf(w), ['67:td']);
+  assert.match(sysLog(w, 66)[0].action, /chuyển bộ hồ sơ giấy/);
+});
+
+test('T18 B4: chủ trương và KĐT đều thuộc Tập đoàn — lên Tập đoàn hai lần (71 rồi 72), mỗi lần đúng loại hồ sơ', () => {
+  const w = boot(null);
+  const { Flow } = w;
+  const pre = { auth: [{ type: 'KHCN', field: '*', from: 0, to: null, ct: 'TD', kdt: 'TD', basis: 'thử' }] };
+  Flow.jumpTo(73, 'td', null, 'MS13', null, null, false, pre);
+  assert.equal(Flow.state.vars.tdKind, 'CT');
+  kdtStep(w, 73);
+  assert.deepEqual(tasksOf(w), ['50:minh']);
+  for (let i = 0; i < 60 && !Flow.state.tokens.some((t) => t.task === 64); i++) kdtStep(w, Flow.state.tokens[0].task);
+  assert.deepEqual(plain([Flow.state.vars.tdKind, Flow.state.vars.tdKinds]), ['KDT', ['CT', 'KDT']], 'G27 KĐT Tập đoàn → 63 lần hai');
+  for (const n of [64, 65, 67, 68, 69, 70]) kdtStep(w, n);
+  assert.deepEqual(tasksOf(w), ['72:td'], 'G34: hồ sơ KĐT → 72');
+  kdtStep(w, 72); kdtStep(w, 73);
+  assert.equal(Flow.state.status, 'approved');
+  assert.deepEqual(plain(Flow.state.vars.tdDocs.map((d) => [d.code, d.kind])), [['BM-01', 'CT'], ['BM-14', 'KDT'], ['BM-18', 'KDT']]);
+  assert.deepEqual(plain([47, 48, 56, 60].map(Flow.taskStatus)), ['na', 'na', 'na', 'na']);
 });

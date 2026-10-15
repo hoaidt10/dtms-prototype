@@ -13,6 +13,9 @@
   /* Mục menu đang được chọn theo route. */
   function activePath(r) {
     if (r.startsWith('task/') || r.startsWith('viec-cua-toi')) return 'viec-cua-toi';
+    /* T17 phương án Gộp: luồng, ĐXMS, hồ sơ ĐXMS cùng thuộc mục Luồng mua sắm. */
+    if (r === 'luong' || r.startsWith('luong/')) return 'luong';
+    if (window.Luong.isGop() && (r.startsWith('dxms') || r.startsWith('ho-so-dxms') || ((r === 'ho-so' || r.startsWith('ho-so/')) && !Flow.state.kdt))) return 'luong';
     if (r.startsWith('ho-so-kdt')) return 'ho-so-kdt';
     if (r.startsWith('ycbg-kdt')) return 'ycbg-kdt';
     if (r.startsWith('khlcnt')) return 'khlcnt';
@@ -64,7 +67,7 @@
     return `<aside class="sidebar ${collapsed ? 'collapsed' : ''}">
       <div class="sb-head"><span class="ic">${icon('phan_he_mua_sam')}</span><span class="t">Đầu tư mua sắm</span></div>
       <div class="sb-rule"></div>
-      <nav class="sb-nav">${D.menu.filter((m) => !m.hidden).map((m) => navItem(m, 0, act)).join('')}</nav>
+      <nav class="sb-nav">${window.Luong.menu().filter((m) => !m.hidden).map((m) => navItem(m, 0, act)).join('')}</nav>
       <div class="sb-foot">v1.0 - © 2026</div>
       <button class="sb-toggle" id="sbt" aria-label="${collapsed ? 'Mở rộng menu' : 'Thu gọn menu'}">${icon('collapse')}</button></aside>`;
   }
@@ -92,6 +95,8 @@
     if (a === 'ma-tran') return window.MaTran.route(r.split('/').slice(1));
     if (a === 'chon-vai') return S.chonVai();
     if (a === 'viec-cua-toi') return S.viecCuaToi(b);
+    /* T17 phương án Gộp: SCR-95 Danh sách luồng, SCR-96 Tạo luồng (luong.js). */
+    if (a === 'luong') return window.Luong.route(r.split('/'));
     /* ĐXMS (cha): SCR-27 danh sách, SCR-28 thêm mới / chỉnh sửa, SCR-29 chi tiết — theo task-management. */
     if (a === 'dxms' && b === 'create') return S.dxmsForm();
     if (a === 'dxms' && b && c === 'edit') return S.dxmsForm();
@@ -137,6 +142,8 @@
       ${demoOpen ? `<div class="demo-panel">
         <h4>Công cụ demo (không thuộc giao diện app)</h4>
         <div class="row"><a class="btn sm secondary" href="#/chon-vai">Chọn vai</a></div>
+        <h4>Phương án menu ĐXMS (T17)</h4>
+        <div class="row"><button class="btn sm ${window.Luong.isGop() ? 'secondary' : 'primary'}" data-luong-mode="tach">Tách: ĐXMS · Hồ sơ</button><button class="btn sm ${window.Luong.isGop() ? 'primary' : 'secondary'}" data-luong-mode="gop">Gộp: Luồng mua sắm</button></div>
         <h4>Hồ sơ demo</h4>
         <div class="row">${D.demoSets.map((d) => `<button class="btn sm ${d.key === set.key ? 'primary' : 'secondary'}" data-demo-set="${d.key}">${esc(d.label)}</button>`).join('')}</div>
         <h4>Việc đang chờ</h4>
@@ -169,7 +176,7 @@
     if (MOVED[r]) { location.replace('#/' + MOVED[r]); return; }
     const base = r.split('/').slice(0, 2).join('/');
     if (((r.startsWith('ho-so-dxms/') && !r.startsWith('ho-so-dxms/create')) || r.startsWith('ho-so-kdt/')) && !(lastRoute || '').startsWith(base)) detailFrom = lastRoute;
-    if (r !== lastRoute) { S.enter(r); if (r.split('/')[0] === 'kdt') window.Kdt.enter(r.split('/').slice(1)); window.Thau.enter(r.split('/')); window.HopDong.enter(r.split('/')); window.ThongBao.enter(r.split('/')); }
+    if (r !== lastRoute) { S.enter(r); if (r.split('/')[0] === 'kdt') window.Kdt.enter(r.split('/').slice(1)); window.Thau.enter(r.split('/')); window.Luong.enter(r.split('/')); window.HopDong.enter(r.split('/')); window.ThongBao.enter(r.split('/')); }
     lastRoute = r;
     const act = activePath(r);
     const main = document.querySelector('.main');
@@ -212,13 +219,15 @@
     if (!r) return;
     let reason = r.reason || null;
     if (choice && choice.reason && !reason) { reason = await askReason(choice.label); if (!reason) return; }
+    let sg = null;
     if (choice && choice.sign) {
-      const sg = await signDialog(choice.sign, tok.who);
+      sg = await signDialog(choice.sign, tok.who);
       if (!sg) return;
       if (sg.mode === 'hard') Flow.state.vars.hardSigns = (Flow.state.vars.hardSigns || []).concat([{ task: tok.task, who: tok.who, doc: choice.sign, reason: sg.reason, t: Flow.state.clock }]);
     }
-    const note = window.TaskForms.beforeComplete(tok, choice);
-    Flow.complete(tokenId, choice, reason);
+    const note = r.note || window.TaskForms.beforeComplete(tok, choice);
+    /* Hồ sơ KĐT: hình thức ký đã chọn → khối ký chung 75–78 (D-34). */
+    Flow.complete(tokenId, choice, reason, sg);
     if (note && Flow.state.status === 'running') { toast(esc(note), 'warn'); location.hash = '#/viec-cua-toi'; return; }
     /* Toast theo source (my-task-detail.facade: "Thành công" + successMessage); ai xử lý tiếp xem ở nút demo nổi. */
     const ok = (m) => toast(`<b>Thành công</b><br>${m}`);
@@ -240,7 +249,7 @@
       location.hash = '#/ho-so';
       return;
     }
-    ok(choice && choice.sign ? 'Đã gửi văn bản đi trình ký.' : 'Thực hiện hành động thành công.');
+    ok(choice && choice.sign ? (kdt && sg && sg.mode === 'hard' ? 'Đã chuyển ký bản cứng (bước 77).' : 'Đã gửi văn bản đi trình ký.') : 'Thực hiện hành động thành công.');
     location.hash = '#/viec-cua-toi';
   }
 
@@ -290,6 +299,16 @@
     if (t.closest('[data-create]')) { e.preventDefault(); openCreate(t.closest('[data-create]').dataset.create); return; }
     if (t.closest('[data-open-new]')) { e.preventDefault(); openReplacement(); return; }
     if (t.closest('[data-back]')) { e.preventDefault(); if (history.length > 1) history.back(); else location.hash = '#/viec-cua-toi'; return; }
+    /* T17 D-25: công tắc phương án menu ĐXMS (Tách / Gộp). */
+    const lm = t.closest('[data-luong-mode]');
+    if (lm) {
+      window.Luong.setMode(lm.dataset.luongMode);
+      demoOpen = false;
+      toast(window.Luong.isGop() ? 'Phương án <b>Gộp</b>: menu Luồng mua sắm.' : 'Phương án <b>Tách</b>: menu Đề xuất mua sắm và Hồ sơ đề xuất mua sắm.', 'info');
+      const h = window.Luong.isGop() ? '#/luong' : '#/dxms';
+      if (location.hash === h) render(); else location.hash = h;
+      return;
+    }
     const ds = t.closest('[data-demo-set]');
     if (ds) {
       const set = D.demoSets.find((d) => d.key === ds.dataset.demoSet);
@@ -312,7 +331,7 @@
     const br = t.closest('[data-branch]');
     if (br) {
       const b = Flow.demoSet().branches[Number(br.dataset.branch)];
-      Flow.jumpTo(b.task, b.who, b.vars, b.process, b.dxms, b.ui, b.settle);
+      Flow.jumpTo(b.task, b.who, b.vars, b.process, b.dxms, b.ui, b.settle, b.pre);
       demoOpen = false;
       const mine = Flow.tokensFor(b.who).find((k) => String(k.task) === String(b.task));
       toast(`Nhánh phụ: ${esc(b.name)} — vai ${esc(persona(b.who).name)}`, 'info');

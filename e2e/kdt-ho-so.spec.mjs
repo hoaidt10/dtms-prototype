@@ -15,7 +15,7 @@ const go = async (page, h) => {
 };
 const enc = (s) => encodeURIComponent(s);
 const as = (page, who) => page.evaluate((id) => Flow.setPersona(id), who);
-const jump = (page, task, who, kdt, vars) => page.evaluate(([t, w, k, v]) => Flow.jumpTo(t, w, v, 'MS13', k), [task, who, kdt, vars || null]);
+const jump = (page, task, who, kdt, vars, ui) => page.evaluate(([t, w, k, v, u]) => Flow.jumpTo(t, w, v, 'MS13', k, u), [task, who, kdt, vars || null, ui || null]);
 // Làm việc ở `task` bằng nút có nhãn bắt đầu bằng `label` (không qua màn — chỉ để đưa hồ sơ tới bước cần xem).
 const act = (page, task, label) => page.evaluate(([t, l]) => {
   const tok = Flow.state.tokens.find((k) => String(k.task) === String(t));
@@ -42,7 +42,7 @@ test('SCR-20 KĐT: mọi mã hồ sơ ở Danh sách hồ sơ của 13 KĐT mở
       expect(await mainText(page)).not.toMatch(BA);
       await page.locator('.pg-head .r .vbtn', { hasText: 'Xem BPMN' }).click();
       await expect(page.locator('.pg-title')).toHaveText('Chi tiết BPMN');
-      await expect(page.locator('.bp-vp')).toHaveAttribute('data-page', code === 'HS-2026-0019' ? 'MS14-TO BE' : 'MS13-TO BE');
+      await expect(page.locator('.bp-vp')).toHaveAttribute('data-page', code === 'HS-2026-0019' ? 'MS14' : 'MS13');
       expect(await mainText(page)).not.toMatch(BA);
       await page.locator('.pg-head .r .vbtn', { hasText: 'Xem quy trình' }).click();
       await page.locator('.pg-head .back').click();
@@ -54,7 +54,7 @@ test('SCR-20 KĐT: mọi mã hồ sơ ở Danh sách hồ sơ của 13 KĐT mở
   expect(page.errors).toEqual([]);
 });
 
-test('SCR-20 KĐT mẫu: tiến độ, lịch sử, văn bản đầu ra theo bản ghi — HS-2026-0012 đã phê duyệt, HS-2026-0024 trong quy trình con 41, HS-2026-0031 nhánh gộp', async ({ page }) => {
+test('SCR-20 KĐT mẫu: tiến độ, lịch sử, văn bản đầu ra theo bản ghi — HS-2026-0012 đã phê duyệt, HS-2026-0024 ở bước thẩm định chủ trương (46), HS-2026-0031 nhánh gộp', async ({ page }) => {
   await fresh(page, '#/ho-so-kdt/HS-2026-0012');
   const gi = page.locator('.ginfo');
   await expect(gi).toContainText('Quy trìnhMS13 · KĐT đơn giản');
@@ -72,7 +72,7 @@ test('SCR-20 KĐT mẫu: tiến độ, lịch sử, văn bản đầu ra theo b�
   await expect(gi).toContainText('Bước hiện tại');
   await expect(page.locator('.vsteps .vsteps-c.active')).toHaveCount(1);
   await page.locator('.pg-head .r .vbtn', { hasText: 'Xem BPMN' }).click();
-  await expect(page.locator('.bp-vp')).toHaveAttribute('data-active', '41');
+  await expect(page.locator('.bp-vp')).toHaveAttribute('data-active', '46');
 
   await go(page, '#/ho-so-kdt/HS-2026-0031');
   await expect(gi).toContainText('Nhánh hồ sơGộp BM-00');
@@ -88,15 +88,15 @@ test('SCR-20 KĐT mẫu: tiến độ, lịch sử, văn bản đầu ra theo b�
   expect(page.errors).toEqual([]);
 });
 
-test('SCR-20 KĐT đang chạy: cảnh K5 (bước 24 trong quy trình con 41) — Chi tiết hồ sơ, bộ đếm thẩm định, Xem BPMN tô 41 và 24; cảnh K10 tổng kết', async ({ page }) => {
+test('SCR-20 KĐT đang chạy: cảnh K5 (bước 27 của khối chung, vòng BM-01) — Chi tiết hồ sơ, bộ đếm thẩm định, Xem BPMN tô 27; cảnh K10 tổng kết', async ({ page }) => {
   await fresh(page, '#/viec-cua-toi');
   await page.evaluate(() => Flow.jumpToScene('K5', 'MS13'));
   const code = await page.evaluate(() => Flow.state.code);
-  // Xem BPMN từ màn xử lý task: tô bước quy trình con và bước của khối thẩm định.
+  // Xem BPMN từ màn xử lý task: tô đúng bước của khối chung (D-32), tiêu đề ghi vòng thẩm định.
   await page.evaluate(() => { location.hash = '#/task/' + Flow.state.tokens[0].id; });
   await page.locator('.task-acts .vbtn', { hasText: 'Xem BPMN' }).click();
-  await expect(page.locator('.bp-vp')).toHaveAttribute('data-active', '41,24');
-  await expect(page.locator('.bp-h h2')).toContainText('(Thẩm định');
+  await expect(page.locator('.bp-vp')).toHaveAttribute('data-active', '27');
+  await expect(page.locator('.bp-h h2')).toContainText('(Thẩm định chủ trương BM-01)');
   expect(await mainText(page)).not.toMatch(BA);
   // Chi tiết hồ sơ đang chạy (#/ho-so → khuôn KĐT), menu Khoản đầu tư sáng.
   await go(page, '#/ho-so');
@@ -106,7 +106,7 @@ test('SCR-20 KĐT đang chạy: cảnh K5 (bước 24 trong quy trình con 41) �
   await expect(page.locator('.ginfo')).toContainText('Thẩm địnhChủ trương: vòng check');
   await expect(page.locator('.sb-nav .nav.active')).toContainText('Khoản đầu tư');
   await go(page, `#/ho-so-kdt/${code}/bpmn`);
-  await expect(page.locator('.bp-vp')).toHaveAttribute('data-active', '41,24');
+  await expect(page.locator('.bp-vp')).toHaveAttribute('data-active', '27');
 
   // K10: tua tới Quyết định phê duyệt, mở Chi tiết KĐT → hồ sơ → văn bản đầu ra BM-01, BM-14, BM-18.
   await page.locator('#demo').click();
@@ -126,7 +126,7 @@ test('SCR-20 KĐT đang chạy: cảnh K5 (bước 24 trong quy trình con 41) �
 
 test('Việc của tôi: cột Mã ĐXMS / KĐT, việc KĐT đang chờ và đã xử lý (hồ sơ mẫu), lọc Loại hồ sơ Phê duyệt KĐT; mọi dòng mở được', async ({ page }) => {
   await fresh(page, '#/viec-cua-toi');
-  await page.evaluate(() => Flow.jumpToScene('K8', 'MS13'));
+  await page.evaluate(() => Flow.jumpToScene('K6', 'MS13'));
   await as(page, 'lan');
   await go(page, '#/viec-cua-toi');
   await expect(page.locator('.vtable thead th').nth(3)).toHaveText('Mã ĐXMS / KĐT');
@@ -202,15 +202,15 @@ for (const r of ROUTES) {
 
 // Màn xử lý task của mọi bước người dùng MS13 cấp VHT: [bước, KĐT, cách đưa hồ sơ tới bước].
 const T2 = 'KĐT-2026-0032', TG = 'KĐT-2026-0031';
-const TASKS = [1, 4, 5, 7, 8, 10, 11, 12, 14, 16, 24, 26, 28, 29, 31, 32, 33, 36, 37, 38, 39, 42, 44, 46, 47, 48, 51, 54].map((t) => [t, T2])
-  .concat([18, 19, 20, 21, 55, 56].map((t) => [t, TG]))
-  .concat([[23, T2, [24, 'Hồ sơ chưa đủ điều kiện']], [34, T2, [29, 'Chưa thống nhất'], { meet: { CT: 1 } }], [35, T2, [29, 'Chưa thống nhất'], { meet: { CT: 1 } }, [34]],
-    [53, T2, [51, 'Báo cáo chưa được thông qua']]]);
+const TASKS = [1, 4, 5, 7, 8, 10, 11, 12, 15, 17, 39, 40, 41, 42, 43, 27, 29, 31, 32, 34, 35, 36, 46, 47, 48, 50, 51, 52, 53, 55, 56, 57, 60].map((t) => [t, T2])
+  .concat([19, 20, 21, 22, 23, 24, 61, 62].map((t) => [t, TG]))
+  .concat([[26, T2, null, null, null, { inc: { CT: true } }], [37, T2, [32, 'Chưa thống nhất'], { meet: { CT: 1 } }], [38, T2, [32, 'Chưa thống nhất'], { meet: { CT: 1 } }, [37]],
+    [59, T2, [57, 'Báo cáo không được thông qua']]]);
 test('C3: màn xử lý task của mọi bước người dùng MS13 cấp VHT (hai giai đoạn + gộp BM-00) không có chữ BA ngoài nút (i)', async ({ page }) => {
   test.setTimeout(120000);
   await fresh(page, '#/viec-cua-toi');
-  for (const [task, kdt, via, vars, then] of TASKS) {
-    await jump(page, via ? via[0] : task, 'minh', kdt, vars);
+  for (const [task, kdt, via, vars, then, ui] of TASKS) {
+    await jump(page, via ? via[0] : task, 'minh', kdt, vars, ui);
     if (via) await act(page, via[0], via[1]);
     if (then) await page.evaluate((t) => { const k = Flow.state.tokens.find((x) => String(x.task) === String(t)); Flow.complete(k.id, Flow.mainChoice(k.task), 'Nội dung thử'); }, then[0]);
     const id = await page.evaluate((t) => (Flow.state.tokens.find((k) => String(k.task) === String(t)) || {}).id, task);

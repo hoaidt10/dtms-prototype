@@ -1,4 +1,4 @@
-// Dựng từng trạng thái demo, serialize DOM để xuất Figma. Chạy: node prototype/dtms/tools/capture.mjs <thư-mục-ra>
+// Dựng từng trạng thái demo, serialize DOM để xuất Figma. Chạy: node prototype/dtms/tools/capture.mjs <thư-mục-ra> ["<trang Figma>"]
 // Ra: <out>/NN-<id>.json cho mỗi màn, shell-*.json (topbar, sidebar), manifest.json (trang Figma, thứ tự, liên kết).
 import { mkdirSync, writeFileSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -132,6 +132,8 @@ add(P5, 'SCR-32-off', 'Xác nhận dừng hoạt động', [...dm('nguon-von'), 
 add(P5, 'SCR-69-view', 'Xem chi tiết tiền tệ (hộp thoại chỉ xem)', [...dm('tien-te'), click('[data-cat-view]')], { overlay: true });
 add(P5, 'SCR-40', 'Danh sách ngưỡng phân luồng', dm('nguong-phan-luong'), { link: 'SCR-40-edit', linkSel: '[data-cat-edit]' });
 add(P5, 'SCR-40-edit', 'Chỉnh sửa ngưỡng phân luồng', [...dm('nguong-phan-luong'), click('[data-cat-edit]')], { overlay: true });
+add(P5, 'SCR-100', 'Phân cấp thẩm quyền KĐT (bước 13 MS13)', dm('phan-cap-tham-quyen'));
+add(P5, 'SCR-99', 'Loại tài liệu căn cứ (T17 · căn cứ đầu vào luồng mua sắm)', dm('loai-tai-lieu-can-cu'));
 
 // Quản trị quy trình (T9): vai Quản trị hệ thống; hồ sơ đang chạy ở task 26 để Giám sát tiến trình có dòng Đang chạy.
 const P6 = 'Quản trị quy trình';
@@ -185,40 +187,72 @@ add(P8, 'SCR-03-kdt', 'Chọn căn cứ KĐT · T01', kt(1, 'minh'), { link: 'SC
 add(P8, 'SCR-04-kdt', 'Thông tin cơ bản KĐT · T04', kt(4, 'minh'), { link: 'SCR-07-kdt' });
 add(P8, 'SCR-07-kdt', 'Chốt tổng mức vốn · T10', kt(10, 'minh'), { link: 'SCR-57' });
 add(P8, 'SCR-57', 'Ban Tài chính xác nhận hình thành TSCĐ · T11', kt(11, 'thu'), { link: 'SCR-58' });
-add(P8, 'SCR-58', 'TTMS xác nhận 04 yếu tố, kết quả phân luồng · T12', [kj(12, 'lan', K2, null, true), J.task(12)], { link: 'SCR-59-14' });
+add(P8, 'SCR-58', 'TTMS xác nhận 04 yếu tố, kết quả phân luồng · T12', [kj(12, 'lan', K2, null, true), J.task(12)], { link: 'SCR-59-15' });
 add(P8, 'SCR-66', 'Thông báo chuyển luồng MS14 (KĐT-2026-0033)', [kj(12, 'lan', K3, null, true), kc(12), J.persona('minh'), kh(`#/kdt/${K3}/chuyen-luong`)]);
-add(P8, 'SCR-59-14', 'Dự thảo đề xuất KĐT · T14', kt(14, 'minh'), { link: 'SCR-59-16' });
-add(P8, 'SCR-59-16', 'AI hỗ trợ soạn dự thảo · T16', kt(16, 'minh'), { link: 'SCR-59-36' });
-add(P8, 'SCR-59-36', 'Hồ sơ chủ trương BM-01 · T36', kt(36, 'minh'), { link: 'SCR-59-37' });
-add(P8, 'SCR-59-37', 'Checklist số 01 · T37', kt(37, 'minh'), { link: 'SCR-60-38' });
-add(P8, 'SCR-60-38', 'Chọn CQCM, đơn vị chủ trì · T38', kt(38, 'minh'), { link: 'SCR-60-39' });
-add(P8, 'SCR-60-39', 'Trình hồ sơ chủ trương · T39', kt(39, 'minh'), { link: 'SCR-61-24' });
-add(P8, 'SCR-61-24', 'TTMS thẩm định chủ trương (quy trình con 41) · T24', kt(24, 'lan'), { link: 'SCR-61-26' });
-add(P8, 'SCR-61-26', 'CQCM gửi ý kiến thẩm định BM-09 · T26', kt(26, 'hoa'), { link: 'SCR-62-28' });
-add(P8, 'SCR-62-28', 'ĐVĐX bổ sung, giải trình · T28', kt(28, 'minh'), { link: 'SCR-62-29' });
-add(P8, 'SCR-62-29', 'Họp thống nhất lần 1/2 · T29', kt(29, 'lan'), { link: 'SCR-62-31' });
-add(P8, 'SCR-62-31', 'Chuyên quản xác nhận sau họp · T31', kt(31, 'minh'), { link: 'SCR-62-32' });
-add(P8, 'SCR-62-32', 'Chỉ huy xác nhận sau họp · T32', kt(32, 'hai'), { link: 'SCR-62-33' });
-add(P8, 'SCR-62-33', 'Cập nhật hồ sơ sau họp · T33', kt(33, 'minh'), { link: 'SCR-21-42' });
-add(P8, 'SCR-21-42', 'Ký thẩm định trên tờ trình · T42', kt(42, 'lan'), { link: 'SCR-21-44' });
-add(P8, 'SCR-21-44', 'Thủ trưởng ký duyệt chủ trương BM-01 · T44', kt(44, 'tgd'), { link: 'SCR-64-46' });
-add(P8, 'SCR-64-46', 'Hồ sơ phê duyệt KĐT BM-03 · T46', kt(46, 'minh'), { link: 'SCR-64-47' });
-add(P8, 'SCR-64-47', 'Checklist số 02 · T47', kt(47, 'minh'), { link: 'SCR-60-48' });
-add(P8, 'SCR-60-48', 'Chọn CQCM thẩm định KĐT, trình · T48', kt(48, 'minh'), { link: 'SCR-65' });
-add(P8, 'SCR-65', 'Báo cáo kết quả thẩm định BM-14, dự thảo BM-18 · T51', kt(51, 'lan'), { link: 'SCR-21-54' });
-add(P8, 'SCR-21-54', 'Thủ trưởng ký Quyết định phê duyệt KĐT BM-18 · T54', kt(54, 'tgd'), { link: 'SCR-56-0032' });
+// T18 (BPMN 12/10, 78 bước): số bước theo trang MS13 của ĐTMS-121026.drawio; khối chung 25–38 (vòng BM-01), khối ký chung 75–78.
+// kb(i) = mở nhánh phụ thứ i của Công cụ demo (bộ MS13); kf = mở hộp thoại Trình ký (nút chính → Xác nhận eForm) để chụp kèm overlay.
+const kb = (i) => `(() => { const b = D.demoSets.find((d) => d.key === 'MS13').branches[${i}]; Flow.jumpTo(b.task, b.who, b.vars, b.process, b.dxms, b.ui, b.settle, b.pre); })()`;
+const kf = [`(async () => { const w = async (sel) => { for (let i = 0; i < 40 && !document.querySelector(sel); i++) await new Promise((r) => setTimeout(r, 50)); return document.querySelector(sel); };
+  (await w('.task-acts [data-act].primary')).click(); (await w('.vmodal.ef #ok')).click(); await w('.overlay [data-mode]'); })()`];
+add(P8, 'SCR-59-15', 'Dự thảo đề xuất KĐT · T15', kt(15, 'minh'), { link: 'SCR-59-17' });
+add(P8, 'SCR-59-17', 'Hoàn thiện đề xuất, thẩm quyền phê duyệt · T17', kt(17, 'minh'), { link: 'SCR-59-39' });
+add(P8, 'SCR-59-39', 'Hồ sơ chủ trương BM-01 + Checklist 01 · T39', kt(39, 'minh'), { link: 'SCR-59-40' });
+add(P8, 'SCR-59-40', 'Kiểm tra hồ sơ đủ điều kiện trình · T40', kt(40, 'minh'), { link: 'SCR-60-41' });
+add(P8, 'SCR-60-41', 'Chọn CQCM, đơn vị chủ trì · T41', kt(41, 'minh'), { link: 'SCR-60-42' });
+add(P8, 'SCR-60-42', 'CQCM chủ trì xác nhận danh sách CQCM · T42', kt(42, 'lan'), { link: 'SCR-60-43' });
+add(P8, 'SCR-60-43', 'Trình hồ sơ chủ trương · T43', kt(43, 'minh'), { link: 'SCR-61-27' });
+add(P8, 'SCR-61-27', 'TTMS thẩm định (khối chung, vòng BM-01) · T27', kt(27, 'lan'), { link: 'SCR-61-29' });
+add(P8, 'SCR-61-29', 'CQCM gửi ý kiến thẩm định · T29', kt(29, 'hoa'), { link: 'SCR-62-31' });
+add(P8, 'SCR-62-31', 'ĐVĐX bổ sung, giải trình · T31', kt(31, 'minh'), { link: 'SCR-62-32' });
+add(P8, 'SCR-62-32', 'Họp thống nhất lần 1/2 · T32', kt(32, 'lan'), { link: 'SCR-62-34' });
+add(P8, 'SCR-62-34', 'Chuyên quản xác nhận sau họp · T34', kt(34, 'minh'), { link: 'SCR-62-35' });
+add(P8, 'SCR-62-35', 'Chỉ huy xác nhận sau họp · T35', kt(35, 'hai'), { link: 'SCR-62-36' });
+add(P8, 'SCR-62-36', 'Cập nhật hồ sơ sau họp · T36', kt(36, 'minh'), { link: 'SCR-61-46' });
+add(P8, 'SCR-61-46', 'TTMS thẩm định và hoàn chỉnh chủ trương · T46', kt(46, 'lan'), { link: 'SCR-21-47' });
+add(P8, 'SCR-21-47', 'Ký thẩm định trên tờ trình · T47', kt(47, 'lan'), { link: 'SCR-21-75' });
+add(P8, 'SCR-21-75', 'Trình ký BM-01 — chọn hình thức ký VOffice / Bản cứng · T75', [...kt(47, 'lan'), ...kf], { overlay: true, link: 'SCR-21-48' });
+add(P8, 'SCR-21-48', 'TGĐ VHT ký duyệt chủ trương BM-01 · T48', kt(48, 'tgd'), { link: 'SCR-64-50' });
+add(P8, 'SCR-64-50', 'Hồ sơ phê duyệt KĐT BM-03 + Checklist 02 · T50', kt(50, 'minh'), { link: 'SCR-64-51' });
+add(P8, 'SCR-64-51', 'Kiểm tra hồ sơ KĐT, trình · T51', kt(51, 'minh'), { link: 'SCR-60-52' });
+add(P8, 'SCR-60-52', 'Chọn CQCM thẩm định KĐT · T52', kt(52, 'minh'), { link: 'SCR-60-53' });
+add(P8, 'SCR-60-53', 'CQCM chủ trì xác nhận danh sách CQCM KĐT · T53', kt(53, 'lan'), { link: 'SCR-61-55' });
+add(P8, 'SCR-61-55', 'TTMS thẩm định và hoàn chỉnh KĐT · T55', kt(55, 'lan'), { link: 'SCR-21-56' });
+add(P8, 'SCR-21-56', 'Chỉ huy ĐVĐX ký tờ trình BM-03 · T56', kt(56, 'hai'), { link: 'SCR-65' });
+add(P8, 'SCR-65', 'TTMS ký báo cáo thẩm định BM-14, trình dự thảo BM-18 · T57', kt(57, 'lan'), { link: 'SCR-21-60' });
+add(P8, 'SCR-21-60', 'TGĐ VHT ký Quyết định phê duyệt KĐT BM-18 · T60', kt(60, 'tgd'), { link: 'SCR-56-0032' });
 add(P8, 'SCR-56-0032', 'Chi tiết KĐT-2026-0032 — đã phê duyệt, Tạo gói thầu', ['Flow.jumpToScene("K10", "MS13")', kh(`#/kdt/${K2}`)], { link: 'SCR-20-kdt', linkSel: '[data-kdt-profiles] tbody a.link' });
 add(P8, 'SCR-20-kdt', 'Chi tiết hồ sơ KĐT — đã phê duyệt (BM-01, BM-14, BM-18)', ['Flow.jumpToScene("K10", "MS13")', 'location.hash = "#/ho-so"'], { link: 'SCR-20-kdt-bpmn', linkLabel: 'Xem BPMN' });
-add(P8, 'SCR-20-kdt-bpmn', 'Chi tiết BPMN hồ sơ KĐT — đang thẩm định chủ trương (41 · 24)', ['Flow.jumpToScene("K5", "MS13")', 'location.hash = "#/ho-so/bpmn"']);
-add(P8, 'SCR-62-23', 'Nhánh: hồ sơ chưa đủ điều kiện thẩm định → bổ sung · T23', [kj(24, 'lan'), kc(24, 'Hồ sơ chưa đủ'), J.persona('minh'), J.task(23)]);
-add(P8, 'SCR-62-34', 'Nhánh: họp đủ 02 lần chưa thống nhất → báo cáo · T34', [kj(29, 'lan', K2, { meet: { CT: 1 } }), kc(29, 'Chưa thống nhất'), J.task(34)], { link: 'SCR-62-35' });
-add(P8, 'SCR-62-35', 'Nhánh: Thủ trưởng kết luận nội dung chưa thống nhất · T35', [kj(29, 'lan', K2, { meet: { CT: 1 } }), kc(29, 'Chưa thống nhất'), kc(34), J.persona('tgd'), J.task(35)]);
-add(P8, 'SCR-62-53', 'Nhánh: báo cáo BM-14 chưa được thông qua → hoàn chỉnh · T53', [kj(51, 'lan'), kc(51, 'Báo cáo chưa'), J.persona('minh'), J.task(53)]);
-add(P8, 'SCR-59-18', 'Gộp: văn bản BM-00 · T18 (KĐT-2026-0031)', kt(18, 'minh', KG), { link: 'SCR-59-20' });
-add(P8, 'SCR-59-20', 'Gộp: Chỉ huy ĐVĐX cho ý kiến BM-00 · T20', kt(20, 'hai', KG), { link: 'SCR-60-21' });
-add(P8, 'SCR-60-21', 'Gộp: chọn CQCM thẩm định hồ sơ gộp · T21', kt(21, 'minh', KG), { link: 'SCR-21-55' });
-add(P8, 'SCR-21-55', 'Gộp: ĐVĐX trình ký hồ sơ gộp · T55', kt(55, 'minh', KG), { link: 'SCR-21-56' });
-add(P8, 'SCR-21-56', 'Gộp: Thủ trưởng ký BM-00 · T56', kt(56, 'tgd', KG));
+add(P8, 'SCR-20-kdt-bpmn', 'Chi tiết BPMN hồ sơ KĐT — TTMS thẩm định, khối chung vòng BM-01 (bước 27)', ['Flow.jumpToScene("K5", "MS13")', 'location.hash = "#/ho-so/bpmn"']);
+add(P8, 'SCR-62-26', 'Nhánh: hồ sơ chưa đủ điều kiện thẩm định → AI gợi ý, ĐVĐX sửa · T26', [kb(8), J.task(26)]);
+add(P8, 'SCR-62-37', 'Nhánh: họp đủ 02 lần chưa thống nhất → báo cáo · T37', [kj(32, 'lan', K2, { meet: { CT: 1 } }), kc(32, 'Chưa thống nhất'), J.task(37)], { link: 'SCR-62-38' });
+add(P8, 'SCR-62-38', 'Nhánh: Thủ trưởng kết luận nội dung chưa thống nhất · T38', [kj(32, 'lan', K2, { meet: { CT: 1 } }), kc(32, 'Chưa thống nhất'), kc(37), J.persona('tgd'), J.task(38)]);
+add(P8, 'SCR-62-59', 'Nhánh: báo cáo BM-14 không được thông qua → hoàn chỉnh · T59', [kj(57, 'lan'), kc(57, 'Báo cáo không'), J.persona('minh'), J.task(59)]);
+// Tuyến Tập đoàn 63–74 (T18 B4): kb(9) chủ trương thuộc Tập đoàn (→ 64), kb(12) → 67, kb(13) → 70, kb(14) → 73 (chủ trương), kb(15) → 72 (hồ sơ gộp KĐT-2026-0031).
+add(P8, 'SCR-18-64', 'Tập đoàn: hoàn thiện công văn và bộ hồ sơ gửi Tập đoàn · T64', [kb(9), J.task(64)], { link: 'SCR-21-65' });
+add(P8, 'SCR-21-65', 'Tập đoàn: TGĐ VHT ký công văn trình — chọn hình thức ký · T65', [kb(9), kc(64), J.persona('tgd'), J.task(65), ...kf], { overlay: true, link: 'SCR-18-67' });
+add(P8, 'SCR-18-67', 'Tập đoàn: các Ban chuyên môn gửi phiếu nhận xét BM-09 · T67', [kb(12), J.task(67)], { link: 'SCR-18-68' });
+add(P8, 'SCR-18-68', 'Tập đoàn: ĐVĐX tiếp thu, lập báo cáo giải trình BM-06 · T68', [kb(12), kc(67), J.persona('minh'), J.task(68)], { link: 'SCR-21-69' });
+add(P8, 'SCR-21-69', 'Tập đoàn: TGĐ VHT ký trình lại bộ hồ sơ hoàn thiện · T69', [kb(12), kc(67), kc(68), J.persona('tgd'), J.task(69)], { link: 'SCR-18-70' });
+add(P8, 'SCR-18-70', 'Tập đoàn: Ban ĐTXD kiểm tra hồ sơ hoàn thiện · T70', [kb(13), J.task(70)], { link: 'SCR-18-71' });
+add(P8, 'SCR-18-68-tl', 'Tập đoàn: Ban ĐTXD yêu cầu bổ sung → ĐVĐX tiếp thu lại · T68', [kb(13), kc(70, 'Chưa đạt'), J.persona('minh'), J.task(68)]);
+add(P8, 'SCR-18-71', 'Tập đoàn: hoàn thiện hồ sơ chủ trương, các Ban ký BM-01 · T71', [kb(13), kc(70), J.task(71)], { link: 'SCR-18-73' });
+add(P8, 'SCR-18-73', 'Tập đoàn: TGĐ Tập đoàn ký chủ trương BM-01 · T73', [kb(14), J.task(73)], { link: 'SCR-64-50-td' });
+add(P8, 'SCR-64-50-td', 'Tập đoàn: chủ trương đã duyệt → lập hồ sơ KĐT BM-03 · T50', [kb(14), kc(73), J.persona('minh'), J.task(50)]);
+add(P8, 'SCR-18-72', 'Tập đoàn: Ban ĐTXD lập BM-14 + dự thảo BM-18 (hồ sơ gộp KĐT-2026-0031) · T72', [kb(15), J.task(72)], { link: 'SCR-18-73-gop' });
+add(P8, 'SCR-18-73-gop', 'Tập đoàn: TGĐ Tập đoàn ký BM-18 hồ sơ gộp · T73', [kb(15), kc(72), J.task(73)], { link: 'SCR-20-kdt-td' });
+add(P8, 'SCR-20-kdt-td', 'Chi tiết hồ sơ KĐT-2026-0031 — hoàn tất phê duyệt cấp Tập đoàn', [kb(15), kc(72), kc(73), 'location.hash = "#/ho-so"'], { link: 'SCR-20-kdt-td-bpmn', linkLabel: 'Xem BPMN' });
+add(P8, 'SCR-20-kdt-td-bpmn', 'Chi tiết BPMN hồ sơ KĐT — Ban ĐTXD kiểm tra hồ sơ hoàn thiện (bước 70)', [kb(13), 'location.hash = "#/ho-so/bpmn"']);
+add(P8, 'SCR-21-75-mat', 'Khối ký chung: hồ sơ Mật — chỉ ký bản cứng · T75', [kb(10), J.task(47), ...kf], { overlay: true, link: 'SCR-21-77' });
+add(P8, 'SCR-21-77', 'Khối ký chung: thực hiện ký bản cứng (hồ sơ Mật) · T77', [kb(10), kc(47), J.task(77)], { link: 'SCR-21-78' });
+add(P8, 'SCR-21-78', 'Khối ký chung: cập nhật kết quả ký bản cứng, scan · T78', [kb(10), kc(47), kc(77), J.persona('minh'), J.task(78)]);
+add(P8, 'SCR-21-76', 'Khối ký chung: gửi VOffice lỗi — Gửi lại · T76', [kb(11), kc(47), J.task(76)]);
+add(P8, 'SCR-59-19', 'Gộp: lập văn bản BM-00 · T19 (KĐT-2026-0031)', kt(19, 'minh', KG), { link: 'SCR-59-21' });
+add(P8, 'SCR-59-21', 'Gộp: Chỉ huy ĐVĐX cho ý kiến BM-00 · T21', kt(21, 'hai', KG), { link: 'SCR-60-22' });
+add(P8, 'SCR-60-22', 'Gộp: chọn CQCM thẩm định hồ sơ gộp · T22', kt(22, 'minh', KG), { link: 'SCR-60-23' });
+add(P8, 'SCR-60-23', 'Gộp: CQCM chủ trì xác nhận danh sách CQCM · T23', kt(23, 'lan', KG), { link: 'SCR-21-24' });
+add(P8, 'SCR-21-24', 'Gộp: Chỉ huy ĐVĐX ký phiếu yêu cầu thẩm định · T24', kt(24, 'hai', KG), { link: 'SCR-65-61' });
+add(P8, 'SCR-65-61', 'Gộp: TTMS ký BM-14, trình ký hồ sơ gộp · T61', kt(61, 'lan', KG), { link: 'SCR-21-62' });
+add(P8, 'SCR-21-62', 'Gộp: TGĐ VHT ký BM-00 + BM-18 · T62', kt(62, 'tgd', KG));
 add(P8, 'SCR-20-kdt-0031', 'Chi tiết hồ sơ KĐT mẫu — nhánh gộp BM-00', [kj(1, 'minh'), kh('#/ho-so-kdt/HS-2026-0031')]);
 add(P8, 'SCR-01-kdt', 'Việc của tôi — Lan (việc KĐT)', ['Flow.jumpToScene("K8", "MS13")', J.hash('#/viec-cua-toi')], { link: 'SCR-65' });
 add(P8, 'SCR-48-kdt', 'Giám sát tiến trình — hồ sơ KĐT', ['Flow.jumpToScene("K7", "MS13")', J.persona('qt'), J.hash('#/giam-sat-tien-trinh')]);
@@ -255,11 +289,35 @@ add(P10, 'SCR-20-0098-bpmn', 'Chi tiết BPMN HS-2026-0098 (đã phê duyệt)',
 add(P10, 'B-3a', 'Nhánh B-3a: Thủ trưởng yêu cầu hoàn chỉnh · T60 → T26 (banner trả lại)', [mj(60, 'tgd', 'MS01.03', X3), J.choose(60, 'Yêu cầu hoàn chỉnh'), J.until(26), J.persona('minh'), J.task(26)]);
 add(P10, 'B-3b', 'Nhánh B-3b: Phó TGĐ không đồng ý BM-09 · T39 → T26', [mj(39, 'binh', 'MS01.03', X3), J.choose(39, 'Không đồng ý'), J.until(26), J.persona('minh'), J.task(26)]);
 
+// T21 B3 — Điều chỉnh ĐXMS (MS02, bộ demo MS02): ĐXMS-2026-0103 (MS01.02 → MS02.02), chuyển ngưỡng xuống 150 tỷ (MS02.03), ĐXMS-2026-0072 lên 172 tỷ (MS02.01).
+const P14 = 'Điều chỉnh ĐXMS · MS02', XA = 'ĐXMS-2026-0103', XB = 'ĐXMS-2026-0072';
+const sc = (n) => `Flow.jumpToScene('${n}', 'MS02')`;
+add(P14, 'SCR-25-dc-0103', 'Thêm mới hồ sơ — ĐXMS-2026-0103 đã phê duyệt, loại Điều chỉnh, quy trình MS02', [sc('A1'), J.hash('#/ho-so-dxms/create/' + encodeURIComponent(XA))], { link: 'MS02-T01', linkSel: '#c-save' });
+add(P14, 'MS02-T01', 'Chọn ĐXMS cần điều chỉnh · T01 · căn cứ, văn bản cũ, kết quả đã thực hiện', [sc('A1'), mj(1, 'minh', 'MS02', XA), J.task(1)], { link: 'MS02-T04' });
+add(P14, 'MS02-T04', 'Lý do, phạm vi, nội dung điều chỉnh · T04 · bảng trước – sau', [sc('A2'), J.task(4)], { link: 'MS02-T07' });
+add(P14, 'MS02-T07', 'Rà soát tồn kho tại thời điểm điều chỉnh · T07 · kết quả cũ chỉ xem', [sc('A3'), J.task(7)], { link: 'MS02-T10' });
+add(P14, 'MS02-T10', 'Báo giá điều chỉnh · T10 · so với báo giá hồ sơ cũ', [sc('A3'), J.until(10), J.task(10)], { link: 'MS02-T12' });
+add(P14, 'MS02-T12', 'Dự thảo BM-01 điều chỉnh + Checklist 01 · T12', [sc('A3'), J.until(12), J.task(12)], { link: 'MS02-T48' });
+add(P14, 'MS02-T48', 'TTMS xác định báo cáo Tập đoàn · T48 · chọn sẵn Không (căn cứ đã TĐ duyệt)', [sc('A4'), J.task(48)], { link: 'MS02-T58' });
+add(P14, 'MS02-T58', 'Rà soát dự thảo BM-08 điều chỉnh · T58', [sc('A5'), J.task(58)], { link: 'MS02-T60' });
+add(P14, 'MS02-T60', 'Thủ trưởng VHT phê duyệt điều chỉnh · T60', [sc('A5'), J.until(60), J.persona('tgd'), J.task(60)], { link: 'MS02-SCR-20' });
+add(P14, 'MS02-SCR-20', 'Chi tiết hồ sơ Điều chỉnh đã phê duyệt — so sánh trước – sau', [sc('A6'), J.hash('#/ho-so')], { link: 'MS02-SCR-29', linkSel: '.ginfo a.link' });
+add(P14, 'MS02-SCR-29', 'Chi tiết ĐXMS-2026-0103 — Đã phê duyệt (điều chỉnh lần 1), chuỗi hồ sơ', [sc('A6'), J.hash('#/dxms/' + encodeURIComponent(XA))]);
+add(P14, 'MS02-T11-down', 'Chuyển ngưỡng xuống 150 tỷ → MS02.03 · T11 · dự thảo BM-09 điều chỉnh', [sc('A7'), J.task(11)], { link: 'MS02-T38' });
+add(P14, 'MS02-T38', 'MS02.03 · TTMS ký thẩm định BM-09 điều chỉnh · T38', [sc('A8'), J.task(38)], { link: 'MS02-T39' });
+add(P14, 'MS02-T39', 'MS02.03 · Phó TGĐ ký thẩm định BM-09 điều chỉnh · T39', [sc('A8'), J.persona('binh'), J.task(39)]);
+add(P14, 'MS02-T12-up', 'ĐXMS-2026-0072 tăng 172 tỷ → MS02.01 · T12 · cảnh báo chuyển ngưỡng', [sc('A9'), J.task(12)], { link: 'MS02-T50' });
+add(P14, 'MS02-T50', 'MS02.01 · báo cáo TGĐ Tập đoàn BM-06 · T50', [sc('A10'), J.task(50)]);
+add(P14, 'MS02-B13', 'Nhánh phụ: Chỉ huy ĐVĐX không đồng ý dự thảo điều chỉnh · T13 → T14 → T12', [mj(13, 'hai', 'MS02', XA), J.choose(13, 'Không đồng ý'), J.until(12), J.persona('minh'), J.task(12)]);
+add(P14, 'MS02-B47', 'Nhánh phụ: Phó TGĐ không đồng ý BM-05 · T47 → T26', [mj(47, 'binh', 'MS02', XA), J.choose(47, 'Không đồng ý'), J.until(26), J.persona('minh'), J.task(26)]);
+add(P14, 'MS02-SCR-01-hai', 'Việc của tôi — Hải (việc trên hồ sơ Điều chỉnh mẫu HS-2026-0126)', [sc('A1'), J.persona('hai'), J.hash('#/viec-cua-toi')]);
+
 /* B0.4 (2): nội dung của bước nằm trong eForm — màn xử lý task chụp kèm dialog eForm đang mở (bấm nút chính),
    như my-task-eform-dialog; liên kết Figma đi từ nút Xác nhận của dialog. */
 const onTask = (st) => /location\.hash = '#\/task\/'/.test(st);
 S.forEach((s) => {
-  if (s.overlay || !s.steps.some(onTask) || s.id.startsWith('SCR-20')) return;
+  /* noForm: màn task không có nút hành động / eForm (MS13 bản 12/10 hiện không còn màn nào như vậy). */
+  if (s.overlay || s.noForm || !s.steps.some(onTask) || s.id.startsWith('SCR-20')) return;
   s.steps.push(`(() => { const b = document.querySelector('.task-acts [data-act].primary'); if (b) b.click(); })()`);
   s.overlay = true;
   if (s.link) { s.linkSel = '.overlay #ok'; delete s.linkLabel; }
@@ -337,11 +395,49 @@ add(P13, 'SCR-91-e', 'Chỉnh sửa trigger TASK_OVERDUE', qtb('#/trigger-thong-
   ['hop-dong', 'tinh-hinh'], ['hop-dong', 'thanh-toan'], ['tien-do', 'qua-han'], ['tien-do', 'kien-nghi'], ['tien-do', 'kpi-buoc']]
   .forEach(([g, k]) => add(P13, `SCR-93-${g}-${k}`, `Báo cáo — ${g} / ${k}`, [...dx('#/bao-cao/' + g), `document.querySelector('[data-rptab="${g}:${k}"]') && document.querySelector('[data-rptab="${g}:${k}"]').click()`]));
 
+// T17 (plan docs/dtms/prototype-T17-luong-mua-sam-chuan-bi.md): phương án Gộp menu "Luồng mua sắm" — SCR-95…98. Đặt cuối danh sách vì công tắc Gộp lưu ở localStorage.
+const P15 = 'Luồng mua sắm · T17 (phương án Gộp)', LT = 'Luồng mua sắm thiết bị đo kiểm RF 2026';
+const GOP = `localStorage.setItem('dtms-proto-menu', 'gop')`;
+const LG = [J.jump(1, 'minh'), GOP, `Flow.createLuong({ title: ${JSON.stringify(LT)}, nv: 'NV-KHCN-2026-014', unit: D.caseInfo.unit, priority: D.caseInfo.priority, est: 183, period: D.caseInfo.period, secret: false,
+  purpose: 'Trang bị thiết bị đo kiểm RF và OTA phục vụ phát triển trạm gNodeB thế hệ 2.', members: { 17: ['mai'] },
+  basis: [{ name: 'QD-1482-VHT.pdf', type: 'QD_NV', at: Flow.dateOf(Flow.state.clock) }, { name: 'KH-mua-sam-2026.pdf', type: 'KH_NAM', at: Flow.dateOf(Flow.state.clock) }] }, { process: 'MS01.01', name: ${JSON.stringify(LT)}, caseFiles: [] })`];
+// Thay người bước 13 (Hải → Sơn) rồi tua nhánh chính tới bước 13: bước 01…12 đã xong — khoá, có lịch sử thay đổi nhân sự.
+const LG13 = [...LG, `Flow.updateMembers({ task: '13', mode: 'replace', drop: ['hai'], add: ['son'], doc: 'QD-dieu-dong-123.pdf', reason: 'Đi công tác' })`,
+  `(() => { for (let i = 0; i < 300 && !Flow.state.tokens.some((t) => String(t.task) === '13'); i++) { const t = Flow.state.tokens[0], c = Flow.mainChoice(t.task); Flow.complete(t.id, c, c && c.reason ? 'Nội dung thử' : null); } })()`, J.persona('minh')];
+const LD = `location.hash = '#/luong/' + encodeURIComponent(Flow.state.dxms)`;
+// Chọn trong vht-select: mở → (bước sau, panel đã vẽ) chọn → đóng.
+const vpick = (id, vals, close) => [`document.querySelector('[data-vsel="${id}"]').click()`,
+  ...vals.map((v) => `document.querySelector('.vsel-panel [data-opt="${v}"]').click()`), ...(close ? [click(close)] : [])];
+add(P15, 'SCR-95', 'Danh sách luồng mua sắm', [...LG13, J.hash('#/luong')], { link: 'SCR-97-info', linkSel: 'main .vtable tbody tr.click a.link' });
+add(P15, 'SCR-96', 'Thêm mới luồng mua sắm', [J.jump(1, 'minh'), GOP, J.hash('#/luong/create')], { link: 'SCR-96-nhap', linkSel: '[data-lf-add]' });
+add(P15, 'SCR-96-nhap', 'Thêm mới luồng mua sắm — đã nhập: tệp căn cứ, quy trình, nhân sự bước 17', [J.jump(1, 'minh'), GOP, J.hash('#/luong/create'),
+  `(() => { const e = document.querySelector('#lf-title'); e.value = ${JSON.stringify(LT)}; e.dispatchEvent(new Event('input', { bubbles: true })); })()`,
+  ...vpick('lf-nv', ['NV-KHCN-2026-014']), ...vpick('lf-proc', ['MS01.01']),
+  `(() => { const i = document.querySelector('#lf-file'), dt = new DataTransfer(); ['QD-1482-VHT.pdf', 'KH-mua-sam-2026.pdf'].forEach((n) => dt.items.add(new File([new Uint8Array(16)], n, { type: 'application/pdf' }))); i.files = dt.files; i.dispatchEvent(new Event('change', { bubbles: true })); })()`,
+  ...vpick('lf-type-1', ['QD_NV']), ...vpick('lf-type-2', ['KH_NAM']), click('[data-lf-add]'),
+  `(() => { const id = [...document.querySelectorAll('[data-lf-members] tbody tr [data-row-step]')].pop().dataset.rowStep; document.querySelector('[data-vsel="lf-step-' + id + '"]').click(); document.querySelector('.vsel-panel [data-opt="17"]').click();
+    document.querySelector('[data-vsel="lf-m-' + id + '"]').click(); document.querySelector('.vsel-panel [data-opt="mai"]').click(); document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); })()`],
+  { link: 'SCR-01-luong', linkSel: '#lf-save' });
+add(P15, 'SCR-01-luong', 'Sau Lưu: task 01 của hồ sơ Phê duyệt vừa khởi tạo — nút Cập nhật nhân sự', [...LG, `location.hash = '#/task/' + Flow.state.tokens.find((t) => String(t.task) === '1').id`],
+  { link: 'SCR-98-task', linkSel: '.task-acts [data-um-open]' });
+[['info', 'Thông tin chung'], ['tien-trinh', 'Tiến trình'], ['can-cu', 'Căn cứ'], ['nhan-su', 'Nhân sự thực hiện'], ['van-ban', 'Văn bản & ký duyệt'], ['lich-su', 'Lịch sử thay đổi nhân sự']]
+  .forEach(([k, l]) => add(P15, 'SCR-97-' + k, 'Chi tiết luồng — ' + l, [...LG13, LD, click(`[data-ltab="${k}"]`)], k === 'nhan-su' ? { link: 'SCR-98', linkSel: '[data-um-open="17"]' } : undefined));
+add(P15, 'SCR-98', 'Cập nhật nhân sự — Thay người bước 17 (ảnh hưởng của thay đổi)', [...LG13, LD, click('[data-ltab="nhan-su"]'), click('[data-um-open="17"]'),
+  ...vpick('um-drop', ['mai'], '.vmodal-h h3'), ...vpick('um-add', ['lan'], '.vmodal-h h3')], { overlay: true });
+add(P15, 'SCR-98-task', 'Cập nhật nhân sự — mở từ màn xử lý task 01', [...LG, `location.hash = '#/task/' + Flow.state.tokens.find((t) => String(t.task) === '1').id`, click('.task-acts [data-um-open]')], { overlay: true });
+
+/* Tuỳ chọn tham số 2: chỉ chụp các màn của một trang Figma (vd. "Khoản đầu tư"). */
+const ONLY = process.argv[3] || null;
+if (ONLY && !S.some((x) => x.page === ONLY)) { console.error('Không có trang', ONLY); process.exit(1); }
 const manifest = [];
 for (let i = 0; i < S.length; i++) {
   const s = S[i];
+  if (ONLY && s.page !== ONLY) continue;
+  if (process.env.CAP_DEBUG) console.error(s.id);
   for (const st of s.steps) { await ev(st); await sleep(40); }
   await sleep(250);
+  /* Màn nặng (tua nhanh dài) có lúc chưa vẽ xong khung .main — chờ tối đa 2 giây. */
+  for (let w = 0; w < 20 && !(await ev(`!!document.querySelector('.main')`)); w++) await sleep(100);
   await ev(`document.querySelectorAll('.toast-wrap').forEach((t) => t.remove())`);
   // Cao theo nội dung; rộng cố định 1440.
   const h = await ev(`Math.max(900, document.querySelector('.main').scrollHeight + 60)`);

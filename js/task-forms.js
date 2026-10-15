@@ -4,7 +4,8 @@
  * như handleActionButton → facade.loadEform → openEformDialog → submitEform của KHCN.
  * - Nút có `reason` (từ chối / không đồng ý / không OK) không mở form: dialog nhận xét có sẵn (G6), trừ khi lý do là trường của form (reasonField).
  * - Lưu nháp: giữ giá trị form theo token (performAction SAVE_DRAFT). Xác nhận: validate của form → kiểm tra phía BE (EVars.check) →
- *   ghi biến (output mapping `write`) → DX-01 (`gate`: service task AI kiểm tra trước khi gửi, Không đạt → ở lại bước).
+ *   ghi biến (output mapping `write`) → DX-01 (`gate`: service task AI kiểm tra trước khi gửi, Không đạt → ở lại bước;
+ *   `pass` = BPMN đã vẽ nhánh Không đạt (MS13 bước 44 → cổng "AI kiểm tra đạt?"): vẫn gửi, cờ ui.ai44Fail cho cổng đọc).
  */
 (function () {
   const Flow = window.Flow;
@@ -12,7 +13,7 @@
   const H = () => window.EVars.h;
 
   function raw(tok) {
-    const pick = Flow.state.kdt ? window.EForms.MS13 : window.EForms.MS01;
+    const pick = Flow.state.kdt ? window.EForms.MS13 : Flow.state.vars.adj ? window.EForms.MS02 : window.EForms.MS01;
     return pick ? pick(tok, H()) : null;
   }
   /* Schema đầy đủ như Camunda Web Modeler xuất (để chép sang Modeler được). */
@@ -64,9 +65,10 @@
     const patch = Object.assign({}, out, { efDraft: rest });
     if (e.gate) patch[fail ? fail.key : (Flow.state.kdt ? 'aiCheckK' : 'aiCheck')] = fail ? { ketQua: 'Không đạt', lyDo: fail.lyDo } : null;
     if (fail && !Flow.state.kdt) patch.aiFail = true;
+    if (fail && fail.pass) patch.ai44Fail = true;
     Flow.setUiMany(patch);
-    if (fail) { toast(esc(fail.toast), 'warn'); return null; }
-    return { reason: e.reasonOf ? e.reasonOf(r.values) || null : e.reasonField ? r.values[e.reasonField] : null };
+    if (fail && !fail.pass) { toast(esc(fail.toast), 'warn'); return null; }
+    return { reason: e.reasonOf ? e.reasonOf(r.values) || null : e.reasonField ? r.values[e.reasonField] : null, note: fail ? fail.toast : null };
   }
 
   /* Biến của service task chạy ngay sau task (prototype ghi trước khi hoàn thành token để gateway đọc được).

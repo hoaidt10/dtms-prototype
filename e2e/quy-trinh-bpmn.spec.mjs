@@ -169,7 +169,7 @@ test('SCR-42: bấm phần tử sơ đồ → viền đỏ + panel nhóm theo lo
 
 test('SCR-42: mỗi phiên bản vẽ đúng trang sơ đồ của nó; mã không tồn tại báo không tìm thấy', async ({ page }) => {
   const cases = [['2251799813685377', 'MS01', 'v1.0', 'Dừng hoạt động'], ['2251799813690540', 'MS02 ver1.1', 'v1.1', 'Hoạt động'],
-    ['2251799813691208', 'MS13-TO BE', 'v1.0', 'Hoạt động'], ['2251799813691536', 'MS14-TO BE', 'v1.0', 'Hoạt động']];
+    ['2251799813691208', 'MS13', 'v1.0', 'Hoạt động'], ['2251799813691536', 'MS14', 'v1.0', 'Hoạt động']];
   await as(page, 'qt', '#/quy-trinh');
   for (const [key, pg, ver, st] of cases) {
     await page.goto(page.url().replace(/#.*$/, `#/quy-trinh/${key}`));

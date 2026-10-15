@@ -32,10 +32,10 @@
       { key: '2251799813690540', version: 1, modeler: 'v1.1', deploy: 1, status: 'ACTIVE', page: 'MS02 ver1.1', at: '15/07/2026' }],
       history: [{ version: 'v1.1', at: '2026-07-15T14:05', current: true, desc: 'Điều chỉnh ĐXMS theo cùng khung MS01 v1.1.' }] },
     { code: 'MS13', id: 'DTMS_MS13', name: 'Chủ trương khoản đầu tư', versions: [
-      { key: '2251799813691208', version: 1, modeler: 'v1.0', deploy: 1, status: 'ACTIVE', page: 'MS13-TO BE', at: '04/08/2026' }],
+      { key: '2251799813691208', version: 1, modeler: 'v1.0', deploy: 1, status: 'ACTIVE', page: 'MS13', at: '04/08/2026' }],
       history: [{ version: 'v1.0', at: '2026-08-04T08:30', current: true, desc: 'Quy trình TO-BE lập, thẩm định, phê duyệt chủ trương khoản đầu tư.' }] },
     { code: 'MS14', id: 'DTMS_MS14', name: 'Dự án đầu tư', versions: [
-      { key: '2251799813691536', version: 1, modeler: 'v1.0', deploy: 1, status: 'ACTIVE', page: 'MS14-TO BE', at: '04/08/2026' }],
+      { key: '2251799813691536', version: 1, modeler: 'v1.0', deploy: 1, status: 'ACTIVE', page: 'MS14', at: '04/08/2026' }],
       history: [{ version: 'v1.0', at: '2026-08-04T08:45', current: true, desc: 'Quy trình TO-BE lập, thẩm định, phê duyệt dự án đầu tư.' }] },
   ];
   /* SL hồ sơ đang xử lý: đếm từ Giám sát tiến trình (hồ sơ Đang chạy / Quá hạn theo quy trình + phiên bản); quy trình chưa dựng = 0. */
@@ -81,7 +81,7 @@
         'Bảng cây như source: dòng cha = quy trình (Mã quy trình "-", không có badge), bấm ▾ mở dòng con = từng phiên bản deploy; Mã quy trình ở dòng con là liên kết mở Chi tiết quy trình. Tìm kiếm / lọc Trạng thái thu gọn lại mọi dòng.',
         'MS01.01, MS01.02, MS01.03 là ba quy trình riêng (P-37 đã chốt), cùng là ba lựa chọn của ô Quy trình khi tạo ĐXMS. Bản vẽ chuẩn gộp cả ba trên trang MS01 v1.1 nên ba quy trình tạm dùng chung sơ đồ đó.',
         'SL hồ sơ đang xử lý đếm từ hồ sơ đang chạy của từng quy trình (cùng số với Giám sát tiến trình: Đang chạy + Quá hạn); hồ sơ MS01.01 tạo trước 01/07/2026 chạy phiên bản 1 (đã dừng hoạt động nhưng vẫn xử lý nốt). MS02 đếm hồ sơ Điều chỉnh ĐXMS; MS13, MS14 chưa có hồ sơ.',
-        'Dữ liệu: 6 quy trình theo các trang của ĐTMS.drawio — MS01.01 (phiên bản 2: MS01 v1.1, phiên bản 1: MS01), MS01.02 và MS01.03 (MS01 v1.1), MS02 ver1.1, MS13-TO BE, MS14-TO BE. Mã Camunda = BPMN process id.',
+        'Dữ liệu: 6 quy trình theo các trang của ĐTMS.drawio — MS01.01 (phiên bản 2: MS01 v1.1, phiên bản 1: MS01), MS01.02 và MS01.03 (MS01 v1.1), MS02 ver1.1, MS13, MS14. Mã Camunda = BPMN process id.',
         'Quyền (P-41): chỉ Quản trị hệ thống; vai khác thấy thông báo chưa được cấp quyền.',
         'Tìm kiếm nâng cao (Backlog, T16 B1 — source chưa có): Mã quy trình, Mã Camunda, Tên quy trình, Trạng thái, Ngày deploy từ / đến, Có hồ sơ đang xử lý. Mở panel thì ẩn ô tìm và ô Trạng thái như các màn danh sách khác (B5); dòng con chỉ còn phiên bản khớp điều kiện. BE: thêm tham số lọc cho API danh sách quy trình.',
         'Quy trình bị xoá trên Camunda (Backlog Tích hợp › "Đánh dấu quy trình đã bị xóa từ Camunda"): Camunda chỉ có Hoạt động / Xoá, app ghi trạng thái DELETED và hiện <b>Dừng hoạt động</b> — đúng WORKFLOW_STATUS_LABEL_MAP của source (MS01.01 phiên bản 1). Không thêm trạng thái mới.',
@@ -267,7 +267,7 @@
   /* Mã Camunda (process instance key) 16 chữ số, cố định theo mã hồ sơ. */
   const camundaKey = (code) => '2251799813' + String(685000 + Number(code.replace(/\D/g, '').slice(-4)) * 37).padStart(6, '0');
 
-  /* Hồ sơ KĐT (B5): instance MS13-TO BE (cả khi chưa xác định nhóm, D-7) hoặc MS14 (hồ sơ mới sau chuyển luồng). */
+  /* Hồ sơ KĐT (B5): instance MS13 (cả khi chưa xác định nhóm, D-7) hoặc MS14 (hồ sơ mới sau chuyển luồng). */
   function kdtRows() {
     const clock = Flow.state.clock;
     return Flow.kdtCases().map((c) => {

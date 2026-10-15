@@ -91,7 +91,8 @@ test('Chi tiết KĐT: 7 tab — căn cứ, tồn kho, YCBG, phân loại, thàn
   await expect(card(page, '04 yếu tố định danh').locator('tbody tr')).toHaveCount(4);
   await expect(card(page, 'Kết quả phân loại')).toContainText('MS13 · KĐT đơn giản');
   await expect(card(page, 'Điều kiện áp dụng hồ sơ gộp')).toContainText('hai giai đoạn');
-  await expect(card(page, 'Cấp có thẩm quyền phê duyệt')).toContainText('Thủ trưởng VHT');
+  await expect(card(page, 'Cấp có thẩm quyền phê duyệt')).toContainText('Tổng Giám đốc VHT');
+  await expect(card(page, 'Cấp có thẩm quyền phê duyệt')).toContainText('UQ-GUQ §1.2.2');
   await tabs.filter({ hasText: 'Thành phần tham gia' }).click();
   await expect(card(page, 'CQCM tham gia thẩm định').locator('tbody tr')).toHaveCount(2);
   await tabs.filter({ hasText: 'Kết quả & triển khai' }).click();

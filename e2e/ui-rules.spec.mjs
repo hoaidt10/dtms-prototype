@@ -468,7 +468,10 @@ test('C3: SCR-43 — mọi Mã luật mở Xem chi tiết, mọi Mã hành độ
 
 test('C3: SCR-46/47 — mọi hành động mở được; mọi quy trình áp dụng mở Chi tiết quy trình', async ({ page }) => {
   await asQt(page, '#/ma-tran/action-catalog');
-  const acts = await page.locator('main table tbody a.link').evaluateAll((as) => as.map((a) => a.getAttribute('href')));
+  const hrefs = () => page.locator('main table tbody a.link').evaluateAll((as) => as.map((a) => a.getAttribute('href')));
+  // Danh mục > 10 hành động (T17 thêm UPDATE_MEMBERS) → gom cả trang 2.
+  const acts = await hrefs();
+  if (await page.locator('main [data-pg="2"]').count()) { await page.locator('main [data-pg="2"]').first().click(); acts.push(...await hrefs()); }
   expect(acts.length).toBe(await page.evaluate(() => MaTran.ACTIONS.length));
   for (const h of acts) {
     await go(page, h);

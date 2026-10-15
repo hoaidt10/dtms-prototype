@@ -93,7 +93,7 @@
   const FLOW_GROUP = [{ value: 'DXMS', label: 'Đề xuất mua sắm (MS01)' }, { value: 'KDT', label: 'Khoản đầu tư (MS13, MS14)' }];
   const FLOW_PROC = {
     DXMS: Object.keys(D.processes).map((k) => [k, D.processes[k].name]),
-    /* MS13-TO BE là một quy trình (plan KĐT §6 #1): nhánh gộp BM-00 / hai giai đoạn do cổng trong BPMN chọn, không do ngưỡng. */
+    /* MS13 là một quy trình (plan KĐT §6 #1): nhánh gộp BM-00 / hai giai đoạn do cổng trong BPMN chọn, không do ngưỡng. */
     KDT: [['MS13', 'Phê duyệt khoản đầu tư đơn giản'], ['MS14', 'Phê duyệt khoản đầu tư thông thường']],
   };
   const procOptions = (cur, all, vals) => {
@@ -161,6 +161,48 @@
   const overlapOf = (v, row, list) => list.find((r) => r !== row && r.active && r.group === v.group && meets(r.field, v.field) && meets(r.asset, v.asset)
     && v.from < (r.to == null ? Infinity : r.to) && r.from < (v.to == null ? Infinity : v.to));
 
+  /* ---------- SCR-100 Phân cấp thẩm quyền KĐT (T18 D-33) ----------
+     Bảng quy tắc cho bước 13 "Xác định thẩm quyền phê duyệt" của MS13 (bản 12/10): loại KĐT + lĩnh vực + [từ, đến dưới) tỷ → cấp duyệt chủ trương,
+     cấp duyệt KĐT, căn cứ. Khuôn như Ngưỡng phân luồng (không Mã / Tên). Dữ liệu mẫu = giả lập P-90 (D.kdtAuthRules). */
+  const LEVEL = [{ value: 'VHT', label: 'VHT' }, { value: 'TD', label: 'Tập đoàn' }];
+  const authSeed = D.kdtAuthRules; // bảng mặc định của data.js — giữ lại trước khi danh mục thay D.kdtAuthRules
+  const typeOptions = (cur, all) => rows(byKey('loai-kdt')).filter((r) => all || r.active || r.code === cur).map((r) => ({ value: r.code, label: r.name }));
+  const PC = {
+    formGrid: true, unique: [], order: (a, b) => a.type.localeCompare(b.type) || a.field.localeCompare(b.field) || a.from - b.from,
+    kwPlaceholder: 'Tìm kiếm theo loại khoản đầu tư, lĩnh vực, căn cứ',
+    searchText: (r) => [labelOf(PC.fields[0], r.type), labelOf(PC.fields[1], r.field), r.basis].join(' '),
+    subject: (r) => `${labelOf(PC.fields[0], r.type)} · ${labelOf(PC.fields[1], r.field)} · ${range(r)}`,
+    fields: [
+      { key: 'type', label: 'Loại khoản đầu tư', type: 'select', required: true, options: typeOptions },
+      { key: 'field', label: 'Lĩnh vực', type: 'select', required: true, searchable: true, default: '*', options: dimOptions('linh-vuc') },
+      { key: 'from', label: 'Tổng mức vốn từ (tỷ đồng)', type: 'num', required: true, max: 13, placeholder: 'Gồm giá trị này' },
+      { key: 'to', label: 'Đến dưới (tỷ đồng)', type: 'num', max: 13, placeholder: 'Để trống nếu không giới hạn' },
+      { key: 'ct', label: 'Cấp duyệt chủ trương', type: 'select', required: true, options: LEVEL },
+      { key: 'kdt', label: 'Cấp duyệt khoản đầu tư', type: 'select', required: true, options: LEVEL },
+      { key: 'basis', label: 'Căn cứ', type: 'text', required: true, max: 255, span: 2, placeholder: 'Văn bản phân cấp / ủy quyền áp dụng' },
+    ],
+    columns: [
+      { key: 'type', label: 'Loại khoản đầu tư', minWidth: 150, render: (r) => esc(labelOf(PC.fields[0], r.type)) },
+      { key: 'field', label: 'Lĩnh vực', minWidth: 120, render: (r) => esc(labelOf(PC.fields[1], r.field)) },
+      { key: 'from', label: 'Tổng mức vốn (tỷ đồng)', width: 170, render: (r) => (r.to == null ? `Từ ${fmtNum(r.from)} trở lên` : `${fmtNum(r.from)} – dưới ${fmtNum(r.to)}`) },
+      { key: 'ct', label: 'Cấp duyệt chủ trương', width: 150, render: (r) => esc(labelOf({ options: LEVEL }, r.ct)) },
+      { key: 'kdt', label: 'Cấp duyệt KĐT', width: 130, render: (r) => esc(labelOf({ options: LEVEL }, r.kdt)) },
+      { key: 'basis', label: 'Căn cứ', minWidth: 200, render: (r) => `<span class="clamp">${esc(r.basis)}</span>` },
+    ],
+    /* Kiểm tra khi Lưu: Đến dưới > Từ; không chồng khoảng với quy tắc đang hoạt động cùng loại KĐT, lĩnh vực giao nhau. */
+    validate: (v, row, list) => {
+      const err = {};
+      if (v.to != null && v.to <= v.from) err.to = 'Đến dưới phải lớn hơn Tổng mức vốn từ.';
+      const hit = (!row || row.active) && pcOverlap(v, row, list);
+      if (hit && !err.to) err.from = `Khoảng giá trị giao với quy tắc đang hoạt động: ${PC.subject(hit)}.`;
+      return err;
+    },
+    canActivate: (r, list) => { const hit = pcOverlap(r, r, list); return hit ? `Không thể kích hoạt: khoảng giá trị giao với quy tắc đang hoạt động ${PC.subject(hit)}.` : ''; },
+    seedRows: () => authSeed().map((r, i) => Object.assign({ id: i + 1, used: r.type === 'KHCN' || r.type === 'TBNB' ? 4 : 0, active: true }, r)),
+  };
+  const pcOverlap = (v, row, list) => list.find((r) => r !== row && r.active && r.type === v.type && meets(r.field, v.field)
+    && v.from < (r.to == null ? Infinity : r.to) && r.from < (v.to == null ? Infinity : v.to));
+
   /* ---------- 6 danh mục thêm ở T16 B1 theo Backlog W1_T10 (SCR-67…72): khuôn chung Mã / Tên / trường riêng / Mô tả ---------- */
   const UOM_GROUP = [{ value: 'SO_LUONG', label: 'Số lượng' }, { value: 'DO_LUONG', label: 'Đo lường' }, { value: 'THOI_GIAN', label: 'Thời gian' }];
   const DECIMALS = [{ value: '0', label: '0' }, { value: '2', label: '2' }];
@@ -169,6 +211,9 @@
     { value: 'TAM_UNG', label: 'Bảo lãnh tạm ứng' }, { value: 'BAO_HANH', label: 'Bảo đảm bảo hành' }];
   const PKG_FIELD = [{ value: 'HANG_HOA', label: 'Hàng hoá' }, { value: 'XAY_LAP', label: 'Xây lắp' }, { value: 'TU_VAN', label: 'Tư vấn' },
     { value: 'PHI_TU_VAN', label: 'Phi tư vấn' }, { value: 'HON_HOP', label: 'Hỗn hợp' }];
+  /* T17 (D-30, P-84): căn cứ đầu vào của luồng mua sắm = tệp đính kèm vào ĐXMS / hồ sơ, mỗi tệp một loại; loại Bắt buộc thiếu thì không Lưu được. */
+  const BASIS_SCOPE = [{ value: 'DXMS', label: 'ĐXMS' }, { value: 'PD', label: 'Hồ sơ Phê duyệt' }, { value: 'DC', label: 'Hồ sơ Điều chỉnh' }];
+  const REQUIRED = [{ value: 'CO', label: 'Bắt buộc' }, { value: 'KHONG', label: 'Không bắt buộc' }];
   const B1_CATALOGS = {
     'loai-doi-tac': { key: 'loai-doi-tac', scr: 'SCR-67', title: 'Loại đối tác', entity: 'loại đối tác', icon: 'doi_tac', roles: ['lan'], built: true,
       use: 'Phân loại đối tác trong danh mục Nhà cung cấp / Nhà thầu, lọc đối tác khi gửi yêu cầu báo giá, lựa chọn nhà thầu và hợp đồng.',
@@ -347,7 +392,24 @@
         ['HON_HOP', 'Hỗn hợp', 'Kết hợp các loại trên; ghi rõ phạm vi áp dụng từng loại', true, 0],
       ] },
     B1_CATALOGS['hinh-thuc-bao-dam'],
+    { key: 'loai-tai-lieu-can-cu', scr: 'SCR-99', title: 'Loại tài liệu căn cứ', entity: 'loại tài liệu căn cứ', icon: 'menu_square', built: true, q: ['P-84'],
+      use: 'Căn cứ đầu vào của luồng mua sắm (T17): mỗi tệp đính kèm vào ĐXMS / hồ sơ chọn một loại; loại Bắt buộc của ĐXMS và hồ sơ Phê duyệt phải có khi Tạo luồng.',
+      fields: [F.code('Mã loại tài liệu'), F.name('Tên loại tài liệu căn cứ', 300),
+        { key: 'scope', label: 'Áp dụng cho', type: 'select', multi: true, required: true, options: BASIS_SCOPE, minWidth: 220 },
+        { key: 'req', label: 'Bắt buộc', type: 'select', required: true, options: REQUIRED, width: 150 }, F.desc()],
+      seed: [
+        ['QD_NV', 'QĐ giao nhiệm vụ / phê duyệt đề tài, dự án', 'Văn bản phê duyệt nhiệm vụ KHCN, dự án SXKD hoặc PAKD làm căn cứ mua sắm', true, 6, { scope: ['DXMS'], req: 'CO' }],
+        ['KH_NAM', 'Kế hoạch mua sắm năm được duyệt', 'Kế hoạch mua sắm / kế hoạch SXKD năm có hạng mục của luồng', true, 6, { scope: ['DXMS'], req: 'CO' }],
+        ['CHU_TRUONG', 'Chủ trương đầu tư', '', true, 1, { scope: ['DXMS', 'PD'], req: 'KHONG' }],
+        ['CHI_DAO', 'Văn bản chỉ đạo', 'Ý kiến chỉ đạo của lãnh đạo VHT / Tập đoàn', true, 2, { scope: ['DXMS', 'PD', 'DC'], req: 'KHONG' }],
+        ['BIEN_BAN', 'Biên bản làm việc', '', true, 1, { scope: ['DXMS', 'PD', 'DC'], req: 'KHONG' }],
+        ['BAO_GIA', 'Báo giá / khảo sát giá', 'Báo giá sơ bộ có trước khi tạo hồ sơ', true, 3, { scope: ['PD', 'DC'], req: 'KHONG' }],
+        ['QD_DC', 'Văn bản đề nghị điều chỉnh', '', true, 0, { scope: ['DC'], req: 'CO' }],
+        ['KHAC', 'Khác', '', true, 0, { scope: ['DXMS', 'PD', 'DC'], req: 'KHONG' }],
+      ] },
     Object.assign({ key: 'nguong-phan-luong', scr: 'SCR-40', title: 'Ngưỡng phân luồng', entity: 'ngưỡng phân luồng', icon: 'danh_muc_dung_chung', built: true }, TH),
+    Object.assign({ key: 'phan-cap-tham-quyen', scr: 'SCR-100', title: 'Phân cấp thẩm quyền KĐT', entity: 'quy tắc phân cấp thẩm quyền', icon: 'view_flow', built: true, q: ['P-90'],
+      use: 'Bước 13 "Xác định thẩm quyền phê duyệt" của MS13 (BPMN 12/10) đọc bảng này theo loại KĐT, lĩnh vực và tổng mức vốn thực tế để ghi cấp duyệt chủ trương / KĐT; cổng cấp duyệt trước trình ký tính lại (D-33).' }, PC),
   ];
   const byKey = (k) => CATALOGS.find((c) => c.key === k);
   const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
@@ -372,6 +434,9 @@
   /* Ngưỡng KĐT (cổng "Tổng mức vốn thực tế thuộc MS13?" — plan KĐT §6 #1): lĩnh vực, tính chất tài sản, khoảng giá trị → nhóm. */
   D.kdtRules = (date) => rows(byKey('nguong-phan-luong')).filter((r) => r.group === 'KDT' && r.active && dateKey(r.eff) <= dateKey(date || today()))
     .sort((a, b) => a.from - b.from).map((r) => ({ field: r.field, asset: r.asset, from: r.from, to: r.to, procs: r.procs.slice() }));
+  /* Phân cấp thẩm quyền KĐT (bước 13, D-33): quy tắc đang hoạt động của SCR-100 thay bảng mặc định. */
+  D.kdtAuthRules = () => rows(byKey('phan-cap-tham-quyen')).filter((r) => r.active)
+    .map((r) => ({ type: r.type, field: r.field, from: r.from, to: r.to, ct: r.ct, kdt: r.kdt, basis: r.basis }));
   const nccDefault = D.nccOf;
   D.nccOf = (code) => rows(byKey('nha-cung-cap')).find((r) => r.code === code) || nccDefault(code);
 
@@ -480,7 +545,7 @@
         'Hiệu lực từ ngày (P-34): hồ sơ đã tạo giữ ngưỡng tại thời điểm tạo; ngưỡng mới chỉ áp dụng cho hồ sơ tạo từ ngày hiệu lực. Đổi điều kiện hoặc quy trình thì ngày hiệu lực không được trước ngày hiện tại. Ngày hiệu lực ở tương lai hiện nhãn "Chưa hiệu lực"; prototype chưa giữ bản cũ cho giai đoạn chờ.',
         'Đề xuất mua sắm: dưới 160 tỷ → MS01.03; từ 160 tỷ → MS01.01 hoặc MS01.02, chọn theo căn cứ chứ không theo ngưỡng. Loại khoản đầu tư có Cấp xử lý "Luôn cấp Tập đoàn" (Kinh doanh, Bất động sản) được ưu tiên hơn bảng ngưỡng (P-29).',
         'Ngưỡng MS13/MS14 theo QT-8.6.5 (trường hợp 1, 2): Viễn thông - CNTT dưới 160 tỷ / 160 – dưới 1.000 tỷ; lĩnh vực khác (trừ KĐT bất động sản) dưới 90 tỷ / 90 – dưới 500 tỷ. Khớp BB-2409; BB-1509 ghi ngược (P-28). Trên mức đó và KĐT bất động sản là KĐT phức tạp (MS15, Pha 2) — chưa có dòng ngưỡng. Lĩnh vực Quốc phòng thuộc "lĩnh vực khác" nhưng chưa có dòng ngưỡng riêng (P-67).',
-        'Khoản đầu tư: MS13 là <b>một</b> quy trình (trang MS13-TO BE), áp cho mọi tính chất tài sản. Nhánh gộp BM-00 (Nguyên chiếc + Trang bị nội bộ) hay hai giai đoạn BM-01 → BM-03 do cổng trong BPMN chọn sau khi TTMS xác nhận 04 yếu tố, không do bảng ngưỡng. Hệ thống xác định nhóm KĐT theo ngưỡng này sau bước 12 (D-7).',
+        'Khoản đầu tư: MS13 là <b>một</b> quy trình (trang MS13), áp cho mọi tính chất tài sản. Nhánh gộp BM-00 (Nguyên chiếc + Trang bị nội bộ) hay hai giai đoạn BM-01 → BM-03 do cổng trong BPMN chọn sau khi TTMS xác nhận 04 yếu tố, không do bảng ngưỡng. Hệ thống xác định nhóm KĐT theo ngưỡng này sau bước 12 (D-7).',
         'Ngưỡng của Đề xuất mua sắm đang được hồ sơ dùng: không xoá được, chỉ Dừng hoạt động (P-33). Dữ liệu mẫu; thay đổi được lưu trên trình duyệt.',
         'Dùng ở: nhãn điều kiện của từng quy trình khi Thêm mới hồ sơ Phê duyệt ĐXMS, cảnh báo mềm ở task 04, cổng "Giá trị khớp quy trình đã chọn?" sau task 10 và gợi ý quy trình ở task 10a. Hồ sơ giữ ngưỡng tại lúc tạo; tên quy trình (vd "Phê duyệt ĐXMS ≥ 160 tỷ") là tên trong BPMN, không đổi theo ngưỡng.',
       ],

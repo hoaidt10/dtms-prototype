@@ -11,8 +11,11 @@ const BAD = /\{\{|\bnull\b|\bundefined\b|\bNaN\b|\[object/;
 const SETS = [
   { proc: 'MS01.01', tasks: [1, 4, 5, 7, 8, 10, 12, 13, 16, 17, 19, 20, 26, 27, 28, 35, 36, 42, 43, 46, 47, 48, 50, 51, 53, 54, 55, 56, 58, 59, 60] },
   { proc: 'MS01.03', dxms: 'ĐXMS-2026-0098', tasks: [11, 16, 38, 39, 60] },
-  { proc: 'MS13', kdt: true, tasks: [1, 4, 5, 7, 8, 10, 11, 12, 14, 16, 36, 37, 38, 39, 24, 26, 28, 29, 31, 32, 33, 42, 44, 46, 47, 48, 51, 54] },
-  { proc: 'MS13', kdt: 'KĐT-2026-0031', tasks: [18, 19, 20, 21, 55, 56] },
+  { proc: 'MS13', kdt: true, tasks: [1, 4, 5, 7, 8, 10, 11, 12, 15, 17, 39, 40, 41, 42, 43, 27, 29, 31, 32, 34, 35, 36, 46, 47, 48, 50, 51, 52, 53, 55, 56, 57, 60] },
+  { proc: 'MS13', kdt: 'KĐT-2026-0031', tasks: [19, 20, 21, 22, 23, 24, 61, 62] },
+  // T21 B2: MS02 dùng lại eForm MS01 cùng số (formId dtms-ms02-…); MS02.02 không qua 49–56, MS02.03 qua 11, 38–40.
+  { proc: 'MS02', dxms: 'ĐXMS-2026-0103', tasks: [1, 4, 5, 7, 8, 10, 12, 13, 16, 17, 19, 20, 26, 27, 28, 35, 36, 42, 43, 46, 47, 48, 58, 59, 60] },
+  { proc: 'MS02', dxms: 'ĐXMS-2026-0089', tasks: [1, 4, 7, 10, 11, 16, 38, 39, 60] },
 ];
 
 async function jump(page, set, task) {
@@ -28,7 +31,7 @@ async function jump(page, set, task) {
 }
 
 for (const set of SETS) {
-  test(`eForm của mọi task ${set.proc}${typeof set.kdt === 'string' ? ' (gộp BM-00)' : ''}: mở được, không lỗi, không rò chữ BA`, async ({ page }) => {
+  test(`eForm của mọi task ${set.proc}${typeof set.kdt === 'string' ? ' (gộp BM-00)' : set.proc === 'MS02' ? ' ' + set.dxms : ''}: mở được, không lỗi, không rò chữ BA`, async ({ page }) => {
     test.setTimeout(180_000);
     await fresh(page);
     for (const task of set.tasks) {
@@ -36,7 +39,7 @@ for (const set of SETS) {
       // Khung chung: không còn card nội dung riêng giữa Quy trình và Danh sách tài liệu.
       await expect(page.locator('.tmain > section > h3, .tmain > section > .vcard-h > h3')).toHaveText(['Thông tin chung', 'Quy trình', 'Danh sách tài liệu', 'Văn bản đầu ra']);
       const f = await openForm(page);
-      await expect(f.locator('.ef-body')).toHaveAttribute('data-ef-form', /^dtms-ms(01|13)-/);
+      await expect(f.locator('.ef-body')).toHaveAttribute('data-ef-form', set.proc === 'MS02' ? /^dtms-ms02-/ : /^dtms-ms(01|13)-/);
       const txt = await f.innerText();
       expect(txt, `task ${task}`).not.toMatch(BA);
       expect(txt, `task ${task}`).not.toMatch(BAD);

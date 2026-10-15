@@ -3,17 +3,21 @@
 // cho panel phần tử (như GET .../elements/{id} của source). Chạy: node tools/bpmn-diagram-extract.mjs [trang…] (mặc định: tất cả).
 import { readFileSync, writeFileSync } from 'node:fs';
 
-const SRC = new URL('../../../project-knowledge/03. Thiết kế (Tài liệu BA)/BPMN/ĐTMS.drawio', import.meta.url);
+/* D-31 (T18): nguồn theo trang — MS13 / MS14 đọc bản 12/10 (ĐTMS-121026.drawio); MS01 vẫn ĐTMS.drawio (giữ 10a/10b, C7); MS02 đọc bản 12/10 từ T21 (D-38). */
+const BPMN = '../../../project-knowledge/03. Thiết kế (Tài liệu BA)/BPMN/';
+const OLD = 'ĐTMS.drawio', NEW = 'ĐTMS-121026.drawio';
 /* Trang → file. MS01 v1.1 giữ tên cũ bpmn-diagram.js (màn Xem BPMN của hồ sơ dùng BPMN_DIAGRAM). */
 const PAGES = {
-  'MS01 v1.1': { out: 'bpmn-diagram.js', tasks: [...Array.from({ length: 61 }, (_, k) => String(k + 1)), '10a', '10b'] },
-  MS01: { out: 'bpmn-diagram-ms01-v1.js' },
-  'MS02 ver1.1': { out: 'bpmn-diagram-ms02.js' },
-  'MS13-TO BE': { out: 'bpmn-diagram-ms13.js' },
-  'MS14-TO BE': { out: 'bpmn-diagram-ms14.js' },
+  'MS01 v1.1': { src: OLD, out: 'bpmn-diagram.js', tasks: [...Array.from({ length: 61 }, (_, k) => String(k + 1)), '10a', '10b'] },
+  MS01: { src: OLD, out: 'bpmn-diagram-ms01-v1.js' },
+  /* D-38 (T21): MS02 đọc bản 12/10 — trang không đổi so với 28/09. */
+  'MS02 ver1.1': { src: NEW, out: 'bpmn-diagram-ms02.js' },
+  MS13: { src: NEW, out: 'bpmn-diagram-ms13.js', tasks: Array.from({ length: 78 }, (_, k) => String(k + 1)) },
+  MS14: { src: NEW, out: 'bpmn-diagram-ms14.js' },
 };
 
-const x = readFileSync(SRC, 'utf8');
+const files = {};
+let x = '';
 const xmlDec = (s) => s.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&#xa;/gi, '\n').replace(/&amp;/g, '&');
 const attrs = (s) => Object.fromEntries([...s.matchAll(/([\w:-]+)="([^"]*)"/g)].map((m) => [m[1], xmlDec(m[2])]));
 const styleOf = (s) => Object.fromEntries((s || '').split(';').filter(Boolean).map((p) => { const k = p.indexOf('='); return k < 0 ? [p, '1'] : [p.slice(0, k), p.slice(k + 1)]; }));
@@ -24,6 +28,7 @@ const plain = (h) => h.replace(/<br\s*\/?>|<\/div>/gi, '\n').replace(/<[^>]+>/g,
 const lines = (h) => plain(h).split('\n').map((s) => s.replace(/\s+/g, ' ').trim()).filter(Boolean);
 
 function extract(PAGE, conf) {
+  x = files[conf.src] = files[conf.src] || readFileSync(new URL(BPMN + conf.src, import.meta.url), 'utf8');
   const i = x.indexOf(`name="${PAGE}"`);
   if (i < 0) throw new Error(`Không thấy trang ${PAGE}`);
   const body = x.slice(i, x.indexOf('</diagram>', i));
@@ -93,7 +98,7 @@ function extract(PAGE, conf) {
     if (s.spacingLeft) n.pl = Number(s.spacingLeft);
     if (s.spacingTop) n.pt = Number(s.spacingTop);
     if (s.taskMarker) n.mk = s.taskMarker;
-    /* Số task: số đầu nhãn (cái người xem thấy) trước thuộc tính TaskNo — MS13-TO BE task "64." vẫn còn TaskNo="60". */
+    /* Số task: số đầu nhãn (cái người xem thấy) trước thuộc tính TaskNo — bản cũ MS13-TO BE task "64." còn TaskNo="60". */
     const no = (k === 'task' && (/^(\d{1,2}[ab]?)\.\s/.exec(label.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()) || [])[1]) || c.taskNo;
     if (no && k === 'task') n.t = no;
     nodes.push(n);
@@ -233,7 +238,9 @@ function extract(PAGE, conf) {
       delete n.html;
     } else if (n.k === 'gw') {
       const t = n.html ? lines(n.html).join(' ') : '';
-      const par = t === '+' || /parallel/i.test(n.html || '');
+      /* Bản 12/10: dấu "+" của cổng song song là ô chữ riêng đè lên hình thoi. */
+      const plus = keep.some((m) => m.k === 'text' && m.html && lines(m.html).join('') === '+' && Math.abs(m.x + m.w / 2 - n.x - n.w / 2) < n.w * 0.6 && Math.abs(m.y + m.h / 2 - n.y - n.h / 2) < n.h * 0.6);
+      const par = t === '+' || plus || /parallel/i.test(n.html || '');
       n.el = { id: 'Gateway_' + (++gwN), type: par ? 'parallelGateway' : 'exclusiveGateway', name: par || /^[XO]$/i.test(t) ? '' : t };
     } else if (n.k === 'ev' || n.k === 'ev2') {
       const t = n.html ? lines(n.html).join(' ') : '';
@@ -250,7 +257,7 @@ function extract(PAGE, conf) {
 
   const data = { page: PAGE, box: [X0, Y0, W - X0, H - Y0], nodes: keep, edges };
   const alias = PAGE === 'MS01 v1.1' ? `\nwindow.BPMN_DIAGRAM = window.BPMN_DIAGRAMS[${JSON.stringify(PAGE)}];` : '';
-  writeFileSync(new URL('../js/' + conf.out, import.meta.url), `/* SINH TỰ ĐỘNG từ project-knowledge/03. Thiết kế (Tài liệu BA)/BPMN/ĐTMS.drawio, trang "${PAGE}".
+  writeFileSync(new URL('../js/' + conf.out, import.meta.url), `/* SINH TỰ ĐỘNG từ project-knowledge/03. Thiết kế (Tài liệu BA)/BPMN/${conf.src}, trang "${PAGE}".
    Không sửa tay — chạy lại: node tools/bpmn-diagram-extract.mjs. k: pool/lane/task/gw/ev/ev2/text/box; t = số task; el = phần tử bấm được. */
 (window.BPMN_DIAGRAMS = window.BPMN_DIAGRAMS || {})[${JSON.stringify(PAGE)}] = ${JSON.stringify(data)};${alias}
 `);

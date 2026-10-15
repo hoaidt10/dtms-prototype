@@ -1,7 +1,7 @@
-// T11 B2 — PH09 Khoản đầu tư, cảnh 1–3 (plan docs/dtms/prototype-KDT-chuan-bi.md §2.4, §8): hồ sơ KĐT chạy luồng MS13-TO BE —
+// T11 B2 / T18 B2 (BPMN 12/10, 78 bước) — PH09 Khoản đầu tư, cảnh 1–3 (plan docs/dtms/prototype-KDT-chuan-bi.md §2.4, §8): hồ sơ KĐT chạy luồng MS13 —
 // task 1–10 (body MS01 với nhãn KĐT), SCR-57 Ban Tài chính ‖ SCR-58 TTMS, cổng phân luồng / báo giá / gộp; nhánh chuyển MS14 (SCR-66).
 import { test, expect } from '@playwright/test';
-import { fresh, primary, lastToast, state, openForm, aiDecide, closeForm } from './helpers.mjs';
+import { fresh, primary, lastToast, state, openForm, aiDecide, closeForm, uploadReq } from './helpers.mjs';
 
 // B0.4 (2): nội dung bước nằm trong eForm (dialog khi bấm nút) và Văn bản đầu ra (xem trước PDF).
 async function formText(page, label) { const f = await openForm(page, label); const t = await f.innerText(); await closeForm(page); return t; }
@@ -112,11 +112,11 @@ test('Cảnh 1–3: tạo KĐT, tạo hồ sơ start MS13; task 1–10; Ban Tài
   expect(await lastToast(page)).toContain('Có yếu tố chưa đúng');
   await m.locator('[data-ef-chk="yeuTo::3::dung"]').check();
   await m.locator('#ok').click();
-  expect(await page.evaluate(() => [Flow.state.vars.group, Flow.state.vars.branch, Flow.state.tokens.map((t) => t.task)])).toEqual(['MS13', '2GD', [14]]);
+  expect(await page.evaluate(() => [Flow.state.vars.group, Flow.state.vars.branch, Flow.state.tokens.map((t) => t.task), Flow.state.vars.cap.ct])).toEqual(['MS13', '2GD', [15], 'VHT']);
 
-  // Minh: bước 14 dự thảo (B3); Thông tin chung có nhóm và nhánh.
+  // 13 xác định thẩm quyền (service) → Minh: bước 15 dự thảo; Thông tin chung có nhóm và nhánh.
   await as(page, 'minh');
-  await openMine(page, 14);
+  await openMine(page, 15);
   await expect(page.locator('.task-acts [data-act].primary')).toHaveText('Hoàn thành dự thảo');
   await expect(gi).toContainText('MS13 · KĐT đơn giản');
   await expect(gi).toContainText('Hai giai đoạn (BM-01 → BM-03)');
@@ -193,9 +193,10 @@ test('Công cụ demo KĐT: cảnh K2, K3 đặt đúng việc; cảnh K3 TTMS t
   expect(page.errors).toEqual([]);
 });
 
-// T11 B3 — cảnh 4–6: dự thảo, BM-01 + Checklist 01, chọn CQCM / đơn vị chủ trì, trình (kiểm tra trước khi gửi Không đạt rồi đạt);
-// quy trình con 41: TTMS thẩm định ‖ CQCM gửi ý kiến, 02 vòng check → họp lần 1 → Chuyên quản, Chỉ huy xác nhận → cập nhật; ký 42 / 44.
-test('Cảnh 4–6: chủ trương BM-01, thẩm định trong quy trình con 41 (vòng check 2/2, họp 1/2), ký thẩm định và ký duyệt chủ trương', async ({ page }) => {
+// T11 B3 / T18 B2 — cảnh 4–6 (BPMN 12/10): dự thảo, BM-01 + Checklist 01, chọn CQCM, CQCM chủ trì xác nhận danh sách, trình;
+// khối chung 25–38 vòng BM-01: TTMS thẩm định ‖ CQCM gửi ý kiến, 02 vòng check → họp lần 1 → Chuyên quản, Chỉ huy xác nhận → cập nhật;
+// TTMS thẩm định và hoàn chỉnh (46) → cổng cấp duyệt VHT → ký 47 / 48.
+test('Cảnh 4–6: chủ trương BM-01, thẩm định vòng BM-01 ở khối chung 25–38 (vòng check 2/2, họp 1/2), ký thẩm định và ký duyệt chủ trương', async ({ page }) => {
   await fresh(page, '#/kdt');
   await page.locator('#demo').click();
   await page.locator('[data-demo-set="MS13"]').click();
@@ -203,143 +204,188 @@ test('Cảnh 4–6: chủ trương BM-01, thẩm định trong quy trình con 41
   await page.locator('.demo-panel [data-scene="K4"]').click();
   await expect(page).toHaveURL(/#\/task\//);
   const m = page.locator('main');
+  const gi = page.locator('.tmain .ginfo').first();
   const run = async (who, task, label) => { await as(page, who); await openMine(page, task); expect(await primary(page, label)).toBe(true); };
   expect(await formText(page)).toContain('Biện pháp, kế hoạch thực hiện');
   expect(await mainText(page)).not.toMatch(BA);
   expect(await primary(page, 'Hoàn thành dự thảo')).toBe(true);
-  await openMine(page, 16);
-  const t16 = await formText(page);
-  expect(t16).toContain('AI hỗ trợ soạn nội dung đề xuất');
-  expect(t16).toContain('Hai giai đoạn (BM-01 → BM-03)');
+  await openMine(page, 17);
+  const t17 = await formText(page);
+  expect(t17).toContain('AI hỗ trợ soạn nội dung đề xuất');
+  expect(t17).toContain('Hai giai đoạn (BM-01 → BM-03)');
+  // Kết quả bước 13 (thẩm quyền): KHCN 118,5 tỷ → VHT / VHT.
+  expect(t17).toContain('Phê duyệt chủ trương: VHT · Phê duyệt KĐT: VHT');
   expect(await primary(page)).toBe(true);
-  // 36: tờ trình BM-01 theo mẫu KĐT, mục Sự cần thiết còn trống (bản xem trước ở Văn bản đầu ra).
-  await openMine(page, 36);
-  const t36 = await formText(page);
-  expect(t36).toContain('Tờ trình chủ trương KĐT (BM-01)');
-  expect(t36).toContain('4.2. Sự cần thiết');
+  // 39: tờ trình BM-01 theo mẫu KĐT, mục Sự cần thiết còn trống (bản xem trước ở Văn bản đầu ra) → chọn gợi ý AI.
+  await openMine(page, 39);
+  const t39 = await formText(page);
+  expect(t39).toContain('Tờ trình chủ trương KĐT (BM-01)');
+  expect(t39).toContain('4.2. Sự cần thiết');
   expect(await previewText(page, 'BM-01')).toContain('Chưa có nội dung.');
   expect(await mainText(page)).not.toMatch(BA);
-  expect(await primary(page)).toBe(true);
-  await openMine(page, 37);
-  const f37 = await openForm(page);
-  await expect(f37).toContainText('Checklist số 01');
-  await expect(f37.locator('input[value="Không áp dụng — căn cứ là đề tài KHCN"]')).toHaveCount(1);
+  const f39 = await openForm(page);
+  await aiDecide(f39, 'Sự cần thiết');
+  await f39.locator('#ok').click();
+  await openMine(page, 40);
+  const f40 = await openForm(page);
+  await expect(f40).toContainText('Checklist số 01');
+  await expect(f40.locator('input[value="Không áp dụng — căn cứ là đề tài KHCN"]')).toHaveCount(1);
   await closeForm(page);
   expect(await mainText(page)).not.toMatch(BA);
   expect(await primary(page)).toBe(true);
-  await openMine(page, 38);
-  const t38 = await formText(page);
-  expect(t38).toContain('Chọn CQCM phối hợp thẩm định chủ trương');
-  expect(t38).toContain('Đơn vị chủ trì');
+  await openMine(page, 41);
+  const t41 = await formText(page);
+  expect(t41).toContain('Chọn CQCM phối hợp thẩm định chủ trương');
+  expect(t41).toContain('Đơn vị chủ trì');
   expect(await mainText(page)).not.toMatch(BA);
   expect(await primary(page)).toBe(true);
-  // 39 → 40 (DX-01): kiểm tra trước khi gửi Không đạt (thiếu Sự cần thiết) → ở lại bước 39; chọn gợi ý AI rồi trình.
-  await openMine(page, 39);
-  await (await openForm(page)).locator('#ok').click();
-  expect(await lastToast(page)).toContain('Không đạt');
-  expect((await state(page)).mine.map((t) => t.task)).toEqual([39]);
-  const f39 = await openForm(page);
-  await expect(f39.locator('.banner-bad')).toContainText('Không đạt');
-  await aiDecide(f39, 'Sự cần thiết');
-  await f39.locator('#ok').click();
-  expect(await page.evaluate(() => [Flow.state.vars.sub, Flow.state.tokens.map((t) => `${t.task}:${t.who}`)])).toEqual([41, ['24:lan']]);
-
-  // Quy trình con 41 — lượt 1: Ban Tài chính cần sửa → ĐVĐX bổ sung.
+  // 42 (mới): CQCM chủ trì xác nhận danh sách CQCM.
   await as(page, 'lan');
-  await openMine(page, 24);
-  await expect(page.locator('.tmain .ginfo').first()).toContainText('Thẩm định nội dung hồ sơ (bước 41 · Thẩm định và hoàn chỉnh hồ sơ)');
-  const t24 = await formText(page);
-  expect(t24).toContain('Rà soát tính hợp lệ & danh sách CQCM');
-  expect(t24).toContain('Vòng check 0/2');
+  await openMine(page, 42);
+  const t42 = await formText(page, 'Đồng ý danh sách CQCM');
+  expect(t42).toContain('CQCM phối hợp do đơn vị đề xuất chọn');
+  expect(t42).toContain('Ban Tài chính');
+  expect(await mainText(page)).not.toMatch(BA);
+  expect(await primary(page, 'Đồng ý danh sách CQCM')).toBe(true);
+  // 43 → 44 HT/AI kiểm tra đạt → 45 mở vòng BM-01 → cổng đủ điều kiện → TTMS thẩm định (27).
+  await run('minh', 43, 'Trình hồ sơ');
+  expect(await page.evaluate(() => [Flow.state.vars.td, Flow.state.tokens.map((t) => `${t.task}:${t.who}`)])).toEqual(['CT', ['27:lan']]);
+
+  // Vòng BM-01 — lượt 1: Ban Tài chính cần sửa → ĐVĐX bổ sung.
+  await as(page, 'lan');
+  await openMine(page, 27);
+  await expect(gi).toContainText('Thẩm định chủ trương BM-01');
+  const t27 = await formText(page);
+  expect(t27).toContain('Rà soát tính hợp lệ');
+  expect(t27).toContain('Vòng check 0/2');
   expect(await mainText(page)).not.toMatch(BA);
   expect(await primary(page)).toBe(true);
   await as(page, 'thu');
-  await openMine(page, 26);
-  const f26 = await openForm(page);
-  await expect(f26).toContainText('Phiếu nhận xét (BM-09)');
-  await expect(f26).toContainText('Ban Tài chính');
-  await expect(f26.locator('textarea', { hasText: 'Chưa tách chi phí TSCĐ / CCDC' })).toHaveCount(1);
+  await openMine(page, 29);
+  const f29 = await openForm(page);
+  await expect(f29).toContainText('Phiếu nhận xét (BM-09)');
+  await expect(f29).toContainText('Ban Tài chính');
+  await expect(f29.locator('textarea', { hasText: 'Chưa tách chi phí TSCĐ / CCDC' })).toHaveCount(1);
   await closeForm(page);
   expect(await mainText(page)).not.toMatch(BA);
   expect(await primary(page)).toBe(true);
-  await run('hoa', 26);
+  await run('hoa', 29);
   await as(page, 'minh');
-  await openMine(page, 28);
+  await openMine(page, 31);
   expect(await formText(page)).toContain('Bảng tiếp thu, giải trình ý kiến');
   await expect(page.locator('.task-acts [data-act].primary')).toHaveText('Bổ sung hồ sơ theo ý kiến');
   expect(await mainText(page)).not.toMatch(BA);
   expect(await primary(page)).toBe(true);
   // Lượt 2: vẫn cần sửa → giải trình → họp.
-  await run('lan', 24); await run('thu', 26); await run('hoa', 26);
+  await run('lan', 27); await run('thu', 29); await run('hoa', 29);
   await as(page, 'minh');
-  await openMine(page, 28);
+  await openMine(page, 31);
   await expect(page.locator('.task-acts [data-act].primary')).toHaveText('Giải trình, bảo lưu ý kiến');
   expect(await primary(page)).toBe(true);
   await as(page, 'lan');
-  await openMine(page, 29);
-  const f29 = await openForm(page);
-  await expect(f29).toContainText('tổ chức họp lần 1/2');
-  await expect(f29).toContainText('Vòng check 2/2');
-  await f29.locator('#ok').click();
+  await openMine(page, 32);
+  const f32 = await openForm(page);
+  await expect(f32).toContainText('tổ chức họp lần 1/2');
+  await expect(f32).toContainText('Vòng check 2/2');
+  await f32.locator('#ok').click();
   expect(await lastToast(page)).toContain('Biên bản họp');
   await closeForm(page);
   expect(await mainText(page)).not.toMatch(BA);
   await page.locator('[data-req-up="kMinutes"]').click();
   expect(await primary(page, 'Đã thống nhất sau họp')).toBe(true);
   await as(page, 'minh');
-  await openMine(page, 31);
-  const t31 = await formText(page);
-  expect(t31).toContain('Nội dung điều chỉnh đã thống nhất sau họp');
-  expect(t31).toContain('Họp 1/2');
+  await openMine(page, 34);
+  const t34 = await formText(page);
+  expect(t34).toContain('Nội dung điều chỉnh đã thống nhất sau họp');
+  expect(t34).toContain('Họp 1/2');
   expect(await primary(page)).toBe(true);
   await as(page, 'hai');
-  await openMine(page, 32);
-  const f32 = await openForm(page);
-  await expect(f32.locator('.vbadge', { hasText: /^Đã xác nhận$/ })).toHaveCount(1);
+  await openMine(page, 35);
+  const f35 = await openForm(page);
+  await expect(f35.locator('.vbadge', { hasText: /^Đã xác nhận$/ })).toHaveCount(1);
   await closeForm(page);
   expect(await primary(page)).toBe(true);
-  await run('minh', 33);
-  // Lượt 3 thống nhất → ra khỏi quy trình con → ký.
-  await run('lan', 24); await run('thu', 26); await run('hoa', 26);
+  await run('minh', 36);
+  // Lượt 3 thống nhất → ra khỏi khối chung theo vòng BM-01 → TTMS thẩm định và hoàn chỉnh (46) → cấp VHT → ký.
+  await run('lan', 27); await run('thu', 29); await run('hoa', 29);
   await as(page, 'lan');
-  await openMine(page, 42);
+  await openMine(page, 46);
+  const t46 = await formText(page);
+  expect(t46).toContain('Ý kiến thẩm định đã xử lý trong vòng');
+  expect(t46).toContain('Phê duyệt chủ trương: VHT');
+  expect(await mainText(page)).not.toMatch(BA);
+  expect(await primary(page)).toBe(true);
+  await openMine(page, 47);
   expect(await formText(page, 'Ký thẩm định')).toContain('Khối chữ ký BM-01');
   await expect(m.locator('[data-preview]', { hasText: 'BM-01 Tờ trình chủ trương KĐT' })).toHaveCount(1);
   await expect(m).toContainText('Bien-ban-hop-');
   expect(await mainText(page)).not.toMatch(BA);
   expect(await primary(page, 'Ký thẩm định trên tờ trình')).toBe(true);
   await as(page, 'tgd');
-  await openMine(page, 44);
-  expect(await formText(page, 'Ký duyệt chủ trương')).toContain('VHT — không cần ý kiến Tập đoàn');
-  expect(await primary(page, 'Ký duyệt chủ trương')).toBe(true);
-  // Bước 45 sang giai đoạn KĐT: bộ đếm riêng (P-54); bộ đếm chủ trương giữ 2/2 vòng check, 1/2 lần họp.
-  expect(await page.evaluate(() => [Flow.state.tokens.map((t) => `${t.task}:${t.who}`), Flow.state.vars.chk.CT, Flow.state.vars.meet.CT, Flow.tdCount('chk')])).toEqual([['46:minh'], 2, 1, 0]);
+  await openMine(page, 48);
+  expect(await formText(page, 'Ký phê duyệt chủ trương')).toContain('Phê duyệt chủ trương: VHT');
+  expect(await primary(page, 'Ký phê duyệt chủ trương')).toBe(true);
+  // 49 AI → 50 lập hồ sơ KĐT: bộ đếm vòng BM-01 giữ 2/2 vòng check, 1/2 lần họp (P-54); vòng BM-03 mở ở 54.
+  expect(await page.evaluate(() => [Flow.state.tokens.map((t) => `${t.task}:${t.who}`), Flow.state.vars.chk.CT, Flow.state.vars.meet.CT])).toEqual([['50:minh'], 2, 1]);
   // Văn bản đầu ra BM-01; trạng thái KĐT.
   await as(page, 'minh');
-  await openMine(page, 46);
+  await openMine(page, 50);
   await expect(m).toContainText('BM-01 Tờ trình chủ trương KĐT (đã phê duyệt)');
   await page.evaluate(() => { location.hash = '#/kdt'; });
   await expect(page.locator('.vtable tbody tr', { hasText: 'KĐT-2026-0032' }).locator('.vbadge')).toHaveText('Đang lập hồ sơ KĐT');
   expect(page.errors).toEqual([]);
 });
 
-test('Nhánh phụ cảnh 5–6: TTMS trả lại danh sách CQCM → bước 38; Thủ trưởng không ký — chỉ đạo dừng → KĐT dừng theo chỉ đạo', async ({ page }) => {
+test('Nhánh phụ cảnh 5–6: CQCM chủ trì không đồng ý danh sách CQCM → bước 41; TGĐ VHT không ký — chỉ đạo dừng → KĐT dừng theo chỉ đạo', async ({ page }) => {
   await fresh(page, '#/kdt');
   await branch(page, 2);
-  expect(await primary(page, 'Danh sách CQCM chưa đạt')).toBe(true);
+  expect(await primary(page, 'Không đồng ý')).toBe(true);
+  expect(await page.evaluate(() => Flow.state.tokens.map((t) => `${t.task}:${t.who}`))).toEqual(['41:minh']);
   await as(page, 'minh');
-  await openMine(page, 38);
-  expect(await formText(page)).toContain('TTMS trả lại danh sách CQCM');
+  await openMine(page, 41);
+  expect(await formText(page)).toContain('CQCM chủ trì không đồng ý danh sách CQCM: “Nội dung thử”');
   await branch(page, 4);
   expect(await page.evaluate(() => Flow.state.persona)).toBe('tgd');
-  expect(await primary(page, 'Không ký — chỉ đạo dừng')).toBe(true);
+  expect(await primary(page, 'Không đồng ý — chỉ đạo dừng')).toBe(true);
   await expect(page).toHaveURL(/#\/kdt\/K%C4%90T-2026-0032$/);
   await page.evaluate(() => { location.hash = '#/kdt'; });
   await expect(page.locator('.vtable tbody tr', { hasText: 'KĐT-2026-0032' }).locator('.vbadge')).toHaveText('Dừng theo chỉ đạo');
   expect(page.errors).toEqual([]);
 });
 
-// T11 B4 — cảnh 7–9: hồ sơ KĐT BM-03 + Checklist 02, thẩm định KĐT (quy trình con 49), BM-14, ký BM-18; nhánh gộp BM-00 trên KĐT-2026-0031.
+test('Nhánh phụ T18: HT/AI kiểm tra tờ trình Không đạt → về 39; hồ sơ chưa đủ điều kiện thẩm định → 26 → chọn lại CQCM (41); chủ trương thuộc Tập đoàn → 63 → 64', async ({ page }) => {
+  await fresh(page, '#/kdt');
+  // 43 → 44 → cổng "AI kiểm tra đạt?" Không đạt → 39, banner lý do.
+  await branch(page, 7);
+  expect(await primary(page, 'Trình hồ sơ')).toBe(true);
+  expect(await lastToast(page)).toContain('Không đạt');
+  expect(await page.evaluate(() => Flow.state.tokens.map((t) => `${t.task}:${t.who}`))).toEqual(['39:minh']);
+  await openMine(page, 39);
+  const f39 = await openForm(page);
+  await expect(f39.locator('.banner-bad')).toContainText('thiếu mục bắt buộc');
+  await closeForm(page);
+  // Cổng "Hồ sơ đủ điều kiện thẩm định?" = Chưa → AI gợi ý (25) → ĐVĐX sửa (26) → chọn lại CQCM của vòng BM-01.
+  await branch(page, 8);
+  const t26 = await formText(page);
+  expect(t26).toContain('AI gợi ý thông tin cần chỉnh sửa');
+  expect(t26).toContain('chưa đủ điều kiện');
+  expect(await mainText(page)).not.toMatch(BA);
+  expect(await primary(page, 'Đã sửa hồ sơ')).toBe(true);
+  expect(await page.evaluate(() => Flow.state.tokens.map((t) => `${t.task}:${t.who}`))).toEqual(['41:minh']);
+  // Cổng cấp duyệt chủ trương (sau 46) = Tập đoàn → 63 AI dự thảo công văn (service) → 64 ĐVĐX hoàn thiện bộ hồ sơ.
+  await branch(page, 9);
+  await expect(page.locator('.tmain .ginfo').first()).toContainText('Hoàn thiện công văn và bộ hồ sơ gửi Tập đoàn');
+  await expect(page.locator('.task-acts [data-act].primary')).toHaveCount(1);
+  await page.evaluate(() => { location.hash = '#/kdt'; });
+  await expect(page.locator('.vtable tbody tr', { hasText: 'KĐT-2026-0032' }).locator('.vbadge')).toHaveText('Đang trình Tập đoàn');
+  await page.evaluate(() => { location.hash = '#/kdt/' + encodeURIComponent('KĐT-2026-0032'); });
+  await page.locator('.dx-tabs [data-dtab="phan-loai"]').click();
+  await expect(page.locator('section', { hasText: 'Cấp có thẩm quyền phê duyệt' })).toContainText('Tổng Giám đốc Tập đoàn');
+  expect(page.errors).toEqual([]);
+});
+
+// T11 B4 / T18 B2 — cảnh 7–9: hồ sơ KĐT BM-03 + Checklist 02, thẩm định KĐT (vòng BM-03), Chỉ huy ký tờ trình, TTMS ký BM-14, TGĐ ký BM-18;
+// nhánh gộp BM-00 trên KĐT-2026-0031.
 async function scene(page, n) {
   await page.locator('#demo').click();
   await page.locator('[data-demo-set="MS13"]').click();
@@ -347,64 +393,75 @@ async function scene(page, n) {
   await page.locator(`.demo-panel [data-scene="${n}"]`).click();
   await expect(page).toHaveURL(/#\/task\//);
 }
-test('Cảnh 7–8: BM-03 + Checklist 02 kế thừa chủ trương, thẩm định KĐT (quy trình con 49), BM-14 thông qua, Thủ trưởng ký BM-18 → Đã phê duyệt', async ({ page }) => {
+test('Cảnh 7–8: BM-03 + Checklist 02 kế thừa chủ trương, thẩm định KĐT (vòng BM-03), Chỉ huy ký tờ trình, TTMS ký BM-14, TGĐ VHT ký BM-18 → Đã phê duyệt', async ({ page }) => {
   await fresh(page, '#/kdt');
   await scene(page, 'K7');
   const m = page.locator('main');
+  const gi = page.locator('.tmain .ginfo').first();
   const run = async (who, task, label) => { await as(page, who); await openMine(page, task); expect(await primary(page, label)).toBe(true); };
-  const t46 = await formText(page);
-  expect(t46).toContain('AI gợi ý từ chủ trương đã phê duyệt');
-  expect(t46).toContain('Tờ trình thẩm định, phê duyệt KĐT (BM-03) và các Phụ lục');
+  const t50 = await formText(page);
+  expect(t50).toContain('AI gợi ý từ chủ trương đã phê duyệt');
+  expect(t50).toContain('Tờ trình BM-03 và Phụ lục thuyết minh');
   const bm03 = await previewText(page, 'BM-03');
   expect(bm03).toContain('I. THÔNG TIN CHUNG VỀ KHOẢN ĐẦU TƯ');
   expect(bm03).toContain('1387/TTr-TTVT');
   expect(await previewText(page, 'PL-TM')).toContain('Chi phí hiệu chuẩn định kỳ năm thứ hai (chi phí hoạt động): 2,40 tỷ đồng');
   expect(await mainText(page)).not.toMatch(BA);
   expect(await primary(page, 'Hoàn thành hồ sơ phê duyệt KĐT')).toBe(true);
-  await openMine(page, 47);
-  const t47 = await formText(page);
-  expect(t47).toContain('Checklist số 02 — Kiểm tra hồ sơ trình thẩm định, phê duyệt KĐT đơn giản');
-  expect(t47).toContain('1387/TTr-TTVT (BM-01 đã phê duyệt)');
+  await openMine(page, 51);
+  const t51 = await formText(page);
+  expect(t51).toContain('Checklist số 02 — Kiểm tra hồ sơ trình thẩm định, phê duyệt KĐT đơn giản');
+  expect(t51).toContain('1387/TTr-TTVT (BM-01 đã phê duyệt)');
   expect(await mainText(page)).not.toMatch(BA);
   expect(await primary(page)).toBe(true);
-  await openMine(page, 48);
-  const t48 = await formText(page);
-  expect(t48).toContain('Chọn CQCM phối hợp thẩm định KĐT');
-  expect(t48).toContain('Đầu mối nhận hồ sơ');
+  await openMine(page, 52);
+  const t52 = await formText(page);
+  expect(t52).toContain('Chọn CQCM phối hợp thẩm định KĐT');
+  expect(t52).toContain('Đầu mối nhận hồ sơ');
   expect(await mainText(page)).not.toMatch(BA);
-  expect(await primary(page, 'Trình hồ sơ thẩm định KĐT')).toBe(true);
-  expect(await page.evaluate(() => [Flow.state.vars.sub, Flow.state.tokens.map((t) => `${t.task}:${t.who}`)])).toEqual([49, ['24:lan']]);
-  // Quy trình con 49 — TTMS thẩm định ‖ CQCM gửi văn bản thẩm định KĐT (BM-10), 1 lượt thống nhất.
+  expect(await primary(page, 'Gửi danh sách CQCM')).toBe(true);
+  await run('lan', 53, 'Đồng ý danh sách CQCM');
+  expect(await page.evaluate(() => [Flow.state.vars.td, Flow.state.tokens.map((t) => `${t.task}:${t.who}`)])).toEqual(['KDT', ['27:lan']]);
+  // Vòng BM-03 — TTMS thẩm định ‖ CQCM gửi văn bản thẩm định KĐT (BM-10), 1 lượt thống nhất; bộ đếm riêng của vòng.
   await as(page, 'lan');
-  await openMine(page, 24);
-  await expect(page.locator('.tmain .ginfo').first()).toContainText('(bước 49 · Tổ chức thẩm định KĐT)');
-  const t24k = await formText(page);
-  for (const x of ['Tờ trình BM-03', 'Checklist 02 đủ', 'Vòng check 0/2']) expect(t24k).toContain(x);
+  await openMine(page, 27);
+  await expect(gi).toContainText('Thẩm định KĐT BM-03');
+  const t27 = await formText(page);
+  for (const x of ['Tờ trình BM-03', 'Checklist 02 đủ', 'Vòng check 0/2']) expect(t27).toContain(x);
   expect(await mainText(page)).not.toMatch(BA);
   expect(await primary(page)).toBe(true);
   await as(page, 'thu');
-  await openMine(page, 26);
+  await openMine(page, 29);
   expect(await formText(page)).toContain('Phiếu nhận xét (BM-10)');
   expect(await primary(page)).toBe(true);
-  await run('hoa', 26);
-  // 51: BM-14 + dự thảo BM-18.
+  await run('hoa', 29);
+  // 55 TTMS thẩm định và hoàn chỉnh hồ sơ KĐT → cổng cấp duyệt KĐT = VHT → 56 Chỉ huy ĐVĐX ký tờ trình BM-03.
   await as(page, 'lan');
-  await openMine(page, 51);
-  const t51 = await formText(page, 'Trình báo cáo');
-  expect(t51).toContain('Kết quả thẩm định KĐT');
-  expect(t51).toContain('VHT — không cần ý kiến Tập đoàn');
+  await openMine(page, 55);
+  expect(await formText(page)).toContain('Phê duyệt KĐT: VHT');
+  expect(await primary(page)).toBe(true);
+  await as(page, 'hai');
+  await openMine(page, 56);
+  expect(await formText(page, 'Ký tờ trình')).toContain('Khối chữ ký Tờ trình BM-03');
+  expect(await mainText(page)).not.toMatch(BA);
+  expect(await primary(page, 'Ký tờ trình phê duyệt KĐT')).toBe(true);
+  // 57: TTMS ký BM-14, trình dự thảo BM-18.
+  await as(page, 'lan');
+  await openMine(page, 57);
+  const t57 = await formText(page, 'Ký báo cáo');
+  expect(t57).toContain('Kết quả thẩm định KĐT');
   expect(await previewText(page, 'BM-14')).toContain('Phần thứ nhất — Tài liệu thẩm định và tổ chức thẩm định');
   expect(await previewText(page, 'BM-18')).toContain('Điều 1. Phê duyệt khoản đầu tư với các nội dung chính');
   expect(await mainText(page)).not.toMatch(BA);
-  expect(await primary(page, 'Trình báo cáo, dự thảo Quyết định')).toBe(true);
-  // 54: Thủ trưởng ký BM-18 qua VOffice (hộp thoại trình ký).
+  expect(await primary(page, 'Ký báo cáo thẩm định BM-14')).toBe(true);
+  // 60: TGĐ VHT ký ban hành BM-18.
   await as(page, 'tgd');
-  await openMine(page, 54);
+  await openMine(page, 60);
   await expect(m.locator('[data-preview]', { hasText: 'BM-18 Quyết định phê duyệt KĐT' })).toHaveCount(1);
   await expect(m.locator('[data-preview]', { hasText: 'BM-14 Báo cáo kết quả thẩm định KĐT' })).toHaveCount(1);
-  expect(await formText(page, 'Ký Quyết định')).toContain('Cơ quan chủ trì thẩm định — BM-14');
+  expect(await formText(page, 'Ký ban hành')).toContain('Cơ quan chủ trì thẩm định — BM-14');
   expect(await mainText(page)).not.toMatch(BA);
-  expect(await primary(page, 'Ký Quyết định phê duyệt KĐT')).toBe(true);
+  expect(await primary(page, 'Ký ban hành Quyết định phê duyệt KĐT')).toBe(true);
   expect(await lastToast(page)).toContain('Đã phê duyệt khoản đầu tư');
   // Chi tiết KĐT: Đã phê duyệt, văn bản đầu ra, nút Lập KHLCNT (T16 B2, thay Tạo gói thầu mờ).
   await expect(page).toHaveURL(/#\/kdt\/K%C4%90T-2026-0032$/);
@@ -417,7 +474,7 @@ test('Cảnh 7–8: BM-03 + Checklist 02 kế thừa chủ trương, thẩm đ�
   expect(page.errors).toEqual([]);
 });
 
-test('Cảnh 9: nhánh gộp BM-00 (KĐT-2026-0031) — dự thảo, Chỉ huy cho ý kiến, chọn CQCM, thẩm định 1 lượt, trình ký, Thủ trưởng ký hồ sơ gộp', async ({ page }) => {
+test('Cảnh 9: nhánh gộp BM-00 (KĐT-2026-0031) — dự thảo, Chỉ huy cho ý kiến, chọn CQCM, xác nhận DS, ký phiếu yêu cầu, thẩm định 1 lượt, TTMS ký BM-14, TGĐ VHT ký hồ sơ gộp', async ({ page }) => {
   await fresh(page, '#/kdt');
   await scene(page, 'K9');
   const m = page.locator('main');
@@ -431,37 +488,46 @@ test('Cảnh 9: nhánh gộp BM-00 (KĐT-2026-0031) — dự thảo, Chỉ huy c
   expect(bm00).toContain('B. KHOẢN ĐẦU TƯ');
   expect(await mainText(page)).not.toMatch(BA);
   expect(await primary(page, 'Hoàn thành dự thảo BM-00')).toBe(true);
-  await openMine(page, 19);
+  await openMine(page, 20);
   expect(await formText(page)).toContain('Người cho ý kiến');
   expect(await primary(page, 'Gửi xin ý kiến Chỉ huy')).toBe(true);
   await as(page, 'hai');
-  await openMine(page, 20);
+  await openMine(page, 21);
   expect(await formText(page)).toContain('Ý kiến của Chỉ huy đơn vị đề xuất');
   expect(await mainText(page)).not.toMatch(BA);
   expect(await primary(page)).toBe(true);
   await as(page, 'minh');
-  await openMine(page, 21);
-  const t21 = await formText(page);
-  expect(t21).toContain('Ý kiến Chỉ huy ĐVĐX');
-  expect(t21).toContain('Chọn CQCM phối hợp thẩm định hồ sơ gộp');
-  expect(t21).not.toContain('Đơn vị chủ trì lựa chọn nhà thầu');
+  await openMine(page, 22);
+  const t22 = await formText(page);
+  expect(t22).toContain('Ý kiến Chỉ huy ĐVĐX');
+  expect(t22).toContain('Chọn CQCM phối hợp thẩm định hồ sơ gộp');
+  expect(t22).not.toContain('Đơn vị chủ trì lựa chọn nhà thầu');
   expect(await mainText(page)).not.toMatch(BA);
   expect(await primary(page)).toBe(true);
-  await as(page, 'lan');
+  await run('lan', 23, 'Đồng ý danh sách CQCM');
+  await as(page, 'hai');
   await openMine(page, 24);
+  expect(await formText(page, 'Ký phiếu')).toContain('Phiếu yêu cầu thẩm định hồ sơ gộp');
+  expect(await mainText(page)).not.toMatch(BA);
+  expect(await primary(page, 'Ký phiếu yêu cầu thẩm định')).toBe(true);
+  await as(page, 'lan');
+  await openMine(page, 27);
   expect(await formText(page)).toContain('Văn bản gộp BM-00');
-  await expect(page.locator('.tmain .ginfo').first()).not.toContainText('(bước 41');
+  await expect(gi).toContainText('Thẩm định hồ sơ gộp BM-00');
   expect(await primary(page)).toBe(true);
-  await run('thu', 26); await run('hoa', 26);
-  await as(page, 'minh');
-  await openMine(page, 55);
-  expect(await formText(page)).toContain('Khối chữ ký BM-00');
+  await run('thu', 29); await run('hoa', 29);
+  await as(page, 'lan');
+  await openMine(page, 61);
+  expect(await formText(page, 'Ký báo cáo')).toContain('Kết quả thẩm định hồ sơ gộp');
+  await expect(m.locator('[data-preview]', { hasText: 'BM-14' })).toHaveCount(1);
+  expect(await mainText(page)).not.toMatch(BA);
+  expect(await primary(page, 'Ký báo cáo thẩm định BM-14')).toBe(true);
+  await as(page, 'tgd');
+  await openMine(page, 62);
+  expect(await formText(page, 'Ký phê duyệt hồ sơ gộp')).toContain('Khối chữ ký BM-00');
   await expect(m.locator('[data-preview]', { hasText: 'BM-00 Hồ sơ gộp chủ trương và KĐT' })).toHaveCount(1);
   expect(await mainText(page)).not.toMatch(BA);
-  expect(await primary(page, 'Trình ký VOffice')).toBe(true);
-  await as(page, 'tgd');
-  await openMine(page, 56);
-  expect(await primary(page, 'Ký duyệt hồ sơ gộp')).toBe(true);
+  expect(await primary(page, 'Ký phê duyệt hồ sơ gộp')).toBe(true);
   await expect(page).toHaveURL(/#\/kdt\/K%C4%90T-2026-0031$/);
   await expect(m).toContainText('BM-00 Hồ sơ chủ trương và KĐT (văn bản gộp)');
   await expect(m.locator('[data-kdt-profiles] tbody tr')).toHaveCount(1);
@@ -470,18 +536,152 @@ test('Cảnh 9: nhánh gộp BM-00 (KĐT-2026-0031) — dự thảo, Chỉ huy c
   expect(page.errors).toEqual([]);
 });
 
-test('Nhánh phụ cảnh 8: báo cáo BM-14 chưa được thông qua → AI tóm tắt, ĐVĐX hoàn chỉnh → lập lại BM-03 (v2)', async ({ page }) => {
+test('Nhánh phụ cảnh 8: báo cáo BM-14 không được thông qua → AI tóm tắt, ĐVĐX hoàn chỉnh → lập lại BM-03 (v2)', async ({ page }) => {
   await fresh(page, '#/kdt');
   await branch(page, 5);
-  expect(await primary(page, 'Báo cáo chưa được thông qua')).toBe(true);
+  expect(await primary(page, 'Báo cáo không được thông qua')).toBe(true);
   await as(page, 'minh');
-  await openMine(page, 53);
-  const t53 = await formText(page);
-  expect(t53).toContain('AI tóm tắt phản hồi và gợi ý điều chỉnh');
-  expect(t53).toContain('Nội dung thử');
+  await openMine(page, 59);
+  const t59 = await formText(page);
+  expect(t59).toContain('AI tóm tắt phản hồi và gợi ý điều chỉnh');
+  expect(t59).toContain('Nội dung thử');
   expect(await primary(page, 'Hoàn chỉnh hồ sơ')).toBe(true);
-  await openMine(page, 46);
+  await openMine(page, 50);
   expect(await formText(page)).toContain('Báo cáo thẩm định chưa được thông qua');
   await expect(page.locator('[data-preview]', { hasText: 'BM-03' })).toContainText('dự thảo v2');
+  expect(page.errors).toEqual([]);
+});
+
+// T18 B3 — khối ký chung 75–78 (D-34): hộp thoại Trình ký = bước 75; hồ sơ Mật bắt buộc bản cứng (77 → 78, scan bắt buộc); lỗi gửi VOffice → Gửi lại (P-94).
+const toks = (page) => page.evaluate(() => Flow.state.tokens.map((t) => `${t.task}:${t.who}`));
+test('Khối ký chung: hồ sơ Mật ký bản cứng 47 → 77 → 78 (scan bắt buộc) → 48; lỗi gửi VOffice → Gửi lại; không Mật chọn Bản cứng ở bước 48', async ({ page }) => {
+  await fresh(page, '#/kdt');
+  await branch(page, 10);
+  await openForm(page);
+  await page.locator('.vmodal.ef #ok').click();
+  const dlg = page.locator('.overlay', { hasText: 'Trình ký BM-01' });
+  await expect(dlg.locator('.vradio-opt.dis')).toHaveText('VOffice');
+  await expect(dlg.locator('.vradio-opt.on')).toHaveText('Bản cứng');
+  await expect(dlg).toContainText('Hồ sơ Mật');
+  await dlg.locator('#go').click();
+  expect(await lastToast(page)).toContain('ký bản cứng');
+  expect(await toks(page)).toEqual(['77:lan']);
+  await openMine(page, 77);
+  await expect(page.locator('.tmain .ginfo').first()).toContainText('ký BM-01 — bước 47');
+  expect(await formText(page)).toContain('Hình thức ký: Bản cứng — hồ sơ Mật');
+  expect(await mainText(page)).not.toMatch(BA);
+  expect(await primary(page)).toBe(true);
+  expect(await toks(page)).toEqual(['78:minh']);
+  await as(page, 'minh');
+  await openMine(page, 78);
+  expect(await primary(page)).toBe(true);
+  expect(await lastToast(page)).toContain('Bản scan BM-01 đã ký');
+  expect(await toks(page)).toEqual(['78:minh']);
+  await closeForm(page);
+  await uploadReq(page, 'kyScan_');
+  expect(await primary(page)).toBe(true);
+  expect(await toks(page)).toEqual(['48:tgd']);
+  // Quy trình của hồ sơ: 77, 78 đã xong; hồ sơ Mật không qua 75–76. Chi tiết hồ sơ ghi Mật: Có.
+  expect(await page.evaluate(() => [75, 76, 77, 78].map(Flow.taskStatus))).toEqual(['na', 'na', 'done', 'done']);
+  await page.evaluate(() => { location.hash = '#/ho-so-kdt/' + encodeURIComponent(Flow.state.code); });
+  await expect(page.locator('main')).toContainText('MậtCó');
+
+  // Lỗi gửi VOffice (P-94): việc Gửi lại cho người trình, gửi lại thành công → bước 48.
+  await branch(page, 11);
+  expect(await primary(page)).toBe(true);
+  expect(await toks(page)).toEqual(['76:lan']);
+  await openMine(page, 76);
+  expect(await formText(page)).toContain('Gửi VOffice không thành công');
+  expect(await primary(page, 'Gửi lại VOffice')).toBe(true);
+  expect(await toks(page)).toEqual(['48:tgd']);
+  // Không Mật: TGĐ chọn Bản cứng ở hộp thoại → 77 cho TGĐ.
+  await as(page, 'tgd');
+  await openMine(page, 48);
+  await openForm(page);
+  await page.locator('.vmodal.ef #ok').click();
+  const d48 = page.locator('.overlay', { hasText: 'Trình ký BM-01' });
+  await expect(d48.locator('.vradio-opt.on')).toHaveText('VOffice');
+  await d48.locator('[data-mode="hard"]').click();
+  await expect(d48).toContainText('bước 77');
+  await d48.locator('#go').click();
+  expect(await toks(page)).toEqual(['77:tgd']);
+  expect(page.errors).toEqual([]);
+});
+
+// T18 B4 — tuyến Tập đoàn 63–74 (người dùng mở D-8, 12/10). Người Tập đoàn = tài khoản giả lập "td" (P-96).
+test('Tuyến Tập đoàn: công văn 64 → TGĐ VHT ký 65 → các Ban nhận xét 67 → tiếp thu 68 → ký trình lại 69 → Ban ĐTXD chưa đạt → 68; TGĐ Tập đoàn ký chủ trương → lập hồ sơ KĐT', async ({ page }) => {
+  await fresh(page, '#/kdt');
+  await branch(page, 9);
+  const f64 = await formText(page);
+  expect(f64).toContain('Hồ sơ trình Tập đoàn: Hồ sơ chủ trương KĐT');
+  expect(f64).toContain('Bộ hồ sơ gửi Tập đoàn');
+  expect(await mainText(page)).not.toMatch(BA);
+  expect(await previewText(page, 'CV-TD')).toContain('Kính gửi: Tổng Giám đốc Tập đoàn');
+  expect(await primary(page)).toBe(true);
+  expect(await toks(page)).toEqual(['65:tgd']);
+  await as(page, 'tgd');
+  await openMine(page, 65);
+  await openForm(page);
+  await page.locator('.vmodal.ef #ok').click();
+  const dlg = page.locator('.overlay', { hasText: 'Trình ký Công văn trình Tập đoàn' });
+  await expect(dlg.locator('.vradio-opt.on')).toHaveText('VOffice');
+  await dlg.locator('#go').click();
+  expect(await toks(page)).toEqual(['67:td']);
+  // Các Ban Tập đoàn (tài khoản giả lập) gửi phiếu nhận xét BM-09 (chủ trương).
+  await as(page, 'td');
+  await openMine(page, 67);
+  expect(await formText(page)).toContain('Phiếu nhận xét BM-09 của các Ban chuyên môn Tập đoàn');
+  expect(await primary(page)).toBe(true);
+  expect(await toks(page)).toEqual(['68:minh']);
+  await as(page, 'minh');
+  await openMine(page, 68);
+  expect(await formText(page)).toContain('Báo cáo giải trình, tiếp thu ý kiến Tập đoàn');
+  expect(await previewText(page, 'BM-06')).toContain('Ban Tài chính — Tổng mức vốn');
+  expect(await primary(page)).toBe(true);
+  expect(await toks(page)).toEqual(['69:tgd']);
+  await as(page, 'tgd');
+  await openMine(page, 69);
+  expect(await primary(page)).toBe(true);
+  expect(await toks(page)).toEqual(['70:td']);
+  // Ban ĐTXD kiểm tra chưa đạt → trả trực tiếp ĐVĐX, banner ghi lý do.
+  await as(page, 'td');
+  await openMine(page, 70);
+  expect(await primary(page, 'Chưa đạt')).toBe(true);
+  expect(await toks(page)).toEqual(['68:minh']);
+  await as(page, 'minh');
+  await openMine(page, 68);
+  const f68 = await openForm(page);
+  await expect(f68.locator('.banner-moved, .banner-bad').first()).toContainText('Ban ĐTXD Tập đoàn yêu cầu bổ sung: “Nội dung thử”');
+  await closeForm(page);
+  // TGĐ Tập đoàn ký chủ trương BM-01 → 74 lưu kết quả → về lập hồ sơ KĐT (49 → 50).
+  await branch(page, 14);
+  expect(await formText(page)).toContain('Ký trực tiếp Tờ trình BM-01');
+  expect(await primary(page)).toBe(true);
+  expect(await toks(page)).toEqual(['50:minh']);
+  await page.evaluate(() => { location.hash = '#/ho-so-kdt/' + encodeURIComponent(Flow.state.code); });
+  const main = page.locator('main');
+  await expect(main).toContainText('CV-TD Công văn trình Tập đoàn (đã ký)');
+  await expect(main).toContainText('BM-01 Tờ trình chủ trương KĐT (đã phê duyệt) — cấp Tập đoàn');
+  expect(await page.evaluate(() => EVars.doc('BM-01').html)).toContain('Tổng Giám đốc Tập đoàn · Đã ký');
+  expect(page.errors).toEqual([]);
+});
+
+test('Tuyến Tập đoàn: hồ sơ gộp KĐT-2026-0031 — Ban ĐTXD lập BM-14 + dự thảo BM-18 (72), TGĐ Tập đoàn ký (73) → hoàn tất phê duyệt cấp Tập đoàn', async ({ page }) => {
+  await fresh(page, '#/kdt');
+  await branch(page, 15);
+  expect(await page.evaluate(() => Flow.state.persona)).toBe('td');
+  expect(await formText(page)).toContain('Cơ quan chủ trì thẩm định: Ban Đầu tư – Xây dựng Tập đoàn');
+  expect(await primary(page)).toBe(true);
+  expect(await toks(page)).toEqual(['73:td']);
+  await openMine(page, 73);
+  expect(await formText(page)).toContain('Ký ban hành Quyết định BM-18');
+  expect(await primary(page)).toBe(true);
+  expect(await toks(page)).toEqual([]);
+  expect(await page.evaluate(() => Flow.state.status)).toBe('approved');
+  await page.evaluate(() => { location.hash = '#/kdt'; });
+  await expect(page.locator('.vtable tbody tr', { hasText: 'KĐT-2026-0031' }).locator('.vbadge').first()).toHaveText('Đã phê duyệt');
+  await page.evaluate(() => { location.hash = '#/ho-so-kdt/' + encodeURIComponent(Flow.state.code); });
+  await expect(page.locator('main')).toContainText('BM-18 Quyết định phê duyệt KĐT — cấp Tập đoàn');
+  expect(await page.evaluate(() => EVars.doc('BM-18').html)).toContain('QĐ-VTG · Tổng Giám đốc Tập đoàn');
   expect(page.errors).toEqual([]);
 });

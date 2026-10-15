@@ -133,7 +133,8 @@ test('SCR-27: Tìm kiếm nâng cao ĐXMS — Trạng thái, Nhiệm vụ / Đ�
   await page.locator('[data-xadv] button[type="submit"]').click();
   const rows = page.locator('main .vtable tbody tr');
   expect(await rows.count()).toBeGreaterThan(0);
-  for (const t of await rows.locator('td:nth-child(3)').allInnerTexts()) expect(t).toBe('Đã phê duyệt');
+  // T21 D-40: ĐXMS đã có hồ sơ Điều chỉnh hoàn thành ghi thêm số lần điều chỉnh.
+  for (const t of await rows.locator('td:nth-child(3)').allInnerTexts()) expect(t).toMatch(/^Đã phê duyệt( \(điều chỉnh lần \d+\))?$/);
   await page.locator('[data-xl="reset"]').click();
   await page.locator('[data-vsel="xf-nv"]').click();
   await page.locator('.vsel-panel [data-opt="DA-2026-002"]').click();

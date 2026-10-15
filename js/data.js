@@ -21,13 +21,21 @@
     { id: 'binh', name: 'Hoàng Quốc Bình', short: 'Bình', role: 'Phó Tổng Giám đốc', unit: 'Ban Giám đốc', urd: 'R-PTGD', actor: 'A22' },
     { id: 'tgd', name: 'Ngô Đình Khôi', short: 'TGĐ Khôi', role: 'Tổng Giám đốc VHT', unit: 'Ban Giám đốc', urd: 'R-TGD-VHT', actor: 'A06' },
     { id: 'qt', name: 'Đặng Thu Trang', short: 'Trang', role: 'Quản trị hệ thống', unit: 'Ban Công nghệ thông tin', urd: 'R-QTHT', actor: 'A21' },
+    /* T17 (D-27): người thứ hai của vai trò để demo chọn nhiều người / thay người trong luồng mua sắm (phương án Gộp). */
+    { id: 'ngoc', name: 'Phan Thị Ngọc', short: 'Ngọc', role: 'Chuyên quản ĐVĐX', unit: 'Trung tâm Vô tuyến', urd: 'R-DVDX-CQ', actor: 'A01' },
+    { id: 'son', name: 'Lý Văn Sơn', short: 'Sơn', role: 'Chỉ huy ĐVĐX', unit: 'Phó Giám đốc Trung tâm Vô tuyến', urd: 'R-DVDX-CH', actor: 'A02' },
+    { id: 'mai', name: 'Đinh Thị Mai', short: 'Mai', role: 'Chuyên viên TTMS', unit: 'Trung tâm Mua sắm', urd: 'R-TTMS', actor: 'A04' },
     /* Tài khoản demo toàn quyền (all): thấy mọi việc đang chờ, xử lý thay mọi vai, vào mọi màn quản trị. Không phải vai nghiệp vụ. */
     { id: 'admin', name: 'Tài khoản toàn quyền', short: 'Toàn quyền', role: 'Toàn quyền (demo)', unit: 'Tài khoản demo — không phải vai nghiệp vụ', urd: '—', actor: '—', all: true },
-    { id: 'td', name: 'Ban ĐTXD Tập đoàn', short: 'Tập đoàn', role: 'Ban ĐTXD + TGĐ Tập đoàn (giả lập)', unit: 'Tập đoàn — không đăng nhập thật', urd: 'R-BAN-DTXD, R-TGD-TD', actor: 'A08', simulated: true },
+    { id: 'td', name: 'Ban ĐTXD Tập đoàn', short: 'Tập đoàn', role: 'Các Ban chuyên môn, Ban ĐTXD, TGĐ Tập đoàn (giả lập)', unit: 'Tập đoàn — không đăng nhập thật', urd: 'R-BAN-DTXD, R-TGD-TD', actor: 'A08', simulated: true },
   ];
 
   /* Vai có cờ all (Tài khoản toàn quyền) qua mọi kiểm tra quyền và thấy toàn bộ dữ liệu. */
   D.allAccess = (pid) => !!(D.personas.find((p) => p.id === pid) || {}).all;
+  /* Vai trò thực hiện (T17 D-27) = roleCode trong Candidate Users của task BPMN; mã vai trò lấy theo mã vai URD của persona.
+     Người thuộc vai trò = persona cùng mã (thật: IAM người dùng theo vai trò); bỏ tài khoản toàn quyền và Tập đoàn giả lập. */
+  D.roleOf = (pid) => (D.personas.find((p) => p.id === pid) || {}).urd || null;
+  D.usersOfRole = (code) => D.personas.filter((p) => p.urd === code && !p.all && !p.simulated);
 
   /* CQCM tham gia góp ý hồ sơ mẫu. `doer` làm task 16/33/34/42, `signer` thông qua ở task 17. */
   D.cqcm = [
@@ -228,18 +236,26 @@
   D.flow = F;
 
   /*
-   * Luồng MS13-TO BE (plan KĐT §1.2; mũi tên trong BPMN_FLOWS.MS13). B2: cụm A–B (task 1–13) + cổng phân luồng, cổng báo giá, cổng gộp.
-   * B3: cụm C (14–16), F (36–44) và khối thẩm định E (22–35) — nhánh hai giai đoạn chạy khối E trong quy trình con 41.
-   * B4: cụm G (45–54, khối E chạy lại trong quy trình con 49), nhánh gộp D (17–21 → khối E) và ký H cấp VHT (55–56).
+   * Luồng MS13 bản 12/10 (T18, BPMN-DTMS `ĐTMS-121026.drawio` trang MS13, DG-MS13; mũi tên trong BPMN_FLOWS.MS13 — 78 bước, 36 cổng).
+   * Cấp VHT dựng đủ (D-35 giữ D-8): nhánh gộp BM-00 (18–24 → khối chung → 61–62) và hai giai đoạn BM-01 (39–48) → BM-03 (49–60).
+   * Khối kiểm tra – thẩm định – giải trình – họp 25–38 là khối CHUNG theo vòng (D-32, không còn quy trình con 41 / 49): vào từ 24 / 45 / 54,
+   * vòng = vars.td (GOP = BM-00, CT = BM-01, KDT = BM-03); bộ đếm chk / meet theo vòng; G12 / G16 đọc vòng để quay về / đi tiếp đúng nhánh.
+   * Bước 13 (service) ghi cấp duyệt chủ trương / KĐT từ danh mục Phân cấp thẩm quyền KĐT (SCR-100, D-33); G23 / G27 / G30 tính lại rồi rẽ VHT / Tập đoàn.
+   * Tuyến Tập đoàn 63–74 (T18 B4, người dùng mở D-8 12/10): cổng cấp duyệt ra Tập đoàn ghi loại hồ sơ trình (vars.tdKind = CT / KDT / GOP) → 63 AI dự thảo công văn
+   * → 64 → 65 TGĐ VHT ký công văn → 66 chuyển → 67 các Ban Tập đoàn nhận xét → 68 tiếp thu → 69 ký trình lại → 70 Ban ĐTXD kiểm tra → G34 chủ trương riêng? 71 : 72
+   * → 73 TGĐ Tập đoàn ký → 74 lưu kết quả → G36 chủ trương → 49 lập hồ sơ KĐT; KĐT / gộp → kết thúc. Khối ký chung 75–78 (D-34): nút `sign` của bước ký (P-91) đi qua khối
+   * (Flow kySign: G1 Mật → 77; không Mật → 75 → G2 → 76 VOffice | 77 → 78; G3 về đích của nút — vars.ky.to).
    * Khoá như D.flow, thêm:
-   *  when(vars, ui) — cổng chọn nhánh theo biến / lựa chọn trên màn (g4 "Cả 02 xác nhận đều OK?", g11 "Cần sửa đổi hoặc giải trình?")
-   *  sub         — bước Quy trình con (41, 49): token của khối E mang số bước này
-   *  td          — giai đoạn thẩm định của bộ đếm, văn bản, phiên bản (GOP hồ sơ gộp, CT chủ trương, KDT hồ sơ KĐT); cổng gộp đặt GOP / CT, bước 45 đặt KDT
-   *  endSub      — ra khỏi quy trình con; bump — tăng bộ đếm của giai đoạn (chk = vòng check ở bước 28, meet = lần họp ở bước 30)
+   *  when(vars, ui) — cổng chọn nhánh theo biến / lựa chọn trên màn
+   *  run(vars, ui)  — việc của hệ thống khi đi qua cổng (đọc kết quả kiểm tra giả lập trên ui rồi xoá, để lượt sau không lặp)
+   *  td          — mở vòng thẩm định (45 = CT, 54 = KDT; vòng GOP mở ở bước 24, cổng gộp G10 đặt sẵn vòng của nhánh)
+   *  bump        — tăng bộ đếm của vòng (chk = lượt ĐVĐX bổ sung / giải trình ở bước 31, meet = lần họp ở bước 33)
+   *  auth        — bước 13: xác định thẩm quyền (Flow.kdtAuth) · capGate — cổng cấp duyệt (CT / KDT / GOP) tính lại thẩm quyền rồi rẽ
    *  groupGate   — cổng "Tổng mức vốn thực tế thuộc MS13?" (Flow.kdtCheck: ghi Nhóm KĐT + nhánh hồ sơ dự kiến)
-   *  mergeGate   — cổng "Mức vốn MS13 AND Nguyên chiếc AND Trang bị nội bộ?" (ghi nhánh hồ sơ)
-   *  wip         — task chưa dựng màn: không có nút hành động, tua nhanh dừng ở đây (B4 không còn task wip)
-   * Cổng "Báo giá đạt yêu cầu?" nằm sau phân luồng (§1.2a mục 1): ĐVĐX ghi kết quả kiểm tra báo giá ở task 10 (quoteOk), cổng đọc lại sau 11 ‖ 12.
+   *  mergeGate   — cổng "Đủ 03 điều kiện lập hồ sơ gộp BM-00?" (ghi nhánh hồ sơ, vòng)
+   *  wip         — bước chưa dựng: token đứng yên, không có nút hành động, tua nhanh dừng ở đây (MS13 bản 12/10 không còn bước nào)
+   *  tdResult    — 74 nhận kết quả phê duyệt Tập đoàn: ghi văn bản đã ký theo loại hồ sơ trình (vars.tdDocs)
+   *  vo          — 76 gửi VOffice (service; lỗi gửi giả lập → token chờ Gửi lại) · kyReturn — G3 trở về bước ký của luồng chính
    */
   const K = {
     1: { who: 'minh', scr: 'SCR-03', next: 2, nlv: 0.5 },
@@ -249,122 +265,169 @@
     5: { who: 'minh', scr: 'SCR-05', nlv: 1, choices: [
       { label: 'Xác nhận danh mục', to: 6, main: true, set: { basisOk: true } },
       { label: 'Thiếu thông tin căn cứ', to: 6, kind: 'secondary', set: { basisOk: false } }] },
+    /* 6 Kiểm tra tồn kho (service) → G4 "Đủ thông tin căn cứ?". */
     6: { varGate: { basisOk: { true: 7, false: 4 } } },
     7: { who: 'minh', scr: 'SCR-06', next: 8, nlv: 1 },
     8: { who: 'minh', scr: 'SCR-07', next: 9, nlv: 0.5 },
     9: { next: 10 },
     10: { who: 'minh', scr: 'SCR-07', nlv: 3, choices: [
-      { label: 'Chốt tổng mức vốn, gửi xác nhận', to: 'g2', main: true, set: { quoteOk: true } },
-      { label: 'Báo giá chưa đạt yêu cầu', to: 'g2', kind: 'secondary', reason: true, set: { quoteOk: false } }] },
-    /* AND: Ban Tài chính xác nhận TSCĐ (11) ‖ TTMS xác nhận 04 yếu tố (12). */
-    g2: { gw: true, forkTo: [{ task: 11, who: 'thu' }, { task: 12, who: 'lan' }], group: 'xn' },
+      { label: 'Chốt tổng mức vốn, gửi xác nhận', to: 'g5', main: true, set: { quoteOk: true } },
+      { label: 'Báo giá chưa đạt yêu cầu', to: 'g5', kind: 'secondary', reason: true, set: { quoteOk: false } }] },
+    /* G5 "Báo giá đạt yêu cầu?" (bản 12/10 đặt ngay sau 10): lựa chọn ở bước 10 và kết quả AI kiểm tra báo giá (vars.quoteAi, DX-03). */
+    g5: { gw: true, when: (v) => (v.quoteOk && v.quoteAi !== false ? 'g6' : 8) },
+    /* G6 AND: Ban Tài chính xác nhận TSCĐ (11) ‖ TTMS xác nhận 04 yếu tố (12); G7 chờ đủ hai kết quả; G8 "Cả 02 xác nhận đều OK?". */
+    g6: { gw: true, forkTo: [{ task: 11, who: 'thu' }, { task: 12, who: 'lan' }], group: 'xn' },
     11: { who: 'thu', scr: 'SCR-57', nlv: 1, choices: [
-      { label: 'Xác nhận OK', to: 'g3', main: true, set: { tscdOk: true } },
-      { label: 'Không OK', to: 'g3', kind: 'danger', reason: true, set: { tscdOk: false } }] },
+      { label: 'Xác nhận OK', to: 'g7', main: true, set: { tscdOk: true } },
+      { label: 'Không OK', to: 'g7', kind: 'danger', reason: true, set: { tscdOk: false } }] },
     12: { who: 'lan', scr: 'SCR-58', nlv: 1, choices: [
-      { label: 'Xác nhận OK', to: 'g3', main: true, set: { factorsOk: true } },
-      { label: 'Không OK', to: 'g3', kind: 'danger', reason: true, set: { factorsOk: false } }] },
-    g3: { gw: true, join: 'xn', next: 'g4' },
-    g4: { gw: true, when: (v) => (v.tscdOk && v.factorsOk ? 'g6' : 13) },
-    13: { next: 10 },
-    g6: { gw: true, groupGate: { yes: 'g5', no: 'X_MS14' } },
-    /* DX-03: "Báo giá đạt yêu cầu?" đọc lựa chọn ở bước 10 và kết quả AI kiểm tra báo giá (vars.quoteAi). */
-    g5: { gw: true, when: (v) => (v.quoteOk && v.quoteAi !== false ? 14 : 8) },
-    /* Ô chữ "MS14,15 – Chuyển xử lý" (không phải End): kết thúc hồ sơ MS13 "Đã chuyển luồng", hồ sơ mới của cùng KĐT theo nhóm đúng (P-53). */
+      { label: 'Xác nhận OK', to: 'g7', main: true, set: { factorsOk: true } },
+      { label: 'Không OK', to: 'g7', kind: 'danger', reason: true, set: { factorsOk: false } }] },
+    g7: { gw: true, join: 'xn', next: 'g8' },
+    g8: { gw: true, when: (v) => (v.tscdOk && v.factorsOk ? 13 : 14) },
+    /* 13 Xác định thẩm quyền phê duyệt (service, D-33) → G9 "Tổng mức vốn thực tế thuộc MS13?". */
+    13: { auth: true, next: 'g9' },
+    14: { next: 10 },
+    g9: { gw: true, groupGate: { yes: 15, no: 'X_MS14' } },
+    /* G9 "Không thuộc MS13" → "Chuyển xử lý theo MS14 / MS15": kết thúc hồ sơ MS13 "Đã chuyển luồng", hồ sơ mới của cùng KĐT theo nhóm đúng (P-53). */
     X_MS14: { gw: true, moves: true, next: 'END_MOVED' },
-    14: { who: 'minh', scr: 'SCR-59', next: 15, nlv: 2, actionLabel: 'Hoàn thành dự thảo' },
-    15: { next: 16 },
-    16: { who: 'minh', scr: 'SCR-59', next: 'g7', nlv: 1, actionLabel: 'Hoàn thiện đề xuất' },
-    g7: { gw: true, mergeGate: { yes: 17, no: 36 } },
-    /* D. Nhánh gộp BM-00: AI lập dự thảo (17) → ĐVĐX rà soát (18) → xin ý kiến Chỉ huy (19, 20 — BPMN không có cổng Đồng ý / không:
-       ĐVĐX tiếp thu ý kiến ở bước 21) → chọn CQCM (21) → TTMS nhận hồ sơ ở bước 24 (khối E, giai đoạn GOP). */
-    17: { next: 18 },
-    18: { who: 'minh', scr: 'SCR-59', next: 19, nlv: 1, actionLabel: 'Hoàn thành dự thảo BM-00' },
-    19: { who: 'minh', scr: 'SCR-59', next: 20, nlv: 0.5, actionLabel: 'Gửi xin ý kiến Chỉ huy' },
-    20: { who: 'hai', scr: 'SCR-59', next: 21, nlv: 1, actionLabel: 'Gửi ý kiến cho đơn vị' },
-    21: { who: 'minh', scr: 'SCR-60', next: 24, nlv: 0.5, actionLabel: 'Xác nhận danh sách CQCM, gửi thẩm định' },
-    /* F. Chủ trương BM-01: lập tờ trình + Checklist 01, kiểm tra độc lập, chọn CQCM / đơn vị chủ trì, trình; 40 (HT/AI) chỉ vẽ nhánh Đạt —
-       Không đạt trả lại bước 39 (P-62, DX-01 — task-forms.js). */
-    36: { who: 'minh', scr: 'SCR-59', next: 37, nlv: 2, actionLabel: 'Hoàn thành tờ trình chủ trương' },
-    37: { who: 'minh', scr: 'SCR-59', next: 38, nlv: 0.5, actionLabel: 'Xác nhận hồ sơ đủ điều kiện trình' },
-    38: { who: 'minh', scr: 'SCR-60', next: 39, nlv: 0.5, actionLabel: 'Xác nhận danh sách CQCM' },
-    39: { who: 'minh', scr: 'SCR-60', next: 40, nlv: 0.5, actionLabel: 'Trình hồ sơ' },
-    40: { next: 41 },
-    41: { gw: true, sub: 41, td: 'CT', next: 24 },
-    /* E. Khối thẩm định (vẽ cho hồ sơ gộp; 41 / 49 chạy lại). TTMS nhận hồ sơ ở bước 24: cổng "TTMS rà soát hợp lệ & phê duyệt danh sách CQCM?"
-       và "Hồ sơ đủ điều kiện thẩm định?" (không có task riêng) là hai nút trả lại của bước này. */
-    22: { next: 23 },
-    23: { who: 'minh', scr: 'SCR-62', next: 24, nlv: 1, actionLabel: 'Gửi lại hồ sơ' },
-    24: { who: 'lan', scr: 'SCR-61', nlv: 1, choices: [
-      { label: 'Hoàn thành thẩm định', to: 'g10', main: true },
-      { label: 'Hồ sơ chưa đủ điều kiện thẩm định', to: 22, kind: 'secondary', reason: true },
-      { label: 'Danh sách CQCM chưa đạt — trả lại', to: 'gBack', kind: 'danger', reason: true }] },
-    gBack: { gw: true, when: (v) => (v.sub === 41 ? 'x41b' : v.sub === 49 ? 'x49b' : 21) },
-    x41b: { gw: true, endSub: true, next: 38 },
-    x49b: { gw: true, endSub: true, next: 48 },
-    /* "ĐVĐX cần ý kiến CQCM liên quan?" = đã chọn CQCM phối hợp (bước 38 / 21 / 48). */
-    g10: { gw: true, when: () => (window.Flow.cqcmSel().length ? 25 : 'g11') },
-    25: { fork: 'cqcm', to: 26 },
-    26: { who: 'cqcm:doer', scr: 'SCR-61', next: 'j26', nlv: 1, actionLabel: 'Gửi ý kiến thẩm định' },
-    j26: { gw: true, join: 'cqcm', next: 'g11' },
-    g11: { gw: true, when: (v, u) => (D.kdtNeedFix(v, u) ? 27 : v.sub === 41 ? 'x41' : v.sub === 49 ? 'x49' : 'g22') },
-    27: { next: 28 },
-    /* "Đã thống nhất nội dung?" sau bước 28: ĐVĐX tiếp thu, bổ sung toàn bộ → thống nhất, TTMS rà soát lại (24); còn giải trình, bảo lưu → chưa. */
-    28: { who: 'minh', scr: 'SCR-62', nlv: 1, bump: 'chk', choices: [
-      { label: 'Bổ sung hồ sơ theo ý kiến', to: 'g12', set: { agreed: true, directed: false }, mainWhen: (v) => !!v.directed || !D.kdtCnt(v, 'chk') },
-      { label: 'Giải trình, bảo lưu ý kiến', to: 'g12', kind: 'secondary', set: { agreed: false, directed: false }, mainWhen: (v) => !v.directed && D.kdtCnt(v, 'chk') > 0 }] },
-    g12: { gw: true, when: (v) => (v.agreed ? 24 : 'g13') },
-    /* "Số lần check thẩm định gián tiếp <= 02?" — theo mũi tên đếm lần họp: lần 1, 2 → họp; đủ 02 lần → báo cáo (P-54). */
-    g13: { gw: true, when: (v) => (D.kdtCnt(v, 'meet') < 2 ? 29 : 34) },
-    29: { who: 'lan', scr: 'SCR-62', nlv: 1, choices: [
-      { label: 'Đã thống nhất sau họp', to: 30, main: true, set: { meetOk: true } },
-      { label: 'Chưa thống nhất', to: 30, kind: 'secondary', reason: true, set: { meetOk: false } }] },
-    30: { bump: 'meet', next: 'g14' },
-    g14: { gw: true, when: (v) => (v.meetOk ? 31 : 'g13') },
-    31: { who: 'minh', scr: 'SCR-62', next: 32, nlv: 0.5, actionLabel: 'Xác nhận nội dung điều chỉnh' },
-    32: { who: 'hai', scr: 'SCR-62', next: 33, nlv: 0.5, actionLabel: 'Xác nhận, cho phép cập nhật hồ sơ' },
-    33: { who: 'minh', scr: 'SCR-62', next: 24, nlv: 1, actionLabel: 'Cập nhật hồ sơ, gửi rà soát lại' },
-    34: { who: 'lan', scr: 'SCR-62', next: 35, nlv: 0.5, actionLabel: 'Gửi báo cáo Thủ trưởng' },
-    35: { who: 'tgd', scr: 'SCR-62', nlv: 1, choices: [
-      { label: 'Kết luận, chỉ đạo xử lý tiếp', to: 28, main: true, reason: true, set: { directed: true } },
+    15: { who: 'minh', scr: 'SCR-59', next: 16, nlv: 2, actionLabel: 'Hoàn thành dự thảo' },
+    16: { next: 17 },
+    17: { who: 'minh', scr: 'SCR-59', next: 'g10', nlv: 1, actionLabel: 'Hoàn thiện đề xuất' },
+    g10: { gw: true, mergeGate: { yes: 18, no: 39 } },
+    /* BM-00: AI dự thảo (18) → lập (19) → xin ý kiến Chỉ huy (20, 21 — không có nhánh trả lại, P-92) → chọn CQCM (22) → CQCM chủ trì xác nhận DS (23)
+       → Chỉ huy ký phiếu yêu cầu thẩm định, mở vòng BM-00 (24). */
+    18: { next: 19 },
+    19: { who: 'minh', scr: 'SCR-59', next: 20, nlv: 1, actionLabel: 'Hoàn thành dự thảo BM-00' },
+    20: { who: 'minh', scr: 'SCR-59', next: 21, nlv: 0.5, actionLabel: 'Gửi xin ý kiến Chỉ huy' },
+    21: { who: 'hai', scr: 'SCR-59', next: 22, nlv: 1, actionLabel: 'Gửi ý kiến cho đơn vị' },
+    22: { who: 'minh', scr: 'SCR-60', next: 23, nlv: 0.5, actionLabel: 'Gửi danh sách CQCM' },
+    23: { who: 'lan', scr: 'SCR-60', nlv: 1, choices: [
+      { label: 'Đồng ý danh sách CQCM', to: 24, main: true },
+      { label: 'Không đồng ý — chọn lại', to: 22, kind: 'danger', reason: true }] },
+    24: { who: 'hai', scr: 'SCR-21', nlv: 0.5, choices: [
+      { label: 'Ký phiếu yêu cầu thẩm định', to: 'g13', main: true, sign: 'Phiếu yêu cầu thẩm định', set: { td: 'GOP' } }] },
+    /* Khối chung 25–38 (D-32). G13 "Hồ sơ đủ điều kiện thẩm định?" — kiểm tra của hệ thống khi mở vòng (giả lập: ui.inc[vòng] đặt từ Công cụ demo / nhánh phụ). */
+    g13: { gw: true, run: (v, u) => { const k = v.td || 'GOP'; v.inc = !!(u.inc && u.inc[k]); if (v.inc) delete u.inc[k]; }, when: (v) => (v.inc ? 25 : 27) },
+    25: { next: 26 },
+    26: { who: 'minh', scr: 'SCR-62', next: 'g12', nlv: 1, actionLabel: 'Đã sửa hồ sơ' },
+    /* G12 "Hồ sơ cần sửa thuộc vòng nào?" → chọn lại CQCM đúng vòng. */
+    g12: { gw: true, when: (v) => ({ GOP: 22, CT: 41, KDT: 52 })[v.td || 'GOP'] },
+    27: { who: 'lan', scr: 'SCR-61', next: 'g14', nlv: 1, actionLabel: 'Hoàn thành thẩm định' },
+    /* G14 "Cần ý kiến CQCM liên quan?" = đã chọn CQCM phối hợp (bước 22 / 41 / 52). */
+    g14: { gw: true, when: () => (window.Flow.cqcmSel().length ? 28 : 'g15') },
+    28: { fork: 'cqcm', to: 29 },
+    29: { who: 'cqcm:doer', scr: 'SCR-61', next: 'j29', nlv: 1, actionLabel: 'Gửi ý kiến thẩm định' },
+    j29: { gw: true, join: 'cqcm', next: 'g15' },
+    g15: { gw: true, when: (v, u) => (D.kdtNeedFix(v, u) ? 30 : 'g16') },
+    /* G16 "Hồ sơ đã thống nhất thuộc vòng nào?": BM-01 → 46, BM-03 → 55, BM-00 → G30 cấp duyệt hồ sơ gộp. */
+    g16: { gw: true, when: (v) => ({ GOP: 'g30', CT: 46, KDT: 55 })[v.td || 'GOP'] },
+    30: { next: 31 },
+    /* G17 "Đã thống nhất nội dung?": ĐVĐX bổ sung toàn bộ → thống nhất, thẩm định lại (27); còn giải trình, bảo lưu → chưa. */
+    31: { who: 'minh', scr: 'SCR-62', nlv: 1, bump: 'chk', choices: [
+      { label: 'Bổ sung hồ sơ theo ý kiến', to: 'g17', set: { agreed: true, directed: false }, mainWhen: (v) => !!v.directed || !D.kdtCnt(v, 'chk') },
+      { label: 'Giải trình, bảo lưu ý kiến', to: 'g17', kind: 'secondary', set: { agreed: false, directed: false }, mainWhen: (v) => !v.directed && D.kdtCnt(v, 'chk') > 0 }] },
+    g17: { gw: true, when: (v) => (v.agreed ? 27 : 'g18') },
+    /* G18 "Vòng hiện tại đã họp dưới 02 lần?" — đếm riêng mỗi vòng, giữ khi bổ sung / trình lại. */
+    g18: { gw: true, when: (v) => (D.kdtCnt(v, 'meet') < 2 ? 32 : 37) },
+    32: { who: 'lan', scr: 'SCR-62', nlv: 1, choices: [
+      { label: 'Đã thống nhất sau họp', to: 33, main: true, set: { meetOk: true } },
+      { label: 'Chưa thống nhất', to: 33, kind: 'secondary', reason: true, set: { meetOk: false } }] },
+    33: { bump: 'meet', next: 'g19' },
+    g19: { gw: true, when: (v) => (v.meetOk ? 34 : 'g18') },
+    34: { who: 'minh', scr: 'SCR-62', next: 35, nlv: 0.5, actionLabel: 'Xác nhận nội dung điều chỉnh' },
+    35: { who: 'hai', scr: 'SCR-62', next: 36, nlv: 0.5, actionLabel: 'Xác nhận, cho phép cập nhật hồ sơ' },
+    36: { who: 'minh', scr: 'SCR-62', next: 27, nlv: 1, actionLabel: 'Cập nhật hồ sơ, gửi thẩm định lại' },
+    37: { who: 'lan', scr: 'SCR-62', next: 38, nlv: 0.5, actionLabel: 'Gửi báo cáo Thủ trưởng' },
+    38: { who: 'tgd', scr: 'SCR-62', nlv: 1, choices: [
+      { label: 'Kết luận, chỉ đạo xử lý tiếp', to: 31, main: true, reason: true, set: { directed: true } },
       { label: 'Chỉ đạo dừng', to: 'END_OTHER', kind: 'danger', reason: true }] },
-    x41: { gw: true, endSub: true, next: 42 },
-    /* Ký BM-01 (ký trực tiếp, VOffice): TTMS ký thẩm định trên tờ trình (42); cấp VHT (P-56) → Thủ trưởng ký duyệt (44).
-       Không ký: chỉ đạo dừng → kết thúc; chỉ đạo xử lý → về cổng gộp sau 16 (§1.2a mục 5, P-61). */
-    42: { who: 'lan', scr: 'SCR-21', nlv: 0.5, choices: [
-      { label: 'Ký thẩm định trên tờ trình', to: 'g16', main: true, sign: 'BM-01' }] },
-    g16: { gw: true, next: 44 },
-    44: { who: 'tgd', scr: 'SCR-21', nlv: 1, choices: [
-      { label: 'Ký duyệt chủ trương', to: 45, main: true, sign: 'BM-01' },
-      { label: 'Không ký — chỉ đạo xử lý', to: 'g7', kind: 'secondary', reason: true },
-      { label: 'Không ký — chỉ đạo dừng', to: 'END_OTHER', kind: 'danger', reason: true }] },
-    /* G. Hồ sơ KĐT BM-03: AI gợi ý từ chủ trương đã duyệt (45) → lập BM-03 + Checklist 02 (46) → kiểm tra (47) → chọn CQCM (48) → quy trình con 49
-       (khối E, giai đoạn KDT) → cấp VHT (P-56) → BM-14 (51): thông qua → Thủ trưởng ký BM-18 (54); chưa thông qua → AI (52) → hoàn chỉnh (53) → 46.
-       Cổng "Báo cáo được thông qua?" không có task riêng → hai nút của bước 51. Không ký BM-18 → về cổng gộp (G21, theo mũi tên). */
-    45: { td: 'KDT', next: 46 },
-    46: { who: 'minh', scr: 'SCR-64', next: 47, nlv: 2, actionLabel: 'Hoàn thành hồ sơ phê duyệt KĐT' },
-    47: { who: 'minh', scr: 'SCR-64', next: 48, nlv: 0.5, actionLabel: 'Xác nhận hồ sơ đủ điều kiện trình' },
-    48: { who: 'minh', scr: 'SCR-60', next: 49, nlv: 0.5, actionLabel: 'Trình hồ sơ thẩm định KĐT' },
-    49: { gw: true, sub: 49, next: 24 },
-    x49: { gw: true, endSub: true, next: 'g19' },
-    g19: { gw: true, next: 51 },
-    51: { who: 'lan', scr: 'SCR-65', nlv: 1, choices: [
-      { label: 'Trình báo cáo, dự thảo Quyết định', to: 54, main: true },
-      { label: 'Báo cáo chưa được thông qua — yêu cầu hoàn chỉnh', to: 52, kind: 'secondary', reason: true }] },
-    52: { next: 53 },
-    53: { who: 'minh', scr: 'SCR-62', next: 46, nlv: 1, actionLabel: 'Hoàn chỉnh hồ sơ' },
-    54: { who: 'tgd', scr: 'SCR-21', nlv: 1, choices: [
-      { label: 'Ký Quyết định phê duyệt KĐT', to: 'END', main: true, sign: 'BM-18' },
-      { label: 'Không ký — chỉ đạo xử lý', to: 'g7', kind: 'secondary', reason: true }] },
-    /* H. Ký hồ sơ gộp: "Phân cấp: VHT hay xin ý kiến Tập đoàn?" luôn VHT (P-56) → ĐVĐX trình ký (55) → Thủ trưởng ký BM-00 (56).
-       "Kết quả phê duyệt / chỉ đạo?" Không → về cổng gộp (theo mũi tên). */
-    g22: { gw: true, next: 55 },
-    55: { who: 'minh', scr: 'SCR-21', next: 56, nlv: 0.5, actionLabel: 'Trình ký VOffice' },
-    56: { who: 'tgd', scr: 'SCR-21', nlv: 1, choices: [
-      { label: 'Ký duyệt hồ sơ gộp', to: 'END', main: true, sign: 'BM-00' },
-      { label: 'Không ký — chỉ đạo xử lý', to: 'g7', kind: 'secondary', reason: true }] },
+    /* BM-01: lập tờ trình + Checklist 01 (39), kiểm tra (40), chọn CQCM (41), CQCM chủ trì xác nhận DS (42), trình (43),
+       HT/AI kiểm tra (44 → G22: Không đạt → 39, giả lập ui.ai44Fail — P-62), mở vòng BM-01 (45). */
+    39: { who: 'minh', scr: 'SCR-59', next: 40, nlv: 2, actionLabel: 'Hoàn thành tờ trình chủ trương' },
+    40: { who: 'minh', scr: 'SCR-59', next: 41, nlv: 0.5, actionLabel: 'Xác nhận hồ sơ đủ điều kiện trình' },
+    41: { who: 'minh', scr: 'SCR-60', next: 42, nlv: 0.5, actionLabel: 'Gửi danh sách CQCM' },
+    42: { who: 'lan', scr: 'SCR-60', nlv: 1, choices: [
+      { label: 'Đồng ý danh sách CQCM', to: 43, main: true },
+      { label: 'Không đồng ý — chọn lại', to: 41, kind: 'danger', reason: true }] },
+    43: { who: 'minh', scr: 'SCR-60', next: 44, nlv: 0.5, actionLabel: 'Trình hồ sơ' },
+    44: { next: 'g22' },
+    g22: { gw: true, run: (v, u) => { v.aiFail = !!u.ai44Fail; if (u.ai44Fail) u.ai44Fail = false; }, when: (v) => (v.aiFail ? 39 : 45) },
+    45: { td: 'CT', next: 'g13' },
+    /* Thẩm định và hoàn chỉnh chủ trương (46) → G23 cấp duyệt chủ trương: VHT → ký thẩm định (47) → TGĐ VHT ký (48); Tập đoàn → 63.
+       Không đồng ý → G25 ý kiến chỉ đạo: dừng / tiếp tục xử lý (về G10 gộp — 39 hoặc 18). */
+    46: { who: 'lan', scr: 'SCR-61', next: 'g23', nlv: 1, actionLabel: 'Hoàn thành thẩm định chủ trương' },
+    g23: { gw: true, capGate: { of: 'CT', vht: 47, td: 63 } },
+    47: { who: 'lan', scr: 'SCR-21', nlv: 0.5, choices: [
+      { label: 'Ký thẩm định trên tờ trình', to: 48, main: true, sign: 'BM-01' }] },
+    48: { who: 'tgd', scr: 'SCR-21', nlv: 1, choices: [
+      { label: 'Ký phê duyệt chủ trương', to: 49, main: true, sign: 'BM-01' },
+      { label: 'Không đồng ý — chỉ đạo xử lý tiếp', to: 'g10', kind: 'secondary', reason: true },
+      { label: 'Không đồng ý — chỉ đạo dừng', to: 'END_OTHER', kind: 'danger', reason: true }] },
+    /* BM-03: AI (49) → lập (50) → kiểm tra, trình (51) → chọn CQCM (52) → xác nhận DS (53) → mở vòng BM-03 (54) → khối chung → thẩm định (55)
+       → G27 cấp duyệt KĐT: VHT → Chỉ huy ký tờ trình (56) → TTMS ký BM-14 + dự thảo BM-18 (57: không thông qua → 58 → 59 → 50) → TGĐ VHT ký BM-18 (60). */
+    49: { next: 50 },
+    50: { who: 'minh', scr: 'SCR-64', next: 51, nlv: 2, actionLabel: 'Hoàn thành hồ sơ phê duyệt KĐT' },
+    51: { who: 'minh', scr: 'SCR-64', next: 52, nlv: 0.5, actionLabel: 'Xác nhận hồ sơ đủ điều kiện trình' },
+    52: { who: 'minh', scr: 'SCR-60', next: 53, nlv: 0.5, actionLabel: 'Gửi danh sách CQCM' },
+    53: { who: 'lan', scr: 'SCR-60', nlv: 1, choices: [
+      { label: 'Đồng ý danh sách CQCM', to: 54, main: true },
+      { label: 'Không đồng ý — chọn lại', to: 52, kind: 'danger', reason: true }] },
+    54: { td: 'KDT', next: 'g13' },
+    55: { who: 'lan', scr: 'SCR-61', next: 'g27', nlv: 1, actionLabel: 'Hoàn thành thẩm định KĐT' },
+    g27: { gw: true, capGate: { of: 'KDT', vht: 56, td: 63 } },
+    56: { who: 'hai', scr: 'SCR-21', nlv: 0.5, choices: [
+      { label: 'Ký tờ trình phê duyệt KĐT', to: 57, main: true, sign: 'BM-03' }] },
+    57: { who: 'lan', scr: 'SCR-65', nlv: 1, choices: [
+      { label: 'Ký báo cáo thẩm định BM-14, trình dự thảo BM-18', to: 60, main: true, sign: 'BM-14' },
+      { label: 'Báo cáo không được thông qua — yêu cầu hoàn chỉnh', to: 58, kind: 'secondary', reason: true }] },
+    58: { next: 59 },
+    59: { who: 'minh', scr: 'SCR-62', next: 50, nlv: 1, actionLabel: 'Hoàn chỉnh hồ sơ' },
+    60: { who: 'tgd', scr: 'SCR-21', nlv: 1, choices: [
+      { label: 'Ký ban hành Quyết định phê duyệt KĐT', to: 'END', main: true, sign: 'BM-18' },
+      { label: 'Không đồng ý — sửa BM-03', to: 50, kind: 'secondary', reason: true }] },
+    /* Hồ sơ gộp: G30 cấp duyệt (Tập đoàn khi chủ trương hoặc KĐT thuộc Tập đoàn) → TTMS ký BM-14 + dự thảo BM-18 (61) → TGĐ VHT ký (62); Không đồng ý → 19. */
+    g30: { gw: true, capGate: { of: 'GOP', vht: 61, td: 63 } },
+    61: { who: 'lan', scr: 'SCR-65', nlv: 1, choices: [
+      { label: 'Ký báo cáo thẩm định BM-14, trình ký hồ sơ gộp', to: 62, main: true, sign: 'BM-14' }] },
+    62: { who: 'tgd', scr: 'SCR-21', nlv: 1, choices: [
+      { label: 'Ký phê duyệt hồ sơ gộp, ban hành BM-18', to: 'END', main: true, sign: 'BM-00 + BM-18' },
+      { label: 'Không đồng ý — sửa BM-00', to: 19, kind: 'secondary', reason: true }] },
+    /* Tuyến Tập đoàn 63–74 (T18 B4): vào từ G23 / G27 / G30 — loại hồ sơ trình vars.tdKind (CT chủ trương BM-01, KDT hồ sơ KĐT BM-03, GOP hồ sơ gộp BM-00).
+       Người Tập đoàn (67, 70–73) = tài khoản giả lập "td" như MS01 (P-96). Ký 65 / 69 của VHT đi qua khối ký chung (P-91); 73 là ký của Tập đoàn, kết quả về ở 74.
+       Thời hạn GIẢ LẬP P-93. */
+    63: { next: 64 },
+    64: { who: 'minh', scr: 'SCR-18', next: 65, nlv: 1, actionLabel: 'Trình ký công văn gửi Tập đoàn' },
+    65: { who: 'tgd', scr: 'SCR-21', nlv: 1, choices: [
+      { label: 'Ký công văn trình Tập đoàn', to: 66, main: true, sign: 'Công văn trình Tập đoàn' },
+      { label: 'Không đồng ý — hoàn thiện công văn', to: 64, kind: 'secondary', reason: true }] },
+    66: { tdSend: true, next: 67 },
+    67: { who: 'td', scr: 'SCR-18', next: 68, nlv: 5, actionLabel: 'Gửi phiếu nhận xét về VHT' },
+    68: { who: 'minh', scr: 'SCR-18', next: 69, nlv: 2, actionLabel: 'Hoàn thiện hồ sơ, trình ký lại' },
+    69: { who: 'tgd', scr: 'SCR-21', nlv: 1, choices: [
+      { label: 'Ký trình bộ hồ sơ hoàn thiện lên Tập đoàn', to: 70, main: true, sign: 'BM-06' }] },
+    70: { who: 'td', scr: 'SCR-18', nlv: 2, choices: [
+      { label: 'Hồ sơ hoàn thiện đạt yêu cầu', to: 'g34', main: true },
+      { label: 'Chưa đạt — yêu cầu bổ sung', to: 68, kind: 'secondary', reason: true }] },
+    /* G34 "Hồ sơ chủ trương riêng?" */
+    g34: { gw: true, when: (v) => (v.tdKind === 'CT' ? 71 : 72) },
+    71: { who: 'td', scr: 'SCR-18', next: 73, nlv: 2, actionLabel: 'Hoàn thiện hồ sơ chủ trương, các Ban đã ký BM-01' },
+    72: { who: 'td', scr: 'SCR-18', next: 73, nlv: 2, actionLabel: 'Ký báo cáo thẩm định BM-14, trình dự thảo BM-18' },
+    73: { who: 'td', scr: 'SCR-18', nlv: 2, choices: [
+      { label: 'Ký phê duyệt hồ sơ cấp Tập đoàn', to: 74, main: true },
+      { label: 'Không đồng ý — yêu cầu sửa', to: 68, kind: 'danger', reason: true }] },
+    74: { tdResult: true, next: 'g36' },
+    /* G36 "Là Chủ trương riêng hay hồ sơ gộp đã được duyệt?": chủ trương → lập hồ sơ KĐT (49); KĐT / hồ sơ gộp → hoàn tất phê duyệt cấp Tập đoàn. */
+    g36: { gw: true, when: (v) => (v.tdKind === 'CT' ? 49 : 'END') },
+    /* Khối ký chung 75–78 (D-34). 75 chọn hình thức ký ghi ở hộp thoại Trình ký của bước ký (B3-1) — không thành việc riêng.
+       76 có việc chỉ khi gửi VOffice lỗi (P-94): người trình bấm Gửi lại. 77 người ký của bước ký; 78 người phụ trách hồ sơ (chuyên viên ĐVĐX). */
+    76: { vo: true, next: 'g3', who: 'ky:by', scr: 'SCR-21', nlv: 0.25, choices: [
+      { label: 'Gửi lại VOffice', to: 76, main: true }] },
+    77: { who: 'ky:signer', scr: 'SCR-21', next: 78, nlv: 1, actionLabel: 'Đã ký bản cứng' },
+    78: { who: 'minh', scr: 'SCR-21', next: 'g3', nlv: 0.5, actionLabel: 'Lưu kết quả ký bản cứng' },
+    g3: { gw: true, kyReturn: true },
   };
-  /* Bộ đếm của giai đoạn thẩm định hiện tại (chk, meet) — Flow.tdCount đọc cùng cách. */
+  /* Bộ đếm của vòng thẩm định hiện tại (chk, meet) — Flow.tdCount đọc cùng cách. */
   D.kdtCnt = (v, k) => ((v[k] || {})[v.td || 'GOP'] || 0);
   /* Ý kiến thẩm định mẫu theo giai đoạn và lượt TTMS thẩm định (i = 0, 1, …; hết mẫu thì dùng lượt cuối). id = TTMS hoặc mã CQCM.
      fix = cần sửa đổi / giải trình; lựa chọn trên màn (ui.op['td-i-id']) được ưu tiên. */
@@ -375,12 +438,31 @@
     const td = v.td || 'GOP', i = Math.max(0, window.Flow.tdRound() - 1);
     return ['TTMS'].concat(window.Flow.cqcmSel()).some((id) => D.kdtFix(td, i, id, u));
   };
-  /* Định nghĩa luồng theo quy trình (plan KĐT §6 #2): MS01.01 / .02 / .03 chung D.flow; MS13 = trang MS13-TO BE. */
-  D.flows = { MS01: F, MS13: K };
-  D.familyOf = (process) => (/^MS13/.test(process || '') ? 'MS13' : 'MS01');
-  /* Task MS13 hồ sơ không đi qua (timeline "Không áp dụng"): nhánh Tập đoàn (P-56, luôn VHT); sau cổng gộp là nhánh còn lại
-     (khối thẩm định 22–35 vẽ cho nhánh gộp, nhánh hai giai đoạn chạy lại qua quy trình con 41 / 49). */
-  D.kdtNa = (v) => [43, 50].concat(range(57, 64), v.branch === 'BM00' ? range(36, 54) : v.branch === '2GD' ? range(17, 35).concat([55, 56]) : []);
+  /* Định nghĩa luồng theo quy trình (plan KĐT §6 #2): MS01.01 / .02 / .03 chung D.flow; MS13 = trang MS13 bản 12/10 (D-31). */
+  /* T21 (D-37): trang MS02 ver1.1 trùng topo MS01 v1.1 (plan T21 §2) → luồng Điều chỉnh dùng lại định nghĩa MS01, bỏ 10a / 10b;
+     tên bước theo BPMN_FLOWS.MS02. Cổng sau bước 10 rẽ 11 / 12 theo giá trị sau điều chỉnh (D-39, không theo quy trình đã chọn);
+     bước 48 chọn sẵn theo căn cứ của ĐXMS cũ (vars.basisTD — hồ sơ Phê duyệt MS01.02), TTMS đổi được (P-106). */
+  const A = Object.assign({}, F);
+  delete A['10a'];
+  delete A['10b'];
+  A.gValue = { gw: true, run: (v) => { v.big = !D.inRange('MS01.03', v.adj.total, v.th || D.dxmsRules()); }, when: (v) => (v.big ? 12 : 11) };
+  A[48] = Object.assign({}, F[48], { q: ['P-106'], choices: [
+    { label: 'Có báo cáo TGĐ Tập đoàn', to: 'gReport', mainWhen: (v) => !v.basisTD, set: { reportTD: true } },
+    { label: 'Không báo cáo TGĐ Tập đoàn', to: 'gReport', kind: 'secondary', mainWhen: (v) => !!v.basisTD, set: { reportTD: false } }] });
+  D.flows = { MS01: F, MS13: K, MS02: A };
+  D.familyOf = (process) => (/^MS13/.test(process || '') ? 'MS13' : /^MS02/.test(process || '') ? 'MS02' : 'MS01');
+  /* Luồng con của hồ sơ Điều chỉnh (DG-MS02 §B.3): < 160 tỷ → MS02.03; ≥ 160 tỷ → MS02.02 khi không báo cáo Tập đoàn (đã chọn ở 48,
+     chưa tới 48 thì theo căn cứ ĐXMS cũ), còn lại MS02.01. Các bước "Không áp dụng" lấy theo luồng MS01 tương ứng. */
+  D.adjBranch = (v) => (v.big === false ? 'MS02.03' : v.reportTD === false || (v.reportTD == null && v.basisTD) ? 'MS02.02' : 'MS02.01');
+  D.naOf = (v) => (D.familyOf(v.process) === 'MS02' ? D.notApplicable[D.adjBranch(v).replace('MS02', 'MS01')] : D.notApplicable[v.process] || []);
+  /* Task MS13 hồ sơ không đi qua (timeline "Không áp dụng"): tuyến Tập đoàn 63–74 khi chưa rẽ Tập đoàn; đã rẽ (vars.tdKinds) thì bỏ bước ký VHT
+     thay thế (chủ trương 47–48, KĐT 56–60, gộp 61–62) và 71 / 72 không thuộc loại hồ sơ đã trình; hồ sơ Mật không qua 75–76 (G1 → 77 bản cứng);
+     sau cổng gộp là nhánh còn lại (khối chung 25–38 dùng cho cả hai nhánh). 77–78 của hồ sơ không Mật: theo điều kiện. */
+  D.kdtNa = (v, mat) => {
+    const td = v.tdKinds || [], has = (k) => td.includes(k);
+    const tdNa = !td.length ? range(63, 74) : [].concat(has('CT') ? [47, 48] : [71], has('KDT') ? range(56, 60) : [], has('GOP') ? [61, 62] : [], has('KDT') || has('GOP') ? [] : [72]);
+    return tdNa.concat(mat ? [75, 76] : [], v.branch === 'BM00' ? range(39, 60) : v.branch === '2GD' ? range(18, 24).concat([61, 62]) : []);
+  };
   /* Ngưỡng phân luồng KĐT: lĩnh vực + tính chất tài sản + [từ, đến dưới) tỷ → nhóm. Mặc định = 4 dòng KĐT của SCR-40 (BBLV 24/09, P-28);
      catalog.js thay bằng ngưỡng đang hoạt động. Hồ sơ giữ bản chụp lúc tạo (như P-34). */
   D.kdtRules = () => [
@@ -388,6 +470,24 @@
     { field: 'VTCNTT', asset: '*', from: 160, to: 1000, procs: ['MS14'] }, { field: 'KHAC', asset: '*', from: 90, to: 500, procs: ['MS14'] }];
   D.kdtGroups = { MS13: 'MS13 · KĐT đơn giản', MS14: 'MS14 · KĐT thông thường', MS15: 'MS15 · KĐT phức tạp' };
   D.kdtBranches = { BM00: 'Gộp BM-00', '2GD': 'Hai giai đoạn (BM-01 → BM-03)' };
+  /* Phân cấp thẩm quyền KĐT (bước 13, D-33): loại KĐT + lĩnh vực + [từ, đến dưới) tỷ → cấp duyệt chủ trương / KĐT. GIẢ LẬP P-90 theo UQ-GUQ §1.2:
+     1.2.1 KHCN (trang bị CSVC-KT) < 45 tỷ → KĐT VHT trên chủ trương Tập đoàn; 1.2.2 KĐT khác (gồm KHCN không thuộc 1.2.1) → VHT / VHT, trừ
+     KĐT kinh doanh, BĐS, phương tiện vận tải → Tập đoàn. "Hệ thống CNTT nội bộ" chưa có trường dữ liệu → chưa có dòng (P-90).
+     catalog.js thay bằng danh mục SCR-100 đang hoạt động. */
+  D.kdtAuthRules = () => [
+    { type: 'KHCN', field: '*', from: 0, to: 45, ct: 'TD', kdt: 'VHT', basis: 'UQ-GUQ §1.2.1' },
+    { type: 'KHCN', field: '*', from: 45, to: null, ct: 'VHT', kdt: 'VHT', basis: 'UQ-GUQ §1.2.2' },
+    { type: 'TBNB', field: '*', from: 0, to: null, ct: 'VHT', kdt: 'VHT', basis: 'UQ-GUQ §1.2.2' },
+    { type: 'KHAC', field: '*', from: 0, to: null, ct: 'VHT', kdt: 'VHT', basis: 'UQ-GUQ §1.2.2' },
+    { type: 'SXKD', field: '*', from: 0, to: null, ct: 'TD', kdt: 'TD', basis: 'UQ-GUQ §1.2.2 (ngoại trừ: hình thành TSCĐ phục vụ kinh doanh)' },
+    { type: 'BDS', field: '*', from: 0, to: null, ct: 'TD', kdt: 'TD', basis: 'UQ-GUQ §1.2.2 (ngoại trừ: bất động sản)' },
+    { type: 'PTVT', field: '*', from: 0, to: null, ct: 'TD', kdt: 'TD', basis: 'UQ-GUQ §1.2.2 (ngoại trừ: phương tiện vận tải)' }];
+  D.kdtLevels = { VHT: 'VHT', TD: 'Tập đoàn' };
+  /* Thẩm quyền theo 04 yếu tố + tổng mức vốn: dòng đầu khớp; không dòng nào khớp → VHT / VHT, ghi rõ để người dùng thấy. */
+  D.kdtAuthOf = (k, total, rs) => {
+    const r = (rs || D.kdtAuthRules()).find((x) => x.type === k.type && (x.field === '*' || x.field === k.field) && total >= x.from && (x.to == null || total < x.to));
+    return r ? { ct: r.ct, kdt: r.kdt, basis: r.basis } : { ct: 'VHT', kdt: 'VHT', basis: 'Không có quy tắc khớp — mặc định VHT' };
+  };
 
   /* Cảnh demo §2.4: task bắt đầu của mỗi cảnh (dùng cho "Nhảy tới cảnh"). */
   D.scenes = [
@@ -511,14 +611,14 @@
      stage = trạng thái KĐT suy từ hồ sơ (kdt.js KDT_STAGE); task = bước đang chờ (tên lấy từ BPMN_FLOWS.MS13, MS14 từ sơ đồ);
      total = tổng mức vốn thực tế sau báo giá (task 10). docs = văn bản đầu ra đã có. Luồng MS13 chạy được từ B2. */
   D.kdtCases = [
-    { code: 'HS-2026-0031', kdt: 'KĐT-2026-0031', kind: 'PD', flow: 'MS13', branch: 'BM00', stage: 'GOP', st: 'processing', task: 18, total: 12.4, created: '21/09/2026', updated: '25/09/2026', creator: 'Nguyễn Văn Minh' },
+    { code: 'HS-2026-0031', kdt: 'KĐT-2026-0031', kind: 'PD', flow: 'MS13', branch: 'BM00', stage: 'GOP', st: 'processing', task: 19, total: 12.4, created: '21/09/2026', updated: '25/09/2026', creator: 'Nguyễn Văn Minh' },
     { code: 'HS-2026-0030', kdt: 'KĐT-2026-0030', kind: 'PD', flow: null, stage: 'LAP', st: 'processing', task: 8, created: '18/09/2026', updated: '24/09/2026', creator: 'Bùi Minh Quang' },
     { code: 'HS-2026-0029', kdt: 'KĐT-2026-0029', kind: 'PD', flow: null, stage: 'PL', st: 'processing', task: 11, tasks: [11, 12], total: 23.5, created: '10/09/2026', updated: '23/09/2026', creator: 'Lương Thị Hạnh' },
-    { code: 'HS-2026-0028', kdt: 'KĐT-2026-0028', kind: 'PD', flow: 'MS13', branch: '2GD', stage: 'KYQD', st: 'processing', task: 54, total: 76.2, created: '12/06/2026', updated: '22/09/2026', creator: 'Phan Văn Lộc', docs: [['BM-01', '14/08/2026'], ['BM-14', '19/09/2026']] },
-    { code: 'HS-2026-0027', kdt: 'KĐT-2026-0027', kind: 'PD', flow: 'MS13', branch: '2GD', stage: 'TDKDT', st: 'processing', task: 49, late: true, total: 131.2, created: '02/07/2026', updated: '21/09/2026', creator: 'Nguyễn Văn Minh', docs: [['BM-01', '28/08/2026']] },
-    { code: 'HS-2026-0026', kdt: 'KĐT-2026-0026', kind: 'PD', flow: 'MS13', branch: '2GD', stage: 'HS', st: 'processing', task: 46, total: 57.4, created: '20/06/2026', updated: '19/09/2026', creator: 'Lương Thị Hạnh', docs: [['BM-01', '16/09/2026']] },
-    { code: 'HS-2026-0025', kdt: 'KĐT-2026-0025', kind: 'PD', flow: 'MS13', branch: '2GD', stage: 'KYCT', st: 'processing', task: 44, total: 45.1, created: '05/06/2026', updated: '18/09/2026', creator: 'Phan Văn Lộc' },
-    { code: 'HS-2026-0024', kdt: 'KĐT-2026-0024', kind: 'PD', flow: 'MS13', branch: '2GD', stage: 'TDCT', st: 'processing', task: 41, total: 98.6, created: '28/05/2026', updated: '17/09/2026', creator: 'Nguyễn Văn Minh' },
+    { code: 'HS-2026-0028', kdt: 'KĐT-2026-0028', kind: 'PD', flow: 'MS13', branch: '2GD', stage: 'KYQD', st: 'processing', task: 60, total: 76.2, created: '12/06/2026', updated: '22/09/2026', creator: 'Phan Văn Lộc', docs: [['BM-01', '14/08/2026'], ['BM-14', '19/09/2026']] },
+    { code: 'HS-2026-0027', kdt: 'KĐT-2026-0027', kind: 'PD', flow: 'MS13', branch: '2GD', stage: 'TDKDT', st: 'processing', task: 55, late: true, total: 131.2, created: '02/07/2026', updated: '21/09/2026', creator: 'Nguyễn Văn Minh', docs: [['BM-01', '28/08/2026']] },
+    { code: 'HS-2026-0026', kdt: 'KĐT-2026-0026', kind: 'PD', flow: 'MS13', branch: '2GD', stage: 'HS', st: 'processing', task: 50, total: 57.4, created: '20/06/2026', updated: '19/09/2026', creator: 'Lương Thị Hạnh', docs: [['BM-01', '16/09/2026']] },
+    { code: 'HS-2026-0025', kdt: 'KĐT-2026-0025', kind: 'PD', flow: 'MS13', branch: '2GD', stage: 'KYCT', st: 'processing', task: 48, total: 45.1, created: '05/06/2026', updated: '18/09/2026', creator: 'Phan Văn Lộc' },
+    { code: 'HS-2026-0024', kdt: 'KĐT-2026-0024', kind: 'PD', flow: 'MS13', branch: '2GD', stage: 'TDCT', st: 'processing', task: 46, total: 98.6, created: '28/05/2026', updated: '17/09/2026', creator: 'Nguyễn Văn Minh' },
     { code: 'HS-2026-0021', kdt: 'KĐT-2026-0021', kind: 'PD', flow: 'MS13', branch: '2GD', stage: 'STOP', st: 'stopped', total: 35.0, created: '14/04/2026', updated: '28/08/2026', creator: 'Phan Văn Lộc' },
     { code: 'HS-2026-0019', kdt: 'KĐT-2026-0018', kind: 'PD', flow: 'MS14', stage: 'MS14', st: 'processing', task: 14, total: 118.0, created: '26/08/2026', updated: '26/08/2026', creator: 'Phan Văn Lộc', replaces: 'HS-2026-0018' },
     { code: 'HS-2026-0018', kdt: 'KĐT-2026-0018', kind: 'PD', flow: 'MS13', stage: 'MS14', st: 'moved', total: 118.0, created: '02/04/2026', updated: '26/08/2026', creator: 'Phan Văn Lộc', replacedBy: 'HS-2026-0019' },
@@ -550,22 +650,31 @@
     { who: 'tgd', code: 'HS-2026-0103', task: 60, created: '16/09/2026', due: '19/09/2026', done: '18/09/2026' },
     { who: 'tgd', code: 'HS-2026-0077', task: 60, created: '10/08/2026', due: '13/08/2026', done: '13/08/2026' },
     { who: 'tgd', code: 'HS-2026-0074', task: 60, created: '04/08/2026', due: '07/08/2026', done: '06/08/2026' },
+    /* Hồ sơ Điều chỉnh mẫu (T21 B3): HS-2026-0126 (MS02.01, đang ở 19), HS-2026-0112 (MS02.03, Hoàn thành) — tên việc theo BPMN_FLOWS.MS02. */
+    { who: 'minh', code: 'HS-2026-0126', task: 16, created: '19/09/2026', due: '22/09/2026', done: '22/09/2026' },
+    { who: 'minh', code: 'HS-2026-0126', task: 4, created: '15/09/2026', due: '17/09/2026', done: '16/09/2026' },
+    { who: 'hai', code: 'HS-2026-0126', task: 13, created: '18/09/2026', due: '20/09/2026', done: '19/09/2026' },
+    { who: 'lan', code: 'HS-2026-0126', task: 17, created: '22/09/2026', due: '24/09/2026', done: '23/09/2026' },
+    { who: 'minh', code: 'HS-2026-0112', task: 4, created: '02/09/2026', due: '04/09/2026', done: '03/09/2026' },
+    { who: 'lan', code: 'HS-2026-0112', task: 38, created: '16/09/2026', due: '18/09/2026', done: '17/09/2026' },
+    { who: 'binh', code: 'HS-2026-0112', task: 39, created: '16/09/2026', due: '18/09/2026', done: '18/09/2026' },
+    { who: 'tgd', code: 'HS-2026-0112', task: 60, created: '18/09/2026', due: '20/09/2026', done: '20/09/2026' },
   ];
   /* Việc đã xử lý trên hồ sơ KĐT mẫu (B5) — tên việc theo BPMN_FLOWS.MS13; mở Chi tiết hồ sơ KĐT ở chế độ xem. */
   D.sampleKdtTasks = [
-    { who: 'minh', code: 'HS-2026-0027', task: 46, created: '31/08/2026', due: '02/09/2026', done: '02/09/2026' },
-    { who: 'minh', code: 'HS-2026-0026', task: 36, created: '20/07/2026', due: '22/07/2026', done: '22/07/2026' },
-    { who: 'minh', code: 'HS-2026-0012', task: 46, created: '05/05/2026', due: '07/05/2026', done: '06/05/2026' },
-    { who: 'minh', code: 'HS-2026-0015', task: 18, created: '06/04/2026', due: '08/04/2026', done: '07/04/2026' },
-    { who: 'hai', code: 'HS-2026-0015', task: 20, created: '09/04/2026', due: '13/04/2026', done: '10/04/2026' },
+    { who: 'minh', code: 'HS-2026-0027', task: 50, created: '31/08/2026', due: '02/09/2026', done: '02/09/2026' },
+    { who: 'minh', code: 'HS-2026-0026', task: 39, created: '20/07/2026', due: '22/07/2026', done: '22/07/2026' },
+    { who: 'minh', code: 'HS-2026-0012', task: 50, created: '05/05/2026', due: '07/05/2026', done: '06/05/2026' },
+    { who: 'minh', code: 'HS-2026-0015', task: 19, created: '06/04/2026', due: '08/04/2026', done: '07/04/2026' },
+    { who: 'hai', code: 'HS-2026-0015', task: 21, created: '09/04/2026', due: '13/04/2026', done: '10/04/2026' },
     { who: 'thu', code: 'HS-2026-0024', task: 11, created: '15/06/2026', due: '17/06/2026', done: '16/06/2026' },
     { who: 'thu', code: 'HS-2026-0012', task: 11, created: '10/02/2026', due: '12/02/2026', done: '11/02/2026' },
-    { who: 'lan', code: 'HS-2026-0028', task: 51, created: '16/09/2026', due: '20/09/2026', done: '19/09/2026' },
+    { who: 'lan', code: 'HS-2026-0028', task: 57, created: '16/09/2026', due: '20/09/2026', done: '19/09/2026' },
     { who: 'lan', code: 'HS-2026-0024', task: 12, created: '15/06/2026', due: '17/06/2026', done: '17/06/2026' },
-    { who: 'lan', code: 'HS-2026-0012', task: 51, created: '29/06/2026', due: '03/07/2026', done: '02/07/2026' },
-    { who: 'hoa', code: 'HS-2026-0027', task: 26, created: '14/09/2026', due: '18/09/2026', done: '17/09/2026' },
-    { who: 'tgd', code: 'HS-2026-0012', task: 54, created: '13/07/2026', due: '16/07/2026', done: '15/07/2026' },
-    { who: 'tgd', code: 'HS-2026-0015', task: 56, created: '28/07/2026', due: '31/07/2026', done: '30/07/2026' },
+    { who: 'lan', code: 'HS-2026-0012', task: 57, created: '29/06/2026', due: '03/07/2026', done: '02/07/2026' },
+    { who: 'hoa', code: 'HS-2026-0027', task: 29, created: '14/09/2026', due: '18/09/2026', done: '17/09/2026' },
+    { who: 'tgd', code: 'HS-2026-0012', task: 60, created: '13/07/2026', due: '16/07/2026', done: '15/07/2026' },
+    { who: 'tgd', code: 'HS-2026-0015', task: 62, created: '28/07/2026', due: '31/07/2026', done: '30/07/2026' },
   ];
 
   /* ---------- Điểm chưa chốt §6 ---------- */
@@ -602,20 +711,20 @@
     'P-64': { q: 'Hồ sơ Phê duyệt kết thúc theo chỉ đạo khác: ĐXMS có được tạo hồ sơ Phê duyệt mới không, hay ĐXMS cũng dừng', src: '—', def: 'Được tạo hồ sơ Phê duyệt mới', scr: 'SCR-25' },
     'P-65': { q: 'Sửa ĐXMS khi đang có hồ sơ chạy: trường nào bị khoá; thông tin trên ĐXMS và trên hồ sơ (task 04) lệch nhau thì lấy bên nào', src: '—', def: 'Sửa được trừ Mã ĐXMS và giá trị hiệu lực; hồ sơ giữ thông tin lúc tạo', scr: 'SCR-28' },
     'P-66': { q: 'Giá trị hiệu lực của ĐXMS lấy từ hồ sơ Hoàn thành gần nhất (kể cả hồ sơ Điều chỉnh)', src: 'Diễn giải MS02 §B.2 (giá trị sau điều chỉnh)', def: 'Như vậy; chưa có hồ sơ Hoàn thành thì dùng giá trị dự kiến', scr: 'SCR-29' },
-    /* Khoản đầu tư MS13 — docs/dtms/prototype-KDT-chuan-bi.md §5 (v0.3, B1: đối chiếu mũi tên trang MS13-TO BE). */
+    /* Khoản đầu tư MS13 — docs/dtms/prototype-KDT-chuan-bi.md §5; T18 rà lại theo BPMN 12/10 (trang MS13, 78 bước — plan T18 §6). */
     'P-50': { q: 'Mẫu BM-00 (văn bản gộp chủ trương + KĐT) chưa có trong bộ biểu mẫu KĐT của VHT', src: 'OQ-17, URD §12 #2', def: 'Mẫu giả ghép cấu trúc BM-01 + BM-03', scr: 'SCR-59' },
     'P-51': { q: 'Điều kiện gộp BM-00: trường dữ liệu làm căn cứ cho "Trang bị nội bộ" và "Nguyên chiếc"', src: 'OQ-17, diễn giải MS13 §D.2', def: 'Loại KĐT = Trang bị nội bộ và Tính chất tài sản = Nguyên chiếc (DMDC, nhập ở KĐT)', scr: 'SCR-58' },
-    'P-52': { q: 'Tiêu chí OK / NOT OK của xác nhận TSCĐ và 04 yếu tố; NOT OK quay về đâu', src: 'Diễn giải MS13 §D.3, §D.7; BPMN MS13-TO BE', def: 'NOT OK bắt buộc lý do → AI gợi ý cần sửa (13) → ĐVĐX tổng hợp lại báo giá (10), theo mũi tên của BPMN', scr: 'SCR-57' },
+    'P-52': { q: 'Tiêu chí OK / NOT OK của xác nhận TSCĐ và 04 yếu tố; NOT OK quay về đâu', src: 'DG-MS13 bước 11, 12; BPMN-DTMS MS13 (12/10)', def: 'NOT OK bắt buộc lý do → AI gợi ý cần sửa (14) → ĐVĐX tổng hợp lại báo giá (10), theo mũi tên của BPMN', scr: 'SCR-57' },
     'P-53': { q: 'Tổng mức vốn không thuộc MS13: tạo hồ sơ mới theo MS14/MS15 hay giữ hồ sơ', src: 'Diễn giải MS13 §B.2', def: 'Kết thúc hồ sơ MS13 "Đã chuyển luồng", tạo hồ sơ mới của cùng KĐT theo MS14/MS15, liên kết hai hồ sơ', scr: 'SCR-66' },
-    'P-54': { q: 'Giới hạn "02 vòng check": BPMN đặt cổng "Số lần check ≤ 02?" trước họp (đếm lần họp), ghi chú trang ghi "tối đa 02 vòng check, vượt thì họp"', src: 'Diễn giải MS13 §D.8, URD §12 #5, BPMN MS13-TO BE', def: 'Theo mũi tên BPMN: chưa thống nhất → họp (lần 1, 2); sau 02 lần họp vẫn chưa thống nhất → báo cáo; đếm riêng mỗi giai đoạn, không đặt lại khi trả sửa', scr: 'SCR-62' },
+    'P-54': { q: 'Giới hạn họp: tối đa 02 lần họp mỗi vòng BM-00 / BM-01 / BM-03', src: 'DG-MS13 bước 32, 33; URD §12 #5; BPMN-DTMS MS13 (12/10) cổng "Vòng hiện tại đã họp dưới 02 lần?"', def: 'Bản 12/10 đã rõ: chưa thống nhất → họp (lần 1, 2); sau 02 lần vẫn chưa thống nhất → báo cáo (37); đếm riêng mỗi vòng, không đặt lại khi bổ sung / trình lại', scr: 'SCR-62' },
     'P-55': { q: 'Dữ liệu, thứ tự xác nhận sau họp của Chuyên quản và Chỉ huy ĐVĐX', src: 'Diễn giải MS13 §D.9', def: 'Tuần tự Chuyên quản → Chỉ huy; đủ cả hai mới mở sửa', scr: 'SCR-62' },
-    'P-56': { q: 'Ma trận phân cấp VHT / Tập đoàn cho KĐT', src: 'Diễn giải MS13 §D.11, URD §12 #4', def: 'Luôn cấp VHT; nhánh Tập đoàn chưa dựng', scr: 'SCR-58' },
+    'P-56': { q: 'Ma trận phân cấp VHT / Tập đoàn cho KĐT', src: 'DG-MS13 bước 13; URD §12 #4; UQ-GUQ §1.2', def: 'Thay bằng bước 13 + danh mục Phân cấp thẩm quyền KĐT (SCR-100, D-33) — bảng giả lập P-90; tuyến Tập đoàn 63–74 dựng ở T18 B4 (D-8 mở 12/10)', scr: 'SCR-100' },
     'P-57': { q: 'Có danh sách / ma trận CQCM bắt buộc không; đơn vị chủ trì cho KĐT KHCN / quốc phòng', src: 'Diễn giải MS13 §D.4, UR-KDT-09', def: 'ĐVĐX tự chọn, TTMS duyệt; KĐT KHCN / quốc phòng chọn thêm đơn vị chủ trì', scr: 'SCR-60' },
-    'P-58': { q: 'Số task 64 "Trình ký VOffice để Thủ trưởng VHT ký sau ý kiến Tập đoàn": nhãn đã đổi từ 60 thành 64 nhưng thuộc tính TaskNo vẫn là 60', src: 'BPMN MS13-TO BE', def: 'Dùng số trên nhãn (64)', scr: 'SCR-42' },
+    'P-58': { q: 'Số task 64 "Trình ký VOffice để Thủ trưởng VHT ký sau ý kiến Tập đoàn" của trang MS13-TO BE: nhãn 64, TaskNo 60', src: 'BPMN-DTMS MS13-TO BE (bản cũ)', def: 'ĐÃ ĐÓNG (T18): trang MS13 bản 12/10 không còn task này', scr: 'SCR-42' },
     'P-59': { q: 'KĐT không chọn quy trình lúc tạo hồ sơ — hệ thống xác định nhóm MS13 / MS14 / MS15 sau bước 12 (khác ĐXMS chọn tay)', src: 'D-7, D-12; WBS PH09 #175, 176', def: 'Tạo KĐT trước; hồ sơ Phê duyệt KĐT không chọn nhóm', scr: 'SCR-55' },
     'P-60': { q: 'Hồ sơ KĐT Mật ký bản giấy (MS14 ghi rõ, MS13 không nêu)', src: 'Diễn giải MS14 §C.11', def: 'Mật → hộp thoại ký mặc định ký cứng như ĐXMS', scr: 'SCR-21' },
     'P-61': { q: '"Thực hiện theo chỉ đạo" khi Thủ trưởng không ký: dừng hay bàn giao, trạng thái và dữ liệu lưu', src: 'Diễn giải MS13 §D.14', def: 'Ghi nội dung chỉ đạo; chỉ đạo dừng → "Dừng theo chỉ đạo", chỉ đạo xử lý → quay lại cổng chọn nhánh hồ sơ (theo BPMN)', scr: 'SCR-21' },
-    'P-62': { q: 'Tiêu chí không đạt của "HT/AI kiểm tra trước khi gửi" (bước 40); BPMN chỉ vẽ nhánh Đạt', src: 'Diễn giải MS13 §D.10, BPMN MS13-TO BE', def: 'Thiếu mục bắt buộc của BM-01 / Checklist 01 → trả lại người gửi tại bước hiện tại', scr: 'SCR-60' },
+    'P-62': { q: 'Tiêu chí không đạt của "HT/AI kiểm tra trước khi gửi" (bước 44)', src: 'DG-MS13 bước 44; BPMN-DTMS MS13 (12/10) cổng "AI kiểm tra đạt?"', def: 'Bản 12/10 vẽ nhánh Không đạt → 39. Tiêu chí giả lập: thiếu mục bắt buộc của BM-01 / Checklist 01', scr: 'SCR-60' },
     /* Danh mục dùng chung — docs/dtms/prototype-DMDC-chuan-bi.md §7. */
     'P-27': { q: 'Danh sách giá trị thật của từng danh mục', src: 'BB-2409 (VHT gửi qua email, chưa nhận)', def: 'Dữ liệu mẫu theo tài liệu chuẩn bị DMDC §3', scr: 'SCR-32' },
     'P-28': { q: 'Ngưỡng MS13/MS14: VT-CNTT < 160 và lĩnh vực khác < 90 (BB-2409), hay ngược lại (BB-1509)', src: 'BRD Q-01, UR-KDT-07; QT-8.6.5 trường hợp 1–3 ghi như BB-2409 (QT-8.6.5 chưa có bản PDF ban hành, INDEX C5)', def: 'Theo QT-8.6.5 / BB-2409', scr: 'SCR-40' },
@@ -644,6 +753,35 @@
     'P-81': { q: 'Quy trình đơn hàng thuộc thỏa thuận khung (đặt, xác nhận, giao nhận, thanh toán từng đơn) chưa có BPMN; đơn hàng có theo dõi như một hợp đồng con không', src: 'Backlog dòng 465–469', def: 'GIẢ LẬP — đơn hàng là dòng của thỏa thuận khung (không phải hợp đồng con); Thêm đơn hàng chặn vượt giá trị còn lại; luồng 4 bước Chờ nhà thầu xác nhận → Đang giao → Đã giao đủ → Đã thanh toán, chuyển bước ở hộp thoại đơn hàng', scr: 'SCR-87' },
     'P-82': { q: 'Tích hợp Cổng đấu thầu Viettel (có phải SAP Ariba?) và Hệ thống mạng đấu thầu quốc gia: API, định dạng tin, mã tin, chiều đồng bộ tiến độ / KQLCNT về ĐTMS', src: 'Backlog dòng 413–415; QC-12869 Điều 26', def: 'GIẢ LẬP — hai hệ thống nối qua API của trục tích hợp: ĐTMS đẩy tin khi Chủ đầu tư xác nhận, nhận tiến độ / kết quả mở thầu / kiến nghị định kỳ 60 phút; lỗi trả về được ghi và cho Gửi lại (MS18 bước 60); mã tin VTB-… (Cổng Viettel), IB… / PL… (mạng ĐTQG)', scr: 'SCR-94' },
     'P-83': { q: 'Chọn hệ thống đăng tải theo tiêu chí nào (gói áp dụng Luật Đấu thầu, gói tổ chức qua mạng…); lịch ngày làm việc (nghỉ lễ, Tết) để tính hạn 05 ngày làm việc lấy từ đâu', src: 'QC-12869 Điều 26 khoản 1–2; BPMN-MS18 N02', def: 'GIẢ LẬP — KHLCNT có cờ "Áp dụng Luật Đấu thầu cho gói cụ thể" → mạng đấu thầu quốc gia, còn lại → Cổng đấu thầu Viettel; ngày làm việc chỉ trừ thứ Bảy, Chủ nhật (chưa có danh mục ngày nghỉ lễ)', scr: 'SCR-94' },
+    /* T17 Luồng mua sắm (phương án Gộp) — docs/dtms/prototype-T17-luong-mua-sam-chuan-bi.md §6. */
+    'P-84': { q: 'Danh sách Loại tài liệu căn cứ của luồng mua sắm, loại nào bắt buộc, gắn vào ĐXMS hay hồ sơ', src: 'Yêu cầu khách 12/10/2026 (căn cứ đầu vào)', def: 'GIẢ LẬP — danh mục Loại tài liệu căn cứ (SCR-99): bắt buộc QĐ giao nhiệm vụ / phê duyệt đề tài, dự án và Kế hoạch mua sắm năm được duyệt (gắn ĐXMS); không bắt buộc Chủ trương đầu tư, Văn bản chỉ đạo, Biên bản làm việc, Báo giá / khảo sát giá (gắn hồ sơ), Khác', scr: 'SCR-96' },
+    'P-86': { q: 'Thay người: văn bản căn cứ đính kèm có cần lưu số hiệu / ngày văn bản không', src: 'Yêu cầu khách 12/10/2026 (thay người đính kèm văn bản); D-29', def: 'GIẢ LẬP — văn bản căn cứ và lý do đều không bắt buộc; có tệp thì lưu tên tệp vào Lịch sử thay đổi nhân sự, không nhập số hiệu / ngày', scr: 'SCR-98' },
+    'P-87': { q: 'Văn bản đang trình ký mà người cũ đã ký một phần (ký nháy, ký trước): thu hồi cả văn bản hay chỉ thay chữ ký người cũ', src: 'D-29 (2), DX-04', def: 'GIẢ LẬP — thu hồi cả văn bản, trình lại toàn bộ luồng ký với người mới; chữ ký đã có huỷ theo văn bản thu hồi', scr: 'SCR-98' },
+    'P-88': { q: 'Người cũ đang giữ (claim) task chưa hoàn thành khi bị thay: dữ liệu nháp của task giữ hay xoá', src: 'D-29 (1)', def: 'GIẢ LẬP — giữ dữ liệu nháp, task bỏ claim rồi giao người mới', scr: 'SCR-98' },
+    'P-89': { q: 'Bước đã xong nhưng luồng có thể quay lại bước đó (vòng giải trình, trả lại): có cho cập nhật nhân sự của bước không', src: 'D-28; người dùng chốt 12/10 (vai trò đã xong bước thì không đổi)', def: 'GIẢ LẬP — bước đã xong thì khoá, không cập nhật; luồng quay lại bước đó vẫn giao theo nhân sự đang lưu của bước', scr: 'SCR-97' },
+    /* T18 — BPMN MS13 bản 12/10 (docs/dtms/prototype-T18-ms13-bpmn-1210-chuan-bi.md §6). */
+    'P-90': { q: 'Bảng quy tắc bước 13 "Xác định thẩm quyền phê duyệt": cấp duyệt chủ trương / KĐT (VHT / Tập đoàn) theo loại KĐT, lĩnh vực, tổng mức vốn', src: 'DG-MS13 bước 13; UQ-GUQ §1.2', def: 'GIẢ LẬP theo nguyên văn UQ-GUQ §1.2 (danh mục SCR-100): KHCN < 45 tỷ → chủ trương Tập đoàn, KĐT VHT (§1.2.1); KHCN ≥ 45 tỷ, Trang bị nội bộ, Khác → VHT / VHT (§1.2.2); Kinh doanh, Bất động sản, Phương tiện vận tải → Tập đoàn / Tập đoàn. "Hệ thống CNTT nội bộ" chưa có trường dữ liệu → chưa có dòng', scr: 'SCR-100' },
+    'P-91': { q: 'Bước ký nào đi qua khối ký chung 75–78 (chọn hình thức ký, VOffice / bản cứng)', src: 'DG-MS13 bước 75–78', def: 'GIẢ LẬP — 24, 47, 48, 56, 57, 60, 61, 62 (cấp VHT); 65, 69 (VHT ký trình Tập đoàn). 73 là ký của TGĐ Tập đoàn — kết quả nhận ở bước 74, không qua khối', scr: 'SCR-21' },
+    'P-92': { q: 'Bước 21 (Chỉ huy ĐVĐX cho ý kiến dự thảo BM-00) không có nhánh trả lại', src: 'DG-MS13 bước 21; BPMN-DTMS MS13 (12/10)', def: 'GIẢ LẬP — ý kiến ghi vào hồ sơ, ĐVĐX tiếp thu ở bước 22 trước khi chọn CQCM', scr: 'SCR-59' },
+    'P-93': { q: 'Thời hạn (ngày làm việc) của các bước mới 23, 24, 42, 46, 53, 55, 56, 57, 61', src: 'DG-MS13 (không ghi thời hạn)', def: 'GIẢ LẬP — 0,5–1 ngày làm việc mỗi bước người dùng; service task 0', scr: 'SCR-42' },
+    'P-94': { q: 'VOffice từ chối / lỗi khi trình ký trong khối ký chung', src: 'DG-MS13 bước 76', def: 'GIẢ LẬP — trạng thái "Lỗi gửi VOffice" + nút Gửi lại; từ chối ký = nhánh Không đồng ý của bước chính', scr: 'SCR-21' },
+    'P-95': { q: 'Sơ đồ MS13 còn khung "Target KPI ≤ 10 ngày" (DG-MS13 đã bỏ) và lane "Thủ trưởng đơn vị VHT" (bước ghi TGĐ VHT)', src: 'BPMN-DTMS MS13 (12/10), DG-MS13', def: 'Hiển thị tác nhân theo bước (TGĐ VHT); KPI giữ theo QD-16026', scr: 'SCR-42' },
+    /* T18 B4 — tuyến Tập đoàn 63–74. */
+    'P-96': { q: 'Các Ban chuyên môn, Ban ĐTXD, TGĐ Tập đoàn (bước 67, 70–73) xử lý trên ĐTMS hay VHT nhận văn bản qua VOffice rồi cập nhật', src: 'DG-MS13 bước 67, 70–73; BPMN-DTMS MS13 (12/10) lane Tập đoàn', def: 'GIẢ LẬP — tài khoản "Tập đoàn (giả lập)" xử lý trên ĐTMS như MS01 bước 53–56; phiếu nhận xét BM-09 / BM-10, văn bản đã ký đính kèm ở bước', scr: 'SCR-18' },
+    'P-97': { q: 'Bước 69 "TGĐ VHT / lãnh đạo được ủy quyền": khi nào lãnh đạo được ủy quyền ký trình lại thay TGĐ', src: 'DG-MS13 bước 69', def: 'GIẢ LẬP — giao TGĐ VHT; ủy quyền dùng chức năng ủy quyền xử lý chung của hệ thống', scr: 'SCR-21' },
+    'P-98': { q: 'Tập đoàn trả lại (70 Chưa đạt, 73 Không đồng ý): có giới hạn số lần, có phải lập lại công văn (64–65) không', src: 'DG-MS13 bước 68, 70, 73', def: 'GIẢ LẬP — không giới hạn; về 68 tiếp thu → 69 ký trình lại (không lập công văn mới), theo mũi tên BPMN', scr: 'SCR-18' },
+    'P-99': { q: 'Chuyển hồ sơ lên Tập đoàn (66) khi công văn ký bản cứng / hồ sơ Mật', src: 'DG-MS13 bước 66', def: 'GIẢ LẬP — 66 ghi "chuyển bộ hồ sơ giấy" kèm bản scan đã cập nhật ở 78; ký VOffice thì gửi qua tích hợp', scr: 'SCR-18' },
+    /* T21 — luồng Điều chỉnh ĐXMS (MS02), plan T21 §6. */
+    'P-100': { q: 'Phạm vi "kết quả đã thực hiện" của ĐXMS cũ lấy ở bước 2', src: 'DG-MS02 §D.2 #1', def: 'GIẢ LẬP — văn bản phê duyệt cũ, YCBG / báo giá, gói thầu, hợp đồng, đơn hàng đã có của ĐXMS; chỉ xem', scr: 'SCR-03' },
+    'P-101': { q: 'Hạng mục đã có đơn hàng / hợp đồng có được điều chỉnh không', src: 'DG-MS02 §D.2 #2', def: 'GIẢ LẬP — không khoá; dòng có HĐ gắn nhãn "Đã ký HĐ", cảnh báo khi giảm dưới số đã ký', scr: 'SCR-04' },
+    'P-102': { q: 'Trạng thái ĐXMS cũ sau khi điều chỉnh được phê duyệt', src: 'DG-MS02 §D.2 #3', def: 'GIẢ LẬP — ĐXMS "Đã phê duyệt (điều chỉnh lần n)", giá trị hiệu lực = giá trị sau điều chỉnh (D-40)', scr: 'SCR-29' },
+    'P-103': { q: 'Điều chỉnh / bổ sung ngân sách có chặn phê duyệt điều chỉnh không', src: 'DG-MS02 §D.2 #4', def: 'GIẢ LẬP — không chặn; bước 4 có ô ghi chú ngân sách thực hiện song song', scr: 'SCR-04' },
+    'P-104': { q: 'Ký BM-05 song song: một bên từ chối khi bên kia chưa phản hồi', src: 'DG-MS02 §D.2 #5', def: 'GIẢ LẬP — chờ đủ hai kết quả rồi kiểm tra (như BPMN, như MS01)', scr: 'SCR-17' },
+    'P-105': { q: 'Ma trận CQCM bắt buộc theo loại nội dung điều chỉnh', src: 'DG-MS02 §D.2 #6', def: 'GIẢ LẬP — bước 16 gợi ý CQCM theo phạm vi đã chọn ở bước 4, TTMS xác nhận ở bước 17', scr: 'SCR-10' },
+    'P-106': { q: 'Điều kiện chi tiết nhánh báo cáo TGĐ Tập đoàn của hồ sơ điều chỉnh (bước 48)', src: 'DG-MS02 §D.2 #7', def: 'GIẢ LẬP — chọn sẵn theo căn cứ của ĐXMS cũ: hồ sơ Phê duyệt MS01.02 → Không báo cáo, còn lại → Có; TTMS đổi được (D-39)', scr: 'SCR-16' },
+    'P-107': { q: 'VOffice lỗi / từ chối / đổi người ký trong luồng điều chỉnh', src: 'DG-MS02 §D.2 #8', def: 'GIẢ LẬP — như MS01 + Gửi lại (P-94)', scr: 'SCR-21' },
+    'P-108': { q: 'Hiệu lực / số lượng báo giá điều chỉnh', src: 'DG-MS02 §D.2 #9', def: 'GIẢ LẬP — ít nhất 1 báo giá nhận sau ngày tạo hồ sơ điều chỉnh; báo giá cũ chỉ để so sánh', scr: 'SCR-07' },
+    'P-109': { q: 'Trang MS02 ver1.1 còn bản MS01 cũ nằm khít bên dưới (cùng vị trí, khác nhãn) và một cổng G5 cạnh bước 17 không có mũi tên; 34 "Yêu cầu xử lý lại" về 12 (chỉ nhánh ≥ 160 tỷ)', src: 'BPMN-DTMS trang MS02 ver1.1', def: 'Tool trích lấy hình nằm trên (như drawio hiển thị), bỏ qua G5; 34 → 14 → 11 / 12 theo giá trị như MS01', scr: 'SCR-14' },
     'P-36': { q: 'Ai quản trị từng danh mục (TTMS cho Nhà cung cấp; quản trị hệ thống cho phần còn lại?)', src: 'UC-12-05 (A21)', def: 'Vai Quản trị hệ thống thấy tất cả; vai TTMS chỉ thấy Nhà cung cấp và Loại hàng hoá', scr: 'SCR-30' },
     /* Quản trị quy trình — docs/dtms/prototype-PH02-quy-trinh-chuan-bi.md §4. */
     /* P-37 đã chốt 2026-09-28: MS01.01 / .02 / .03 là ba quy trình riêng (Locked decision "MS01 deploy"). */
@@ -1205,6 +1343,8 @@
   D.keepAny = (u) => Object.keys(D.responses).some((c) => (((u || {}).resp || {})[c] || D.responses[c].decision) === 'Bảo lưu');
 
   /* Bộ demo (công cụ demo › Chọn hồ sơ demo, plan §8.1): mỗi bộ = một ĐXMS + quy trình, cảnh (§3.4) và nhánh phụ. Cảnh start 'NEW' mở SCR-25. */
+  /* Bản chụp danh mục Phân cấp thẩm quyền KĐT (vars.auth) dùng cho nhánh phụ tuyến Tập đoàn: KHCN → chủ trương Tập đoàn, KĐT VHT (UQ-GUQ §1.2.1, GIẢ LẬP P-90). */
+  const AUTH_CT_TD = { auth: [{ type: 'KHCN', field: '*', from: 0, to: null, ct: 'TD', kdt: 'VHT', basis: 'UQ-GUQ §1.2.1' }] };
   D.demoSets = [
     { key: 'MS01.01', dxms: D.dxmsCode0, label: 'ĐXMS-2026-0117 · MS01.01', scenes: D.scenes, branches: [
       { name: 'Chọn nhầm quy trình MS01.03 → chuyển quy trình (B-3e)', tasks: '10 → 10a → 10b', task: '10a', who: 'minh', process: 'MS01.03' },
@@ -1234,21 +1374,59 @@
     { key: 'MS13', kdt: D.kdtCode0, also: ['KĐT-2026-0033', 'KĐT-2026-0031'], label: 'KĐT-2026-0032 · MS13', scenes: [
       { n: 'K1', name: 'Khởi tạo KĐT, hồ sơ, căn cứ', start: 'NEW', tasks: '—, 01–05', who: 'minh' },
       { n: 'K2', name: 'Tồn kho, báo giá', start: 7, tasks: '06–10', who: 'minh' },
-      { n: 'K3', name: 'Xác nhận song song, phân luồng', start: 11, tasks: '11–12', who: 'thu' },
-      { n: 'K4', name: 'Chủ trương: dự thảo, BM-01, chọn CQCM, trình', start: 14, tasks: '14–16, 36–40', who: 'minh' },
-      { n: 'K5', name: 'Thẩm định chủ trương (quy trình con 41)', start: 24, tasks: '41: 24–33', who: 'lan' },
-      { n: 'K6', name: 'Ký chủ trương BM-01', start: 42, tasks: '42, 44', who: 'lan' },
-      { n: 'K7', name: 'Hồ sơ KĐT BM-03 + Checklist 02, thẩm định (quy trình con 49)', start: 46, tasks: '45–49', who: 'minh' },
-      { n: 'K8', name: 'Báo cáo BM-14, Thủ trưởng ký Quyết định BM-18', start: 51, tasks: '51, 54', who: 'lan' },
-      { n: 'K9', name: 'Nhánh gộp BM-00 — KĐT-2026-0031', start: 18, tasks: '17–21, 24–26, 55–56', who: 'minh', kdt: 'KĐT-2026-0031' },
+      { n: 'K3', name: 'Xác nhận song song, thẩm quyền, phân luồng', start: 11, tasks: '11–13', who: 'thu' },
+      { n: 'K4', name: 'Chủ trương: dự thảo, BM-01, chọn CQCM, trình', start: 15, tasks: '15–17, 39–45', who: 'minh' },
+      { n: 'K5', name: 'Thẩm định chủ trương (vòng BM-01)', start: 27, tasks: '25–38, 46', who: 'lan' },
+      { n: 'K6', name: 'Ký chủ trương BM-01', start: 47, tasks: '47, 48', who: 'lan' },
+      { n: 'K7', name: 'Hồ sơ KĐT BM-03 + Checklist 02, thẩm định (vòng BM-03)', start: 50, tasks: '49–55', who: 'minh' },
+      { n: 'K8', name: 'Ký tờ trình BM-03, báo cáo BM-14, TGĐ ký Quyết định BM-18', start: 56, tasks: '56, 57, 60', who: 'hai' },
+      { n: 'K9', name: 'Nhánh gộp BM-00 — KĐT-2026-0031', start: 19, tasks: '18–24, 25–38, 61–62', who: 'minh', kdt: 'KĐT-2026-0031' },
       { n: 'K10', name: 'Tổng kết: Chi tiết KĐT, hồ sơ, BPMN', start: 'END', tasks: '—', who: 'lan', go: 'kdt/' + encodeURIComponent(D.kdtCode0) }], branches: [
-      { name: 'KĐT-2026-0033 vượt ngưỡng MS13 → chuyển MS14', tasks: '12 → MS14', task: 12, who: 'lan', dxms: 'KĐT-2026-0033', settle: true },
-      { name: 'TTMS: 04 yếu tố Không OK → AI gợi ý, về bước 10', tasks: '12 → 13 → 10', task: 12, who: 'lan', settle: true },
-      { name: 'TTMS trả lại danh sách CQCM', tasks: '24 → 38', task: 24, who: 'lan' },
-      { name: 'Họp lần 2 vẫn chưa thống nhất → báo cáo, Thủ trưởng kết luận', tasks: '29 → 34 → 35', task: 29, who: 'lan', vars: { meet: { CT: 1 } } },
-      { name: 'Thủ trưởng không ký chủ trương — chỉ đạo', tasks: '44 → dừng / 36', task: 44, who: 'tgd' },
-      { name: 'Báo cáo BM-14 chưa được thông qua → ĐVĐX hoàn chỉnh', tasks: '51 → 52 → 53 → 46', task: 51, who: 'lan' },
-      { name: 'KĐT-2026-0031: Thủ trưởng không ký hồ sơ gộp — chỉ đạo xử lý', tasks: '56 → 17 → 18', task: 56, who: 'tgd', dxms: 'KĐT-2026-0031' }] },
+      { name: 'KĐT-2026-0033 vượt ngưỡng MS13 → chuyển MS14', tasks: '12 → 13 → MS14', task: 12, who: 'lan', dxms: 'KĐT-2026-0033', settle: true },
+      { name: 'TTMS: 04 yếu tố Không OK → AI gợi ý, về bước 10', tasks: '12 → 14 → 10', task: 12, who: 'lan', settle: true },
+      { name: 'CQCM chủ trì không đồng ý danh sách CQCM BM-01', tasks: '42 → 41', task: 42, who: 'lan' },
+      { name: 'Họp lần 2 vẫn chưa thống nhất → báo cáo, Thủ trưởng kết luận', tasks: '32 → 33 → 37 → 38', task: 32, who: 'lan', vars: { meet: { CT: 1 } } },
+      { name: 'TGĐ VHT không đồng ý chủ trương — chỉ đạo', tasks: '48 → dừng / 39', task: 48, who: 'tgd' },
+      { name: 'Báo cáo BM-14 không được thông qua → ĐVĐX hoàn chỉnh', tasks: '57 → 58 → 59 → 50', task: 57, who: 'lan' },
+      { name: 'KĐT-2026-0031: TGĐ VHT không đồng ý hồ sơ gộp — sửa BM-00', tasks: '62 → 19', task: 62, who: 'tgd', dxms: 'KĐT-2026-0031' },
+      { name: 'Tờ trình BM-01 thiếu mục bắt buộc → HT/AI kiểm tra Không đạt, về lập tờ trình', tasks: '43 → 44 → 39', task: 43, who: 'minh' },
+      { name: 'Hồ sơ chủ trương chưa đủ điều kiện thẩm định → AI gợi ý, ĐVĐX sửa, chọn lại CQCM', tasks: '45 → 25 → 26 → 41', task: 26, who: 'minh', ui: { inc: { CT: true } } },
+      /* GIẢ LẬP P-90: bản chụp danh mục Phân cấp thẩm quyền đặt chủ trương KHCN thuộc Tập đoàn → cổng cấp duyệt sau 46 rẽ Tập đoàn (tuyến 63–74, T18 B4). */
+      { name: 'Chủ trương thuộc thẩm quyền Tập đoàn → AI dự thảo công văn, ĐVĐX hoàn thiện bộ hồ sơ gửi Tập đoàn', tasks: '13 → … → 46 → 63 → 64', task: 64, who: 'minh', pre: AUTH_CT_TD },
+      /* Khối ký chung 75–78 (D-34): hồ sơ đánh dấu Mật ở bước 4 (ui.secret) → G1 bắt buộc bản cứng; lỗi gửi VOffice giả lập P-94 (ui.voFail, dùng một lần). */
+      { name: 'Hồ sơ Mật — ký bản cứng bắt buộc, người phụ trách cập nhật kết quả + scan', tasks: '47 → 77 → 78 → 48', task: 47, who: 'lan', ui: { secret: true } },
+      { name: 'Gửi VOffice lỗi → người trình Gửi lại, nhận kết quả ký', tasks: '47 → 75 → 76 (lỗi) → 76 → 48', task: 47, who: 'lan', ui: { voFail: true } },
+      /* Tuyến Tập đoàn 63–74 (T18 B4) — người Tập đoàn là tài khoản giả lập (P-96). */
+      { name: 'Tập đoàn: các Ban gửi phiếu nhận xét BM-09 → ĐVĐX tiếp thu, TGĐ VHT ký trình lại', tasks: '65 → 66 → 67 → 68 → 69', task: 67, who: 'td', pre: AUTH_CT_TD },
+      { name: 'Tập đoàn: Ban ĐTXD kiểm tra hồ sơ hoàn thiện chưa đạt → ĐVĐX bổ sung', tasks: '70 → 68 → 69 → 70', task: 70, who: 'td', pre: AUTH_CT_TD },
+      { name: 'TGĐ Tập đoàn ký chủ trương BM-01 → về lập hồ sơ KĐT (VHT)', tasks: '71 → 73 → 74 → 49 → 50', task: 73, who: 'td', pre: AUTH_CT_TD },
+      { name: 'KĐT-2026-0031: hồ sơ gộp thuộc Tập đoàn → Ban ĐTXD lập BM-14 + dự thảo BM-18, TGĐ Tập đoàn ký', tasks: '… → G30 → 63–70 → 72 → 73 → 74 → kết thúc', task: 72, who: 'td', dxms: 'KĐT-2026-0031',
+        pre: { auth: [{ type: 'TBNB', field: '*', from: 0, to: null, ct: 'VHT', kdt: 'TD', basis: 'GIẢ LẬP P-90' }] } }] },
+    /* Điều chỉnh ĐXMS (T21 B3): bộ chính ĐXMS-2026-0103 (đã phê duyệt MS01.02, 210,5 tỷ → MS02.02). pre.adj = giá trị / lý do sau điều chỉnh
+       đặt sẵn như đã xác nhận ở bước 4 (Flow.startAdj); chuyển ngưỡng xuống (0103 còn 150 tỷ → MS02.03), lên (0072 MS01.03 152 → 172 tỷ → MS02.01);
+       0089 (MS01.03, 18,7 tỷ) là MS02.03 tự nhiên. */
+    { key: 'MS02', dxms: 'ĐXMS-2026-0103', also: ['ĐXMS-2026-0072', 'ĐXMS-2026-0089'], label: 'ĐXMS-2026-0103 · Điều chỉnh MS02', scenes: [
+      { n: 'A1', name: 'Tạo hồ sơ Điều chỉnh từ ĐXMS đã phê duyệt, bước 1 xác nhận căn cứ', start: 'NEW', tasks: '—, 01', who: 'minh' },
+      { n: 'A2', name: 'Lý do, phạm vi, giá trị và bảng trước – sau', start: 4, tasks: '04', who: 'minh' },
+      { n: 'A3', name: 'Rà soát tồn kho, báo giá điều chỉnh (kết quả cũ chỉ xem)', start: 7, tasks: '06–10', who: 'minh' },
+      { n: 'A4', name: 'MS02.02: không báo cáo Tập đoàn (chọn sẵn theo căn cứ cũ)', start: 48, tasks: '48', who: 'lan' },
+      { n: 'A5', name: 'Phê duyệt Quyết định BM-08 điều chỉnh', start: 58, tasks: '57–61', who: 'lan' },
+      { n: 'A6', name: 'Tổng kết: ĐXMS điều chỉnh lần 1, chuỗi hồ sơ', start: 'END', tasks: '—', who: 'lan', go: 'dxms/' + encodeURIComponent('ĐXMS-2026-0103') },
+      { n: 'A7', name: 'Chuyển ngưỡng xuống: còn 150 tỷ → MS02.03, dự thảo BM-09', start: 11, tasks: '10 → 11', who: 'minh',
+        pre: { adj: { total: 150, reason: 'Giảm quy mô: bỏ 01 cụm mô phỏng lõi dự phòng do đã có tồn kho dùng chung.' } } },
+      { n: 'A8', name: 'MS02.03: TTMS ‖ Phó TGĐ ký BM-09 điều chỉnh', start: 38, tasks: '38–40, 60–61', who: 'lan',
+        pre: { adj: { total: 150, reason: 'Giảm quy mô: bỏ 01 cụm mô phỏng lõi dự phòng do đã có tồn kho dùng chung.' } } },
+      { n: 'A9', name: 'Chuyển ngưỡng lên: ĐXMS-2026-0072 tăng 172 tỷ → MS02.01, BM-01', start: 12, tasks: '10 → 12', who: 'minh', dxms: 'ĐXMS-2026-0072',
+        pre: { adj: { total: 172, reason: 'Bổ sung 08 phần tử anten mảng pha theo yêu cầu đo kiểm băng tần mới; giá linh kiện tăng.' } } },
+      { n: 'A10', name: 'MS02.01: báo cáo TGĐ Tập đoàn (BM-06, BM-07)', start: 50, tasks: '48–56', who: 'lan', dxms: 'ĐXMS-2026-0072',
+        pre: { adj: { total: 172, reason: 'Bổ sung 08 phần tử anten mảng pha theo yêu cầu đo kiểm băng tần mới; giá linh kiện tăng.' } } }], branches: [
+      { name: 'Chỉ huy ĐVĐX không đồng ý dự thảo điều chỉnh', tasks: '13 → 14 → 12', task: 13, who: 'hai' },
+      { name: 'TTMS không đồng ý danh sách CQCM', tasks: '17 → 16', task: 17, who: 'lan' },
+      { name: 'Giải trình vòng 3/2 → cảnh báo, họp', tasks: '28 → 29–34', task: 28, who: 'minh', vars: { round: 2 } },
+      { name: 'Phó TGĐ không đồng ý BM-05 → ĐVĐX hoàn chỉnh', tasks: '47 → 25 → 26', task: 47, who: 'binh' },
+      { name: 'TTMS đổi lựa chọn: có báo cáo TGĐ Tập đoàn dù căn cứ đã được duyệt', tasks: '48 → 49 → 50', task: 48, who: 'lan' },
+      { name: 'Thủ trưởng VHT yêu cầu hoàn chỉnh', tasks: '60 → 25 → 26', task: 60, who: 'tgd' },
+      { name: 'ĐXMS-2026-0089 (< 160 tỷ): Phó TGĐ không đồng ý BM-09 điều chỉnh', tasks: '39 → 25 → 26', task: 39, who: 'binh', dxms: 'ĐXMS-2026-0089' }] },
   ];
   D.demoSets.forEach((d) => { if (d.key !== 'MS01.01') d.branches.forEach((b) => { b.process = d.key; b.dxms = b.dxms || d.dxms || d.kdt; }); });
 

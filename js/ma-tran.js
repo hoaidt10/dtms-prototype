@@ -25,6 +25,8 @@
     { code: 'SUA_LAI', name: 'Sửa lại', type: 'DETAIL', outcome: 'mismatchAction=EDIT' },
     { code: 'CHUYEN_QUY_TRINH', name: 'Chuyển quy trình', type: 'OTHER', outcome: 'mismatchAction=MOVE' },
     { code: 'LUU', name: 'Lưu', type: 'OTHER', outcome: '' },
+    /* T17 SCR-98: hành động hỗ trợ, không đóng task (như Lưu) — mở hộp thoại Cập nhật nhân sự của luồng (BE replaceCandidateUsers). */
+    { code: 'UPDATE_MEMBERS', name: 'Cập nhật nhân sự', type: 'OTHER', outcome: '' },
   ];
   const actionBy = (code) => ACTIONS.find((a) => a.code === code);
   const SCREENS = [{ value: 'TASK', label: 'Xử lý công việc' }, { value: 'DETAIL', label: 'Chi tiết hồ sơ' }, { value: 'CREATE', label: 'Thêm mới hồ sơ' }];

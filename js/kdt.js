@@ -1,7 +1,7 @@
 /* PH09 Khoản đầu tư (plan docs/dtms/prototype-KDT-chuan-bi.md v0.3, B1–B2).
    KĐT là đối tượng cha (D-12, như ĐXMS ↔ Hồ sơ và Nhiệm vụ ↔ Hồ sơ của KHCN): SCR-54 danh sách #/kdt, SCR-55 thêm mới / chỉnh sửa
    #/kdt/create, #/kdt/<mã>/edit (không start quy trình), SCR-56 chi tiết #/kdt/<mã>. Hồ sơ Phê duyệt KĐT tạo ở Chỉnh sửa › Tạo hồ sơ
-   (#/kdt/<mã>/tao-ho-so — khuôn SCR-25), Lưu = start instance MS13-TO BE; nhóm MS13 / MS14 / MS15 do hệ thống xác định sau bước 11 ‖ 12 (D-7).
+   (#/kdt/<mã>/tao-ho-so — khuôn SCR-25), Lưu = start instance MS13; nhóm MS13 / MS14 / MS15 do hệ thống xác định sau bước 11 ‖ 12 (D-7).
    SCR-66 #/kdt/<mã>/chuyen-luong: thông báo hồ sơ chuyển luồng MS14 (P-53). Layout theo task-management. */
 (function () {
   const D = window.D, Flow = window.Flow;
@@ -23,25 +23,26 @@
   const catOptions = (k, cur) => window.Catalog.rows(CAT[k]).filter((r) => r.active || r.code === cur).map((r) => ({ value: r.code, label: r.name }));
   const UNITS = [...new Set(D.personas.slice(0, 1).map((p) => p.unit).concat(D.kdtList.map((x) => x.unit), D.dxmsList.map((x) => x.unit)))];
 
-  /* ---------- Trạng thái KĐT suy từ hồ sơ (§4.1). Bước → trạng thái theo cụm của BPMN MS13-TO BE (§1.2). ---------- */
+  /* ---------- Trạng thái KĐT suy từ hồ sơ (§4.1). Bước → trạng thái theo cụm của BPMN MS13 (§1.2). ---------- */
   const KDT_STAGE = {
     NEW: ['Chưa có hồ sơ', 'default'], LAP: ['Đang lập', 'info'], PL: ['Chờ xác nhận phân loại', 'info'],
     GOP: ['Đang lập hồ sơ gộp', 'info'], TDGOP: ['Đang thẩm định hồ sơ gộp', 'info'],
     CT: ['Đang lập chủ trương', 'info'], TDCT: ['Đang thẩm định chủ trương', 'info'], KYCT: ['Chờ ký chủ trương', 'warning'],
     HS: ['Đang lập hồ sơ KĐT', 'info'], TDKDT: ['Đang thẩm định KĐT', 'info'], KYQD: ['Chờ ký quyết định', 'warning'], KYGOP: ['Chờ ký hồ sơ gộp', 'warning'],
     OK: ['Đã phê duyệt', 'success'], MS14: ['Chuyển MS14', 'warning'], STOP: ['Dừng theo chỉ đạo', 'default'],
+    TD: ['Đang trình Tập đoàn', 'warning'], TDTD: ['Tập đoàn thẩm định, phê duyệt', 'warning'],
   };
   const stageBadge = (s) => badge(KDT_STAGE[s][0], KDT_STAGE[s][1]);
   const CASE_ST = { processing: ['Đang xử lý', 'info'], done: ['Hoàn thành', 'success'], moved: ['Đã chuyển luồng', 'warning'], stopped: ['Dừng theo chỉ đạo', 'default'] };
   const GROUP = D.kdtGroups;
   const BRANCH = D.kdtBranches;
 
-  /* Tên bước: MS13 từ BPMN_FLOWS (trang MS13-TO BE); MS14 từ sơ đồ trang MS14-TO BE. Hồ sơ chưa xác định nhóm đi phần đầu MS13 (bước 1–12). */
+  /* Tên bước: MS13 từ BPMN_FLOWS (trang MS13); MS14 từ sơ đồ trang MS14. Hồ sơ chưa xác định nhóm đi phần đầu MS13 (bước 1–12). */
   function stepName(c) {
     if (c.st !== 'processing') return '';
     const ks = c.tasks || [c.task];
     if (c.flow === 'MS14') {
-      const g = (window.BPMN_DIAGRAMS || {})['MS14-TO BE'];
+      const g = (window.BPMN_DIAGRAMS || {})['MS14'];
       const n = g && g.nodes.find((x) => x.k === 'task' && String(x.t) === String(c.task));
       return n ? n.name : '';
     }
@@ -266,7 +267,7 @@
       notes: [
         'Theo task-create (mode detail): nút <b>Chỉnh sửa</b> trên hàng tiêu đề; cards Thông tin chung KĐT · <b>Danh sách hồ sơ</b> · Tài liệu đính kèm. Nút Tạo hồ sơ chỉ có ở Chỉnh sửa (như source).',
         'Nhóm KĐT và Nhánh hồ sơ lấy từ hồ sơ gần nhất — hệ thống xác định sau bước 12 (D-7). Trạng thái suy từ hồ sơ. Tổng mức vốn hiệu lực = của hồ sơ Hoàn thành gần nhất.',
-        'Mã hồ sơ trong Danh sách hồ sơ mở <b>Chi tiết hồ sơ</b> (khuôn profile-detail: Quy trình MS13, Lịch sử, văn bản đầu ra, Xem BPMN MS13-TO BE tô bước hiện tại); quay lại về màn này. Hồ sơ đã chuyển luồng: bấm "Kết thúc — đã chuyển luồng" mở Thông báo chuyển luồng.',
+        'Mã hồ sơ trong Danh sách hồ sơ mở <b>Chi tiết hồ sơ</b> (khuôn profile-detail: Quy trình MS13, Lịch sử, văn bản đầu ra, Xem BPMN MS13 tô bước hiện tại); quay lại về màn này. Hồ sơ đã chuyển luồng: bấm "Kết thúc — đã chuyển luồng" mở Thông báo chuyển luồng.',
         'KĐT đã phê duyệt (BM-18 hoặc BM-00 đã ký): nút <b>Lập KHLCNT</b> mở Thêm mới KHLCNT chọn sẵn KĐT (T16 B2; thay nút Tạo gói thầu mờ — gói thầu là dòng của KHLCNT). Tài liệu đính kèm gồm văn bản đầu ra của hồ sơ (BM-01, BM-14, BM-18 / BM-00).',
       ].concat(window.KdtB2.TAB_INFO),
       q: ['P-59'], src: 'task-management/components/task-create (mode detail) · /task-management/detail/:id',
@@ -299,11 +300,11 @@
     if (!x) return notFound('Thêm mới hồ sơ');
     const back = href(code) + '/edit';
     const info = {
-      scr: 'SCR-25', name: 'Thêm mới hồ sơ (khoản đầu tư)', uc: 'UC-05-01 · WBS PH09 #175, 176; PH02 #29, 30 · UR-KDT-11', bpmn: 'Ngoài BPMN — trước bước 01 (MS13-TO BE)',
+      scr: 'SCR-25', name: 'Thêm mới hồ sơ (khoản đầu tư)', uc: 'UC-05-01 · WBS PH09 #175, 176; PH02 #29, 30 · UR-KDT-11', bpmn: 'Ngoài BPMN — trước bước 01 (MS13)',
       notes: [
         'Dùng lại khuôn Thêm mới hồ sơ (profile-form): ô <b>Khoản đầu tư</b> khoá vì mở từ nút Tạo hồ sơ của KĐT.',
         'Loại hồ sơ <b>Phê duyệt KĐT</b>; Điều chỉnh KĐT (MS13.02/.04, MS14.02/.04) chưa có BPMN TO-BE nên chưa chọn được.',
-        '<b>Quy trình không chọn tay</b> (D-7): Lưu = khởi tạo quy trình MS13-TO BE, mở ngay bước 01 (giao người tạo); hệ thống xác định nhóm MS13 / MS14 / MS15 và nhánh gộp BM-00 / hai giai đoạn sau khi chốt tổng mức vốn (bước 10), Ban Tài chính xác nhận TSCĐ (bước 11) và TTMS xác nhận 04 yếu tố (bước 12). Khác cách tạo hồ sơ ĐXMS (chọn MS01.01/.02/.03 lúc tạo).',
+        '<b>Quy trình không chọn tay</b> (D-7): Lưu = khởi tạo quy trình MS13, mở ngay bước 01 (giao người tạo); hệ thống xác định nhóm MS13 / MS14 / MS15 và nhánh gộp BM-00 / hai giai đoạn sau khi chốt tổng mức vốn (bước 10), Ban Tài chính xác nhận TSCĐ (bước 11) và TTMS xác nhận 04 yếu tố (bước 12). Khác cách tạo hồ sơ ĐXMS (chọn MS01.01/.02/.03 lúc tạo).',
         'Prototype chạy một hồ sơ tại một thời điểm: hồ sơ đang chạy trước đó (ĐXMS hoặc KĐT) được thay; hồ sơ KĐT cũ giữ lại ở bước đang chờ trong danh sách hồ sơ của KĐT đó.',
         'Luật: một KĐT chỉ có một hồ sơ đang xử lý; hồ sơ Phê duyệt chỉ khi KĐT chưa được phê duyệt. Không thoả thì báo dưới ô Loại hồ sơ.',
       ],
@@ -339,18 +340,18 @@
   document.addEventListener('submit', (e) => { if (e.target.matches('[data-kdt-case-form]')) { e.preventDefault(); saveCase(); } });
 
   /* ---------- SCR-66 Thông báo chuyển luồng (cổng "Tổng mức vốn thực tế thuộc MS13?" = Không, P-53) ----------
-     Hồ sơ MS13 kết thúc "Đã chuyển luồng", hồ sơ mới của cùng KĐT theo MS14 (luồng MS14 chưa dựng — bước hiện tại lấy từ sơ đồ MS14-TO BE). */
+     Hồ sơ MS13 kết thúc "Đã chuyển luồng", hồ sơ mới của cùng KĐT theo MS14 (luồng MS14 chưa dựng — bước hiện tại lấy từ sơ đồ MS14). */
   function moved(code) {
     // Theo: profile-management/profile-detail (card Thông tin chung + bảng) — source không có màn tương đương riêng
     const x = Flow.findKdt(code);
     if (!x) return notFound('Thông báo chuyển luồng');
     const hs = meta(x).hs, old = hs.find((c) => c.st === 'moved');
     const info = {
-      scr: 'SCR-66', name: 'Thông báo chuyển luồng MS14 / MS15', uc: 'UC-05-01 · WBS PH09 #176; PH02 #30 · UR-KDT-06', bpmn: 'Cổng "Tổng mức vốn thực tế thuộc MS13?" = Không → ô "MS14,15 – Chuyển xử lý" (MS13-TO BE)',
+      scr: 'SCR-66', name: 'Thông báo chuyển luồng MS14 / MS15', uc: 'UC-05-01 · WBS PH09 #176; PH02 #30 · UR-KDT-06', bpmn: 'Cổng "Tổng mức vốn thực tế thuộc MS13?" = Không → ô "MS14,15 – Chuyển xử lý" (MS13)',
       notes: [
         'Tổng mức vốn thực tế sau báo giá không thuộc ngưỡng MS13 của lĩnh vực: hồ sơ MS13 kết thúc ở trạng thái <b>Đã chuyển luồng</b>, hệ thống tạo <b>hồ sơ mới của cùng KĐT</b> theo nhóm đúng và liên kết hai hồ sơ (mặc định P-53, như 10b của ĐXMS).',
         'Đích của nhánh trong BPMN là ô chữ "MS14,15 – Chuyển xử lý", không phải sự kiện kết thúc (plan KĐT §1.2a mục 7). Dữ liệu căn cứ, danh mục, báo giá, kết quả xác nhận được sao chép sang hồ sơ mới.',
-        'Luồng MS14 chưa dựng trên prototype (đợt 2): hồ sơ mới hiện bước đầu tiên theo sơ đồ MS14-TO BE. Source không có màn tương đương — bố cục theo profile-detail (card Thông tin chung + bảng).',
+        'Luồng MS14 chưa dựng trên prototype (đợt 2): hồ sơ mới hiện bước đầu tiên theo sơ đồ MS14. Source không có màn tương đương — bố cục theo profile-detail (card Thông tin chung + bảng).',
       ],
       q: ['P-53'], src: 'profile-management/profile-detail (bố cục) · —',
     };

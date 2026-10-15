@@ -17,19 +17,19 @@ const asAdmin = async (page, hash) => {
 };
 const row = (page, code) => page.locator('.vtable tbody tr', { hasText: code });
 
-test('D-14: Danh mục dùng chung là menu cấp cha — Tổng quan + Quản lý E-form (D-16) + 16 danh mục (T16 B1); mục con sáng theo route; không có nút quay lại', async ({ page }) => {
+test('D-14: Danh mục dùng chung là menu cấp cha — Tổng quan + Quản lý E-form (D-16) + 18 danh mục (T16 B1, T17 SCR-99, T18 SCR-100); mục con sáng theo route; không có nút quay lại', async ({ page }) => {
   await asAdmin(page, '#/viec-cua-toi');
   const tops = await page.locator('.sb-nav > .nav:not(.child) .l').allInnerTexts();
   expect(tops).toContain('Danh mục dùng chung');
   await page.locator('.sb-nav [data-toggle="Danh mục dùng chung"]').click();
   const kids = page.locator('.sb-nav .nav.child[data-go^="dmdc"] .l');
-  await expect(kids).toHaveCount(17);
+  await expect(kids).toHaveCount(19);
   await expect(kids.first()).toHaveText('Tổng quan');
   await expect(page.locator('.sb-nav [data-go="dmdc"] + .nav.child')).toHaveAttribute('data-go', 'eform');
   await page.locator('.sb-nav [data-go="dmdc"]').click();
   await expect(page).toHaveURL(/#\/dmdc$/);
   await expect(page.locator('.ov-title')).toHaveText('Các module trong phân hệ');
-  await expect(page.locator('.ov-tile')).toHaveCount(16);
+  await expect(page.locator('.ov-tile')).toHaveCount(18);
   await expect(page.locator('.ov-tile').nth(5)).toContainText('Danh mục Nguồn vốn');
   await expect(page.locator('.ov-tile').nth(5).locator('.n')).toHaveText('5');
   await page.locator('.ov-tile', { hasText: 'Nguồn vốn' }).click();
@@ -702,5 +702,17 @@ test('B5 §6: báo giá lấy tên và loại tiền của nhà cung cấp từ 
   expect(names).toEqual(['Alpha Tech', 'NCC Beta', 'NCC Gamma']);
   await expect(q.locator('tbody tr', { hasText: 'NCC Gamma' }).first()).toContainText('USD');
   await expect(q.locator('tbody tr', { hasText: 'Alpha Tech' }).first()).toContainText('VNĐ');
+  expect(page.errors).toEqual([]);
+});
+
+test('T18 SCR-100 Phân cấp thẩm quyền KĐT: 7 quy tắc giả lập P-90 (UQ-GUQ §1.2), bước 13 đọc quy tắc đang hoạt động', async ({ page }) => {
+  await asAdmin(page, '#/dmdc/phan-cap-tham-quyen');
+  await expect(page.locator('.pg-head').first()).toContainText('Danh sách quy tắc phân cấp thẩm quyền');
+  await expect(page.locator('.vtable tbody tr')).toHaveCount(7);
+  const heads = await page.locator('.vtable thead th').allInnerTexts();
+  for (const h of ['Loại khoản đầu tư', 'Lĩnh vực', 'Tổng mức vốn (tỷ đồng)', 'Cấp duyệt chủ trương', 'Cấp duyệt KĐT', 'Căn cứ']) expect(heads.join('|')).toContain(h);
+  await expect(page.locator('.vtable tbody tr', { hasText: 'UQ-GUQ §1.2.1' })).toContainText('Tập đoàn');
+  const r = await page.evaluate(() => [D.kdtAuthRules().length, D.kdtAuthOf({ type: 'KHCN', field: 'VTCNTT' }, 30).ct, D.kdtAuthOf({ type: 'KHCN', field: 'VTCNTT' }, 118.5).ct]);
+  expect(r).toEqual([7, 'TD', 'VHT']);
   expect(page.errors).toEqual([]);
 });

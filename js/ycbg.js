@@ -170,7 +170,7 @@
     scr: 'SCR-76', name: 'Danh sách yêu cầu báo giá KĐT', uc: 'UC-05-01 · Backlog W1_T10 › Yêu cầu báo giá KĐT (dòng 310–313)',
     notes: [
       'T16 B2: cùng khuôn và cùng cơ chế với Yêu cầu báo giá ĐXMS (SCR-73) — profile-list, ô tìm + Tìm kiếm nâng cao, Xuất excel.',
-      'Nguồn: hồ sơ Phê duyệt KĐT chạy MS13-TO BE — bước 8 "Khởi tạo / chỉnh sửa yêu cầu báo giá" (ĐVĐX KĐT), service task 9 gửi yêu cầu, bước 10 "Tổng hợp và kiểm tra báo giá". Mỗi lần chạy bước 8 sinh một YCBG, mã YCBG-&lt;mã KĐT&gt;-&lt;lần&gt;.',
+      'Nguồn: hồ sơ Phê duyệt KĐT chạy MS13 — bước 8 "Khởi tạo / chỉnh sửa yêu cầu báo giá" (ĐVĐX KĐT), service task 9 gửi yêu cầu, bước 10 "Tổng hợp và kiểm tra báo giá". Mỗi lần chạy bước 8 sinh một YCBG, mã YCBG-&lt;mã KĐT&gt;-&lt;lần&gt;.',
       'Tổng giá trị theo cơ sở giá của YCBG đạt là tổng mức vốn thực tế — yếu tố thứ tư để phân luồng MS13 / MS14 / MS15 (bước 12).',
       'Hồ sơ đã chuyển MS14 mang theo YCBG của hồ sơ MS13. Import YCBG chưa dựng (P-74, cùng câu hỏi với ĐXMS).',
     ],
@@ -246,7 +246,7 @@
     };
     if (y.kdt) {
       info.scr = 'SCR-77'; info.name = 'Chi tiết yêu cầu báo giá KĐT'; info.uc = 'UC-05-01 · Backlog W1_T10 › Yêu cầu báo giá KĐT (dòng 312–313)';
-      info.notes = ['Cùng khuôn SCR-74 (profile-detail). Bước MS13-TO BE: 7 rà soát tồn kho → 8 khởi tạo YCBG → 9 hệ thống gửi → 10 tổng hợp, kiểm tra báo giá.'].concat(info.notes.slice(0, 3));
+      info.notes = ['Cùng khuôn SCR-74 (profile-detail). Bước MS13: 7 rà soát tồn kho → 8 khởi tạo YCBG → 9 hệ thống gửi → 10 tổng hợp, kiểm tra báo giá.'].concat(info.notes.slice(0, 3));
     }
     const o = K[y.kdt ? 'kdt' : 'dxms'];
     const NST = (n) => (!n.got ? badge('Chưa phản hồi', 'default') : n.expired ? badge('Hết hiệu lực', 'error') : badge('Đã nhận báo giá', 'success'));

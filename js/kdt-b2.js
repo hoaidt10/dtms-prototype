@@ -60,7 +60,7 @@
       scr: 'SCR-75', name: 'Danh sách hồ sơ khoản đầu tư', uc: 'UC-05-01 · Backlog W1_T10 › Hồ sơ KĐT (dòng 307–309)',
       notes: [
         'T16 B2: khuôn profile-list như Danh sách hồ sơ ĐXMS (SCR-02); cột Mã nhiệm vụ của source thay bằng <b>Mã KĐT</b>, thêm Nhóm KĐT, Nhánh hồ sơ (gộp BM-00 / hai giai đoạn), Tổng mức vốn thực tế.',
-        'Hồ sơ là đối tượng con của KĐT (D-12): không có nút Thêm mới ở đây — hồ sơ tạo ở Chỉnh sửa KĐT › Tạo hồ sơ (Lưu = khởi tạo MS13-TO BE). Mã hồ sơ mở Chi tiết hồ sơ KĐT; Mã KĐT mở Chi tiết KĐT.',
+        'Hồ sơ là đối tượng con của KĐT (D-12): không có nút Thêm mới ở đây — hồ sơ tạo ở Chỉnh sửa KĐT › Tạo hồ sơ (Lưu = khởi tạo MS13). Mã hồ sơ mở Chi tiết hồ sơ KĐT; Mã KĐT mở Chi tiết KĐT.',
         'Nhóm KĐT do hệ thống xác định sau bước 12 (trước đó "Chưa xác định"). Cột Thao tác: Sửa chỉ khi người đăng nhập có việc trên hồ sơ, mở màn xử lý việc đó.',
       ],
       src: 'profile-management/profile-list · /khcn-profile-management',
@@ -119,8 +119,10 @@
     const rule = total == null ? null : rs.find((r) => fits(r) && total >= r.from && (r.to == null || total < r.to)) || null;
     return { rule, group: rule ? rule.procs[0] : total == null ? null : 'MS14' };
   }
+  /* Cấp thẩm quyền theo nhóm (QT-8.6.5 chú thích 7) — MS14 / MS15. MS13: theo bước 13 (danh mục Phân cấp thẩm quyền KĐT, D-33). */
+  const LV = { VHT: 'Tổng Giám đốc VHT', TD: 'Tổng Giám đốc Tập đoàn' };
   const AUTH = {
-    MS13: ['Thủ trưởng VHT', 'Thủ trưởng VHT'],
+    MS13: ['Tổng Giám đốc VHT', 'Tổng Giám đốc VHT'],
     MS14: ['Chủ tịch / Tổng Giám đốc Tập đoàn (HĐĐT tham mưu)', 'Thủ trưởng VHT (theo phân cấp)'],
     MS15: ['Chủ tịch / Tổng Giám đốc Tập đoàn (HĐĐT tham mưu)', 'Chủ tịch / Tổng Giám đốc Tập đoàn (HĐĐT tham mưu)'],
   };
@@ -135,7 +137,9 @@
       ['Tính chất tài sản', cat('tinh-chat-tai-san', x.nature), 'Trường của KĐT (DMDC Tính chất tài sản)'],
       ['Mức giá trị (tổng mức vốn thực tế)', total != null ? ty(total, 2) + ' tỷ đồng' : '', 'Cơ sở giá của YCBG đạt (bước 10)']];
     const merge = [['Mức vốn thuộc MS13', group === 'MS13'], ['Tính chất tài sản: Nguyên chiếc', x.nature === 'NGUYEN_CHIEC'], ['Loại KĐT: Trang bị nội bộ', x.type === 'TBNB']];
-    const auth = group ? AUTH[group] : null;
+    /* MS13: kết quả bước 13 — hồ sơ chạy luồng lấy biến cap; hồ sơ mẫu tính theo danh mục hiện hành. */
+    const cap = group === 'MS13' ? ((g.live && Flow.state.vars.cap) || D.kdtAuthOf({ type: x.type, field: x.field }, total)) : null;
+    const auth = cap ? [LV[cap.ct], LV[cap.kdt]] : group ? AUTH[group] : null;
     return card('04 yếu tố định danh', Y.table([['Yếu tố', 250], ['Giá trị', 260], ['Nguồn', 300], ['Xác nhận của TTMS', 170, 'c']], fx,
         (r, i) => `${Y.ord(i)}<td>${esc(r[0])}</td><td>${r[1] ? esc(r[1]) : dash}</td><td>${esc(r[2])}</td><td class="c">${conf ? badge('OK', 'success') : badge('Chưa xác nhận', 'default')}</td>`),
       conf ? `TTMS xác nhận: ${esc(conf)}` : 'TTMS xác nhận OK / NOT OK ở bước 12 trước khi dùng để phân luồng')
@@ -148,17 +152,19 @@
         (r, i) => `${Y.ord(i)}<td>${esc(r[0])}</td><td class="c">${r[1] ? badge('Đạt', 'success') : badge('Không đạt', 'default')}</td>`),
         group ? (merge.every((m) => m[1]) ? 'Đủ 03 điều kiện → gộp chủ trương và KĐT (BM-00)' : 'Không đủ 03 điều kiện → hai giai đoạn (BM-01 → BM-03)') : 'Xác định sau khi phân loại')
       + card('Cấp có thẩm quyền phê duyệt', `<div class="ginfo c3">${kv('Phê duyệt chủ trương KĐT', auth ? esc(auth[0]) : null, 'span2')}${kv('Nhóm KĐT', group ? esc(group) : null)}
-          ${kv('Phê duyệt KĐT', auth ? esc(auth[1]) : null, 'span2')}${kv('KPI thời gian phê duyệt', group ? { MS13: '≤ 10 ngày làm việc', MS14: '≤ 20 ngày làm việc', MS15: '≤ 35 ngày làm việc' }[group] : null)}</div>`);
+          ${kv('Phê duyệt KĐT', auth ? esc(auth[1]) : null, 'span2')}${kv('KPI thời gian phê duyệt', group ? { MS13: '≤ 10 ngày làm việc', MS14: '≤ 20 ngày làm việc', MS15: '≤ 35 ngày làm việc' }[group] : null)}
+          ${cap ? kv('Căn cứ phân cấp', esc(cap.basis), 'span3') : ''}</div>`, cap ? 'Hệ thống xác định sau khi đủ hai xác nhận, tính lại trước khi trình ký' : '');
   }
-  /* Giai đoạn thẩm định và bước chọn CQCM (MS13): gộp BM-00 → bước 21; hai giai đoạn → chủ trương bước 38, KĐT bước 48. */
+  /* Vòng thẩm định và bước chọn CQCM (MS13 bản 12/10): gộp BM-00 → bước 22; hai giai đoạn → chủ trương bước 41, KĐT bước 52.
+     CQCM chủ trì xác nhận danh sách ở bước kế tiếp (23 / 42 / 53). */
   function tabThanhPhan(g) {
     const c = mainCase(g);
     const cq = (g.ref.cqcm || ['TC', 'PC']).map((id) => cqcmUnit(id)).filter(Boolean);
-    const st = !c ? [] : (c.branch === 'BM00' ? [['Thẩm định hồ sơ gộp (BM-00)', 21]] : c.branch === '2GD' ? [['Thẩm định chủ trương (BM-01)', 38], ['Thẩm định KĐT (BM-03)', 48]] : []);
+    const st = !c ? [] : (c.branch === 'BM00' ? [['Thẩm định hồ sơ gộp (BM-00)', 22]] : c.branch === '2GD' ? [['Thẩm định chủ trương (BM-01)', 41], ['Thẩm định KĐT (BM-03)', 52]] : []);
     const rows = st.filter(([, n]) => g.did(n)).map(([name, n]) => ({ name, n, at: by(g, n, 'minh', n) }));
-    return card('CQCM tham gia thẩm định', Y.table([['Giai đoạn', 260], ['CQCM chủ trì', 200], ['CQCM phối hợp', 300], ['Đơn vị đề xuất chọn', 220], ['TTMS phê duyệt danh sách', 200, 'c']], rows,
-        (r, i) => `${Y.ord(i)}<td>${esc(r.name)}</td><td>Trung tâm Mua sắm</td><td>${clamp(cq.join(', '))}</td><td>${esc(r.at)}</td><td class="c">${g.did(r.n + 1) || !(c.st === 'processing' && c.task === r.n) ? badge('Đã phê duyệt', 'success') : badge('Chờ phê duyệt', 'warning')}</td>`),
-      'Đơn vị đề xuất chọn CQCM theo tính chất KĐT; TTMS rà soát trước khi thẩm định')
+    return card('CQCM tham gia thẩm định', Y.table([['Giai đoạn', 260], ['CQCM chủ trì', 200], ['CQCM phối hợp', 300], ['Đơn vị đề xuất chọn', 220], ['CQCM chủ trì xác nhận', 200, 'c']], rows,
+        (r, i) => `${Y.ord(i)}<td>${esc(r.name)}</td><td>Trung tâm Mua sắm</td><td>${clamp(cq.join(', '))}</td><td>${esc(r.at)}</td><td class="c">${g.did(r.n + 1) || !(c.st === 'processing' && c.task === r.n) ? badge('Đã xác nhận', 'success') : badge('Chờ xác nhận', 'warning')}</td>`),
+      'Đơn vị đề xuất chọn CQCM theo tính chất KĐT; CQCM chủ trì (TTMS) xác nhận danh sách trước khi thẩm định')
       + card('Đầu mối xử lý hồ sơ', Y.table([['Vai trò', 260], ['Đơn vị', 260], ['Người thực hiện', 220]], c ? [['Đơn vị đề xuất KĐT', g.x.unit, c.creator || g.x.creator], ['Cơ quan chủ trì thẩm định', 'Trung tâm Mua sắm', persona('lan').name], ['Xác nhận hình thành TSCĐ', 'Ban Tài chính', persona('thu').name]] : [],
         (r, i) => `${Y.ord(i)}<td>${esc(r[0])}</td><td>${esc(r[1])}</td><td>${esc(r[2] || '')}</td>`));
   }
@@ -175,7 +181,7 @@
     return card('Kết quả phê duyệt', `<div class="ginfo c3">
         ${kv('Chủ trương KĐT', ct ? badge('Đã phê duyệt', 'success') : stop ? badge('Dừng theo chỉ đạo', 'default') : badge('Chưa phê duyệt', 'default'))}${kv('Văn bản chủ trương', ct ? `${esc(ct.code)} ${esc(DOC[ct.code])} · ${esc(ct.at)}` : null, 'span2')}
         ${kv('Khoản đầu tư', done ? badge('Đã phê duyệt', 'success') : badge('Chưa phê duyệt', 'default'))}${kv('Quyết định phê duyệt KĐT', done ? (docs.filter((d) => d.code === 'BM-18' || d.code === 'BM-00').map((d) => `${esc(no(d))} · ${esc(d.at)}`).pop() || null) : null, 'span2')}
-        ${kv('Tổng mức vốn được duyệt', done ? ty(done.total, 2) + ' tỷ đồng' : null)}${kv('Nguồn vốn được duyệt', done ? esc(fund) : null)}${kv('Cấp phê duyệt', done ? esc((AUTH[done.flow] || AUTH.MS13)[1]) : null)}</div>`)
+        ${kv('Tổng mức vốn được duyệt', done ? ty(done.total, 2) + ' tỷ đồng' : null)}${kv('Nguồn vốn được duyệt', done ? esc(fund) : null)}${kv('Cấp phê duyệt', done ? esc(done.flow === 'MS13' ? LV[(D.kdtAuthOf({ type: x.type, field: x.field }, done.total) || {}).kdt] || LV.VHT : (AUTH[done.flow] || AUTH.MS13)[1]) : null)}</div>`)
       + card('Văn bản đầu ra', Y.table([['Văn bản', 340], ['Số văn bản', 160], ['Hồ sơ', 150], ['Ngày ký', 120], ['Tệp', 80, 'c']], docs,
         (d, i) => `${Y.ord(i)}<td>${esc(d.code + ' ' + DOC[d.code])}</td><td>${esc(no(d))}</td><td><a class="link" data-go="${caseHref(d.c)}">${esc(d.c.code)}</a></td><td class="num">${esc(d.at)}</td>
           <td class="c"><button type="button" class="vbtn icon ghost" aria-label="Tải xuống" data-dl="${esc(no(d).replace(/\//g, '-'))}.pdf">${icon('download')}</button></td>`))
@@ -191,8 +197,8 @@
   const TAB_INFO = [
     'Tab theo Backlog W1_T10 › Quản lý KĐT (T16 B2): app-tabs như Chi tiết ĐXMS; tab Thông tin chung giữ bố cục task-create mode detail. Các tab khác chỉ xem — dữ liệu do các bước MS13 ghi (S2, S4).',
     'Căn cứ & hạng mục (bước 1, 5), Rà soát tồn kho (bước 6, 7), Yêu cầu báo giá (bước 8–10): cùng cơ chế với ĐXMS (B1) — cần dev bảng giữ chỗ căn cứ, API giữ chỗ tồn kho + snapshot, bảng YCBG.',
-    'Phân loại & định danh: 04 yếu tố (3 trường của KĐT + tổng mức vốn thực tế), xác nhận TSCĐ (bước 11, Ban Tài chính), xác nhận 04 yếu tố (bước 12, TTMS); nhóm theo Ngưỡng phân luồng (SCR-40); 3 điều kiện gộp BM-00; cấp thẩm quyền theo QT-8.6.5 (chú thích 7: chủ trương KĐT thông thường / phức tạp do Chủ tịch / TGĐ Tập đoàn quyết định, HĐĐT tham mưu).',
-    'Thành phần tham gia: CQCM chủ trì / phối hợp chọn ở bước 21 (gộp) hoặc 38 / 48 (hai giai đoạn), TTMS rà soát danh sách. Backlog "Quản lý Tổ chuyên gia" của KĐT: MS13 không có bước lập Tổ chuyên gia — Tổ chuyên gia hiện ở Gói thầu (P-75).',
+    'Phân loại & định danh: 04 yếu tố (3 trường của KĐT + tổng mức vốn thực tế), xác nhận TSCĐ (bước 11, Ban Tài chính), xác nhận 04 yếu tố (bước 12, TTMS); nhóm theo Ngưỡng phân luồng (SCR-40); 3 điều kiện gộp BM-00; cấp thẩm quyền MS13 = kết quả bước 13 theo danh mục Phân cấp thẩm quyền KĐT (SCR-100, D-33, giả lập P-90); MS14 / MS15 theo QT-8.6.5 (chú thích 7: chủ trương KĐT thông thường / phức tạp do Chủ tịch / TGĐ Tập đoàn quyết định, HĐĐT tham mưu).',
+    'Thành phần tham gia: CQCM phối hợp do ĐVĐX chọn ở bước 22 (gộp) hoặc 41 / 52 (hai giai đoạn), CQCM chủ trì xác nhận danh sách ở bước 23 / 42 / 53 (BPMN 12/10). Backlog "Quản lý Tổ chuyên gia" của KĐT: MS13 không có bước lập Tổ chuyên gia — Tổ chuyên gia hiện ở Gói thầu (P-75).',
     'Kết quả & triển khai: kết quả phê duyệt chủ trương (BM-01 / BM-00), Quyết định phê duyệt KĐT (BM-18 / BM-00), tổng mức vốn và nguồn vốn được duyệt, chỉ đạo dừng (hồ sơ Dừng theo chỉ đạo), KHLCNT lập từ KĐT. Nút Lập KHLCNT trên hàng tiêu đề khi KĐT đã phê duyệt.',
   ];
   const tabOpt = { list: TAB_LIST, bodies: { 'phan-loai': tabPhanLoai, 'thanh-phan': tabThanhPhan, 'ket-qua-kdt': tabKetQua } };

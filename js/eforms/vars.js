@@ -65,9 +65,11 @@
 
   /* ---------- Ký (VOffice) ---------- */
   function signOf(task) {
-    const h = Flow.state.history;
+    const h = Flow.state.history, ky = Flow.state.vars.ky;
+    /* Hồ sơ KĐT: bước ký đang đi qua khối ký chung 75–78 (D-34) — chưa có kết quả. */
+    if (kdt() && ky && String(ky.task) === String(task)) return { st: ky.mode === 'hard' ? 'Đang ký bản cứng' : 'Đang trình VOffice', at: null };
     let from = 0;
-    h.forEach((x, i) => { if ((x.task === 11 || x.task === 27) && x.who) from = i + 1; });
+    if (!kdt()) h.forEach((x, i) => { if ((x.task === 11 || x.task === 27) && x.who) from = i + 1; });
     const done = h.slice(from).filter((x) => String(x.task) === String(task) && x.who).pop();
     if (done) return { st: /^Không|^Yêu cầu|^Chỉ đạo/.test(done.action) ? 'Không đồng ý' : 'Đã ký', at: Flow.dateOf(done.t) };
     return { st: Flow.state.tokens.some((t) => String(t.task) === String(task)) ? 'Chưa ký' : 'Chưa trình ký', at: null };
@@ -94,7 +96,7 @@
   const kd = () => Flow.findKdt(Flow.state.kdt) || {};
   const tdKey = () => Flow.state.vars.td || 'GOP';
   const kdtVer = () => 1 + Flow.state.history.filter((h) => h.who && (h.td || 'GOP') === tdKey()
-    && (['23', '33', '53'].includes(String(h.task)) || (String(h.task) === '28' && /^Bổ sung/.test(h.action)))).length;
+    && (['26', '36', '59'].includes(String(h.task)) || (String(h.task) === '31' && /^Bổ sung/.test(h.action)))).length;
   const STAGES = {
     GOP: { title: 'Hồ sơ gộp chủ trương và KĐT', doc: 'Văn bản gộp BM-00', cl: null, cq: 'BM-09',
       crit: ['Pháp lý', 'Mục tiêu', 'Nhu cầu, sự cần thiết', 'Quy mô, danh mục', 'Tổng mức vốn', 'Đủ 03 điều kiện hồ sơ gộp'] },
@@ -106,19 +108,33 @@
   const stg = () => STAGES[tdKey()] || STAGES.CT;
   const hostOf = () => (U().host !== undefined ? U().host : R().host);
   const needHost = () => kd().type === 'KHCN';
-  const kNeed = () => !!U().kNeed || Flow.doneCount(39) > 0;
+  const kNeed = () => !!U().kNeed || Flow.doneCount(43) > 0;
   const HOSTS = ['Trung tâm Mua sắm', 'Trung tâm Vô tuyến', 'Viện Nghiên cứu phát triển Vô tuyến'];
   const CQ_FN = { PC: 'Pháp lý, thẩm quyền, Quy chế LCNT', TC: 'Tài chính, nguồn vốn, phân loại TSCĐ / CCDC', CL: 'Chất lượng, chỉ tiêu kỹ thuật' };
   const counters = () => `Vòng check ${Flow.tdCount('chk')}/2 · Họp ${Flow.tdCount('meet')}/2`;
   const aiText = (key) => (D.aiBasic.find((a) => a.key === key) || {}).value || '';
-  const rvIdx = (open24) => Math.max(0, Flow.tdRound() - (open24 ? 0 : 1));
+  const rvIdx = (open27) => Math.max(0, Flow.tdRound() - (open27 ? 0 : 1));
   const rvOf = (i, id) => D.kdtReview(tdKey(), i)[id] || {};
   const fixOf = (i, id) => D.kdtFix(tdKey(), i, id, U());
   const fixItems = (i) => ['TTMS'].concat(Flow.cqcmSel()).filter((id) => fixOf(i, id))
     .flatMap((id) => (rvOf(i, id).items || [['Nội dung', 'Cần bổ sung, làm rõ.', '']]).map((x) => ({ id, sec: x[0], text: x[1], guide: x[2] || '' })));
   const unitOf = (id) => (id === 'TTMS' ? 'TTMS (CQCM chủ trì)' : cqcmUnit(id));
   const b3 = () => R().bm03 || {};
-  const ctSigned = () => signOf(44);
+  /* Tuyến Tập đoàn 63–74 (T18 B4): loại hồ sơ trình (vars.tdKind) → tên, văn bản chính, mẫu phiếu nhận xét của các Ban Tập đoàn (DG-MS13 bước 67). */
+  const TD_KIND = { CT: { title: 'Hồ sơ chủ trương KĐT', doc: 'Tờ trình chủ trương BM-01', code: 'BM-01', cq: 'BM-09' },
+    KDT: { title: 'Hồ sơ phê duyệt KĐT', doc: 'Tờ trình BM-03 + Phụ lục thuyết minh', code: 'BM-03', cq: 'BM-10' },
+    GOP: { title: 'Hồ sơ gộp chủ trương và KĐT', doc: 'Văn bản gộp BM-00', code: 'BM-00', cq: 'BM-09' } };
+  const tdk = () => TD_KIND[Flow.state.vars.tdKind] || TD_KIND.CT;
+  const tdKinds = () => Flow.state.vars.tdKinds || [];
+  /* Phiếu nhận xét mẫu của các Ban Tập đoàn (bước 67) và nội dung giải trình mặc định (bước 68) — GIẢ LẬP P-96. */
+  const TD_REVIEW = [['Ban Khoa học Công nghệ', 'Sự cần thiết', 'Làm rõ mức độ phù hợp với định hướng KHCN giai đoạn 2026–2030 của Tập đoàn.', 'Trích dẫn chương trình KHCN Tập đoàn liên quan; nêu sản phẩm đầu ra cụ thể.'],
+    ['Ban Tài chính', 'Tổng mức vốn', 'Đề nghị tách chi phí hiệu chuẩn định kỳ khỏi giá trị đầu tư hình thành tài sản.', 'Tách dòng chi phí hiệu chuẩn sang chi phí thường xuyên.'],
+    ['Ban Đầu tư – Xây dựng', 'Hiệu quả đầu tư', 'Bổ sung chỉ tiêu đánh giá hiệu quả sau đầu tư.', 'Bổ sung bảng chỉ tiêu, mốc đánh giá 12 tháng sau đưa vào sử dụng.']];
+  const TD_REPLY = ['Đã bổ sung trích dẫn Chương trình KHCN trọng điểm Tập đoàn 2026–2030 (mục 4.2) và danh mục sản phẩm đầu ra.',
+    'Đã tách chi phí hiệu chuẩn định kỳ khỏi tổng mức vốn; cập nhật phụ lục chi phí.', 'Đã bổ sung bảng chỉ tiêu hiệu quả (mục 7) và mốc đánh giá sau 12 tháng.'];
+  const kdtGop = () => Flow.state.vars.branch === 'BM00';
+  const KDT_TD_NAME = { GOP: 'BM-00', CT: 'BM-01', KDT: 'BM-03' };
+  const ctSigned = () => signOf(48);
 
   /* Gợi ý AI theo mục (G2): một dòng / mục — Gợi ý, Nguồn chỉ đọc; Quyết định Chấp nhận / Sửa / Bỏ; Nội dung sửa.
      Dòng đã có quyết định (Flow.ui[path]) được giữ. def = quyết định mặc định ('Chấp nhận' hoặc null = chưa chọn). */
@@ -194,10 +210,69 @@
     return { ma: ci.code, ten: ci.title, donVi: ci.unit, nguonVon: ci.fund, thoiGian: ci.period, tong: ty(D.caseInfo.total), quyTrinh: proc() || '', dieuKien: proc() ? condOf(proc()) : '' };
   }
 
+  /* ---------- Hồ sơ Điều chỉnh (MS02, T21) — vars.adj do startAdj ghi, bước 4 sửa (Flow.setAdj) ---------- */
+  const adj = () => (kdt() ? null : Flow.state.vars.adj || null);
+  /* Ngưỡng 160 tỷ: cận trên của khoảng MS01.03 trong bản chụp ngưỡng của hồ sơ. */
+  const adjTh = () => ((Flow.state.vars.th || D.dxmsRules()).find((r) => r.procs.includes('MS01.03')) || {}).to || 160;
+  /* Luồng con theo giá trị sau điều chỉnh hiện tại (trước cổng sau bước 10 thì vars.big chưa đổi). */
+  const adjBranch = () => { const a = adj(); return a ? D.adjBranch(Object.assign({}, Flow.state.vars, { big: a.total >= adjTh() })) : null; };
+  const adjCases = () => (Flow.state.adj || []).concat(D.otherCases);
+  const adjFrom = () => { const a = adj(); return (a && a.from && adjCases().find((c) => c.code === a.from)) || null; };
+  /* Lần điều chỉnh = số hồ sơ Điều chỉnh đã hoàn thành của ĐXMS + 1. */
+  const adjLan = () => 1 + adjCases().filter((c) => c.dxms === Flow.state.dxms && c.kind === 'DC' && c.st === 'done' && c.code !== Flow.state.code).length;
+  const adjCross = () => { const a = adj(), th = adjTh(); return !!a && (a.before >= th) !== (a.total >= th); };
+  /* Bảng so sánh trước – sau (bước 4 sửa cột Sau; dòng giá trị lấy từ ô Giá trị sau điều chỉnh). */
+  function adjRows() {
+    const a = adj();
+    if (!a) return [];
+    const x = Flow.findDxms(Flow.state.dxms) || {}, saved = U().adjRows || [];
+    const base = [['thoiGian', 'Thời gian thực hiện', x.period || D.caseInfo.period], ['nguonVon', 'Nguồn vốn', D.caseInfo.fund],
+      ['danhMuc', 'Danh mục hàng hoá', `${D.items.length} hạng mục theo hồ sơ ${a.from || 'đã phê duyệt'}`]];
+    return [{ key: 'gia', noiDung: 'Tổng giá trị (gồm VAT)', truoc: ty(a.before) + ' tỷ đồng', sau: ty(a.total) + ' tỷ đồng' }]
+      .concat(base.map(([key, noiDung, truoc]) => { const s = saved.find((r) => r.key === key) || {}; return { key, noiDung, truoc, sau: s.sau ? s.sau : truoc }; }));
+  }
+  /* Kết quả đã thực hiện của ĐXMS cũ (bước 2, P-100): KHLCNT, gói thầu, hợp đồng của phân hệ Thầu / Hợp đồng. */
+  function adjDone() {
+    const T = window.Thau, H = window.HopDong, rows = [];
+    if (!T) return rows;
+    T.khAll().filter((k) => k.src[0] === 'DXMS' && k.src[1] === Flow.state.dxms).forEach((k) => {
+      rows.push({ loai: 'KHLCNT', ma: k.code, noiDung: k.title, trangThai: (T.KH_ST[k.st] || [k.st])[0] });
+      T.pkgsOf(k).forEach((p) => {
+        rows.push({ loai: 'Gói thầu', ma: p.code, noiDung: p.title || p.name || '', trangThai: (T.PK_ST[p.st] || [p.st])[0] });
+        const h = H && H.byPkg(p.code);
+        if (h) rows.push({ loai: 'Hợp đồng', ma: h.code, noiDung: h.title || h.name || '', trangThai: (H.HD_ST[h.st] || [h.st])[0] });
+      });
+    });
+    return rows;
+  }
+
   /* ---------- Biến cho form của token ---------- */
   function of(tok) {
     const u = U(), n = tok.task, ci = Flow.ci();
     const v = { hoSo: hoSo(), phienBan: kdt() ? kdtVer() : version(), tt: tt(), clName: clName(), lan: pad2(bm04Round()) };
+
+    /* MS02 — hồ sơ Điều chỉnh: thông tin chung của lần điều chỉnh, ĐXMS cũ (bước 1), nội dung điều chỉnh (bước 4). */
+    const a = adj();
+    if (a) {
+      const th = adjTh(), fc = adjFrom() || {}, br = adjBranch(), cross = adjCross();
+      v.adj = { dxms: ci.dxms, from: a.from || '-', fromFlow: a.fromFlow || '-', fromAt: fc.updated || '-', before: ty(a.before), total: ty(a.total), lan: pad2(adjLan()),
+        reason: a.reason || '', chenhLech: (a.total >= a.before ? '+' : '') + ty(a.total - a.before), nhanh: br, nguong: th,
+        boVanBan: br === 'MS02.03' ? 'Tờ trình BM-09 + Checklist 02, ký thẩm định trực tiếp' : br === 'MS02.01' ? 'BM-01 + Checklist 01, BM-05, báo cáo Tập đoàn, Quyết định BM-08' : 'BM-01 + Checklist 01, BM-05, Quyết định BM-08',
+        cross: cross ? `Hồ sơ chuyển ngưỡng: giá trị sau điều chỉnh ${ty(a.total)} tỷ ${a.total >= th ? '≥' : '<'} ${th} tỷ, ĐXMS cũ ${ty(a.before)} tỷ — luồng ${br}.` : '' };
+      const old = fc.flow === 'MS01.03' || (fc.kind === 'DC' && fc.total < th) ? [['BM-09', 'Tờ trình đề xuất mua sắm (Thủ trưởng phê duyệt trên Tờ trình)']]
+        : [['BM-08', 'Quyết định phê duyệt ĐXMS'], ['BM-05', 'Báo cáo kết quả thẩm định']].concat(fc.flow === 'MS01.01' ? [['BM-06', 'Công văn báo cáo TGĐ Tập đoàn']] : []);
+      v.adjOldDocs = old.map(([ma, ten]) => ({ ma, ten: fc.kind === 'DC' ? ten.replace('ĐXMS', 'điều chỉnh ĐXMS') : ten, hoSo: a.from || '-', ngay: fc.updated || '-' }));
+      v.adjDone = adjDone();
+      v.giaTriTruoc = a.before;
+      v.giaTriSau = u.giaTriSau != null ? u.giaTriSau : a.total;
+      v.lyDoNhom = u.lyDoNhom || null;
+      v.lyDoDc = u.lyDoDc != null ? u.lyDoDc : a.reason || '';
+      v.phamViDc = u.phamViDc || ['Giá trị'];
+      v.adjRows = adjRows().filter((r) => r.key !== 'gia');
+      v.adjCompare = adjRows();
+      v.nganSach = u.nganSach || '';
+      v.adjAi = `- Lý do gợi ý: ${a.total >= a.before ? 'giá thị trường tăng so với báo giá của hồ sơ ' + (a.from || 'cũ') : 'giảm quy mô theo nhu cầu thực tế'}.\n- Hạng mục đã có gói thầu / hợp đồng không giảm dưới số đã ký.\n- Nguồn: hồ sơ ${a.from || 'cũ'}, kết quả đã thực hiện của ĐXMS.`;
+    }
 
     /* 01 */
     const bs = basisSel();
@@ -212,7 +287,7 @@
     v.aiEstimate = ty(D.aiEstimate, 0);
     v.tenDeXuat = u.tenDeXuat || ci.title;
     v.purposeCode = u.purposeCode || R().purposeCode;
-    v.secret = u.secret != null ? u.secret : false;
+    v.secret = u.secret != null ? u.secret : kdt() ? Flow.isMat() : false;
     v.priority = u.priority || D.caseInfo.priority;
     v.fund = u.fund !== undefined ? u.fund : (D.aiBasic.find((a) => a.key === 'fund') || {}).code || null;
     v.fundOptions = window.Catalog.rows('nguon-von').filter((r) => r.active || r.code === v.fund).map((r) => ({ value: r.code, label: r.name }));
@@ -233,6 +308,12 @@
       return { n: i.n, name: i.name, prop: propOf(i), book: i.book != null ? i.book : avail == null ? '-' : avail, held: i.held ? `${i.held} (${i.heldFor})` : avail == null ? '-' : 0,
         avail: avail == null ? '-' : avail, coKho: !!avail, max, fromStock: sv && sv.fromStock != null ? sv.fromStock : avail ? max : 0 };
     });
+    /* MS02: kết quả rà soát của hồ sơ cũ (snapshot lúc hồ sơ cũ hoàn thành, chỉ xem — không dùng lại, GIẢ LẬP P-100). */
+    if (a) {
+      v.stockCu = `hồ sơ ${a.from || 'cũ'} · ${(adjFrom() || {}).updated || '-'}`;
+      v.ruaSoatKho.forEach((r) => { const i = D.items.find((x) => x.n === r.n); const av = i.stock == null ? null : i.stock + (i.n % 2);
+        r.cuAvail = av == null ? '-' : av; r.cuDung = av == null ? 0 : Math.min(av, propOf(i)); });
+    }
 
     /* 08 — NCC lọc theo ngành hàng (BE / danh mục Nhà cung cấp): dừng hoạt động không vào danh sách, bị cấm không vào options */
     const want = itemGoods();
@@ -269,6 +350,13 @@
     v.quoteCheck = fail
       ? { ketQua: 'Không đạt', chiTiet: `- ${nccName('NCC-000003')}: báo giá hết hiệu lực từ 20/09/2026, dùng cho dòng 3 (buồng đo OTA).\n- Cần ít nhất 3 báo giá còn hiệu lực cho mỗi dòng.` }
       : { ketQua: 'Đạt', chiTiet: `- ${D.quotes.length}/${D.quotes.length} báo giá còn hiệu lực, đủ ${buyItems().length} dòng.\n- Đơn giá thấp nhất mỗi dòng dùng làm cơ sở giá.` };
+    /* MS02: báo giá của hồ sơ cũ để so sánh (chỉ xem, không dùng lại — P-108); đơn giá cũ GIẢ LẬP = thấp nhất mới / 1,04. */
+    if (a) {
+      v.baoGiaCu = buyItems().map((i) => { const min = Math.min(...D.quotes.map((x) => x.prices[i.n])), cu = min / 1.04;
+        return { dong: `Dòng ${i.n}`, hang: i.name, giaCu: ty(cu), giaMoi: ty(min), chenhLech: '+' + ty(((min - cu) / cu) * 100, 1) + '%' }; });
+      v.baoGiaCuNgay = (adjFrom() || {}).updated || '-';
+      v.quoteAfter = `${D.quotes.length} báo giá nhận sau ngày tạo hồ sơ điều chỉnh (${Flow.dateOf(0)}) — đạt yêu cầu ít nhất 1 báo giá mới.`;
+    }
     const mc = Flow.matchCheck();
     v.matchCheck = { tong: ty(mc.total), ketQua: mc.ok ? 'Khớp' : 'Không khớp', quyTrinh: mc.process, dieuKien: condOf(mc.process), goiY: mc.suggest,
       nhanh: mc.ok ? (mc.process === 'MS01.03' ? 'dự thảo Tờ trình BM-09' : 'dự thảo Tờ trình BM-01') : 'ĐVĐX xử lý hồ sơ không khớp' };
@@ -429,7 +517,7 @@
     return v;
   }
 
-  /* Biến riêng của hồ sơ KĐT (MS13-TO BE). */
+  /* Biến riêng của hồ sơ KĐT (MS13). */
   function kdtVars(tok, u) {
     const n = tok.task, k = kd(), v = {}, total = D.caseInfo.total, cs = Flow.cqcmSel(), m = R().meeting || {};
     v.kdtLabel = `Tổng mức vốn thực tế ${ty(total)} tỷ (gồm VAT, sau khi trừ tồn kho) — gửi Ban Tài chính và TTMS xác nhận trước khi hệ thống xác định nhóm khoản đầu tư.`;
@@ -476,11 +564,11 @@
     v.phuLucDanhMuc = buyItems().map((i) => ({ n: i.n, hang: i.name, sl: `${i.buy} ${i.uom}`, donGia: ty(i.price), thanhTien: ty(i.amount), loai: i.cost || '' }));
     v.checklist01 = kdtChecklist(1);
     v.checklist02 = kdtChecklist(2);
-    v.ketLuanCl = u.ketLuanCl || (n === 47 ? 'Hồ sơ đảm bảo đủ điều kiện trình thẩm định, phê duyệt KĐT.' : 'Hồ sơ đảm bảo đủ điều kiện trình thẩm định, phê duyệt chủ trương KĐT.');
-    /* 21 / 38 / 48 / 39 */
-    const b24 = Flow.lastOf(24);
-    v.traLai24 = b24 && /^Danh sách/.test(b24.action) && lastIdx(24) > lastIdx(n) ? { lyDo: b24.reason || '' } : null;
-    v.yKienLead = n === 21 && Flow.lastOf(20) ? `Ý kiến Chỉ huy ĐVĐX (${pname('hai')}): “${R().lead || ''}”` : '';
+    v.ketLuanCl = u.ketLuanCl || (n === 51 ? 'Hồ sơ đảm bảo đủ điều kiện trình thẩm định, phê duyệt KĐT.' : 'Hồ sơ đảm bảo đủ điều kiện trình thẩm định, phê duyệt chủ trương KĐT.');
+    /* 22 / 41 / 52 chọn CQCM — 23 / 42 / 53 CQCM chủ trì xác nhận danh sách (Không đồng ý → quay lại chọn) */
+    const conf = { 22: 23, 41: 42, 52: 53 }[n], bc = conf && Flow.lastOf(conf);
+    v.traLaiDs = bc && /^Không đồng ý/.test(bc.action) && lastIdx(conf) > lastIdx(n) ? { lyDo: bc.reason || '' } : null;
+    v.yKienLead = n === 22 && Flow.lastOf(21) ? `Ý kiến Chỉ huy ĐVĐX (${pname('hai')}): “${R().lead || ''}”` : '';
     v.chuTri = `**Cơ quan chủ trì:** Trung tâm Mua sắm (TTMS) · **Người xử lý:** ${pname('lan')}`;
     v.cqcmValuesK = D.cqcm.map((c) => ({ value: c.id, label: `${c.unit} — ${CQ_FN[c.id] || ''} · ${pname(c.doer)}` }));
     v.cqcmSel = u.cqcmSel || cs;
@@ -490,15 +578,30 @@
     v.dsDauMoi = [{ ma: 'TTMS', nguoi: pname('lan'), vaiTro: 'Cơ quan chủ trì thẩm định', donVi: 'Trung tâm Mua sắm (TTMS)' }]
       .concat(D.cqcm.map((c) => ({ ma: c.id, nguoi: pname(c.doer), vaiTro: 'CQCM phối hợp', donVi: c.unit })));
     v.aiCheckK = u.aiCheckK || null;
-    /* 24 / 26 — thẩm định theo lượt */
-    const open24 = n === 24, i = rvIdx(open24);
+    v.dsCqcm = selCqcm().map((c) => ({ donVi: c.unit, chucNang: CQ_FN[c.id] || '', nguoi: pname(c.doer) }));
+    v.hostTen = needHost() ? hostOf() || 'Chưa chọn' : `Không áp dụng (${catName('loai-kdt', k.type)})`;
+    /* 13 — thẩm quyền phê duyệt (service task, D-33): kết quả gần nhất; chưa qua bước 13 thì tính thử theo dữ liệu hiện tại */
+    const cap = Flow.state.vars.cap || D.kdtAuthOf(Flow.state.vars.factors || { type: k.type, field: k.field }, total, Flow.state.vars.auth);
+    v.thamQuyen = `**Phê duyệt chủ trương:** ${D.kdtLevels[cap.ct]} · **Phê duyệt KĐT:** ${D.kdtLevels[cap.kdt]} · **Căn cứ:** ${cap.basis}`;
+    /* 76–78 — khối ký chung (D-34): lần ký đang đi qua khối (vars.ky) */
+    const ky = Flow.state.vars.ky;
+    if (ky) {
+      v.kyChung = `**Văn bản:** ${ky.doc} (phiên bản v${kdtVer()}) · **Bước ký:** ${ky.task}. ${Flow.taskName(ky.task)}\n**Người ký:** ${pname(ky.signer)} · **Hình thức ký:** ${ky.mode === 'hard' ? 'Bản cứng' : 'VOffice'}${ky.mat ? ' — hồ sơ Mật, bắt buộc bản cứng' : ''}`;
+      v.trangThaiKy = u.trangThaiKy || 'Đã ký';
+    }
+    v.kyLichSu = (Flow.state.vars.kyLog || []).map((x) => ({ buoc: `${x.task}. ${Flow.taskName(x.task)}`, vanBan: x.doc, hinhThuc: x.mode === 'hard' ? 'Bản cứng' : 'VOffice', luc: Flow.dateOf(x.t) }));
+    /* 24 — Chỉ huy ĐVĐX ký phiếu yêu cầu thẩm định (mở vòng hồ sơ gộp) */
+    const s24 = signOf(24);
+    v.kyPhieu = [signRowV('hai', 'Chỉ huy đơn vị đề xuất', s24.st, s24.at)];
+    /* 27 / 29 — thẩm định theo lượt */
+    const open27 = n === 27, i = rvIdx(open27);
     v.luot = pad2(i + 1);
     v.giaiDoan = stg();
     v.demVong = counters();
-    if (n === 24) {
-      const lastIn = Flow.state.history.filter((h) => h.who && (h.td || 'GOP') === tdKey() && ['23', '28', '33'].includes(String(h.task))).pop();
-      v.banner24 = !lastIn ? '' : { 33: `Hồ sơ đã cập nhật theo nội dung đã thống nhất sau họp (phiên bản v${kdtVer()}).`, 23: 'Đơn vị đề xuất đã bổ sung, gửi lại hồ sơ.',
-        28: `Đơn vị đề xuất đã bổ sung hồ sơ theo ý kiến lượt ${pad2(i)} (phiên bản v${kdtVer()}).` }[String(lastIn.task)];
+    if (n === 27) {
+      const lastIn = Flow.state.history.filter((h) => h.who && (h.td || 'GOP') === tdKey() && ['26', '31', '36'].includes(String(h.task))).pop();
+      v.banner27 = !lastIn ? '' : { 36: `Hồ sơ đã cập nhật theo nội dung đã thống nhất sau họp (phiên bản v${kdtVer()}).`, 26: 'Đơn vị đề xuất đã sửa hồ sơ theo kết quả kiểm tra điều kiện thẩm định.',
+        31: `Đơn vị đề xuất đã bổ sung hồ sơ theo ý kiến lượt ${pad2(i)} (phiên bản v${kdtVer()}).` }[String(lastIn.task)];
       v.raSoat = `**${stg().doc}:** phiên bản v${kdtVer()}${stg().cl ? ` · ${stg().cl} đủ` : ''} · **Đơn vị chủ trì:** ${hostOf() || '-'}\n**CQCM phối hợp:** ${cs.map(cqcmUnit).join('; ') || 'Không chọn'}\n`
         + [['TC', 'Có danh mục hình thành TSCĐ → cần Ban Tài chính'], ['PC', 'Áp dụng Quy chế LCNT → cần Ban Pháp chế']].map(([id, t]) => `- ${t}: **${cs.includes(id) ? 'có' : 'chưa có'}**`).join('\n');
       v.thamDinh = stg().crit.map((c, j) => ({ stt: j + 1, noiDung: c, danhGia: 'Đạt' }));
@@ -506,20 +609,20 @@
       v.ketLuanTd = fixOf(i, 'TTMS') ? 'Cần sửa đổi, giải trình' : 'Đồng ý';
       v.yKienTruoc = Array.from({ length: i }, (_, j) => fixItems(j).map((x) => ({ luot: pad2(j + 1), donVi: unitOf(x.id), noiDung: x.text, traLoi: (R().reply || [])[j] || '' }))).flat();
     }
-    if (n === 26 && tok.cqcm) {
+    if (n === 29 && tok.cqcm) {
       const c = tok.cqcm;
       v.cqcmTen = cqcmUnit(c);
       v.aiPhanHoi = `- Đối chiếu ${stg().doc} v${kdtVer()} với chức năng ${cqcmUnit(c)}: ${CQ_FN[c] || ''}.` + (i > 0 ? `\n- Lượt trước: ${fixOf(i - 1, c) ? 'có ý kiến cần sửa — kiểm tra nội dung đơn vị đã bổ sung / giải trình.' : 'không có ý kiến.'}` : '');
       v.phieuNhanXet = (rvOf(i, c).items || []).map((x) => ({ muc: x[0], nhanXet: x[1], huongDan: x[2] || '' }));
       v.ketLuanTd = fixOf(i, c) ? 'Cần sửa đổi, giải trình' : 'Đồng ý';
     }
-    /* 23 / 28 / 29 / 31–35 / 53 */
+    /* 26 / 31 / 32 / 34–38 / 59 */
     const ip = rvIdx(false), chk = Flow.tdCount('chk'), meet = Flow.tdCount('meet'), pend = fixItems(ip);
-    const b51 = Flow.lastOf(51);
-    v.goiYSua = n === 53 ? `- TTMS: “${(b51 && b51.reason) || ''}”\n- Cập nhật Tờ trình BM-03 và Phụ lục thuyết minh theo hướng dẫn; bổ sung tài liệu vào Checklist 02.`
-      : `- TTMS: “${(b24 && b24.reason) || ''}”\n- Đối chiếu Checklist 01: bổ sung tài liệu còn thiếu, cập nhật tờ trình.`;
-    v.hoSoGd = `**${stg().doc}:** phiên bản v${kdtVer()}${stg().cl ? ` · **${stg().cl}:** đủ` : ''}${n === 53 ? ` · tạo phiên bản v${kdtVer() + 1} khi gửi` : ''}`;
-    v.chiDao = Flow.state.vars.directed && Flow.lastOf(35) ? `Kết luận của Thủ trưởng: “${Flow.lastOf(35).reason || ''}”` : '';
+    const b57 = Flow.lastOf(57);
+    v.goiYSua = n === 59 ? `- TTMS: “${(b57 && b57.reason) || ''}”\n- Cập nhật Tờ trình BM-03 và Phụ lục thuyết minh theo hướng dẫn; bổ sung tài liệu vào Checklist 02.`
+      : `- Kiểm tra điều kiện thẩm định: ${stg().doc} chưa đủ điều kiện — thiếu tài liệu bắt buộc${stg().cl ? ` theo ${stg().cl}` : ''}.\n- Bổ sung tài liệu còn thiếu, cập nhật hồ sơ; sau đó chọn lại CQCM và gửi lại.`;
+    v.hoSoGd = `**${stg().doc}:** phiên bản v${kdtVer()}${stg().cl ? ` · **${stg().cl}:** đủ` : ''}${n === 59 ? ` · tạo phiên bản v${kdtVer() + 1} khi gửi` : ''}`;
+    v.chiDao = Flow.state.vars.directed && Flow.lastOf(38) ? `Kết luận của Tổng Giám đốc: “${Flow.lastOf(38).reason || ''}”` : '';
     v.aiTongHop = pend.map((x) => `- **${unitOf(x.id)} · ${x.sec}:** ${x.guide || x.text}`).join('\n');
     v.soNoiDung = pend.length;
     const savedTl = u.traLoi || [];
@@ -528,13 +631,14 @@
     v.lanHop = meet + 1; v.soVongCheck = chk; v.soLanHop = meet;
     v.ketLuanHop = u.ketLuanHop != null ? u.ketLuanHop : m.result || '';
     v.dieuChinh = (m.changes || []).map((c) => ({ noiDung: c[0], truoc: c[1], sau: c[2] }));
-    const a31 = Flow.doneCount(31) > Flow.doneCount(33), st = (done, opn) => (done ? 'Đã xác nhận' : opn ? 'Chờ xác nhận' : 'Chưa đến lượt');
-    v.xacNhanSauHop = [{ nguoi: pname('minh'), vaiTro: 'Chuyên quản ĐVĐX', trangThai: st(a31, n === 31) }, { nguoi: pname('hai'), vaiTro: 'Chỉ huy ĐVĐX', trangThai: st(false, n === 32) }];
+    const a34 = Flow.doneCount(34) > Flow.doneCount(36), st = (done, opn) => (done ? 'Đã xác nhận' : opn ? 'Chờ xác nhận' : 'Chưa đến lượt');
+    v.xacNhanSauHop = [{ nguoi: pname('minh'), vaiTro: 'Chuyên quản ĐVĐX', trangThai: st(a34, n === 34) }, { nguoi: pname('hai'), vaiTro: 'Chỉ huy ĐVĐX', trangThai: st(false, n === 35) }];
     v.bienBan = Array.from({ length: meet }, (_, j) => `- Bien-ban-hop-lan-${j + 1}-${fileCode()}.pdf`).join('\n') || '- (chưa có)';
     v.ketLuanTt = u.ketLuanTt != null ? u.ketLuanTt : 'Chấp nhận ý kiến Ban Tài chính; đơn vị đề xuất tách phần hiệu chuẩn định kỳ khỏi giá trị TSCĐ và hoàn chỉnh hồ sơ.';
-    /* 46 */
-    const hi = Flow.state.history.map((x) => String(x.task));
-    v.traLai51 = hi.lastIndexOf('53') > hi.lastIndexOf('46') ? `Báo cáo thẩm định chưa được thông qua: “${(b51 || {}).reason || ''}” — hoàn chỉnh hồ sơ theo hướng dẫn.` : '';
+    /* 50 — quay lại sau 57 (báo cáo chưa thông qua → 58 → 59) hoặc 60 (TGĐ VHT không ký BM-18) */
+    const hi = Flow.state.history.map((x) => String(x.task)), b60 = Flow.lastOf(60);
+    v.traLai57 = hi.lastIndexOf('59') > hi.lastIndexOf('50') ? `Báo cáo thẩm định chưa được thông qua: “${(b57 || {}).reason || ''}” — hoàn chỉnh hồ sơ theo hướng dẫn.`
+      : b60 && /^Không/.test(b60.action) && hi.lastIndexOf('60') > hi.lastIndexOf('50') ? `Tổng Giám đốc không ký Quyết định: “${b60.reason || ''}” — sửa Tờ trình BM-03.` : '';
     v.keThua = [['Tên, phân loại, lĩnh vực KĐT', 'BM-01 mục 1–3'], ['Mục tiêu, sự cần thiết', 'BM-01 mục 4.1, 4.2'], ['Tổng mức vốn, cơ cấu chi phí', 'BM-01 mục 5 (cập nhật sau họp)'],
       ['Nguồn vốn, thời gian thực hiện', 'BM-01 mục 6'], ['Tổ chức thực hiện, đơn vị chủ trì', `BM-01 mục II${hostOf() ? ' · ' + hostOf() : ''}`]].map(([noiDung, tu]) => ({ noiDung, tu, trangThai: 'Đã điền' }));
     const ct = ctSigned();
@@ -542,16 +646,51 @@
     v.hienTrang = u.hienTrang != null ? u.hienTrang : b3().state || '';
     v.ruiRo = u.ruiRo != null ? u.ruiRo : b3().risk || '';
     v.diaDiem = u.diaDiem != null ? u.diaDiem : b3().place || '';
-    /* 51 / 42 / 44 / 54 / 55 / 56 */
-    v.ketQuaTd = `**Kết luận:** CQCM thống nhất, không còn ý kiến cần sửa · **Hồ sơ:** ${stg().doc} v${kdtVer()}\n**Vòng check:** ${chk}/2 · **Số lần họp:** ${meet}/2 · **CQCM phối hợp:** ${cs.map(cqcmUnit).join('; ') || '-'}\n**Cấp xử lý:** VHT — không cần ý kiến Tập đoàn`;
-    const sent39 = Flow.lastOf(39), a = signOf(42), b = signOf(44);
-    v.kyBm01 = [{ nguoiKy: pname('hai'), tuCach: 'Đơn vị đề xuất', trangThai: sent39 ? 'Đã trình' : 'Chưa trình', thoiDiem: sent39 ? Flow.dateOf(sent39.t) : '-' },
+    /* 46 / 55 — ý kiến đã xử lý trong vòng (chỉ xem) */
+    v.yKienVong = Array.from({ length: Flow.tdRound() }, (_, j) => fixItems(j).map((x) => ({ luot: pad2(j + 1), donVi: unitOf(x.id), noiDung: x.text, traLoi: (R().reply || [])[j] || '' }))).flat();
+    v.hoanChinhTd = u.hoanChinhTd != null ? u.hoanChinhTd : '';
+    /* 47 / 48 / 56 / 57 / 60 / 61 / 62 */
+    v.ketQuaTd = `**Kết luận:** CQCM thống nhất, không còn ý kiến cần sửa · **Hồ sơ:** ${stg().doc} v${kdtVer()}\n**Vòng check:** ${chk}/2 · **Số lần họp:** ${meet}/2 · **CQCM phối hợp:** ${cs.map(cqcmUnit).join('; ') || '-'}\n${v.thamQuyen}`;
+    const sent43 = Flow.lastOf(43), a = signOf(47), b = signOf(48);
+    v.kyBm01 = [{ nguoiKy: pname('minh'), tuCach: 'Đơn vị đề xuất', trangThai: sent43 ? 'Đã trình' : 'Chưa trình', thoiDiem: sent43 ? Flow.dateOf(sent43.t) : '-' },
       signRowV('lan', 'Cơ quan chủ trì thẩm định (TTMS)', a.st, a.at), { nguoiKy: '-', tuCach: 'Phó TGĐ phụ trách (nếu có)', trangThai: 'Không có', thoiDiem: '-' },
       signRowV('tgd', 'Người có thẩm quyền — ô PHÊ DUYỆT', b.st, b.at)];
-    const r51 = Flow.lastOf(51), s54 = signOf(54);
-    v.kyBm18 = [{ nguoiKy: pname('lan'), tuCach: 'Cơ quan chủ trì thẩm định — BM-14', trangThai: r51 ? 'Đã trình' : 'Chưa trình', thoiDiem: r51 ? Flow.dateOf(r51.t) : '-' }, signRowV('tgd', 'Người có thẩm quyền — Quyết định BM-18', s54.st, s54.at)];
-    const sent55 = Flow.lastOf(55), s56 = signOf(56);
-    v.kyBm00 = [{ nguoiKy: pname('minh'), tuCach: 'Đơn vị đề xuất — trình ký', trangThai: sent55 ? 'Đã trình' : 'Chưa trình', thoiDiem: sent55 ? Flow.dateOf(sent55.t) : '-' }, signRowV('tgd', 'Người có thẩm quyền — ô PHÊ DUYỆT', s56.st, s56.at)];
+    const s56 = signOf(56), s57 = signOf(57), s60 = signOf(60);
+    v.kyBm03 = [signRowV('hai', 'Chỉ huy đơn vị đề xuất — Tờ trình BM-03', s56.st, s56.at)];
+    v.kyBm18 = [signRowV('hai', 'Chỉ huy đơn vị đề xuất — Tờ trình BM-03', s56.st, s56.at), signRowV('lan', 'Cơ quan chủ trì thẩm định — BM-14', s57.st, s57.at),
+      signRowV('tgd', 'Người có thẩm quyền — Quyết định BM-18', s60.st, s60.at)];
+    const s61 = signOf(61), s62 = signOf(62);
+    v.kyBm00 = [signRowV('hai', 'Chỉ huy đơn vị đề xuất — Phiếu yêu cầu thẩm định', s24.st, s24.at), signRowV('lan', 'Cơ quan chủ trì thẩm định — BM-14', s61.st, s61.at),
+      signRowV('tgd', 'Người có thẩm quyền — ô PHÊ DUYỆT', s62.st, s62.at)];
+    /* 63–74 — tuyến Tập đoàn (T18 B4) */
+    const K = tdk(), cap2 = Flow.state.vars.cap || cap, at = (t) => { const h = Flow.lastOf(t); return h && h.who ? Flow.dateOf(h.t) : null; };
+    v.tdHoSo = `**Hồ sơ trình Tập đoàn:** ${K.title} — ${K.doc} (phiên bản v${kdtVer()}) · **Phiếu nhận xét của Tập đoàn:** ${K.cq}\n**Thẩm quyền:** chủ trương ${D.kdtLevels[cap2.ct]}, KĐT ${D.kdtLevels[cap2.kdt]} (${cap2.basis}) — VHT ký trình, không phê duyệt thay Tập đoàn.`;
+    v.boHoSoTd = [['Công văn trình Tập đoàn', Flow.lastOf(63) ? 'AI dự thảo (bước 63), đơn vị đề xuất hoàn thiện' : 'Chưa dự thảo'],
+      [`${K.doc} (dự thảo)`, `Đã thẩm định nội bộ — vòng ${KDT_TD_NAME[Flow.state.vars.td || 'CT']}`]]
+      .concat(K.code === 'BM-00' ? [] : [[K.code === 'BM-01' ? 'Checklist 01' : 'Checklist 02', 'Đủ']])
+      .concat([['Ý kiến thẩm định của TTMS và CQCM', `${Flow.tdRound()} lượt, ${Flow.tdCount('meet')} lần họp`], [`Căn cứ ${(basisDoc() || {}).no || ''}`, 'Danh sách tài liệu']])
+      .map(([tl, tt]) => ({ taiLieu: tl, tinhTrang: tt }));
+    v.trichYeuCv = u.trichYeuCv != null ? u.trichYeuCv : `V/v đề nghị Tập đoàn xem xét, phê duyệt ${{ 'BM-01': 'chủ trương', 'BM-00': 'chủ trương và', 'BM-03': '' }[K.code]} khoản đầu tư ${k.title || ''}`.replace(/\s+/g, ' ');
+    v.noiDungCv = u.noiDungCv != null ? u.noiDungCv : `VHT đã tổ chức thẩm định nội bộ ${K.doc}, tổng mức vốn ${ty(total)} tỷ đồng. Theo phân cấp tại ${cap2.basis}, hồ sơ thuộc thẩm quyền phê duyệt của Tập đoàn; VHT kính trình Tập đoàn xem xét, cho ý kiến và phê duyệt.`;
+    const s65 = signOf(65), s69 = signOf(69), s73 = signOf(73);
+    v.kyCv = [signRowV('minh', 'Đơn vị đề xuất — hoàn thiện công văn', at(64) ? 'Đã trình' : 'Chưa trình', at(64)), signRowV('tgd', 'TGĐ VHT — ký công văn trình', s65.st, s65.at)];
+    v.phieuTd = TD_REVIEW.map(([ban, muc, nhanXet, yeuCau]) => ({ ban, muc, nhanXet, yeuCau }));
+    v.phieuTdTen = `Phiếu nhận xét ${K.cq} của các Ban chuyên môn Tập đoàn${at(67) ? ' — nhận ' + at(67) : ''}`;
+    const savedGt = u.giaiTrinhTd || [];
+    v.giaiTrinhTd = TD_REVIEW.map(([ban, muc, nhanXet], j) => ({ ban, muc, nhanXet, traLoi: ((savedGt.find((x) => x.ban === ban && x.muc === muc) || {}).traLoi) ?? TD_REPLY[j] }));
+    const b70 = Flow.lastOf(70), b73 = Flow.lastOf(73), i68 = lastIdx(68);
+    v.traLaiTd = b73 && /^Không/.test(b73.action) && lastIdx(73) > i68 ? `TGĐ Tập đoàn yêu cầu sửa: “${b73.reason || ''}” — tiếp thu, hoàn thiện hồ sơ rồi trình ký lại.`
+      : b70 && /^Chưa đạt/.test(b70.action) && lastIdx(70) > i68 ? `Ban ĐTXD Tập đoàn yêu cầu bổ sung: “${b70.reason || ''}” — hoàn thiện hồ sơ rồi trình ký lại.` : '';
+    v.kyBm06 = [signRowV('minh', 'Đơn vị đề xuất — báo cáo giải trình BM-06', at(68) ? 'Đã trình' : 'Chưa trình', at(68)),
+      signRowV('tgd', 'TGĐ VHT / lãnh đạo được ủy quyền — ký trình lại', s69.st, s69.at)];
+    v.ketLuanKt = u.ketLuanKt != null ? u.ketLuanKt : 'Hồ sơ đã tiếp thu đủ ý kiến các Ban; báo cáo giải trình BM-06 rõ ràng.';
+    v.chanKyBan = ['Ban Khoa học Công nghệ', 'Ban Tài chính', 'Ban Pháp chế', 'Ban Đầu tư – Xây dựng'].map((b) => ({ ban: b, noiDung: 'Ký chân trang Tờ trình BM-01', trangThai: at(71) || n === 73 ? 'Đã ký' : 'Chờ ký' }));
+    v.tdLapBc = `**Cơ quan chủ trì thẩm định:** Ban Đầu tư – Xây dựng Tập đoàn · **Hồ sơ:** ${K.doc} v${kdtVer()} · **Báo cáo giải trình:** BM-06 (VHT ký trình lại ${s69.at || '-'})`;
+    const prep = K.code === 'BM-01' ? 71 : 72;
+    v.kyTd = [{ nguoiKy: 'Ban Đầu tư – Xây dựng Tập đoàn', tuCach: K.code === 'BM-01' ? 'Hoàn thiện hồ sơ, chân ký các Ban (bước 71)' : 'Ký báo cáo thẩm định BM-14 (bước 72)',
+      trangThai: at(prep) ? 'Đã ký' : 'Chưa ký', thoiDiem: at(prep) || '-' },
+      { nguoiKy: 'Tổng Giám đốc Tập đoàn', tuCach: K.code === 'BM-01' ? 'Ký trực tiếp Tờ trình BM-01' : 'Ký ban hành Quyết định BM-18', trangThai: s73.st, thoiDiem: s73.at || '-' }];
+    v.tdTraVe = `**Văn bản Tập đoàn ký:** ${K.code === 'BM-01' ? 'BM-01 có chân ký các Ban' : `BM-14 + BM-18${K.code === 'BM-00' ? ' (kèm BM-00)' : ''}`} · **Kết quả nhận ở bước 74:** VOffice → PDF tự động; bản cứng → bản scan.`;
     return v;
   }
 
@@ -565,7 +704,8 @@
   /* Tờ trình BM-01 (≥ 160 tỷ) hoặc BM-09 (< 160 tỷ, P-19): 10 mục lấy từ eForm task 11/12. */
   function docTt() {
     const v = of({ task: draftTask() }), s = small() ? bm09Signs() : null, nec = U().necessity;
-    return `<div class="doc paper"><p class="c"><b>TỜ TRÌNH ĐỀ XUẤT MUA SẮM (${tt()})</b><br>${esc(Flow.ci().title)} · Phiên bản v${version()}</p>
+    return `<div class="doc paper"><p class="c"><b>TỜ TRÌNH ${adj() ? 'ĐIỀU CHỈNH ' : ''}ĐỀ XUẤT MUA SẮM (${tt()})</b><br>${esc(Flow.ci().title)} · Phiên bản v${version()}</p>
+      ${adj() ? docAdj() : ''}
       ${s ? `<div class="doc-sec"><h4>PHÊ DUYỆT</h4><p>${esc(pname('tgd'))} — Tổng Giám đốc · ${esc(s.tgd.st)}${s.tgd.at ? ' ' + s.tgd.at : ''}</p></div>` : ''}
       ${docSec(1, 'Sự cần thiết', nec ? P(nec) : missing, true)}${docSec(2, 'Mục đích', P(v.mucDich))}${docSec(3, 'Phạm vi, quy mô', P(v.phamVi))}
       ${docSec(4, 'Tổng kinh phí (gồm VAT)', P(v.tongKinhPhi))}${docSec(5, 'Phương pháp tính, cơ sở đơn giá', P(v.phuongPhap))}${docSec(6, 'Phương án kỹ thuật – công nghệ', P(v.phuongAn))}
@@ -581,17 +721,31 @@
   const docBm05 = () => { const v = of({ task: 42 }); return `<div class="doc paper"><p class="c"><b>BÁO CÁO KẾT QUẢ THẨM ĐỊNH (BM-05)</b><br>${esc(Flow.ci().title)} · hồ sơ v${version()}</p>${v.bm05View.map((r) => docSec(r.muc, '', P(r.noiDung)).replace('. </h4>', '</h4>')).join('')}</div>`; };
   const docBm06 = () => `<div class="doc paper"><p>Kính gửi: Tổng Giám đốc Tập đoàn (qua Ban Đầu tư - Xây dựng)</p><p>VHT báo cáo đề xuất mua sắm <b>${esc(Flow.ci().title)}</b>, giá trị ${ty(D.caseInfo.total)} tỷ đồng, căn cứ ${esc((basisDoc() || {}).no || '')} (${(basisDoc() || {}).group ? 'đã' : 'chưa'} được CT/TGĐ Tập đoàn phê duyệt), đã được thẩm định theo BM-05.</p>
     <p>VHT kính đề nghị Tổng Giám đốc Tập đoàn cho ý kiến để VHT phê duyệt ĐXMS.</p></div>`;
-  const docBm08 = () => `<div class="doc paper"><p class="c"><b>QUYẾT ĐỊNH</b><br>Về việc phê duyệt đề xuất mua sắm ${esc(Flow.ci().title.toLowerCase())}</p>
+  /* MS02: phần nội dung điều chỉnh của BM-01 / BM-09 / BM-08 điều chỉnh — căn cứ hồ sơ cũ, lý do, bảng trước – sau. */
+  function docAdj() {
+    const a = adj(), fc = adjFrom() || {};
+    return `<div class="doc-sec"><h4>NỘI DUNG ĐIỀU CHỈNH (lần ${pad2(adjLan())})</h4><p>Căn cứ hồ sơ ${esc(a.from || '')} đã được phê duyệt${fc.updated ? ' ngày ' + fc.updated : ''} (quy trình ${esc(a.fromFlow || '')}).</p>
+      <p><b>Lý do điều chỉnh:</b> ${esc(U().lyDoDc || a.reason || '') || '<i>chưa nhập</i>'}</p>
+      <table class="doc-t"><tr><th>Nội dung</th><th>Đã phê duyệt</th><th>Sau điều chỉnh</th></tr>${adjRows().map((r) => `<tr><td>${esc(r.noiDung)}</td><td>${esc(r.truoc)}</td><td>${esc(r.sau)}</td></tr>`).join('')}</table></div>`;
+  }
+  const docBm08Adj = () => { const a = adj(), fc = adjFrom() || {}; return `<div class="doc paper"><p class="c"><b>QUYẾT ĐỊNH</b><br>Về việc phê duyệt điều chỉnh đề xuất mua sắm ${esc(Flow.ci().title.toLowerCase())}</p>
+    <p>Căn cứ Quyết định phê duyệt ĐXMS theo hồ sơ ${esc(a.from || '')}${fc.updated ? ' ngày ' + fc.updated : ''};</p>
+    <p><b>Điều 1.</b> Phê duyệt điều chỉnh đề xuất mua sắm ${esc(Flow.ci().title)} (lần ${pad2(adjLan())}): tổng giá trị từ ${vnd(a.before)} đồng thành ${vnd(a.total)} đồng (gồm VAT). Lý do: ${esc(U().lyDoDc || a.reason || '')}.</p>
+    ${docAdj().replace(/<h4>.*?<\/h4>/, '')}
+    <p><b>Điều 2.</b> Các nội dung khác giữ nguyên theo Quyết định đã phê duyệt. ${esc(D.caseInfo.unit)} cập nhật kế hoạch lựa chọn nhà thầu, hợp đồng liên quan theo nội dung điều chỉnh.</p>
+    <p><b>Điều 3.</b> Quyết định có hiệu lực từ ngày ký.</p><p class="r">TỔNG GIÁM ĐỐC<br><br><i>${esc(pname('tgd'))}</i></p></div>`; };
+  const docBm08 = () => (adj() ? docBm08Adj() : `<div class="doc paper"><p class="c"><b>QUYẾT ĐỊNH</b><br>Về việc phê duyệt đề xuất mua sắm ${esc(Flow.ci().title.toLowerCase())}</p>
     <p><b>Điều 1.</b> Phê duyệt đề xuất mua sắm với nội dung: tên ${esc(Flow.ci().title)}; tổng giá trị ${vnd(D.caseInfo.total)} đồng (gồm VAT); nguồn vốn ${esc(D.caseInfo.fund)}; thời gian ${esc(D.caseInfo.period)}; danh mục ${buyItems().length} hạng mục (phụ lục kèm theo).</p>
     <p><b>Điều 2.</b> ${esc(D.caseInfo.unit)} chủ trì tổ chức lựa chọn nhà thầu theo Quy chế LCNT của Tập đoàn; TTMS, Ban Tài chính phối hợp.</p>
-    <p><b>Điều 3.</b> Quyết định có hiệu lực từ ngày ký.</p><p class="r">TỔNG GIÁM ĐỐC<br><br><i>${esc(pname('tgd'))}</i></p></div>`;
+    <p><b>Điều 3.</b> Quyết định có hiệu lực từ ngày ký.</p><p class="r">TỔNG GIÁM ĐỐC<br><br><i>${esc(pname('tgd'))}</i></p></div>`);
   const docBm02 = () => `<div class="doc paper"><p class="c"><b>THUYẾT MINH ĐỀ XUẤT MUA SẮM (BM-02)</b></p><p>Hệ thống sinh từ ${tt()} và phụ lục chi phí. Phụ lục 1 (giải trình ý kiến) được điền khi lập giải trình.</p></div>`;
 
-  /* KĐT: BM-01 chủ trương, BM-00 gộp, BM-03 + phụ lục thuyết minh, BM-14, BM-18. */
+  /* KĐT: BM-01 chủ trương, BM-00 gộp, BM-03 + phụ lục thuyết minh, BM-14, BM-18. Tuyến Tập đoàn: người ký là TGĐ Tập đoàn (bước 73). */
+  const TD_SIGNER = 'Tổng Giám đốc Tập đoàn';
   function docBm01K() {
-    const d = R().doc || {}, k = kd(), total = D.caseInfo.total, sg = signOf(44), host = hostOf(), u = U();
-    const cost = Flow.doneCount(33) ? P(R().meeting.changes[1][2] + '.') : '';
-    return `<div class="doc paper"><div class="doc-sec"><h4>PHÊ DUYỆT</h4><p>${esc(pname('tgd'))} — Tổng Giám đốc · ${esc(sg.st)}${sg.at ? ' ' + sg.at : ''}</p></div>
+    const d = R().doc || {}, k = kd(), total = D.caseInfo.total, td = tdKinds().includes('CT'), sg = signOf(td ? 73 : 48), host = hostOf(), u = U();
+    const cost = Flow.doneCount(36) ? P(R().meeting.changes[1][2] + '.') : '';
+    return `<div class="doc paper"><div class="doc-sec"><h4>PHÊ DUYỆT</h4><p>${td ? TD_SIGNER : `${esc(pname('tgd'))} — Tổng Giám đốc`} · ${esc(sg.st)}${sg.at ? ' ' + sg.at : ''}</p></div>
       <div class="doc-sec"><h4>I. THÔNG TIN CHUNG</h4></div>
       ${docSec(1, 'Tên khoản đầu tư', P(k.title || Flow.ci().title))}${docSec(2, 'Phân loại KĐT', P(catName('loai-kdt', k.type)))}${docSec(3, 'Lĩnh vực đầu tư', P(catName('linh-vuc', k.field)))}
       ${docSec('4.1', 'Mục đích, mục tiêu', P(u.mucTieuK || aiText('purposeText')))}${docSec('4.2', 'Sự cần thiết', kNeed() ? P(aiOf('aiSuCanThietK', 'suCanThiet') || d.necessity) : missing, true)}
@@ -601,7 +755,7 @@
       <div class="doc-sec"><h4>II. TỔ CHỨC THỰC HIỆN</h4>${P(u.toChucK || d.org)}${host ? P('Đơn vị chủ trì: ' + host + '.') : ''}</div></div>`;
   }
   function docBm00() {
-    const d = R().doc || {}, k = kd(), sg = signOf(56), u = U();
+    const d = R().doc || {}, k = kd(), sg = signOf(62), u = U();
     return `<div class="doc paper"><div class="doc-sec"><h4>PHÊ DUYỆT</h4><p>${esc(pname('tgd'))} — Tổng Giám đốc · ${esc(sg.st)}${sg.at ? ' ' + sg.at : ''}</p></div>
       <div class="doc-sec"><h4>A. CHỦ TRƯƠNG ĐẦU TƯ</h4></div>
       ${docSec(1, 'Tên khoản đầu tư', P(k.title || Flow.ci().title))}${docSec(2, 'Phân loại KĐT', P(catName('loai-kdt', k.type)))}${docSec(3, 'Lĩnh vực đầu tư', P(catName('linh-vuc', k.field)))}
@@ -635,9 +789,11 @@
   function docBm14() {
     const k = kd(), cs = Flow.cqcmSel(), x = R().bm14 || {}, nr = Math.max(1, Flow.tdRound());
     const pend = Array.from({ length: nr }, (_, j) => fixItems(j)).flat();
-    return `<div class="doc paper"><div class="doc-sec"><h4>BÁO CÁO KẾT QUẢ THẨM ĐỊNH — Khoản đầu tư ${esc(k.title || '')}</h4><p>Số: ${esc(x.no || '')} · Kính gửi: ${esc(b3().decider || 'Tổng Giám đốc VHT')}</p></div>
+    const td = tdKinds().some((t) => t !== 'CT') && Flow.state.history.some((h) => String(h.task) === '72');
+    return `<div class="doc paper"><div class="doc-sec"><h4>BÁO CÁO KẾT QUẢ THẨM ĐỊNH — Khoản đầu tư ${esc(k.title || '')}</h4><p>Số: ${esc(x.no || '')} · Kính gửi: ${esc(td ? TD_SIGNER : b3().decider || 'Tổng Giám đốc VHT')}</p></div>
       <div class="doc-sec"><h4>Phần thứ nhất — Tài liệu thẩm định và tổ chức thẩm định</h4><ul class="plain"><li>Tờ trình ${esc(b3().no || '')} (BM-03, phiên bản v${kdtVer()}) và Checklist 02 của ${esc(k.unit || '')}.</li>
-        <li>Văn bản thẩm định của ${cs.length} CQCM: ${esc(cs.map(cqcmUnit).join('; ') || '-')}.</li><li>Cơ quan chủ trì thẩm định: Trung tâm Mua sắm (TTMS). Hình thức thẩm định: lấy ý kiến bằng văn bản.</li></ul></div>
+        <li>Văn bản thẩm định của ${cs.length} CQCM: ${esc(cs.map(cqcmUnit).join('; ') || '-')}.</li>${td ? '<li>Phiếu nhận xét của các Ban chuyên môn Tập đoàn và Báo cáo giải trình BM-06 của VHT.</li>' : ''}
+        <li>Cơ quan chủ trì thẩm định: ${td ? 'Ban Đầu tư – Xây dựng Tập đoàn' : 'Trung tâm Mua sắm (TTMS)'}. Hình thức thẩm định: lấy ý kiến bằng văn bản.</li></ul></div>
       <div class="doc-sec"><h4>Phần thứ hai — Ý kiến thẩm định khoản đầu tư</h4></div>
       ${docSec('I', 'Thông tin chung', P(`${catName('loai-kdt', k.type)} · ${catName('linh-vuc', k.field)} · Tổng mức vốn ${ty(D.caseInfo.total)} tỷ đồng · ${(R().doc || {}).fund || ''}.`))}
       ${docSec('II.1', 'Các nội dung đồng thuận', `<ul class="plain">${(x.agreed || []).map((a) => `<li>${esc(a)}</li>`).join('')}</ul>`)}
@@ -647,8 +803,8 @@
       ${docSec('IV', 'Kiến nghị', P(`Kiến nghị ${b3().decider || 'Tổng Giám đốc VHT'} xem xét, quyết định phê duyệt Khoản đầu tư để các đơn vị triển khai các bước tiếp theo.`))}</div>`;
   }
   function docBm18() {
-    const k = kd(), d = R().doc || {}, x = R().bm18 || {}, sg = signOf(54);
-    return `<div class="doc paper"><div class="doc-sec"><h4>QUYẾT ĐỊNH — Phê duyệt khoản đầu tư ${esc(k.title || '')}</h4><p>Số: ${esc(x.no || '')}/QĐ-VHT · ${esc(pname('tgd'))} — Tổng Giám đốc · ${esc(sg.st)}${sg.at ? ' ' + sg.at : ''}</p>
+    const k = kd(), d = R().doc || {}, x = R().bm18 || {}, td = tdKinds().some((t) => t !== 'CT'), sg = signOf(td ? 73 : kdtGop() ? 62 : 60);
+    return `<div class="doc paper"><div class="doc-sec"><h4>QUYẾT ĐỊNH — Phê duyệt khoản đầu tư ${esc(k.title || '')}</h4><p>Số: ${esc(x.no || '')}/QĐ-${td ? 'VTG' : 'VHT'} · ${td ? TD_SIGNER : `${esc(pname('tgd'))} — Tổng Giám đốc`} · ${esc(sg.st)}${sg.at ? ' ' + sg.at : ''}</p>
         <p>Căn cứ Tờ trình chủ trương ${esc(b3().ctNo || '')} đã được phê duyệt; xét Tờ trình ${esc(b3().no || '')}; theo đề nghị của TTMS tại Báo cáo kết quả thẩm định ${esc((R().bm14 || {}).no || '')}.</p></div>
       <div class="doc-sec"><h4>Điều 1. Phê duyệt khoản đầu tư với các nội dung chính</h4></div>
       ${docSec(1, 'Tên khoản đầu tư', P(k.title))}${docSec(2, 'Phân loại KĐT · Lĩnh vực', P(`${catName('loai-kdt', k.type)} · ${catName('linh-vuc', k.field)}`))}
@@ -659,17 +815,34 @@
       <div class="doc-sec"><h4>Điều 3. Hiệu lực</h4><p>Quyết định có hiệu lực kể từ ngày ký.</p></div></div>`;
   }
 
+  /* Tuyến Tập đoàn: công văn trình (64–65) và báo cáo giải trình BM-06 (68–69). */
+  function docCvTd() {
+    const v = of({ task: 64 }), sg = signOf(65);
+    return `<div class="doc paper"><p>Số: ……/VHT-TTVT · ${esc(v.trichYeuCv)}</p>
+      <p>Kính gửi: Tổng Giám đốc Tập đoàn (qua Ban Đầu tư – Xây dựng).</p><p>${esc(v.noiDungCv)}</p>
+      <p>Hồ sơ kèm theo: ${esc(tdk().doc)} (dự thảo); ý kiến thẩm định nội bộ; căn cứ ${esc((basisDoc() || {}).no || '')}.</p>
+      <p class="r">TỔNG GIÁM ĐỐC<br><br><i>${esc(pname('tgd'))}</i> · ${esc(sg.st)}${sg.at ? ' ' + sg.at : ''}</p></div>`;
+  }
+  function docBm06K() {
+    const rows = of({ task: 68 }).giaiTrinhTd, sg = signOf(69);
+    return `<div class="doc paper"><p class="c"><b>BÁO CÁO GIẢI TRÌNH, TIẾP THU Ý KIẾN TẬP ĐOÀN (BM-06)</b><br>${esc(kd().title || '')} · ${esc(tdk().doc)} v${kdtVer()}</p>
+      ${rows.map((r, j) => docSec(j + 1, `${r.ban} — ${r.muc}`, `<p><b>Ý kiến:</b> ${esc(r.nhanXet)}</p><p><b>Tiếp thu, giải trình:</b> ${esc(r.traLoi)}</p>`)).join('')}
+      <p class="r">TỔNG GIÁM ĐỐC<br><br><i>${esc(pname('tgd'))}</i> · ${esc(sg.st)}${sg.at ? ' ' + sg.at : ''}</p></div>`;
+  }
+
   /* code → { name, html }. KĐT dùng BM-01 / BM-03 của bộ biểu mẫu KĐT (BM-8.6.5). */
   const DOC = {
-    'BM-01': () => (kdt() ? { name: 'Tờ trình chủ trương KĐT', html: docBm01K() } : { name: 'Tờ trình đề xuất mua sắm', html: docTt() }),
-    'BM-09': () => ({ name: 'Tờ trình đề xuất mua sắm', html: docTt() }),
+    'BM-01': () => (kdt() ? { name: 'Tờ trình chủ trương KĐT', html: docBm01K() } : { name: adj() ? 'Tờ trình điều chỉnh ĐXMS' : 'Tờ trình đề xuất mua sắm', html: docTt() }),
+    'BM-09': () => ({ name: adj() ? 'Tờ trình điều chỉnh ĐXMS' : 'Tờ trình đề xuất mua sắm', html: docTt() }),
     'BM-02': () => ({ name: 'Thuyết minh ĐXMS', html: docBm02() }),
     'BM-03': () => (kdt() ? { name: 'Tờ trình thẩm định, phê duyệt KĐT', html: docBm03K() } : { name: 'Phiếu yêu cầu thẩm định', html: docBm03() }),
     'PL-TM': () => ({ name: 'Phụ lục thuyết minh KĐT', html: docAnnex() }),
     'BM-05': () => ({ name: 'Báo cáo kết quả thẩm định', html: docBm05() }),
-    'BM-06': () => ({ name: 'Công văn báo cáo TGĐ Tập đoàn', html: docBm06() }),
-    'BM-08': () => ({ name: 'Quyết định phê duyệt ĐXMS', html: docBm08() }),
+    'BM-06': () => (kdt() ? { name: 'Báo cáo giải trình, tiếp thu ý kiến Tập đoàn', html: docBm06K() } : { name: 'Công văn báo cáo TGĐ Tập đoàn', html: docBm06() }),
+    'CV-TD': () => ({ name: 'Công văn trình Tập đoàn', html: docCvTd() }),
+    'BM-08': () => ({ name: adj() ? 'Quyết định phê duyệt điều chỉnh ĐXMS' : 'Quyết định phê duyệt ĐXMS', html: docBm08() }),
     'BM-00': () => ({ name: 'Hồ sơ gộp chủ trương và KĐT', html: docBm00() }),
+    PYC: () => ({ name: 'Phiếu yêu cầu thẩm định', html: docBm03() }),
     'BM-14': () => ({ name: 'Báo cáo kết quả thẩm định KĐT', html: docBm14() }),
     'BM-18': () => ({ name: 'Quyết định phê duyệt KĐT', html: docBm18() }),
   };
@@ -679,20 +852,23 @@
      Tài liệu bắt buộc theo hành động (E3) đọc ở Danh sách tài liệu (Flow.ui[key] = đã tải lên). */
   const REQ_DOCS = {
     MS01: { 16: [['bm03File', 'Phiếu yêu cầu thẩm định (BM-03) đã ký nháy']], 32: [['minutesFile', 'Biên bản họp']], 51: [['bm06File', 'Tệp đính kèm khi xác nhận (BM-06 đã ký nháy)']] },
-    MS13: { 29: [['kMinutes', 'Biên bản họp']] },
+    MS13: { 32: [['kMinutes', 'Biên bản họp']] },
   };
+  /* 78: bản scan của lần ký bản cứng đang cập nhật — mỗi lần ký một tệp (khoá theo bước ký + số lần đã ký qua khối). */
+  const kyScanKey = () => { const ky = Flow.state.vars.ky || {}; return `kyScan_${ky.task}_${(Flow.state.vars.kyLog || []).length}`; };
   /* Comment #5: báo giá của từng NCC nhận YCBG — bắt buộc với nút "Báo giá đạt". Comment #22: phiếu nhận xét Tập đoàn — tuỳ chọn. */
   const quoteKey = (code) => 'quote_' + code;
   function reqDocs(tok) {
     const list = ((REQ_DOCS[kdt() ? 'MS13' : 'MS01'][tok.task]) || []).map(([key, name]) => ({ key, name, have: !!U()[key] }));
     if (!kdt() && String(tok.task) === '10') (U().nccSel || nccDefault()).forEach((c) => list.push({ key: quoteKey(c), name: `Báo giá — ${nccName(c)}`, have: !!U()[quoteKey(c)], only: /^Báo giá đạt/ }));
+    if (kdt() && String(tok.task) === '78') list.push({ key: kyScanKey(), name: `Bản scan ${(Flow.state.vars.ky || {}).doc || 'văn bản'} đã ký`, have: !!U()[kyScanKey()] });
     if (!kdt() && tok.task === 60 && !small() && Flow.state.vars.reportTD) list.push({ key: 'tdReviewFile', name: 'Phiếu nhận xét của Tập đoàn', have: !!U().tdReviewFile, opt: true });
     return list;
   }
   function check(tok, choice, vals) {
     const n = tok.task, lbl = choice ? choice.label : '';
     const miss = reqDocs(tok).find((x) => !x.have && !x.opt && (!x.only || x.only.test(lbl)));
-    if (miss && !(kdt() && n === 29 && /^Chưa/.test(lbl))) return `Bạn cần tải lên ${miss.name} ở Danh sách tài liệu.`;
+    if (miss && !(kdt() && n === 32 && /^Chưa/.test(lbl))) return `Bạn cần tải lên ${miss.name} ở Danh sách tài liệu.`;
     if (!vals) return null;
     if (n === 1 && (of(tok).basisDocOptions.find((o) => o.value === vals.basisDoc) || {}).type !== vals.basisType) return 'Văn bản căn cứ không thuộc loại căn cứ đã chọn.';
     if (n === 5 && lbl.startsWith('Xác nhận') && (vals.bocTach || []).some((r) => r.remain != null && r.prop > r.remain)) return 'Có dòng vượt số lượng còn lại sau trừ lùi.';
@@ -710,7 +886,8 @@
 
   window.EVars = {
     of, doc, check, reqDocs,
-    h: { kdt, small, tt, clName, draftTask, proc, procOf, condOf, version, kdtVer, basisDoc, basisSel, quoteFail, quoteAttempt, nok, respOf, selCqcm, stg, tdKey,
-      needHost, hostOf, kNeed, kd, catName, signOf, returnedFrom, aiFinal, aiOf, buyItems, rvIdx, fixOf, HOSTS, pname, lineRemain, propOf, bm04Round },
+    h: { tdk, kdt, small, tt, clName, draftTask, proc, procOf, condOf, version, kdtVer, basisDoc, basisSel, quoteFail, quoteAttempt, nok, respOf, selCqcm, stg, tdKey,
+      needHost, hostOf, kNeed, kd, catName, signOf, returnedFrom, aiFinal, aiOf, buyItems, rvIdx, fixOf, HOSTS, pname, lineRemain, propOf, bm04Round,
+      adj, adjTh, adjBranch, adjLan, adjCross, adjRows },
   };
 })();

@@ -1,6 +1,6 @@
 // T11 B1 — PH09 Khoản đầu tư (plan docs/dtms/prototype-KDT-chuan-bi.md v0.3): KĐT là đối tượng cha (D-12).
 // SCR-54 danh sách #/kdt, SCR-55 thêm mới / chỉnh sửa (không start quy trình), SCR-56 chi tiết, Thêm mới hồ sơ KĐT (khuôn SCR-25, D-7),
-// trích luồng MS13-TO BE (BPMN_FLOWS.MS13) và engine luồng theo quy trình (D.flows).
+// trích luồng MS13 (BPMN_FLOWS.MS13, bản 12/10 từ T18) và engine luồng theo quy trình (D.flows).
 import { test, expect } from '@playwright/test';
 import { fresh, lastToast } from './helpers.mjs';
 
@@ -127,7 +127,7 @@ test('Tạo hồ sơ KĐT (khuôn SCR-25): ô KĐT, Quy trình khoá; Lưu start
   await expect(page.locator('#kc-proc')).toHaveValue(/MS13 · MS14 · MS15/);
   await expect(page.locator('[data-vsel="kc-kdt"]')).toContainText('KĐT-2026-0033');
   await page.locator('#kc-save').click();
-  // B2: Lưu = start quy trình MS13-TO BE, mở ngay bước 01 của người tạo.
+  // B2: Lưu = start quy trình MS13, mở ngay bước 01 của người tạo.
   await expect(page).toHaveURL(/#\/task\//);
   await expect(page.locator('.tmain .ginfo').first()).toContainText('Mã KĐTKĐT-2026-0033');
   await page.evaluate(() => { location.hash = '#/kdt/' + encodeURIComponent('KĐT-2026-0033') + '/edit'; });
@@ -146,23 +146,29 @@ test('Tạo hồ sơ KĐT (khuôn SCR-25): ô KĐT, Quy trình khoá; Lưu start
   expect(page.errors).toEqual([]);
 });
 
-test('B1: trích MS13-TO BE — 64 task, 27 cổng, 6 sự kiện, 118 mũi tên; cổng phân luồng và cổng gộp đúng vị trí', async ({ page }) => {
+test('T18 B1: trích MS13 bản 12/10 — 78 bước, 36 cổng, 9 sự kiện, 152 mũi tên; thẩm quyền, cổng phân luồng, gộp, vòng, khối ký chung đúng vị trí', async ({ page }) => {
   await fresh(page, '#/kdt');
   const f = await page.evaluate(() => {
     const x = window.BPMN_FLOWS.MS13;
     const gw = (name) => Object.keys(x.gateways).find((k) => x.gateways[k].name.startsWith(name));
     const out = (k) => x.edges.filter((e) => e[0] === k).map((e) => [e[1], e[2]]);
-    return { tasks: Object.keys(x.tasks).length, gws: Object.keys(x.gateways).length, evs: Object.keys(x.events).length, edges: x.edges.length,
-      t64: x.tasks['64'].name, t41: x.tasks['41'].type, ms13: out(gw('Tổng mức vốn thực tế thuộc MS13')), gop: out(gw('Mức vốn MS13 AND')),
-      after10: out('10'), fam: [D.familyOf('MS01.03'), D.familyOf('MS13'), D.familyOf(null)] };
+    return { page: x.page, tasks: Object.keys(x.tasks).length, gws: Object.keys(x.gateways).length, evs: Object.keys(x.events).length, edges: x.edges.length,
+      t13: [x.tasks['13'].name, x.tasks['13'].type], and: Object.keys(x.gateways).filter((k) => x.gateways[k].kind === 'and').length,
+      ms13: out(gw('Tổng mức vốn thực tế thuộc MS13')), gop: out(gw('Đủ 03 điều kiện lập hồ sơ gộp')), vong: out(gw('Hồ sơ đã thống nhất thuộc vòng nào')),
+      after13: out('13'), sign: out(gw('Hồ sơ Mật')), starts: Object.keys(x.events).filter((k) => x.events[k].kind === 'start'),
+      fam: [D.familyOf('MS01.03'), D.familyOf('MS13'), D.familyOf(null)], diagram: !!(window.BPMN_DIAGRAMS || {}).MS13 };
   });
-  expect([f.tasks, f.gws, f.evs, f.edges]).toEqual([64, 27, 6, 118]);
-  expect(f.t64).toBe('Trình ký Voffice để Thủ trưởng VHT ký sau ý kiến Tập đoàn');
-  expect(f.t41).toBe('sub');
-  expect(f.ms13.map((e) => e[1]).sort()).toEqual(['Có', 'Không']);
-  expect(f.ms13.find((e) => e[1] === 'Không')[0]).toBe('X_MS14');
-  expect(f.gop.map((e) => e[0]).sort()).toEqual(['17', '36']);
-  expect(f.after10.length).toBe(1);
+  expect(f.page).toBe('MS13');
+  expect([f.tasks, f.gws, f.evs, f.edges]).toEqual([78, 36, 9, 152]);
+  expect(f.t13).toEqual(['Xác định thẩm quyền phê duyệt', 'service']);
+  expect(f.and).toBe(2);
+  expect(f.after13.length).toBe(1);
+  expect(f.ms13.map((e) => e[1]).sort()).toEqual(['Không thuộc MS13', 'Thuộc MS13']);
+  expect(f.gop.map((e) => e[0]).sort()).toEqual(['18', '39']);
+  expect(f.vong.map((e) => e[0]).sort()).toEqual(['46', '55', 'G30']);
+  expect(f.sign.map((e) => e[0]).sort()).toEqual(['75', '77']);
+  expect(f.starts.sort()).toEqual(['S', 'S2']);
   expect(f.fam).toEqual(['MS01', 'MS13', 'MS01']);
+  expect(f.diagram).toBe(true);
   expect(page.errors).toEqual([]);
 });

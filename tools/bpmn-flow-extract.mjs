@@ -3,10 +3,13 @@
 // câu hỏi của cổng là ô chữ đặt cạnh hình thoi → gắn ô chữ gần nhất. Chạy: node tools/bpmn-flow-extract.mjs
 import { readFileSync, writeFileSync } from 'node:fs';
 
-const SRC = new URL('../../../project-knowledge/03. Thiết kế (Tài liệu BA)/BPMN/ĐTMS.drawio', import.meta.url);
-const PAGES = { 'MS13-TO BE': { key: 'MS13', out: 'bpmn-tasks-ms13.js', count: 64 } };
-
-const x = readFileSync(SRC, 'utf8');
+/* D-31 (T18): nguồn theo trang — MS13 đọc bản 12/10 (ĐTMS-121026.drawio, 78 bước); MS01 vẫn ĐTMS.drawio (C7). */
+const BPMN = '../../../project-knowledge/03. Thiết kế (Tài liệu BA)/BPMN/';
+/* D-38 (T21): MS02 đọc trang "MS02 ver1.1" bản 12/10 (bản 12/10 không đổi trang này so với 28/09). */
+const PAGES = { MS13: { key: 'MS13', src: 'ĐTMS-121026.drawio', out: 'bpmn-tasks-ms13.js', count: 78 },
+  'MS02 ver1.1': { key: 'MS02', src: 'ĐTMS-121026.drawio', out: 'bpmn-tasks-ms02.js', count: 61 } };
+const files = {};
+let x = '';
 const xmlDec = (s) => s.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&#xa;/gi, '\n').replace(/&amp;/g, '&');
 const attrs = (s) => Object.fromEntries([...s.matchAll(/([\w:-]+)="([^"]*)"/g)].map((m) => [m[1], xmlDec(m[2])]));
 const styleOf = (s) => Object.fromEntries((s || '').split(';').filter(Boolean).map((p) => { const k = p.indexOf('='); return k < 0 ? [p, '1'] : [p.slice(0, k), p.slice(k + 1)]; }));
@@ -15,6 +18,7 @@ const lines = (h) => plain(h || '').split('\n').map((s) => s.replace(/\s+/g, ' '
 const one = (h) => lines(h).join(' ');
 
 function extract(PAGE, conf) {
+  x = files[conf.src] = files[conf.src] || readFileSync(new URL(BPMN + conf.src, import.meta.url), 'utf8');
   const i = x.indexOf(`name="${PAGE}"`);
   if (i < 0) throw new Error(`Không thấy trang ${PAGE}`);
   const body = x.slice(i, x.indexOf('</diagram>', i));
@@ -24,7 +28,7 @@ function extract(PAGE, conf) {
     const id = a.id || c.id;
     const geo = /<mxGeometry\b([^>]*?)(\/>|>)/.exec(inner || '');
     const g = geo ? attrs(geo[1]) : {};
-    cells[id] = { id, parent: c.parent, style: styleOf(c.style), vertex: c.vertex === '1', edge: c.edge === '1', source: c.source, target: c.target,
+    cells[id] = { id, at: { ...c, ...a }, parent: c.parent, style: styleOf(c.style), vertex: c.vertex === '1', edge: c.edge === '1', source: c.source, target: c.target,
       label: a.label != null ? a.label : c.value || '', g: { x: Number(g.x || 0), y: Number(g.y || 0), w: Number(g.width || 0), h: Number(g.height || 0) } };
   };
   const objRe = /<(object|UserObject)\b([^>]*)>\s*(<mxCell\b[^>]*?)(\/>|>([\s\S]*?)<\/mxCell>)\s*<\/\1>/g;
@@ -60,7 +64,17 @@ function extract(PAGE, conf) {
     if (best) usedText.add(best.id);
     return best ? one(best.label) : '';
   };
-  const ordered = Object.values(cells).filter((c) => c.vertex).sort((a, b) => center(a.id).x - center(b.id).x || center(a.id).y - center(b.id).y);
+  /* Trang MS02 ver1.1 còn bản MS01 cũ nằm khít dưới bản MS02 (cùng loại hình + vị trí, khác nhãn) → giữ hình vẽ sau trong tệp
+     (hình nằm trên, đúng cái drawio hiển thị) như tools/bpmn-diagram-extract.mjs; mũi tên nối hình bị che cũng bỏ. */
+  const ord = (id) => body.indexOf(`id="${id}"`);
+  const shapeOf = (c) => (c.style.shape === 'mxgraph.bpmn.task' ? 'task' : c.style.rhombus ? 'gw' : c.style.ellipse ? 'ev' : '');
+  const topAt = new Map(), hidden = new Set();
+  for (const c of Object.values(cells).filter((v) => v.vertex && shapeOf(v)).sort((a, b) => ord(a.id) - ord(b.id))) {
+    const p = center(c.id), k = JSON.stringify([shapeOf(c), Math.round(p.x), Math.round(p.y), p.w, p.h]);
+    if (topAt.has(k)) hidden.add(topAt.get(k));
+    topAt.set(k, c.id);
+  }
+  const ordered = Object.values(cells).filter((c) => c.vertex && !hidden.has(c.id)).sort((a, b) => center(a.id).x - center(b.id).x || center(a.id).y - center(b.id).y);
   for (const c of ordered) {
     const s = c.style;
     if (s.shape === 'mxgraph.bpmn.task') {
@@ -82,8 +96,13 @@ function extract(PAGE, conf) {
       ref[c.id] = n;
     } else if (s.rhombus) {
       const id = 'G' + (Object.keys(gws).length + 1);
-      const par = one(c.label) === '+';
-      gws[id] = { kind: par ? 'and' : 'xor', name: near(c.id, 260) };
+      /* Bản 12/10: câu hỏi nằm ngay trong hình thoi (hoặc thuộc tính Name); dấu "+" của cổng song song là ô chữ đè lên hình thoi. */
+      const a = center(c.id);
+      const plus = texts.find((t) => one(t.label) === '+' && Math.hypot(center(t.id).x - a.x, center(t.id).y - a.y) < Math.max(a.w, a.h) * 0.6);
+      if (plus) usedText.add(plus.id);
+      const par = one(c.label) === '+' || !!plus;
+      const own = one(c.label) !== '+' ? one(c.label) : '';
+      gws[id] = { kind: par ? 'and' : 'xor', name: own || c.at.Name || near(c.id, 260) };
       ref[c.id] = id;
     } else if (s.ellipse) {
       ref[c.id] = c.id; // phân loại bắt đầu/kết thúc sau khi có mũi tên
@@ -93,14 +112,15 @@ function extract(PAGE, conf) {
   for (const c of Object.values(cells)) {
     if (!c.edge || !ref[c.source] || !ref[c.target]) continue;
     const lb = [one(c.label)].concat(Object.values(cells).filter((l) => l.parent === c.id && l.style.edgeLabel).map((l) => one(l.label))).filter(Boolean).join(' / ');
-    edges.push([ref[c.source], ref[c.target], lb]);
+    if (!edges.some((e) => e[0] === ref[c.source] && e[1] === ref[c.target] && e[2] === lb)) edges.push([ref[c.source], ref[c.target], lb]);
   }
   /* Sự kiện: không có mũi tên vào = bắt đầu (S), không có mũi tên ra = kết thúc (E1…); tên = ô chữ gần nhất. */
-  let en = 0;
+  let en = 0, sn = 1;
   for (const c of ordered.filter((v) => v.style.ellipse && ref[v.id])) {
     const inn = edges.some((e) => e[1] === c.id), out = edges.some((e) => e[0] === c.id);
-    const id = !inn ? 'S' : !out ? 'E' + (++en) : 'I' + (++en);
-    evs[id] = { kind: !inn ? 'start' : !out ? 'end' : 'mid', name: near(c.id, 220) };
+    /* Nhiều sự kiện bắt đầu (bản 12/10: khối ký chung 75–78 có sự kiện "Đến bước trình ký" riêng) → S, S2… */
+    const id = !inn ? (edges.some((e) => e[0] === c.id && e[1] === '1') ? 'S' : 'S' + (++sn)) : !out ? 'E' + (++en) : 'I' + (++en);
+    evs[id] = { kind: !inn ? 'start' : !out ? 'end' : 'mid', name: one(c.label) || near(c.id, 220) };
     edges.forEach((e) => { if (e[0] === c.id) e[0] = id; if (e[1] === c.id) e[1] = id; });
   }
   /* Ô "MS14,15 – Chuyển xử lý…" là hộp chữ, không phải sự kiện — vẫn giữ làm đích (X_MS14). */
@@ -113,7 +133,7 @@ function extract(PAGE, conf) {
   edges.sort((a, b) => String(a[0]).localeCompare(String(b[0]), 'en', { numeric: true }));
 
   const data = { page: PAGE, count: conf.count, tasks, gateways: gws, events: evs, edges };
-  writeFileSync(new URL('../js/' + conf.out, import.meta.url), `/* SINH TỰ ĐỘNG từ project-knowledge/03. Thiết kế (Tài liệu BA)/BPMN/ĐTMS.drawio, trang "${PAGE}".
+  writeFileSync(new URL('../js/' + conf.out, import.meta.url), `/* SINH TỰ ĐỘNG từ project-knowledge/03. Thiết kế (Tài liệu BA)/BPMN/${conf.src}, trang "${PAGE}".
    Không sửa tay — chạy lại: node tools/bpmn-flow-extract.mjs. tasks: số task → tên, tác nhân, loại (user/service/sub = quy trình con);
    gateways: G1… (xor/and, câu hỏi = ô chữ cạnh hình thoi); events: S bắt đầu, E1… kết thúc; edges: [nguồn, đích, nhãn]. */
 (window.BPMN_FLOWS = window.BPMN_FLOWS || {})[${JSON.stringify(conf.key)}] = ${JSON.stringify(data, null, 1)};
