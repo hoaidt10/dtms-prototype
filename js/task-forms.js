@@ -13,7 +13,7 @@
   const H = () => window.EVars.h;
 
   function raw(tok) {
-    const pick = Flow.state.kdt ? window.EForms.MS13 : Flow.state.vars.adj ? window.EForms.MS02 : window.EForms.MS01;
+    const pick = Flow.state.parent ? window.EForms[Flow.state.vars.process] : Flow.state.kdt ? window.EForms.MS13 : Flow.state.vars.adj ? window.EForms.MS02 : window.EForms.MS01;
     return pick ? pick(tok, H()) : null;
   }
   /* Schema đầy đủ như Camunda Web Modeler xuất (để chép sang Modeler được). */
@@ -38,7 +38,7 @@
 
   /* Văn bản đầu ra (dự thảo) của bước: mẫu Word + dữ liệu eForm. */
   const outputs = (tok) => outputsOf(tok, raw(tok)).map((code) => { const d = window.EVars.doc(code); return d ? { code, name: `${code} ${d.name} (dự thảo v${version()})` } : null; }).filter(Boolean);
-  const version = () => (Flow.state.kdt ? H().kdtVer() : H().version());
+  const version = () => (Flow.state.parent ? window.EForms.hd.version() : Flow.state.kdt ? H().kdtVer() : H().version());
 
   /* Bấm nút hành động. Trả { reason } để chạy tiếp (lý do lấy từ form nếu có), null nếu huỷ / lưu nháp / bị trả lại. */
   async function run(tok, choice) {
@@ -74,7 +74,7 @@
   /* Biến của service task chạy ngay sau task (prototype ghi trước khi hoàn thành token để gateway đọc được).
      DX-03: kết quả AI kiểm tra báo giá ở task 10 → cổng "Báo giá đạt?" (MS01) / "Báo giá đạt yêu cầu?" (MS13). */
   function beforeComplete(tok, choice) {
-    if (String(tok.task) !== '10') return null;
+    if (String(tok.task) !== '10' || Flow.state.parent) return null;
     const ok = !H().quoteFail();
     Flow.state.vars.quoteAi = ok;
     if (ok || !choice || !choice.main) return null;

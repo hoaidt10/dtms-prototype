@@ -45,6 +45,7 @@ async function branch(page, i) {
 test('Cảnh 1–3: tạo KĐT, tạo hồ sơ start MS13; task 1–10; Ban Tài chính ‖ TTMS xác nhận → MS13 hai giai đoạn, sang dự thảo', async ({ page }) => {
   await fresh(page, '#/kdt/create');
   await page.locator('#k-title').fill('Đầu tư hệ thống đo kiểm OTA tích hợp phục vụ nhiệm vụ KHCN 5G-A');
+  await pick(page, 'k-nv', 'DT-KHCN-2027-002');
   await pick(page, 'k-field', 'Viễn thông - CNTT');
   await pick(page, 'k-type', 'Khoa học công nghệ');
   await pick(page, 'k-nature', 'Cần tích hợp');

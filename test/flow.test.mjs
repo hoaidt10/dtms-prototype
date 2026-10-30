@@ -455,7 +455,7 @@ test('MS01.03 B-3d: ĐVĐX bảo lưu ý kiến → giải trình; vòng 3/2 →
 test('bộ demo: mỗi cảnh của ba hồ sơ demo đặt đúng task, vai và hồ sơ; nhánh phụ mở đúng việc', () => {
   const w = boot(null);
   const { Flow, D } = w;
-  for (const set of D.demoSets) {
+  for (const set of D.demoSets.filter((d) => !d.hd)) {
     for (const s of set.scenes) {
       Flow.jumpToScene(s.n, set.key);
       assert.equal(Flow.demoSet().key, set.key, `cảnh ${s.n}: bộ demo`);

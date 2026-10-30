@@ -908,6 +908,9 @@ body:not(.cap) .actionbar { padding-right: 84px; }
 .bp-tb { position: absolute; top: 12px; left: 12px; z-index: 3; display: flex; flex-direction: column; gap: 4px; }
 .bp-tbb { display: flex; width: 32px; height: 32px; align-items: center; justify-content: center; border: 0; border-radius: 8px; background: #E2E2E5; color: #2F3033; cursor: pointer; box-shadow: 0 1px 2px rgba(16,24,40,.05); }
 .bp-tbb:hover { background: #EE0033; color: #fff; }
+.bp-mini { position: absolute; left: 12px; bottom: 12px; z-index: 3; width: 200px; height: 112px; border: 1px solid #DCDEE0; border-radius: 8px; background: #fff; overflow: hidden; cursor: pointer; }
+.bp-mini svg { display: block; width: 100%; height: 100%; }
+.bp-mini-vw { fill: rgba(238, 0, 51, .12); stroke: #EE0033; stroke-width: 1.5; vector-effect: non-scaling-stroke; }
 .bp-vp.pick .bp-pick { cursor: pointer; }
 .bp-vp.bp-msg { display: flex; align-items: center; justify-content: center; font-size: 14px; color: #76777A; cursor: default; }
 /* Lịch sử phiên bản (vht-timeline): marker viền xanh, phiên bản hiện hành viền đỏ. */
@@ -1083,3 +1086,34 @@ a.rp-tile, button.rp-tile { cursor: pointer; } .rp-tile.on { border-color: #EE00
 .um-impact .k { color: #76777A; }
 .um-file { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; }
 .um-file svg { width: 16px; height: 16px; }
+
+/* ---------- SCR-101 Danh sách Phân hệ (core-fe subsystem-list; số đo theo comment Figma trong template) ---------- */
+.ss-page { min-height: 100%; background: #F3F4F6; padding: 32px 40px 40px; }
+.ss-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 24px; }
+.ss-head h1 { margin: 0; font-size: 26px; line-height: 30px; font-weight: 700; color: #0F172A; display: flex; align-items: center; gap: 8px; }
+.ss-head p { margin: 4px 0 0; font-size: 13px; line-height: 15px; color: #64748B; }
+.ss-view { display: flex; align-items: center; gap: 4px; width: 86px; height: 40px; flex-shrink: 0; border-radius: 8px; background: #fff; padding: 4px; }
+.ss-view button { width: 37px; height: 32px; border: 0; border-radius: 6px; background: transparent; color: #1A1C1E; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+.ss-view button.on { background: #EE0033; color: #fff; }
+.ss-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 22px; }
+@media (max-width: 1279px) { .ss-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 767px) { .ss-grid { grid-template-columns: minmax(0, 1fr); } }
+.ss-card { display: flex; flex-direction: column; gap: 6px; height: 238px; border: 1px solid #E9EBEF; border-radius: 20px; background: #fff; padding: 22px; box-shadow: 0 6px 20px rgba(16, 24, 48, .06); }
+.ss-card .up { display: flex; flex-direction: column; gap: 14px; height: 133px; }
+.ss-card h2 { margin: 0; font-size: 16px; line-height: 19px; font-weight: 600; color: #0F172A; }
+.ss-card p { margin: 0; font-size: 13px; line-height: 19.5px; color: #64748B; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.ss-card .low { display: flex; flex-direction: column; gap: 16px; height: 53px; }
+.ss-card .rule { width: 100%; height: 1px; flex-shrink: 0; background: #E9EBEF; }
+.ss-card .act { display: flex; align-items: center; justify-content: flex-end; height: 36px; }
+.ss-ic { display: flex; align-items: center; justify-content: center; width: 46px; height: 46px; flex-shrink: 0; border-radius: 14px; }
+.ss-ic.sm { width: 42px; height: 42px; border-radius: 13px; }
+.ss-ic svg { width: 22px; height: 22px; }
+.ss-enter { display: inline-flex; align-items: center; gap: 6px; height: 36px; border: 0; border-radius: 12px; background: #EE0033; color: #fff; padding: 8px 16px; font: inherit; font-size: 14px; font-weight: 500; line-height: 21px; cursor: pointer; }
+.ss-enter.off { background: #E2E2E5; color: #AAABAE; cursor: not-allowed; }
+.ss-tw { width: 100%; overflow-x: auto; border: 1px solid #E2E2E5; border-radius: 12px; }
+.ss-table { width: 100%; min-width: 1000px; table-layout: fixed; border-collapse: collapse; text-align: left; background: #fff; font-size: 14px; line-height: 21px; color: #1A1C1E; }
+.ss-table th { height: 40px; background: #F0F1F2; border-bottom: 1px solid #E2E2E5; border-right: 1px solid #E2E2E5; padding: 8px 10px; font-weight: 500; }
+.ss-table td { height: 58px; border-bottom: 1px solid #E2E2E5; border-right: 1px solid #E2E2E5; padding: 8px 16px; }
+.ss-table th:last-child, .ss-table td:last-child { border-right: 0; }
+.ss-table tbody tr:last-child td { border-bottom: 0; }
+.ss-table .nm { display: flex; align-items: center; gap: 12px; font-weight: 500; }

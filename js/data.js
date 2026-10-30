@@ -25,6 +25,15 @@
     { id: 'ngoc', name: 'Phan Thị Ngọc', short: 'Ngọc', role: 'Chuyên quản ĐVĐX', unit: 'Trung tâm Vô tuyến', urd: 'R-DVDX-CQ', actor: 'A01' },
     { id: 'son', name: 'Lý Văn Sơn', short: 'Sơn', role: 'Chỉ huy ĐVĐX', unit: 'Phó Giám đốc Trung tâm Vô tuyến', urd: 'R-DVDX-CH', actor: 'A02' },
     { id: 'mai', name: 'Đinh Thị Mai', short: 'Mai', role: 'Chuyên viên TTMS', unit: 'Trung tâm Mua sắm', urd: 'R-TTMS', actor: 'A04' },
+    /* T24 Q3: người được cấp một phần quyền Quản trị quy trình (SRS-QTQT 3.1.1.5) — không có QT03, QT05; Ma trận chỉ xem. */
+    { id: 'qlqt', name: 'Cao Thị Hạnh', short: 'Hạnh', role: 'Người dùng quản trị quy trình', unit: 'Ban Công nghệ thông tin', urd: 'R-QTQT', actor: 'A21' },
+    /* T25 D-51: vai của MS22, MS23.x, MS24. Nhà thầu không có tài khoản: bước của nhà thầu do Phòng Hợp đồng ghi nhận kết quả (D-50). */
+    { id: 'phd', name: 'Trịnh Thị Yến', short: 'Yến', role: 'Chuyên viên Phòng Hợp đồng', unit: 'Phòng Hợp đồng', urd: 'R-DVMS', actor: '—' },
+    { id: 'tphd', name: 'Mạc Văn Kiên', short: 'Kiên', role: 'Trưởng phòng Hợp đồng', unit: 'Phòng Hợp đồng', urd: 'R-DVMS-CH', actor: '—' },
+    { id: 'dvsd', name: 'Tạ Quỳnh Anh', short: 'Quỳnh Anh', role: 'Chuyên viên Đơn vị sử dụng', unit: 'Nhà máy sản xuất thử nghiệm', urd: 'R-DVSD', actor: '—' },
+    { id: 'qlts', name: 'Hà Văn Tiến', short: 'Tiến', role: 'Chuyên viên Phòng Quản lý tài sản', unit: 'Phòng Quản lý tài sản', urd: 'R-QLTS', actor: '—' },
+    { id: 'tckt', name: 'Kiều Thị Loan', short: 'Loan', role: 'Trưởng phòng Tài chính kế toán', unit: 'Phòng Tài chính kế toán', urd: 'R-TCKT', actor: '—' },
+    { id: 'vthu', name: 'Dương Thị Nga', short: 'Nga', role: 'Văn thư', unit: 'Văn phòng', urd: 'R-VT', actor: '—' },
     /* Tài khoản demo toàn quyền (all): thấy mọi việc đang chờ, xử lý thay mọi vai, vào mọi màn quản trị. Không phải vai nghiệp vụ. */
     { id: 'admin', name: 'Tài khoản toàn quyền', short: 'Toàn quyền', role: 'Toàn quyền (demo)', unit: 'Tài khoản demo — không phải vai nghiệp vụ', urd: '—', actor: '—', all: true },
     { id: 'td', name: 'Ban ĐTXD Tập đoàn', short: 'Tập đoàn', role: 'Các Ban chuyên môn, Ban ĐTXD, TGĐ Tập đoàn (giả lập)', unit: 'Tập đoàn — không đăng nhập thật', urd: 'R-BAN-DTXD, R-TGD-TD', actor: 'A08', simulated: true },
@@ -32,6 +41,11 @@
 
   /* Vai có cờ all (Tài khoản toàn quyền) qua mọi kiểm tra quyền và thấy toàn bộ dữ liệu. */
   D.allAccess = (pid) => !!(D.personas.find((p) => p.id === pid) || {}).all;
+  /* T24 Q3: mã quyền như BE my-permissions (workflow-management-permissions, action-matrix-permissions, GS00 của process-monitoring). Thật: IAM cấp theo vai trò. */
+  const PERM_ALL = ['QT00', 'QT01', 'QT02', 'QT03', 'QT05', 'HTN00', 'HTN01', 'HTN02', 'HTN03', 'HTN04', 'HTN05', 'DMHS00', 'DMHD01', 'DMHD02', 'DTO00', 'DTO01', 'DTO02', 'DTO03', 'GS00'];
+  D.perms = { qt: PERM_ALL, lan: ['GS00'],
+    qlqt: ['QT00', 'QT01', 'QT02', 'HTN00', 'HTN01', 'HTN04', 'DMHS00', 'DMHD01', 'DMHD02', 'DTO00', 'DTO01', 'GS00'] };
+  D.can = (pid, code) => D.allAccess(pid) || (D.perms[pid] || []).includes(code);
   /* Vai trò thực hiện (T17 D-27) = roleCode trong Candidate Users của task BPMN; mã vai trò lấy theo mã vai URD của persona.
      Người thuộc vai trò = persona cùng mã (thật: IAM người dùng theo vai trò); bỏ tài khoản toàn quyền và Tập đoàn giả lập. */
   D.roleOf = (pid) => (D.personas.find((p) => p.id === pid) || {}).urd || null;
@@ -450,7 +464,97 @@
     { label: 'Có báo cáo TGĐ Tập đoàn', to: 'gReport', mainWhen: (v) => !v.basisTD, set: { reportTD: true } },
     { label: 'Không báo cáo TGĐ Tập đoàn', to: 'gReport', kind: 'secondary', mainWhen: (v) => !!v.basisTD, set: { reportTD: false } }] });
   D.flows = { MS01: F, MS13: K, MS02: A };
-  D.familyOf = (process) => (/^MS13/.test(process || '') ? 'MS13' : /^MS02/.test(process || '') ? 'MS02' : 'MS01');
+  /* Khối ký chung theo quy trình (D-50): bước ghi hình thức, bước ký điện tử, bước ký bản cứng — xem flow.js kySign. */
+  D.kyConf = { MS13: { choose: 75, soft: 76, hard: 77 } };
+  /* T25 B1 — MS22 Thương thảo và ký hợp đồng (BPMN-DTMS trang MS22, DG-MS22; mũi tên trong BPMN_FLOWS.MS22). Hồ sơ con của hợp đồng (D-47), chỉ HĐ-2026-0052 (D-48).
+     Bước 5 AI kiểm tra (service, S5) đọc dữ liệu đã nhập: bảo hành thấp hơn HSMT → cần thống nhất lại với nhà thầu (6); thiếu mã hàng → sửa nội bộ (7) — GIẢ LẬP P-127, P-128.
+     Trưởng phòng trả về (8) cũng qua cổng G4, nút nói rõ nhánh. 10 trả về 9 như mũi tên BPMN (P-129). 13 Phòng Hợp đồng ghi nhận kết quả của nhà thầu (D-50); Ghi nhận chưa ký ở lại 13 (P-121, DX-06). */
+  D.hdWarrantyMin = 24;
+  const hdIssues = (v, u) => {
+    const w = u.hdWarranty != null ? u.hdWarranty : v.hdFixed ? D.hdWarrantyMin : 18, out = [];
+    if (w < D.hdWarrantyMin) out.push({ nhom: 'NCC', noiDung: `Bảo hành lò hàn đối lưu ${w} tháng, HSMT yêu cầu tối thiểu ${D.hdWarrantyMin} tháng — cần thống nhất lại với nhà thầu.` });
+    if (u.hdMissingCode) out.push({ nhom: 'NOIBO', noiDung: 'Phụ lục kỹ thuật còn hạng mục chưa có mã hàng — Phòng Hợp đồng bổ sung.' });
+    return out;
+  };
+  const HD22 = 'SCR-102';
+  const M22 = {
+    1: { who: 'phd', scr: HD22, nlv: 1, actionLabel: 'Hoàn thành tiếp nhận', next: 'g1' },
+    g1: { gw: true, forkTo: [{ task: 2, who: 'dvsd' }, { task: 3, who: 'phd' }], group: 'ms22' },
+    2: { who: 'dvsd', scr: HD22, nlv: 2, actionLabel: 'Hoàn thành phụ lục kỹ thuật', next: 'j1', q: ['P-133'] },
+    3: { who: 'phd', scr: HD22, nlv: 2, actionLabel: 'Hoàn thành body và phụ lục giá', next: 'j1', q: ['P-119', 'P-126'] },
+    j1: { gw: true, join: 'ms22', next: 4 },
+    4: { who: 'phd', scr: HD22, nlv: 3, actionLabel: 'Hoàn thành thương thảo', next: 5 },
+    5: { nlv: 0.5, q: ['P-127'], run: (v, u) => { const issues = hdIssues(v, u); v.aiHd = { ok: !issues.length, issues, lan: ((v.aiHd || {}).lan || 0) + 1 }; if (issues.length) v.g4 = issues[0].nhom; }, when: (v) => (v.aiHd.ok ? 8 : 'g4') },
+    g4: { gw: true, when: (v) => (v.g4 === 'NOIBO' ? 7 : 6) },
+    6: { who: 'phd', scr: HD22, nlv: 2, optional: true, q: ['P-128'], choices: [{ label: 'Cập nhật và kiểm tra lại', to: 5, main: true, set: { hdFixed: true } }] },
+    7: { who: 'phd', scr: HD22, nlv: 1, optional: true, q: ['P-128'], actionLabel: 'Cập nhật và kiểm tra lại', next: 5 },
+    8: { who: 'tphd', scr: HD22, nlv: 1, choices: [{ label: 'Phê duyệt và ký soạn thảo', to: 9, main: true },
+      { label: 'Trả chỉnh sửa — sửa nội bộ', to: 'g4', kind: 'secondary', reason: true, set: { g4: 'NOIBO' } },
+      { label: 'Trả chỉnh sửa — thống nhất lại với nhà thầu', to: 'g4', kind: 'secondary', reason: true, set: { g4: 'NCC' } }] },
+    9: { who: 'phd', scr: HD22, nlv: 2, actionLabel: 'Trình Thủ trưởng VHT', next: 10, q: ['P-134'] },
+    10: { who: 'tgd', scr: HD22, nlv: 1, q: ['P-129', 'P-130', 'P-131'], choices: [{ label: 'Phê duyệt và ký hợp đồng', to: 11, main: true, sign: 'Hợp đồng' },
+      { label: 'Không đồng ý — sửa và trình lại', to: 9, kind: 'secondary', reason: true }] },
+    11: { who: 'phd', scr: HD22, nlv: 0.5, actionLabel: 'Đã nhận hợp đồng', next: 12 },
+    12: { who: 'phd', scr: HD22, nlv: 0.5, q: ['P-132'], choices: [{ label: 'Gửi ký qua VContract', to: 13, main: true, set: { hdSign: 'VC' } }, { label: 'Gửi bản giấy để ký cứng', to: 13, kind: 'secondary', set: { hdSign: 'GIAY' } }] },
+    13: { who: 'phd', scr: HD22, nlv: 3, external: 'Nhà thầu / Nhà cung cấp', q: ['P-121', 'P-131'], choices: [{ label: 'Ghi nhận đã ký đầy đủ', to: 'END', main: true },
+      { label: 'Ghi nhận chưa ký', to: 13, kind: 'secondary', reason: true }] },
+  };
+  D.flows.MS22 = M22;
+  /* Quy trình của hồ sơ con: tên, trang BPMN, loại hồ sơ, nhật ký kết thúc. */
+  D.hdProcesses = { MS22: { name: 'Thương thảo và ký hợp đồng', page: 'MS22', type: 'Thương thảo và ký hợp đồng', end: 'Kết thúc — hợp đồng đã ký đầy đủ, chuyển MS23', prefix: 'HSHD-',
+    then: (c, today) => ({ process: 'MS23', vars: { hd: c.parent, signed: (c.ui || {}).hdNgayKy || today } }) },
+  MS23: { name: 'Theo dõi thực hiện hợp đồng', page: 'MS23 - Tổng quan', type: 'Theo dõi thực hiện hợp đồng', end: 'Theo dõi theo sự kiện, không có việc đang chờ', prefix: 'HSTD-' } };
+  /* T25 B2 — MS23 Tổng quan (D-49, DG-MS23): hồ sơ theo dõi tự khởi tạo khi MS22 kết thúc (bước 1). Không có sự kiện kết thúc chung, các nhánh độc lập và cùng ghi về hồ sơ theo dõi:
+     đến mốc → 2 nhắc; nhà thầu thông báo → 3 ghi nhận → 4 thông báo, chuyển MS23.02; đến hạn / phát sinh (S4, không có số bước) → cần khởi tạo MS23.01, .03, .04; biên bản đã ký → 5 cập nhật ngày thực tế.
+     Mốc AI trích xuất (S5) đọc D.hdTrack: GIẢ LẬP P-135; sự kiện kích hoạt bằng công cụ demo, B4…B6 nối 5 với biên bản thật của luồng con. */
+  D.hdRemindDays = 7;
+  D.hdTrack = { 'HĐ-2026-0052': [
+    { name: 'Giao đợt 1: máy gắn linh kiện, lò hàn đối lưu', days: 90, rate: 61, kind: 'GIAO', site: 'Xưởng SMT — Nhà máy sản xuất thử nghiệm', goods: 'Máy gắn linh kiện tốc độ cao × 4; Lò hàn đối lưu 10 vùng nhiệt × 2', qty: [[0, 4], [1, 2]] },
+    { name: 'Giao đợt 2: máy kiểm tra AOI, X-ray 3D', days: 210, rate: 39, kind: 'GIAO', site: 'Xưởng SMT — Nhà máy sản xuất thử nghiệm', goods: 'Máy kiểm tra quang học tự động (AOI) × 2; Máy kiểm tra X-ray 3D × 1', qty: [[2, 2], [3, 1]] },
+    { name: 'Nghiệm thu tổng thể', days: 210, rate: 0, kind: 'NT' }] };
+  const dayAdd = (s, n) => { const [d, m, y] = s.split('/').map(Number), x = new Date(y, m - 1, d + n); return [x.getDate(), x.getMonth() + 1].map((p) => String(p).padStart(2, '0')).join('/') + '/' + x.getFullYear(); };
+  const trackLog = (v, at, ev, kq) => { v.trackLog = (v.trackLog || []).concat([[at, ev, kq]]); };
+  const nextMs = (v, kind) => v.track.ms.find((m) => m.kind === kind && !m.actual) || null;
+  /* Giả lập P-138: bộ phận nhận thông báo giao hàng. */
+  D.hdNotifyTo = 'Đơn vị sử dụng; Phòng Quản lý tài sản; Phòng Tài chính kế toán';
+  /* Đến hạn hoặc phát sinh chứng từ: luồng con cần khởi tạo (GIẢ LẬP P-120 — Phòng Hợp đồng khởi tạo). */
+  const HD_TRIGGER = { 'MS23.01': ['Văn bản phát sinh', 'Có phát sinh cần lập văn bản'], 'MS23.03': ['Nghiệm thu', 'Đến hạn nghiệm thu'], 'MS23.04': ['Thanh lý', 'Đến hạn thanh lý'] };
+  D.flows.MS23 = {
+    1: { nlv: 0.5, q: ['P-135'], stop: true, run: (v) => {
+      v.track = { at: v.signed, ms: (D.hdTrack[v.hd] || []).map((m) => Object.assign({}, m, { plan: dayAdd(v.signed, m.days), actual: null })) };
+      trackLog(v, v.signed, 'Hợp đồng đã ký được tải lên', `AI trích xuất ${v.track.ms.length} mốc, lưu hồ sơ theo dõi`);
+    } },
+    2: { nlv: 0.5, q: ['P-136'], stop: true, run: (v) => {
+      const m = nextMs(v, 'GIAO');
+      if (!m) { trackLog(v, v.signed, 'Đến mốc giao hàng', 'Không còn mốc giao hàng chưa hoàn thành, không gửi nhắc'); return; }
+      const at = dayAdd(m.plan, -D.hdRemindDays);
+      v.reminds = (v.reminds || []).concat([{ ms: m.name, plan: m.plan, at, to: 'Nhà thầu; Đầu mối theo dõi', ch: 'Email; Thông báo trên hệ thống' }]);
+      trackLog(v, at, 'Đến mốc giao hàng', `Đã gửi nhắc: ${m.name}`);
+    } },
+    3: { who: 'phd', scr: 'SCR-102', nlv: 1, q: ['P-137'], actionLabel: 'Hoàn thành ghi nhận', next: 4 },
+    4: { nlv: 0.5, q: ['P-138'], stop: true, run: (v, u) => {
+      const m = v.track.ms.find((x) => x.name === u.tdDot) || nextMs(v, 'GIAO') || v.track.ms[0], at = dayAdd(m.plan, -3);
+      v.notices = (v.notices || []).concat([{ dot: m.name, ngay: u.tdNgayDuKien || m.plan, site: u.tdDiaDiem || m.site, kenh: u.tdKenh || 'Email', at, to: D.hdNotifyTo, file: !!u.tdTb }]);
+      trackLog(v, at, 'Nhà thầu thông báo giao hàng', `Đã thông báo các bộ phận, chuyển hồ sơ giao hàng: ${m.name}`);
+      ['tdDot', 'tdNgayDuKien', 'tdDiaDiem', 'tdKenh', 'tdNoiDung', 'tdTb'].forEach((k) => { delete u[k]; });
+    } },
+    S4: { gw: true, stop: true, run: (v) => {
+      const [name, why] = HD_TRIGGER[v.evt.flow], nt = v.track.ms.find((m) => m.kind === 'NT'), at = v.evt.flow === 'MS23.01' ? dayAdd(v.signed, 30) : nt.plan;
+      v.triggers = (v.triggers || []).concat([{ flow: v.evt.flow, name, why, at }]);
+      trackLog(v, at, why, `Cần khởi tạo ${v.evt.flow} ${name}`);
+    } },
+    5: { nlv: 0.5, q: ['P-139', 'P-140'], stop: true, run: (v) => {
+      const m = nextMs(v, v.evt.kind);
+      if (!m) { trackLog(v, v.signed, `Có ${v.evt.loai} đã ký đầy đủ`, 'Không có mốc tương ứng, không cập nhật'); return; }
+      m.actual = m.plan;
+      trackLog(v, m.actual, `Có ${v.evt.loai} đã ký đầy đủ`, `AI cập nhật ngày thực tế ${m.actual}: ${m.name}`);
+    } },
+  };
+  /* Mã hồ sơ theo mã hợp đồng và quy trình; mốc đầu = ngày tạo hợp đồng mẫu 05/10/2026 (2 NLV sau 01/10). */
+  D.hdCaseCode = (hd, process) => D.hdProcesses[process || 'MS22'].prefix + hd.slice(3);
+  D.hdCaseClock = 2;
+  /* T25: mỗi trang Hợp đồng là một quy trình riêng (MS22, MS23, MS23.01…04, MS24). */
+  D.familyOf = (process) => { const h = /^(MS22|MS23(?:\.0[1-4])?|MS24)/.exec(process || ''); return h ? h[1] : /^MS13/.test(process || '') ? 'MS13' : /^MS02/.test(process || '') ? 'MS02' : 'MS01'; };
   /* Luồng con của hồ sơ Điều chỉnh (DG-MS02 §B.3): < 160 tỷ → MS02.03; ≥ 160 tỷ → MS02.02 khi không báo cáo Tập đoàn (đã chọn ở 48,
      chưa tới 48 thì theo căn cứ ĐXMS cũ), còn lại MS02.01. Các bước "Không áp dụng" lấy theo luồng MS01 tương ứng. */
   D.adjBranch = (v) => (v.big === false ? 'MS02.03' : v.reportTD === false || (v.reportTD == null && v.basisTD) ? 'MS02.02' : 'MS02.01');
@@ -504,6 +608,7 @@
 
   /* Màn hình §4 — tên, và bước dựng chi tiết trong lộ trình T5. */
   D.screens = {
+    'SCR-102': { name: 'Xử lý việc hợp đồng' },
     'SCR-00': { name: 'Chọn vai demo', step: 1 }, 'SCR-01': { name: 'Việc của tôi', step: 1 },
     'SCR-02': { name: 'Danh sách hồ sơ ĐXMS', step: 1 }, 'SCR-03': { name: 'Chọn căn cứ', step: 2 },
     'SCR-04': { name: 'Thông tin cơ bản', step: 2 }, 'SCR-05': { name: 'Bóc tách danh mục', step: 2 },
@@ -593,19 +698,19 @@
      est = tổng mức vốn dự kiến (tỷ đồng). KĐT-2026-0032 (kịch bản chính) chưa có — tạo trên prototype ở cảnh 1; 0033 (nhánh chuyển MS14) chưa có hồ sơ. */
   D.kdtCode0 = 'KĐT-2026-0032';
   D.kdtList = [
-    { code: 'KĐT-2026-0033', title: 'Mở rộng dây chuyền SMT cho nhà máy sản xuất thử nghiệm', unit: 'Nhà máy sản xuất thử nghiệm', field: 'KHAC', type: 'KHAC', nature: 'TICH_HOP', est: 85.0, period: '01/2027 – 12/2027', creator: 'Phan Văn Lộc', created: '26/09/2026', updated: '26/09/2026', purpose: 'Tăng công suất lắp ráp bo mạch cho sản xuất loạt.' },
-    { code: 'KĐT-2026-0031', title: 'Trang bị máy trạm thiết kế cho Trung tâm Vô tuyến', unit: 'Trung tâm Vô tuyến', field: 'VTCNTT', type: 'TBNB', nature: 'NGUYEN_CHIEC', est: 12.4, period: '11/2026 – 02/2027', creator: 'Nguyễn Văn Minh', created: '21/09/2026', updated: '25/09/2026', purpose: 'Thay máy trạm thiết kế RF đã hết khấu hao.' },
-    { code: 'KĐT-2026-0030', title: 'Đầu tư phòng đo tương thích điện từ di động', unit: 'Phòng Chất lượng', field: 'VTCNTT', type: 'KHCN', nature: 'TICH_HOP', est: 64.0, period: '01/2027 – 09/2027', creator: 'Bùi Minh Quang', created: '18/09/2026', updated: '24/09/2026', purpose: 'Đo EMC tại hiện trường cho sản phẩm trạm thu phát.' },
-    { code: 'KĐT-2026-0029', title: 'Đầu tư hệ thống kiểm thử phần mềm tự động cho OSS', unit: 'Trung tâm Phần mềm', field: 'VTCNTT', type: 'TBNB', nature: 'TICH_HOP', est: 22.8, period: '12/2026 – 06/2027', creator: 'Lương Thị Hạnh', created: '10/09/2026', updated: '23/09/2026', purpose: 'Tự động hoá kiểm thử hồi quy hệ thống OSS.' },
-    { code: 'KĐT-2026-0028', title: 'Đầu tư dây chuyền đóng gói module quang', unit: 'Nhà máy sản xuất thử nghiệm', field: 'KHAC', type: 'KHCN', nature: 'TICH_HOP', est: 74.5, period: '10/2026 – 06/2027', creator: 'Phan Văn Lộc', created: '12/06/2026', updated: '22/09/2026', purpose: 'Đóng gói module quang tốc độ cao phục vụ đề tài KHCN.' },
-    { code: 'KĐT-2026-0027', title: 'Đầu tư hệ thống mô phỏng kênh vô tuyến MIMO', unit: 'Trung tâm Vô tuyến', field: 'VTCNTT', type: 'KHCN', nature: 'TICH_HOP', est: 128.0, period: '01/2027 – 12/2027', creator: 'Nguyễn Văn Minh', created: '02/07/2026', updated: '21/09/2026', purpose: 'Mô phỏng kênh MIMO kích thước lớn cho nghiên cứu 5G-A.' },
-    { code: 'KĐT-2026-0026', title: 'Đầu tư phòng thí nghiệm an toàn thông tin', unit: 'Trung tâm Phần mềm', field: 'VTCNTT', type: 'KHCN', nature: 'TICH_HOP', est: 58.0, period: '11/2026 – 08/2027', creator: 'Lương Thị Hạnh', created: '20/06/2026', updated: '19/09/2026', purpose: 'Kiểm thử bảo mật thiết bị mạng và phần mềm.' },
-    { code: 'KĐT-2026-0025', title: 'Đầu tư nền tảng dữ liệu sản xuất thông minh (MES)', unit: 'Nhà máy sản xuất thử nghiệm', field: 'VTCNTT', type: 'TBNB', nature: 'TICH_HOP', est: 44.6, period: '10/2026 – 05/2027', creator: 'Phan Văn Lộc', created: '05/06/2026', updated: '18/09/2026', purpose: 'Thu thập, truy vết dữ liệu sản xuất theo lô.' },
-    { code: 'KĐT-2026-0024', title: 'Đầu tư trạm thử nghiệm vệ tinh mặt đất', unit: 'Trung tâm Vô tuyến', field: 'VTCNTT', type: 'KHCN', nature: 'TICH_HOP', est: 97.3, period: '01/2027 – 12/2027', creator: 'Nguyễn Văn Minh', created: '28/05/2026', updated: '17/09/2026', purpose: 'Thử nghiệm kết nối vệ tinh quỹ đạo thấp.' },
-    { code: 'KĐT-2026-0021', title: 'Đầu tư hệ thống in 3D kim loại công nghiệp', unit: 'Nhà máy sản xuất thử nghiệm', field: 'KHAC', type: 'TBNB', nature: 'TICH_HOP', est: 35.0, period: '09/2026 – 03/2027', creator: 'Phan Văn Lộc', created: '14/04/2026', updated: '28/08/2026', purpose: 'Chế tạo chi tiết cơ khí phức tạp cho mẫu thử.' },
-    { code: 'KĐT-2026-0018', title: 'Đầu tư dây chuyền SMT thế hệ mới', unit: 'Nhà máy sản xuất thử nghiệm', field: 'KHAC', type: 'KHAC', nature: 'TICH_HOP', est: 82.0, period: '10/2026 – 09/2027', creator: 'Phan Văn Lộc', created: '02/04/2026', updated: '26/08/2026', purpose: 'Thay dây chuyền SMT cũ, tăng độ chính xác gắn linh kiện.' },
-    { code: 'KĐT-2026-0015', title: 'Trang bị máy đo phổ cầm tay cho đội thử nghiệm hiện trường', unit: 'Trung tâm Vô tuyến', field: 'VTCNTT', type: 'TBNB', nature: 'NGUYEN_CHIEC', est: 8.6, period: '07/2026 – 09/2026', creator: 'Nguyễn Văn Minh', created: '11/03/2026', updated: '30/07/2026', purpose: 'Đo kiểm vùng phủ tại hiện trường.' },
-    { code: 'KĐT-2026-0012', title: 'Đầu tư hệ thống đo kiểm anten trong buồng vi sóng', unit: 'Trung tâm Vô tuyến', field: 'VTCNTT', type: 'KHCN', nature: 'TICH_HOP', est: 136.0, period: '06/2026 – 03/2027', creator: 'Nguyễn Văn Minh', created: '20/01/2026', updated: '15/07/2026', purpose: 'Đo đồ thị bức xạ anten mảng pha.', secret: true },
+    { code: 'KĐT-2026-0033', nv: 'KHN-2027-DTPT', title: 'Mở rộng dây chuyền SMT cho nhà máy sản xuất thử nghiệm', unit: 'Nhà máy sản xuất thử nghiệm', field: 'KHAC', type: 'KHAC', nature: 'TICH_HOP', est: 85.0, period: '01/2027 – 12/2027', creator: 'Phan Văn Lộc', created: '26/09/2026', updated: '26/09/2026', purpose: 'Tăng công suất lắp ráp bo mạch cho sản xuất loạt.' },
+    { code: 'KĐT-2026-0031', nv: 'DT-KHCN-2027-002', title: 'Trang bị máy trạm thiết kế cho Trung tâm Vô tuyến', unit: 'Trung tâm Vô tuyến', field: 'VTCNTT', type: 'TBNB', nature: 'NGUYEN_CHIEC', est: 12.4, period: '11/2026 – 02/2027', creator: 'Nguyễn Văn Minh', created: '21/09/2026', updated: '25/09/2026', purpose: 'Thay máy trạm thiết kế RF đã hết khấu hao.' },
+    { code: 'KĐT-2026-0030', nv: 'NV-KHCN-2026-014', title: 'Đầu tư phòng đo tương thích điện từ di động', unit: 'Phòng Chất lượng', field: 'VTCNTT', type: 'KHCN', nature: 'TICH_HOP', est: 64.0, period: '01/2027 – 09/2027', creator: 'Bùi Minh Quang', created: '18/09/2026', updated: '24/09/2026', purpose: 'Đo EMC tại hiện trường cho sản phẩm trạm thu phát.' },
+    { code: 'KĐT-2026-0029', nv: 'NV-KHCN-2025-031', title: 'Đầu tư hệ thống kiểm thử phần mềm tự động cho OSS', unit: 'Trung tâm Phần mềm', field: 'VTCNTT', type: 'TBNB', nature: 'TICH_HOP', est: 22.8, period: '12/2026 – 06/2027', creator: 'Lương Thị Hạnh', created: '10/09/2026', updated: '23/09/2026', purpose: 'Tự động hoá kiểm thử hồi quy hệ thống OSS.' },
+    { code: 'KĐT-2026-0028', nv: 'KHN-2027-DTPT', title: 'Đầu tư dây chuyền đóng gói module quang', unit: 'Nhà máy sản xuất thử nghiệm', field: 'KHAC', type: 'KHCN', nature: 'TICH_HOP', est: 74.5, period: '10/2026 – 06/2027', creator: 'Phan Văn Lộc', created: '12/06/2026', updated: '22/09/2026', purpose: 'Đóng gói module quang tốc độ cao phục vụ đề tài KHCN.' },
+    { code: 'KĐT-2026-0027', nv: 'NV-KHCN-2026-014', title: 'Đầu tư hệ thống mô phỏng kênh vô tuyến MIMO', unit: 'Trung tâm Vô tuyến', field: 'VTCNTT', type: 'KHCN', nature: 'TICH_HOP', est: 128.0, period: '01/2027 – 12/2027', creator: 'Nguyễn Văn Minh', created: '02/07/2026', updated: '21/09/2026', purpose: 'Mô phỏng kênh MIMO kích thước lớn cho nghiên cứu 5G-A.' },
+    { code: 'KĐT-2026-0026', nv: 'KHN-2027-DTPT', title: 'Đầu tư phòng thí nghiệm an toàn thông tin', unit: 'Trung tâm Phần mềm', field: 'VTCNTT', type: 'KHCN', nature: 'TICH_HOP', est: 58.0, period: '11/2026 – 08/2027', creator: 'Lương Thị Hạnh', created: '20/06/2026', updated: '19/09/2026', purpose: 'Kiểm thử bảo mật thiết bị mạng và phần mềm.' },
+    { code: 'KĐT-2026-0025', nv: 'DA-2026-002', title: 'Đầu tư nền tảng dữ liệu sản xuất thông minh (MES)', unit: 'Nhà máy sản xuất thử nghiệm', field: 'VTCNTT', type: 'TBNB', nature: 'TICH_HOP', est: 44.6, period: '10/2026 – 05/2027', creator: 'Phan Văn Lộc', created: '05/06/2026', updated: '18/09/2026', purpose: 'Thu thập, truy vết dữ liệu sản xuất theo lô.' },
+    { code: 'KĐT-2026-0024', nv: 'NV-KHCN-2026-006', title: 'Đầu tư trạm thử nghiệm vệ tinh mặt đất', unit: 'Trung tâm Vô tuyến', field: 'VTCNTT', type: 'KHCN', nature: 'TICH_HOP', est: 97.3, period: '01/2027 – 12/2027', creator: 'Nguyễn Văn Minh', created: '28/05/2026', updated: '17/09/2026', purpose: 'Thử nghiệm kết nối vệ tinh quỹ đạo thấp.' },
+    { code: 'KĐT-2026-0021', nv: 'KHN-2027-DTPT', title: 'Đầu tư hệ thống in 3D kim loại công nghiệp', unit: 'Nhà máy sản xuất thử nghiệm', field: 'KHAC', type: 'TBNB', nature: 'TICH_HOP', est: 35.0, period: '09/2026 – 03/2027', creator: 'Phan Văn Lộc', created: '14/04/2026', updated: '28/08/2026', purpose: 'Chế tạo chi tiết cơ khí phức tạp cho mẫu thử.' },
+    { code: 'KĐT-2026-0018', nv: 'DA-2026-002', title: 'Đầu tư dây chuyền SMT thế hệ mới', unit: 'Nhà máy sản xuất thử nghiệm', field: 'KHAC', type: 'KHAC', nature: 'TICH_HOP', est: 82.0, period: '10/2026 – 09/2027', creator: 'Phan Văn Lộc', created: '02/04/2026', updated: '26/08/2026', purpose: 'Thay dây chuyền SMT cũ, tăng độ chính xác gắn linh kiện.' },
+    { code: 'KĐT-2026-0015', nv: 'KHN-2026-TTVT', title: 'Trang bị máy đo phổ cầm tay cho đội thử nghiệm hiện trường', unit: 'Trung tâm Vô tuyến', field: 'VTCNTT', type: 'TBNB', nature: 'NGUYEN_CHIEC', est: 8.6, period: '07/2026 – 09/2026', creator: 'Nguyễn Văn Minh', created: '11/03/2026', updated: '30/07/2026', purpose: 'Đo kiểm vùng phủ tại hiện trường.' },
+    { code: 'KĐT-2026-0012', nv: 'DT-KHCN-2027-002', title: 'Đầu tư hệ thống đo kiểm anten trong buồng vi sóng', unit: 'Trung tâm Vô tuyến', field: 'VTCNTT', type: 'KHCN', nature: 'TICH_HOP', est: 136.0, period: '06/2026 – 03/2027', creator: 'Nguyễn Văn Minh', created: '20/01/2026', updated: '15/07/2026', purpose: 'Đo đồ thị bức xạ anten mảng pha.', secret: true },
   ];
   /* Hồ sơ mẫu của KĐT (đối tượng con). flow: MS13 / MS14, null = chưa xác định nhóm (trước bước 12, D-7). branch: BM00 (gộp) / 2GD (BM-01 → BM-03).
      stage = trạng thái KĐT suy từ hồ sơ (kdt.js KDT_STAGE); task = bước đang chờ (tên lấy từ BPMN_FLOWS.MS13, MS14 từ sơ đồ);
@@ -749,7 +854,15 @@
     'P-77': { q: 'Tổ chức LCNT (MS19) chưa có BPMN: trình tự theo từng hình thức (Điều 12–21) có tách một quy trình Camunda cho mỗi hình thức không', src: 'QC-12869 Điều 12–21; INDEX MS18 / MS19', def: 'Mỗi hình thức một trình tự (bảng Trình tự thực hiện ở Chi tiết gói thầu), chọn quy trình theo mã hình thức', scr: 'SCR-82' },
     'P-78': { q: 'Danh sách nhà thầu / hãng sản xuất chiến lược và nhà thầu bị cấm: tích hợp từ Tập đoàn hay nhập tay trên ĐTMS; ai cập nhật', src: 'QC-12869 Điều 13 khoản 2; Backlog dòng 403–406', def: 'Chiến lược: dữ liệu mẫu theo QĐ công bố; cấm: cờ Tình trạng của danh mục NCC', scr: 'SCR-83' },
     'P-79': { q: 'Ngưỡng cảnh báo giá dự thầu thấp bất thường (QC-12869 không nêu tỷ lệ)', src: 'Backlog dòng 389', def: 'Thấp hơn 20% giá gói thầu → cảnh báo, yêu cầu nhà thầu giải trình', scr: 'SCR-82' },
-    'P-80': { q: 'Ngưỡng cảnh báo hợp đồng: bảo đảm thực hiện sắp hết hạn (bao nhiêu ngày trước), hợp đồng sắp hết hạn; có cấu hình theo loại hợp đồng không', src: 'Backlog dòng 456, 597', def: 'GIẢ LẬP — ngưỡng = số ngày "Trước hạn" của Trigger thông báo: bảo đảm 30 ngày (CONTRACT_GUARANTEE_EXPIRING), hợp đồng 90 ngày (CONTRACT_EXPIRING), thỏa thuận khung 90 ngày (FRAMEWORK_EXPIRING); sửa ở Trigger thì cảnh báo ở Hợp đồng / Thỏa thuận khung / Báo cáo đổi theo. Chưa tách theo loại hợp đồng', scr: 'SCR-84, SCR-86' },
+    'P-110': { q: 'Video hệ thống thầu cũ team BA nhắc tới (chưa có trong project-knowledge): có màn nào ngoài KHLCNT (HSMT, phát thầu, chấm thầu, KQLCNT — MS19) không', src: 'Yêu cầu team BA 30/10/2026; HT-THAU-IMG chỉ có KHLCNT', def: 'GIẢ LẬP — cập nhật trường theo 53 ảnh KHLCNT; màn MS19 giữ như đã dựng cho tới khi có video.' },
+    'P-112': { q: 'Danh mục nào là chung toàn hệ thống, danh mục nào riêng ĐTMS; danh mục trùng ý nghĩa với ecat (Nguồn kinh phí ↔ Nguồn vốn, Đối tác ↔ Nhà cung cấp / Nhà thầu, Lĩnh vực ↔ Lĩnh vực đầu tư) dùng chung hay tách', src: 'Yêu cầu team BA 30/10/2026; ecat common-catalog', def: 'GIẢ LẬP — mọi danh mục nằm trong phân hệ Danh mục dùng chung; Nhà cung cấp / Nhà thầu, Loại đối tác, Nguồn vốn, Lĩnh vực đầu tư, Đơn vị tính, Tiền tệ xếp danh mục chung; còn lại gom nhóm Đầu tư mua sắm.' },
+    'P-113': { q: 'Nhiệm vụ / Đề tài, dự án của KĐT: "KHN" trong yêu cầu BA là Kế hoạch năm (mọi nhiệm vụ, đề tài, dự án đã vào KHN) hay chỉ loại Mua sắm thường xuyên (KHN)', src: 'Yêu cầu team BA 30/10/2026', def: 'GIẢ LẬP — chọn trong toàn bộ danh sách nhiệm vụ / đề tài, dự án dùng chung với ĐXMS; bắt buộc khi tạo KĐT.' },
+    'P-114': { q: 'Bộ Loại hợp đồng: 12 giá trị của hệ thống cũ (có 3 loại kết hợp, Thỏa thuận khung…) hay 8 giá trị theo QC-12869 Điều 43', src: 'HT-THAU-IMG 7221; QC-12869 Điều 43; P-35', def: 'GIẢ LẬP — giữ 8 giá trị theo Quy chế mới; loại kết hợp xếp vào Hỗn hợp.' },
+    'P-115': { q: 'Quy chế áp dụng chỉ có 2 giá trị Mua sắm thường xuyên / Theo luật như hệ thống cũ, hay còn trường hợp khác theo QC-12869; 4 biến thể Quy chế × Cấp phê duyệt khác nhau ở tab / trường nào', src: 'HT-THAU-IMG 7204, 7208; HT-THAU-DG §3.2', def: 'GIẢ LẬP — 2 giá trị, không đổi sau khi tạo; Theo luật đăng tải mạng đấu thầu quốc gia (P-83); màn chung cho mọi biến thể.' },
+    'P-117': { q: 'Đồng bộ từ Camunda: SRS-QTQT 3.1.1.5 lấy từ runtime Camunda, có khoá một phiên và sinh luật hành động; BE hiện đọc Web Modeler (syncFromWebModeler), trả void, chưa khoá phiên, chưa sinh luật. Làm theo bên nào', src: 'SRS-QTQT 3.1.1.5.4; be/dtms CamundaArtifactSyncService', def: 'GIẢ LẬP theo SRS: thêm phiên bản, đánh dấu Dừng hoạt động, sinh luật còn thiếu, chặn khi đang có phiên; thông báo giữ câu chữ FE.', scr: 'SCR-41' },
+    'P-118': { q: 'Vai trò nào được cấp những mã quyền nào của Quản trị quy trình (QT, HTN, DMHS / DMHD, DTO, GS); "Người dùng quản trị quy trình" có là vai trò riêng không', src: 'SRS-QTQT 3.1.1.5; FE workflow-management-permissions, action-matrix-permissions', def: 'GIẢ LẬP — Quản trị hệ thống đủ quyền; Người dùng quản trị quy trình xem, không đồng bộ, không xem lịch sử phiên bản, Ma trận chỉ xem; Chuyên viên TTMS chỉ GS00.', scr: 'SCR-41' },
+    'P-116': { q: 'Mã KHLCNT trên SAP lấy từ đâu (nhập tay hay đồng bộ); số đăng tải KH… lấy từ hệ thống nào', src: 'HT-THAU-IMG 7211; hien-trang-he-thong-thau §8 câu 8', def: 'GIẢ LẬP — hai dòng chỉ xem ở bảng văn bản, giá trị mẫu; thật là kết quả tích hợp, không nhập tay.' },
+    'P-80': { q: 'Ngưỡng cảnh báo hợp đồng: bảo đảm thực hiện sắp hết hạn (bao nhiêu ngày trước), hợp đồng sắp hết hạn; có cấu hình theo loại hợp đồng không', src: 'Backlog dòng 456, 597', def: 'GIẢ LẬP — ngưỡng = tham số hệ thống (sys_config, D-44 bỏ Trigger thông báo): bảo đảm 30 ngày (CONTRACT_GUARANTEE_EXPIRING), hợp đồng 90 ngày (CONTRACT_EXPIRING), thỏa thuận khung 90 ngày (FRAMEWORK_EXPIRING); Hợp đồng / Thỏa thuận khung / Báo cáo dùng chung giá trị này. Chưa tách theo loại hợp đồng', scr: 'SCR-84, SCR-86' },
     'P-81': { q: 'Quy trình đơn hàng thuộc thỏa thuận khung (đặt, xác nhận, giao nhận, thanh toán từng đơn) chưa có BPMN; đơn hàng có theo dõi như một hợp đồng con không', src: 'Backlog dòng 465–469', def: 'GIẢ LẬP — đơn hàng là dòng của thỏa thuận khung (không phải hợp đồng con); Thêm đơn hàng chặn vượt giá trị còn lại; luồng 4 bước Chờ nhà thầu xác nhận → Đang giao → Đã giao đủ → Đã thanh toán, chuyển bước ở hộp thoại đơn hàng', scr: 'SCR-87' },
     'P-82': { q: 'Tích hợp Cổng đấu thầu Viettel (có phải SAP Ariba?) và Hệ thống mạng đấu thầu quốc gia: API, định dạng tin, mã tin, chiều đồng bộ tiến độ / KQLCNT về ĐTMS', src: 'Backlog dòng 413–415; QC-12869 Điều 26', def: 'GIẢ LẬP — hai hệ thống nối qua API của trục tích hợp: ĐTMS đẩy tin khi Chủ đầu tư xác nhận, nhận tiến độ / kết quả mở thầu / kiến nghị định kỳ 60 phút; lỗi trả về được ghi và cho Gửi lại (MS18 bước 60); mã tin VTB-… (Cổng Viettel), IB… / PL… (mạng ĐTQG)', scr: 'SCR-94' },
     'P-83': { q: 'Chọn hệ thống đăng tải theo tiêu chí nào (gói áp dụng Luật Đấu thầu, gói tổ chức qua mạng…); lịch ngày làm việc (nghỉ lễ, Tết) để tính hạn 05 ngày làm việc lấy từ đâu', src: 'QC-12869 Điều 26 khoản 1–2; BPMN-MS18 N02', def: 'GIẢ LẬP — KHLCNT có cờ "Áp dụng Luật Đấu thầu cho gói cụ thể" → mạng đấu thầu quốc gia, còn lại → Cổng đấu thầu Viettel; ngày làm việc chỉ trừ thứ Bảy, Chủ nhật (chưa có danh mục ngày nghỉ lễ)', scr: 'SCR-94' },
@@ -783,10 +896,33 @@
     'P-108': { q: 'Hiệu lực / số lượng báo giá điều chỉnh', src: 'DG-MS02 §D.2 #9', def: 'GIẢ LẬP — ít nhất 1 báo giá nhận sau ngày tạo hồ sơ điều chỉnh; báo giá cũ chỉ để so sánh', scr: 'SCR-07' },
     'P-109': { q: 'Trang MS02 ver1.1 còn bản MS01 cũ nằm khít bên dưới (cùng vị trí, khác nhãn) và một cổng G5 cạnh bước 17 không có mũi tên; 34 "Yêu cầu xử lý lại" về 12 (chỉ nhánh ≥ 160 tỷ)', src: 'BPMN-DTMS trang MS02 ver1.1', def: 'Tool trích lấy hình nằm trên (như drawio hiển thị), bỏ qua G5; 34 → 14 → 11 / 12 theo giá trị như MS01', scr: 'SCR-14' },
     'P-36': { q: 'Ai quản trị từng danh mục (TTMS cho Nhà cung cấp; quản trị hệ thống cho phần còn lại?)', src: 'UC-12-05 (A21)', def: 'Vai Quản trị hệ thống thấy tất cả; vai TTMS chỉ thấy Nhà cung cấp và Loại hàng hoá', scr: 'SCR-30' },
+    /* T25 B1 — MS22, plan docs/dtms/prototype-T25-hop-dong-chuan-bi.md §4. */
+    'P-119': { q: 'Tiêu chí chọn mẫu dự thảo; có phân mẫu theo giá trị không (ghi chú nêu ví dụ 45 tỷ, chưa phải quy tắc)', src: 'DG-MS22 §D 1–2', def: 'GIẢ LẬP — bước 3 chọn mẫu tay từ danh sách, không dùng ngưỡng', scr: 'SCR-102' },
+    'P-121': { q: 'Nhà thầu không ký hoặc chậm gửi lại: quay về đâu, ai theo dõi', src: 'DG-MS22 §D 9', def: 'GIẢ LẬP — bước 13 có nút Ghi nhận chưa ký, hồ sơ ở lại bước 13; đề xuất DX-06, không tự thêm nhánh', scr: 'SCR-102' },
+    'P-126': { q: 'Mã, tên, mẫu hợp đồng, phụ lục, biên bản thương thảo và checklist áp dụng', src: 'DG-MS22 §D 3', def: 'GIẢ LẬP — mã văn bản tạm HD-PLKT, HD-BODY, HD-PL1, HD-DT, HD-KY; danh sách mẫu tự đặt', scr: 'SCR-102' },
+    'P-127': { q: 'Thông tin AI kiểm tra, tiêu chí OK / Not OK, mức cảnh báo, cách xác nhận kết quả', src: 'DG-MS22 §D 4', def: 'GIẢ LẬP — AI đối chiếu bảo hành với HSMT và kiểm tra đủ mã hàng; hiện kết quả chỉ xem ở bước 6, 7, 8', scr: 'SCR-102' },
+    'P-128': { q: 'Ai quyết định có cần thống nhất lại với nhà thầu, tiêu chí rẽ bước 6 / 7', src: 'DG-MS22 §D 5', def: 'GIẢ LẬP — theo loại cảnh báo AI (điều khoản đã thương thảo → 6, thiếu sót nội bộ → 7); Trưởng phòng trả về thì chọn bằng nút', scr: 'SCR-102' },
+    'P-129': { q: 'Thủ trưởng VHT không phê duyệt: sửa ở bước nào; có quay bước 5, 8 và lấy lại ký nháy không', src: 'DG-MS22 §D 6', def: 'GIẢ LẬP — theo mũi tên BPMN về bước 9, không qua lại AI và Trưởng phòng', scr: 'SCR-102' },
+    'P-130': { q: 'Khi nào yêu cầu pháp chế, tài chính, đầu tư thẩm định ở bước 10; cách lấy ý kiến', src: 'DG-MS22 §D 7', def: 'GIẢ LẬP — ô ghi ý kiến thẩm định (nếu có) trong form bước 10, không tách bước', scr: 'SCR-102' },
+    'P-131': { q: 'Kênh trình Thủ trưởng VHT; cách ghi nhận ký VContract / giấy, người cập nhật, bằng chứng ký đầy đủ', src: 'DG-MS22 §D 8', def: 'GIẢ LẬP — hộp thoại Trình ký như các luồng khác; bước 13 Phòng Hợp đồng nhập số, ngày ký và tải bản đã ký', scr: 'SCR-102' },
+    'P-132': { q: 'Email bước 12 gửi thông báo / liên kết VContract hay bản hợp đồng; bản giấy gửi và nhận thế nào', src: 'DG-MS22 §D 11', def: 'GIẢ LẬP — chọn hình thức bằng nút, ghi chú cách gửi trong form', scr: 'SCR-102' },
+    'P-133': { q: 'Nguồn mã hàng ở bước 2 và cách cập nhật', src: 'DG-MS22 §D 10', def: 'GIẢ LẬP — ĐVSD nhập mã hàng theo từng hạng mục', scr: 'SCR-102' },
+    'P-134': { q: 'Hợp đồng đang tạm dừng ký do kiến nghị KQLCNT (Điều 38): chặn ở bước nào của MS22, gỡ bằng gì', src: 'BPMN-DTMS trang MS22 không thể hiện; HĐ-2026-0052', def: 'GIẢ LẬP — bước 9 bắt buộc nhập số văn bản giải quyết kiến nghị trước khi trình ký', scr: 'SCR-102' },
+    /* T25 B2 — MS23 Tổng quan, DG-MS23 §D. */
+    'P-120': { q: 'Mốc / phát sinh nào kích hoạt MS23.01, .03, .04; ai khởi tạo, tự động hay không', src: 'DG-MS23 §D 5', def: 'GIẢ LẬP — sự kiện kích hoạt bằng công cụ demo; ghi vào danh sách luồng con cần khởi tạo, Phòng Hợp đồng khởi tạo', scr: 'SCR-86' },
+    'P-135': { q: 'AI trích xuất những thông tin, mốc nào từ hợp đồng; ai kiểm tra và xác nhận trước khi dùng', src: 'DG-MS23 §D 1', def: 'GIẢ LẬP — trích 3 mốc (2 đợt giao, nghiệm thu tổng thể) và thông tin chung; không có bước xác nhận vì BPMN không có', scr: 'SCR-86' },
+    'P-136': { q: 'Đôn đốc giao hàng: nhắc ai, thời điểm, tần suất, kênh; khi nào dừng', src: 'DG-MS23 §D 2', def: 'GIẢ LẬP — mỗi lần đến mốc nhắc một lần, trước hạn 7 ngày, gửi Nhà thầu và Đầu mối theo dõi qua email và thông báo trên hệ thống', scr: 'SCR-86' },
+    'P-137': { q: 'Phòng Hợp đồng hay ĐVMS ghi nhận thông báo giao hàng; kênh nào, nhập tay hay tích hợp', src: 'DG-MS23 §D 3', def: 'GIẢ LẬP — Phòng Hợp đồng nhập tay, chọn kênh tiếp nhận; tải thông báo của nhà thầu lên hồ sơ', scr: 'SCR-102' },
+    'P-138': { q: 'Những bộ phận nào nhận thông báo giao hàng, theo điều kiện gì, kênh và nội dung', src: 'DG-MS23 §D 4', def: 'GIẢ LẬP — Đơn vị sử dụng, Phòng Quản lý tài sản, Phòng Tài chính kế toán, gửi mọi lần', scr: 'SCR-86' },
+    'P-139': { q: 'Xác định bản đã ký đầy đủ của mỗi luồng con thế nào; hồ sơ nào trả về, lúc nào chạy bước 5', src: 'DG-MS23 §D 6', def: 'GIẢ LẬP — công cụ demo phát sự kiện; B4, B6 nối với kết thúc luồng con', scr: 'SCR-86' },
+    'P-140': { q: 'Mỗi loại biên bản cập nhật ngày, trạng thái nào; ai xác nhận kết quả AI', src: 'DG-MS23 §D 7', def: 'GIẢ LẬP — biên bản bàn giao cập nhật mốc giao kế tiếp, biên bản nghiệm thu cập nhật mốc nghiệm thu; ngày thực tế lấy bằng ngày kế hoạch; không có bước xác nhận', scr: 'SCR-86' },
+    'P-141': { q: 'Nhận diện mã hợp đồng, xử lý nhiều lần giao, nhiều biên bản, phiên bản sửa đổi', src: 'DG-MS23 §D 8', def: 'GIẢ LẬP — hồ sơ con gắn mã hợp đồng từ lúc tạo; mỗi biên bản cập nhật một mốc theo thứ tự', scr: 'SCR-86' },
+    'P-142': { q: 'Tên đầy đủ, phạm vi HOC / KCS và quan hệ với nghiệm thu', src: 'DG-MS23 §D 9', def: 'GIẢ LẬP — chuyển chi tiết sang MS23.02; bàn giao và nghiệm thu không phụ thuộc thứ tự', scr: 'SCR-86' },
+    'P-143': { q: 'Quy tắc khi thiếu mốc, thiếu thông báo, AI không đọc được, nhận trùng biên bản, gửi thông báo thất bại', src: 'DG-MS23 §D 10', def: 'GIẢ LẬP — không có mốc tương ứng thì ghi nhật ký, không cập nhật; các lỗi khác chưa dựng', scr: 'SCR-86' },
     /* Quản trị quy trình — docs/dtms/prototype-PH02-quy-trinh-chuan-bi.md §4. */
     /* P-37 đã chốt 2026-09-28: MS01.01 / .02 / .03 là ba quy trình riêng (Locked decision "MS01 deploy"). */
     'P-38': { q: 'Hồ sơ đã Chuyển quy trình (10b) hiện trạng thái gì trên Giám sát tiến trình', src: 'P-26', def: 'Đã hủy (hồ sơ Dừng xử lý cũng vậy)', scr: 'SCR-48' },
-    'P-39': { q: 'Luật hiển thị có quyết định thật nút trên màn xử lý task không (đổi tên hiển thị, vô hiệu hoá → ẩn nút)', src: 'UR-WF-11', def: 'Không nối; chỉ xem trước trong form luật', scr: 'SCR-44' },
+    'P-39': { q: 'Luật hiển thị có quyết định thật nút trên màn xử lý task không (đổi tên hiển thị, vô hiệu hoá → ẩn nút)', src: 'UR-WF-11', def: 'Có (T24 Q1, Backlog 96): nút trên màn xử lý việc lấy theo luật đang Kích hoạt, Tên hiển thị là nhãn nút; tắt / xoá luật thì nút ẩn', scr: 'SCR-44' },
     'P-40': { q: 'Ai được retry / xử lý incident, có cần phê duyệt không (UR-WF-05 retry có kiểm soát)', src: 'UR-WF-05', def: 'Không có — Giám sát tiến trình chỉ xem', scr: 'SCR-48' },
     'P-41': { q: 'Vai trò nào thấy menu Quản trị quy trình: chỉ Quản trị hệ thống, hay TTMS cũng xem Giám sát tiến trình', src: 'UC-02-01…03 (A21), UR-WF-12', def: 'Quản trị hệ thống thấy cả ba mục; Chuyên viên TTMS chỉ xem Giám sát tiến trình', scr: 'SCR-48' },
     /* Quản lý E-Form — docs/dtms/prototype-EFORM-chuan-bi.md §4. */
@@ -841,15 +977,11 @@
       { label: 'Quản lý quy trình', path: 'quy-trinh', scr: 'SCR-41' },
       { label: 'Ma trận hành động', path: 'ma-tran', scr: 'SCR-43' },
       { label: 'Giám sát tiến trình', path: 'giam-sat-tien-trinh', scr: 'SCR-48' }] },
-    /* D-14: menu cấp cha như ecat common-catalog; catalog.js nối các danh mục sau 2 mục đầu và lọc theo vai (P-36).
-       D-16 (thay D-4): Quản lý E-form nằm trong Danh mục dùng chung như Backlog; route #/eform giữ nguyên. */
-    { label: 'Danh mục dùng chung', icon: 'danh_muc_dung_chung', dmdc: true, children: [
-      { label: 'Tổng quan', path: 'dmdc', scr: 'SCR-30' },
-      { label: 'Quản lý E-form', path: 'eform', scr: 'SCR-49' }] },
+    /* D-42 (team BA 30/10/2026): Danh mục dùng chung + E-form rời menu ĐTMS, thành phân hệ riêng (D.dmdcMenu) — vào qua Danh sách Phân hệ. */
     { label: 'Thông báo', icon: 'menu_square', children: [
       { label: 'Mẫu thông báo', path: 'mau-thong-bao', scr: 'SCR-88' },
-      { label: 'Kênh thông báo', path: 'kenh-thong-bao', scr: 'SCR-90' },
-      { label: 'Trigger thông báo', path: 'trigger-thong-bao', scr: 'SCR-91' }] },
+      { label: 'Kênh thông báo', path: 'kenh-thong-bao', scr: 'SCR-90' }] },
+    /* D-44 (team BA 30/10/2026): bỏ Trigger thông báo (SCR-91); route cũ mở trang Đang phát triển qua D.oldMenu. */
     /* Ẩn khỏi menu (hidden, người dùng yêu cầu 2026-10-07) — route vẫn mở trang Đang phát triển. */
     { label: 'Tích hợp', hidden: true, icon: 'phan_he_iam', bl: 'Tích hợp', due: 'chưa giao PIC', children: [
       { label: 'Tích hợp Camunda', path: 'ph/tich-hop' },
@@ -860,8 +992,24 @@
     { label: 'Trợ lý AI', hidden: true, icon: 'vai_tro_thuc_hien', path: 'ph/ai', bl: 'Trợ lý AI', due: 'chưa giao PIC' },
   ];
 
+  /* Sidebar phân hệ Danh mục dùng chung (D-42, khuôn management-sidebar của ecat): danh mục chung phẳng, danh mục riêng ĐTMS gom một nhóm (P-112).
+     catalog.js nối danh mục theo nhóm và lọc theo vai (P-36). */
+  D.dmdcMenu = [
+    { label: 'Tổng quan', icon: 'tong_quan', path: 'dmdc', scr: 'SCR-30' },
+    { label: 'Quản lý E-form', icon: 'menu_square', path: 'eform', scr: 'SCR-49' },
+    { label: 'Vai trò thực hiện', icon: 'vai_tro_thuc_hien', path: 'ph/dm-vai-tro' },
+    { label: 'Chức danh khoa học', icon: 'chuc_danh_khoa_hoc', path: 'ph/dm-chuc-danh' },
+    { label: 'Đầu tư mua sắm', icon: 'phan_he_mua_sam', open: true, dmdcGroup: true, children: [] },
+  ];
+
   /* Mục menu cũ (13 phân hệ use-case) bỏ theo D-15 — route #/ph/… vẫn mở trang Đang phát triển để không gãy liên kết cũ. */
   D.oldMenu = [
+    { label: 'Trigger thông báo', path: 'trigger-thong-bao' },
+    { label: 'Vai trò thực hiện', path: 'ph/dm-vai-tro', notes: ['Danh mục chung sẵn có của ecat, ngoài phạm vi prototype ĐTMS (D-42).'] },
+    { label: 'Chức danh khoa học', path: 'ph/dm-chuc-danh', notes: ['Danh mục chung sẵn có của ecat, ngoài phạm vi prototype ĐTMS (D-42).'] },
+    { label: 'Người dùng tập trung', path: 'ph/he-iam', notes: ['Phân hệ khác của nền tảng, ngoài phạm vi prototype ĐTMS (D-42).'] },
+    { label: 'Quản trị khoa học công nghệ', path: 'ph/he-khcn', notes: ['Phân hệ khác của nền tảng, ngoài phạm vi prototype ĐTMS (D-42).'] },
+    { label: 'Quản lý nhân công', path: 'ph/he-nhan-cong', notes: ['Phân hệ khác của nền tảng, ngoài phạm vi prototype ĐTMS (D-42).'] },
     { label: 'Kế hoạch năm', path: 'ph/ke-hoach', uc: ['UC-04-01'] },
     { label: 'Nhu cầu mua sắm', path: 'ph/nhu-cau', uc: ['UC-04-02'] },
     { label: 'Dự án đầu tư', path: 'ph/du-an', uc: ['UC-05-07', 'UC-05-08', 'UC-05-09', 'UC-05-10'] },
@@ -940,6 +1088,9 @@
     { code: 'DA-2026-002', name: 'Sản xuất module RRU 5G giai đoạn 2026–2028', kind: 'Dự án SXKD', basis: 'qd4', src: 'dutoan', field: 'VTCNTT', fund: 'SXKD' },
     { code: 'KHN-2026-TTVT', name: 'Mua sắm thường xuyên năm 2026 — Trung tâm Vô tuyến', kind: 'Mua sắm thường xuyên (KHN)', basis: 'qd5', src: 'khn', field: 'VTCNTT', fund: 'CPTX' },
     { code: 'KHN-2026-VHT', name: 'Mua sắm thường xuyên năm 2026 — các đơn vị VHT', kind: 'Mua sắm thường xuyên (KHN)', basis: null, src: 'khn', field: 'KHAC', fund: 'CPTX' },
+    /* D-45: nhiệm vụ / đề tài, dự án làm gốc cho KĐT (Kế hoạch năm 2027). */
+    { code: 'DT-KHCN-2027-002', name: 'Đề tài phát triển trạm 5G-Advanced năm 2027', kind: 'Nhiệm vụ KHCN', basis: null, src: 'mbom', field: 'VTCNTT', fund: 'KHCN' },
+    { code: 'KHN-2027-DTPT', name: 'Kế hoạch đầu tư phát triển năm 2027 — VHT', kind: 'Dự án SXKD', basis: null, src: 'khn', field: 'KHAC', fund: 'SXKD' },
   ];
   D.nvOf = (code) => D.nhiemVu.find((x) => x.code === code) || null;
   /* Quy tắc bảo mật mẫu cho ĐXMS Mật (comment Figma #12, P-70) — AI kiểm tra khi Lưu, chỉ cảnh báo. */
@@ -1172,7 +1323,7 @@
   D.basisTypesFor = (process) => (D.familyOf(process) === 'MS13' ? D.kdtBasisTypes : D.basisTypes);
   D.basisDocsFor = (process) => (D.familyOf(process) === 'MS13' ? D.kdtBasisDocs : D.basisDocs);
   /* KĐT của kịch bản chính — tạo ở SCR-55 (cảnh 1); nhảy cảnh thì hệ thống tạo sẵn. */
-  D.kdtDemo = { code: D.kdtCode0, title: 'Đầu tư hệ thống đo kiểm OTA tích hợp phục vụ nhiệm vụ KHCN 5G-A', unit: 'Trung tâm Vô tuyến', field: 'VTCNTT', type: 'KHCN',
+  D.kdtDemo = { code: D.kdtCode0, nv: 'DT-KHCN-2027-002', title: 'Đầu tư hệ thống đo kiểm OTA tích hợp phục vụ nhiệm vụ KHCN 5G-A', unit: 'Trung tâm Vô tuyến', field: 'VTCNTT', type: 'KHCN',
     nature: 'TICH_HOP', est: 120, period: '01/2027 – 12/2027', secret: false, purpose: 'Đo kiểm OTA cho trạm 5G-Advanced theo đề tài KHCN năm 2027.',
     creator: 'Nguyễn Văn Minh', created: '01/10/2026', updated: '01/10/2026' };
   D.demoCases[D.kdtCode0] = {
@@ -1428,7 +1579,40 @@
       { name: 'Thủ trưởng VHT yêu cầu hoàn chỉnh', tasks: '60 → 25 → 26', task: 60, who: 'tgd' },
       { name: 'ĐXMS-2026-0089 (< 160 tỷ): Phó TGĐ không đồng ý BM-09 điều chỉnh', tasks: '39 → 25 → 26', task: 39, who: 'binh', dxms: 'ĐXMS-2026-0089' }] },
   ];
-  D.demoSets.forEach((d) => { if (d.key !== 'MS01.01') d.branches.forEach((b) => { b.process = d.key; b.dxms = b.dxms || d.dxms || d.kdt; }); });
+  /* Hợp đồng (T25, D-48): bộ MS22 của HĐ-2026-0052, cảnh 1 mở Chi tiết hợp đồng để Tạo hồ sơ. */
+  const HD_DEMO = 'HĐ-2026-0052', hdHref = 'hop-dong/' + encodeURIComponent(HD_DEMO);
+  D.demoSets.push({ key: 'MS22', hd: HD_DEMO, label: 'HĐ-2026-0052 · MS22', scenes: [
+    { n: 'H1', name: 'Tạo hồ sơ từ Chi tiết hợp đồng, tiếp nhận', start: 'NEW', tasks: '—, 01', who: 'phd', go: hdHref },
+    { n: 'H2', name: 'Đơn vị sử dụng lập phụ lục kỹ thuật (song song bước 3)', start: 2, tasks: '02 ‖ 03', who: 'dvsd' },
+    { n: 'H3', name: 'Gửi dự thảo, thương thảo với nhà thầu', start: 4, tasks: '04', who: 'phd' },
+    { n: 'H4', name: 'AI cảnh báo bảo hành thấp hơn HSMT → thống nhất lại', start: 6, tasks: '05, 06', who: 'phd' },
+    { n: 'H5', name: 'Trưởng phòng Hợp đồng phê duyệt, ký soạn thảo', start: 8, tasks: '08', who: 'tphd' },
+    { n: 'H6', name: 'Tập hợp chữ ký nháy, gỡ tạm dừng ký, trình ký', start: 9, tasks: '09', who: 'phd' },
+    { n: 'H7', name: 'Thủ trưởng VHT ký hợp đồng', start: 10, tasks: '10', who: 'tgd' },
+    { n: 'H8', name: 'Nhận hợp đồng, gửi nhà thầu ký', start: 12, tasks: '11, 12', who: 'phd' },
+    { n: 'H9', name: 'Ghi nhận nhà thầu đã ký', start: 13, tasks: '13', who: 'phd' },
+    { n: 'H10', name: 'Tổng kết: hợp đồng Đang thực hiện', start: 'END', tasks: '—', who: 'phd', go: hdHref }], branches: [
+    { name: 'Phụ lục kỹ thuật thiếu mã hàng → AI cảnh báo, sửa nội bộ', tasks: '05 → 07 → 05', task: 7, who: 'phd', ui: { hdMissingCode: true, hdWarranty: 24 } },
+    { name: 'Trưởng phòng trả về — sửa nội bộ', tasks: '08 → 07 → 05', task: 8, who: 'tphd' },
+    { name: 'Trưởng phòng trả về — thống nhất lại với nhà thầu', tasks: '08 → 06 → 05', task: 8, who: 'tphd' },
+    { name: 'Thủ trưởng VHT không đồng ý — sửa và trình lại', tasks: '10 → 09', task: 10, who: 'tgd' },
+    { name: 'Nhà thầu chưa ký — Ghi nhận chưa ký', tasks: '13 → 13', task: 13, who: 'phd' }] });
+  /* MS23 Tổng quan (D-49): chạy sau MS22; evts = chỉ số sự kiện đã xảy ra trước cảnh. Sự kiện độc lập, bấm theo thứ tự nào cũng được. */
+  D.demoSets.push({ key: 'MS23', hd: HD_DEMO, base: 'MS22', tab: 'td', label: 'HĐ-2026-0052 · MS23', events: [
+    { key: 2, label: 'Đến mốc giao hàng — tự động nhắc', tasks: '02' },
+    { key: 3, label: 'Nhà thầu thông báo giao hàng', tasks: '03' },
+    { key: 'S4', label: 'Có phát sinh — cần văn bản phát sinh', tasks: 'MS23.01', data: { flow: 'MS23.01' } },
+    { key: 'S4', label: 'Đến hạn nghiệm thu', tasks: 'MS23.03', data: { flow: 'MS23.03' } },
+    { key: 'S4', label: 'Đến hạn thanh lý', tasks: 'MS23.04', data: { flow: 'MS23.04' } },
+    { key: 5, label: 'Luồng con có biên bản bàn giao đã ký', tasks: '05', data: { loai: 'biên bản bàn giao', kind: 'GIAO' } },
+    { key: 5, label: 'Luồng con có biên bản nghiệm thu đã ký', tasks: '05', data: { loai: 'biên bản nghiệm thu', kind: 'NT' } }], scenes: [
+    { n: 'T1', name: 'Hợp đồng đã ký: AI trích mốc, lưu hồ sơ theo dõi', start: 'END', tasks: '01', who: 'phd', go: hdHref },
+    { n: 'T2', name: 'Đến mốc giao hàng: tự động nhắc', start: 'END', tasks: '02', who: 'phd', go: hdHref, evts: [0] },
+    { n: 'T3', name: 'Phòng Hợp đồng ghi nhận thông báo giao hàng', start: 3, tasks: '03', who: 'phd', go: hdHref, evts: [0, 1] },
+    { n: 'T4', name: 'Thông báo các bộ phận, chuyển hồ sơ giao hàng', start: 'END', tasks: '04', who: 'phd', go: hdHref, evts: [0, 1] },
+    { n: 'T5', name: 'Đến hạn: cần khởi tạo luồng con', start: 'END', tasks: 'MS23.01, .03, .04', who: 'phd', go: hdHref, evts: [0, 1, 2, 3, 4] },
+    { n: 'T6', name: 'Biên bản đã ký: AI cập nhật ngày thực tế', start: 'END', tasks: '05', who: 'phd', go: hdHref, evts: [0, 1, 5] }], branches: [] });
+  D.demoSets.forEach((d) => { if (d.key !== 'MS01.01') d.branches.forEach((b) => { b.process = d.key; b.dxms = b.dxms || d.dxms || d.kdt || d.hd; }); });
 
   window.D = D;
 })();

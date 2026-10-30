@@ -112,6 +112,9 @@ add(P4, 'B-14-c', 'Cập nhật kết quả cuộc họp · T32', [J.jump(28, 'm
 const P5 = 'Danh mục dùng chung';
 const dm = (key) => [J.jump(1, 'minh'), J.persona('qt'), J.hash('#/dmdc' + (key ? '/' + key : ''))];
 const click = (sel) => `document.querySelector(${JSON.stringify(sel)}).click()`;
+// T24 B2: chụp dạng bảng trước vì lựa chọn thẻ / bảng lưu localStorage; dạng thẻ đặt lại mặc định.
+add(P5, 'SCR-101-bang', 'Danh sách Phân hệ — dạng bảng', [J.jump(1, 'minh'), J.hash('#/phan-he'), click('[data-ss-view="TABLE"]')]);
+add(P5, 'SCR-101', 'Danh sách Phân hệ', [J.jump(1, 'minh'), J.hash('#/phan-he'), click('[data-ss-view="GRID"]')], { link: 'SCR-30', linkSel: '[data-ss="common-catalog"]' });
 add(P5, 'SCR-30', 'Tổng quan Danh mục dùng chung', dm(), { link: 'SCR-31', linkSel: '.ov-tile[href="#/dmdc/nha-cung-cap"]' });
 /* D-14: vai Chuyên viên TTMS — menu con và ô chỉ còn Nhà cung cấp, Loại hàng hoá (P-36). */
 add(P5, 'SCR-30-ttms', 'Tổng quan Danh mục dùng chung — vai Chuyên viên TTMS', [J.jump(1, 'minh'), J.persona('lan'), J.hash('#/dmdc')]);
@@ -142,9 +145,16 @@ const V2 = '2251799813690112';
 add(P6, 'SCR-48', 'Giám sát tiến trình', qt('#/giam-sat-tien-trinh'));
 add(P6, 'SCR-41', 'Danh sách quy trình (mở MS01.01)', [...qt('#/quy-trinh'), click('[data-vtt-key="DTMS_MS01_01"]')], { link: 'SCR-42', linkSel: '.vtt tbody tr.child a.link' });
 add(P6, 'SCR-41-adv', 'Danh sách quy trình — tìm kiếm nâng cao', [...qt('#/quy-trinh'), click('[data-wf="adv"]')]);
+// T24 B4: sau Đồng bộ từ Camunda (MS14 có phiên bản mới, phiên bản 1 Dừng hoạt động); bước sau đưa dữ liệu về mẫu. Vai chỉ xem: không có nút đồng bộ.
+add(P6, 'SCR-41-dong-bo', 'Danh sách quy trình — sau Đồng bộ từ Camunda (mở MS14)', [...qt('#/quy-trinh'), click('[data-wf="sync"]'), 'new Promise((r) => setTimeout(r, 900))', click('[data-vtt-key="DTMS_MS14"]')]);
+add(P6, 'SCR-41-qlqt', 'Danh sách quy trình — vai Người dùng quản trị quy trình', ['QuyTrinh.resetSync()', ...qt('#/quy-trinh'), J.persona('qlqt')]);
+add(P6, 'SCR-42-qlqt', 'Chi tiết quy trình — không có quyền xem lịch sử phiên bản', [...qt('#/quy-trinh/' + V2), J.persona('qlqt')]);
 add(P6, 'SCR-42', 'Chi tiết quy trình MS01 v1.1', qt('#/quy-trinh/' + V2), { link: 'SCR-41', linkSel: '.pg-head .vbtn.back' });
 add(P6, 'SCR-42-el', 'Chi tiết quy trình — chọn phần tử (task 11)', [...qt('#/quy-trinh/' + V2),
   `document.dispatchEvent(new CustomEvent('bpmn-element', { detail: { key: 'wf/${V2}', page: 'MS01 v1.1', id: 'Activity_11' } }))`]);
+add(P6, 'SCR-42-svc', 'Chi tiết quy trình — Service Task, Job type và Mô tả Job Type', [...qt('#/quy-trinh/' + V2),
+  `document.dispatchEvent(new CustomEvent('bpmn-element', { detail: { key: 'wf/${V2}', page: 'MS01 v1.1', id: BPMN_DIAGRAMS['MS01 v1.1'].nodes.find((n) => n.el && n.el.type === 'serviceTask').el.id } }))`]);
+add(P6, 'SCR-43-qlqt', 'Luật hiển thị hành động — vai chỉ xem', [...qt('#/ma-tran/display-rule'), J.persona('qlqt')]);
 add(P6, 'SCR-43', 'Ma trận hành động — Luật hiển thị hành động', qt('#/ma-tran/display-rule'), { link: 'SCR-44-new', linkSel: 'main .pg-head .r .vbtn.primary' });
 add(P6, 'SCR-44-new', 'Thêm mới luật hiển thị hành động', qt('#/ma-tran/display-rule/create'), { link: 'SCR-43', linkSel: '.pg-head .vbtn.back' });
 add(P6, 'SCR-44-view', 'Xem chi tiết luật hiển thị hành động', [...qt('#/ma-tran/display-rule'), `location.hash = '#/ma-tran/display-rule/' + MaTran.rules()[0].id + '/view'`], { link: 'SCR-43', linkSel: '.pg-head .vbtn.back' });
@@ -347,9 +357,10 @@ add(P12, 'SCR-77', 'Chi tiết yêu cầu báo giá KĐT', [...dx('#/ycbg-kdt'),
   .forEach(([k, name], i, a) => add(P12, 'SCR-56-' + k, 'Chi tiết KĐT-2026-0012 — tab ' + name, [...dx(K12), click(`[data-dtab="${k}"]`)],
     i < a.length - 1 ? { link: 'SCR-56-' + a[i + 1][0], linkSel: `[data-dtab="${a[i + 1][0]}"]` } : {}));
 add(P12, 'SCR-78', 'Danh sách kế hoạch lựa chọn nhà thầu', dx('#/khlcnt'), { link: 'SCR-80-info', linkSel: 'main .vtable tbody tr:last-child a.link' });
+add(P12, 'SCR-78-adv', 'Danh sách KHLCNT — tìm kiếm nâng cao (Quy chế áp dụng, Cấp phê duyệt, Người phụ trách, Số / Ngày QĐ)', [...dx('#/khlcnt'), click('[data-tl$=":adv"]')]);
 add(P12, 'SCR-79', 'Thêm mới KHLCNT — lập từ KĐT đã phê duyệt', dx('#/khlcnt/create/KDT/' + encodeURIComponent('KĐT-2026-0015')));
 const KH9 = '#/khlcnt/KHLCNT-2026-0009';
-[['info', 'Thông tin chung'], ['phan-bo', 'Phân bổ công việc'], ['goi', 'Gói thầu'], ['phien-ban', 'Phiên bản & điều chỉnh'], ['ket-qua', 'Kết quả KHLCNT']]
+[['info', 'Thông tin chung'], ['phan-bo', 'Phân bổ công việc'], ['goi', 'Gói thầu'], ['to-trinh', 'Tờ trình KHLCNT'], ['phien-ban', 'Phiên bản & điều chỉnh'], ['ket-qua', 'Kết quả KHLCNT']]
   .forEach(([k, name], i, a) => add(P12, 'SCR-80-' + k, 'Chi tiết KHLCNT-2026-0009 — tab ' + name, [...dx(KH9), click(`[data-ttab="${k}"]`)],
     i < a.length - 1 ? { link: 'SCR-80-' + a[i + 1][0], linkSel: `[data-ttab="${a[i + 1][0]}"]` } : {}));
 add(P12, 'SCR-80-adj', 'Điều chỉnh KHLCNT — lý do', [...dx(KH9), click('[data-kh-adj]')], { overlay: true });
@@ -386,9 +397,6 @@ add(P13, 'SCR-89-c', 'Tạo mới mẫu thông báo', qtb('#/mau-thong-bao/creat
 add(P13, 'SCR-89-d', 'Xem chi tiết mẫu thông báo', qtb('#/mau-thong-bao/detail/1'));
 add(P13, 'SCR-90', 'Kênh thông báo', qtb('#/kenh-thong-bao'));
 add(P13, 'SCR-90-cfg', 'Cấu hình kênh Email', [...qtb('#/kenh-thong-bao'), click('[data-ch-cfg="EMAIL"]')], { overlay: true });
-add(P13, 'SCR-91', 'Trigger thông báo', qtb('#/trigger-thong-bao'), { link: 'SCR-91-d', linkSel: 'main .vtable tbody tr:nth-child(3) a.link' });
-add(P13, 'SCR-91-d', 'Chi tiết trigger TASK_OVERDUE', qtb('#/trigger-thong-bao/TASK_OVERDUE'));
-add(P13, 'SCR-91-e', 'Chỉnh sửa trigger TASK_OVERDUE', qtb('#/trigger-thong-bao/TASK_OVERDUE/edit'));
 [['kpi', 'Chỉ số tổng quan'], ['td', 'Tiến độ nghiệp vụ'], ['gt', 'Phân tích giá trị'], ['dt', 'Phân tích đấu thầu'], ['hd', 'Phân tích hợp đồng'], ['tt', 'Thanh toán'], ['cb', 'Cảnh báo']]
   .forEach(([k, name]) => add(P13, 'SCR-92-' + k, 'Tổng quan — ' + name, [...dx('#/tong-quan'), click(`[data-tqtab="${k}"]`)]));
 [['tong-hop', 'dtms'], ['tong-hop', 'chuoi'], ['dxms', 'dxms'], ['kdt', 'kdt'], ['lcnt', 'khlcnt'], ['lcnt', 'to-chuc'], ['lcnt', 'kq'], ['lcnt', 'hieu-qua'], ['lcnt', 'nha-thau'], ['lcnt', 'kpi'],
@@ -462,7 +470,7 @@ for (let i = 0; i < S.length; i++) {
   // Shell: chụp một lần cho mỗi trạng thái sidebar khác nhau
   const skey = `${meta.active}|${meta.openGroups.join(',')}`;
   if (!manifest.some((m) => m.skey === skey)) {
-    const shell = { topbar: JSON.parse(await ev(`JSON.stringify(__serialize('.topbar'))`)), sidebar: JSON.parse(await ev(`JSON.stringify(__serialize('.sidebar'))`)) };
+    const shell = { topbar: JSON.parse(await ev(`JSON.stringify(__serialize('.topbar'))`)), sidebar: JSON.parse(await ev(`document.querySelector('.sidebar') ? JSON.stringify(__serialize('.sidebar')) : 'null'`)) };
     writeFileSync(join(out, `shell-${manifest.filter((m, j, a) => a.findIndex((x) => x.skey === m.skey) === j).length}.json`), JSON.stringify(Object.assign({ skey }, shell)));
   }
   manifest.push({ file, id: s.id, title: s.title, page: s.page, link: s.link || null, h, skey, persona: meta.persona, bell: meta.bell, bytes: JSON.stringify(data).length });

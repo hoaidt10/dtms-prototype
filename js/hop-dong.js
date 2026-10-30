@@ -1,4 +1,4 @@
-/* Quản lý hợp đồng theo Backlog W1_T10 (T16 B3, plan docs/dtms/prototype-W1T10-backlog-chuan-bi.md §2k) — màn tĩnh, không chạy luồng (D-17, D-22).
+/* Quản lý hợp đồng theo Backlog W1_T10 (T16 B3, plan docs/dtms/prototype-W1T10-backlog-chuan-bi.md §2k). Màn tĩnh; riêng HĐ-2026-0052 chạy luồng (T25, D-48): dữ liệu lấy từ hồ sơ con (live()). 
    Hợp đồng là đối tượng cha (như KHLCNT): hình thành từ KQLCNT của gói thầu (MS22 bước 1) hoặc nhập từ dữ liệu cũ (Backlog 427).
    Vòng đời theo BPMN-DTMS 07/10: MS22 Thương thảo & ký → MS23 Theo dõi thực hiện (.01 Văn bản phát sinh, .02 Bàn giao, .03 Nghiệm thu, .04 Thanh lý) → MS24 Thanh toán theo đợt.
    SCR-84 #/hop-dong, SCR-85 #/hop-dong/create[/<mã gói>], SCR-86 #/hop-dong/<mã>, SCR-87 #/thoa-thuan-khung[/<mã>]. */
@@ -107,16 +107,58 @@
     'HĐ-2026-0021': { 'BG-01': [[0, 2], [1, 1]], 'NT-01': [[0, 2], [1, 1]] },
     'HĐ-2025-0152': { 'NT-01': [[0, 1]], 'NT-02': [[0, 1], [1, 1]], 'NT-03': [[0, 1]], 'NT-04': [[0, 1]] },
   };
-  const qtyOf = (h, doc, i) => ((QTY[h.code] || {})[doc] || []).filter((x) => x[0] === i).reduce((s0, x) => s0 + x[1], 0);
+  const qtyOf = (h, doc, i) => ((h.qty || QTY[h.code] || {})[doc] || []).filter((x) => x[0] === i).reduce((s0, x) => s0 + x[1], 0);
 
   /* Bản ghi tạo trên prototype (localStorage riêng). */
   const KEY = 'dtms-proto-hop-dong';
   let U = { hd: [], add: {} };
   try { U = Object.assign(U, JSON.parse(localStorage.getItem(KEY) || '{}')); } catch (e) { /* bỏ qua */ }
   const persist = () => { try { localStorage.setItem(KEY, JSON.stringify(U)); } catch (e) { /* bỏ qua */ } };
-  const all = () => U.hd.concat(H0).map((h) => { const a = U.add[h.code] || {}; return Object.assign({}, h, { docs: (h.docs || []).concat(a.docs || []), pays: (h.pays || []).concat(a.pays || []) }); });
+  const all = () => U.hd.concat(H0).map((h) => { const a = U.add[h.code] || {}; return live(Object.assign({}, h, { docs: (h.docs || []).concat(a.docs || []), pays: (h.pays || []).concat(a.pays || []) })); });
   const hdOf = (code) => all().find((h) => h.code === code) || null;
   const byPkg = (pkg) => all().find((h) => h.pkg === pkg) || null;
+
+  /* ---------- T25: hợp đồng chạy luồng (D-47, D-48) ----------
+     Hồ sơ MS22 của hợp đồng ghi trạng thái, số / ngày ký, dữ liệu tab Thương thảo & ký kết. Chưa tạo hồ sơ thì hợp đồng giữ dữ liệu mẫu. */
+  const RUN = 'HĐ-2026-0052', dateAdd = (s, n) => { const [d, m, y] = s.split('/').map(Number); return new Date(y, m - 1, d + n).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' }); };
+  const case22 = (code) => Flow.caseOf(D.hdCaseCode(code));
+  const wOf = (c) => (c.ui.hdWarranty != null ? c.ui.hdWarranty : c.vars.hdFixed ? D.hdWarrantyMin : 18);
+  /* Đối chiếu dự thảo: giá, phạm vi, tiến độ khớp theo KQLCNT; dòng bảo hành đọc kết quả thương thảo. */
+  const checkRows = (w) => [{ canCu: 'KQLCNT', noiDung: 'Giá hợp đồng bằng giá trúng thầu 191,20 tỷ đồng', ketQua: 'Khớp' }, { canCu: 'KQLCNT', noiDung: 'Phạm vi 4 hạng mục bằng phạm vi gói thầu', ketQua: 'Khớp' },
+    { canCu: 'HSMT', noiDung: `Bảo hành thiết bị tối thiểu ${D.hdWarrantyMin} tháng — dự thảo ghi ${w} tháng cho lò hàn`, ketQua: w >= D.hdWarrantyMin ? 'Khớp' : 'Không khớp' }, { canCu: 'KQLCNT', noiDung: 'Loại hợp đồng Trọn gói', ketQua: 'Khớp' }];
+  function live(h) {
+    if (h.code !== RUN) return h;
+    const c = case22(h.code);
+    if (!c) return h;
+    const at = (n) => { const x = c.history.filter((y) => String(y.task) === String(n) && y.who).pop(); return x ? Flow.dateOf(x.t) : null; };
+    const w = wOf(c), ai = c.vars.aiHd, st = c.status === 'approved' ? 'TH' : c.tokens.some((t) => Number(t.task) >= 9) ? 'KY' : 'TT';
+    const rounds = [].concat(at(4) ? [['1', at(4), 'Phụ lục kỹ thuật (đơn vị sử dụng) và body, phụ lục giá (Phòng Hợp đồng)', c.ui.hdThongNhat || 'Danh mục, cấu hình thiết bị; đơn giá theo HSDT; điều kiện thanh toán', c.vars.hdFixed || (c.ui.hdWarranty || 0) >= D.hdWarrantyMin ? '' : `Bảo hành lò hàn: nhà thầu đề xuất ${w} tháng`, c.ui.hdBb1 ? `Bien-ban-thuong-thao-${h.code.replace('Đ', 'D')}.pdf` : '']] : [],
+      at(6) ? [['2', at(6), 'Thống nhất lại qua email theo cảnh báo AI', c.ui.hdThongNhatLai || `Bảo hành lò hàn ${w} tháng`, '', '']] : []);
+    const ver = 1 + c.history.filter((y) => ['6', '7'].includes(String(y.task)) && y.who).length;
+    const sign = [['Ký soạn thảo', 'Trưởng phòng Hợp đồng', at(5) || at(4), at(8), at(8) ? 'Đã ký' : 'Chờ ký'], ['Ký nháy Trung tâm Mua sắm, Đơn vị sử dụng', 'Trung tâm Mua sắm; Đơn vị sử dụng', at(8), at(9), at(9) ? 'Đã ký' : 'Chờ ký'],
+      ['Ký hợp đồng', 'Thủ trưởng VHT', at(9), at(10), at(10) ? 'Đã ký' : 'Chờ ký'], ['Nhà thầu ký', K().nccName(h.ncc), at(12), c.status === 'approved' ? at(13) : null, c.status === 'approved' ? 'Đã ký' : 'Chờ ký']].filter((r) => r[2]);
+    const out = Object.assign({}, h, { st, stepName: c.tokens.length ? 'MS22 · ' + [...new Set(c.tokens.map((t) => window.BPMN_FLOWS.MS22.tasks[t.task].name))].join(', ') : null,
+      neg: { rounds, check: checkRows(w).map((r) => [r.canCu, r.noiDung, r.ketQua === 'Khớp' ? 'Khớp' : 'Lệch']), ai: ai ? [ai.ok ? 'Đạt' : 'Chưa đạt', ai.ok ? 'Dự thảo khớp KQLCNT, HSMT và HSDT trúng thầu.' : ai.issues.map((x) => x.noiDung).join(' ')] : null,
+        versions: at(4) ? [['v' + ver, at(6) || at(7) || at(4), `Dự thảo theo ${c.ui.hdMau || 'mẫu hợp đồng mua sắm thiết bị'}`, 'Phòng Hợp đồng']] : [], diff: [], sign } });
+    /* Gỡ tạm dừng ký: xong bước 9 (đã nhập số văn bản giải quyết kiến nghị — GIẢ LẬP P-134). */
+    if (at(9)) delete out.held;
+    if (c.status === 'approved') {
+      const d = c.ui.hdNgayKy || at(13);
+      Object.assign(out, { no: c.ui.hdSo || `${h.code.slice(-3)}/2026/HĐMB-VHT`, sign: d, eff: d, end: dateAdd(d, 210), esign: c.vars.hdSign !== 'GIAY', updated: at(13) });
+      liveTrack(out);
+    }
+    return out;
+  }
+  /* MS23 Tổng quan: hồ sơ theo dõi ghi mốc, đợt bàn giao, nghiệm thu về hợp đồng (DG-MS23 §B.5). Bàn giao, nghiệm thu chi tiết do MS23.02, MS23.03 ghi từ B4, B6. */
+  function liveTrack(out) {
+    const t = Flow.caseOf(D.hdCaseCode(out.code, 'MS23')), tr = t && t.vars.track;
+    if (!tr) return;
+    const gi = tr.ms.filter((m) => m.kind === 'GIAO'), nt = tr.ms.filter((m) => m.kind === 'NT' && m.actual), bg = (i) => 'BG-' + String(i + 1).padStart(2, '0');
+    Object.assign(out, { track: t, ms: tr.ms.map((m) => [m.name, m.plan, m.actual, m.rate]),
+      dl: gi.map((m, i) => [bg(i), `Đợt ${i + 1}`, m.plan, m.actual, m.site, m.goods, m.actual ? 'Đạt' : null]),
+      acc: nt.map((m) => ['NT-01', 'Tổng thể', m.actual, 'Toàn bộ hạng mục', out.value, 'Đạt', '']),
+      qty: Object.assign({}, ...gi.map((m, i) => ({ [bg(i)]: m.qty })), nt.length ? { 'NT-01': out.items.map((r, i) => [i, r[2]]) } : {}) });
+  }
 
   /* ---------- Chỉ số suy ra (S4: từ mốc / nghiệm thu / thanh toán của chính hợp đồng) ---------- */
   function eff(h) {
@@ -139,9 +181,9 @@
   const advBack = (h) => r2((h.pays || []).filter((p) => p[7] === 'PAID').reduce((s, p) => s + p[4], 0));
   /* Đã thanh toán (ròng) gồm tạm ứng; còn phải thanh toán = giá trị HĐ - đã thanh toán ròng - phạt / giảm trừ đã chốt. */
   const remain = (h) => r2(h.value - paidSum(h));
-  /* P-80 (giả lập): ngưỡng cảnh báo = số ngày "Trước hạn" của Trigger thông báo tương ứng (SCR-91), mặc định 30 / 90 / 90 ngày. */
-  const WARN = { guar: ['CONTRACT_GUARANTEE_EXPIRING', 30], hd: ['CONTRACT_EXPIRING', 90], fw: ['FRAMEWORK_EXPIRING', 90] };
-  const warnDays = (k) => (window.ThongBao ? window.ThongBao.warnDays(...WARN[k]) : WARN[k][1]);
+  /* P-80 (giả lập, D-44): ngưỡng cảnh báo = tham số hệ thống (sys_config) — bảo đảm 30, hợp đồng 90, thỏa thuận khung 90 ngày. */
+  const WARN = { guar: 30, hd: 90, fw: 90 };
+  const warnDays = (k) => WARN[k];
   const guarWarn = (h) => (h.guar || []).filter((g) => ['TH', 'TL'].includes(h.st) && dk(g[4]) >= dk(TODAY) && days(TODAY, g[4]) <= warnDays('guar'));
   const hdSoon = (h) => !!h.end && ['TH', 'TL'].includes(h.st) && dk(h.end) >= dk(TODAY) && days(TODAY, h.end) <= warnDays('hd');
   const nccName = (c) => K().nccName(c);
@@ -173,18 +215,18 @@
         ${sel('eff', 'Hiệu lực', { searchable: false, options: ['Chưa hiệu lực', 'Đang hiệu lực', 'Hết hiệu lực', 'Chấm dứt'].map((x) => ({ value: x, label: x })) })}
         ${sel('prog', 'Tiến độ', { searchable: false, options: ['Chưa thực hiện', 'Đúng tiến độ', 'Chậm tiến độ', 'Hoàn thành'].map((x) => ({ value: x, label: x })) })}
         ${sel('unit', 'Đơn vị quản lý', { options: units.map((u) => ({ value: u, label: u })) })}`,
-      cols: [['Thao tác', 80, 'c'], ['Trạng thái', 170, 'c'], ['Mã hợp đồng', 150], ['Tên hợp đồng', 320], ['Nhà thầu', 240], ['Gói thầu', 140], ['Loại hợp đồng', 180],
+      cols: [['Trạng thái', 170, 'c'], ['Mã hợp đồng', 150], ['Tên hợp đồng', 320], ['Nhà thầu', 240], ['Gói thầu', 140], ['Loại hợp đồng', 180],
         ['Giá trị (tỷ đồng)', 140, 'r'], ['Ngày ký', 120], ['Hiệu lực', 150, 'c'], ['Tiến độ', 150, 'c'], ['Đơn vị quản lý', 200]],
       href: hdHref,
-      cell: (h) => `<td class="c"><div class="acts">${h.st === 'TT' && U.hd.some((x) => x.code === h.code) ? `<button type="button" class="vbtn icon ghost" aria-label="Xoá" data-hd-del="${esc(h.code)}">${icon('del')}</button>` : ''}</div></td>
-        <td class="c">${badge(...HD_ST[h.st])}</td><td><a class="link" data-go="${hdHref(h)}">${esc(h.code)}</a></td><td>${k.clamp(h.title)}</td><td>${k.clamp(h.nccN)}</td><td>${h.pkg ? pkgLink(h) : esc(h.pkgText)}</td>
+      cell: (h) => `<td class="c">${badge(...HD_ST[h.st])}</td><td><a class="link" data-go="${hdHref(h)}">${esc(h.code)}</a></td><td>${k.clamp(h.title)}</td><td>${k.clamp(h.nccN)}</td><td>${h.pkg ? pkgLink(h) : esc(h.pkgText)}</td>
         <td>${k.clamp(k.cat('loai-hop-dong', h.type))}</td><td class="r num">${m3(h.value)}</td><td class="num">${h.sign ? esc(h.sign) : k.dash}</td><td class="c">${badge(...eff(h))}</td><td class="c">${badge(...prog(h))}</td><td>${k.clamp(h.unit)}</td>`,
       info: {
         scr: 'SCR-84', name: 'Danh sách hợp đồng', uc: 'Backlog W1_T10 › Quản lý hợp đồng › Thông tin hợp đồng (dòng 422–429)', bpmn: 'MS22 → MS23 → MS24 (BPMN-DTMS 07/10)',
         notes: [
           'Hợp đồng là <b>đối tượng cha</b> (như KHLCNT): hình thành từ KQLCNT của gói thầu (Thêm mới / nút Tạo hợp đồng ở Chi tiết gói thầu = MS22 bước 1 tiếp nhận) hoặc <b>Nhập hợp đồng</b> cho hợp đồng đã ký trước khi có hệ thống (migration, Backlog 427 — không phải luồng chính; gói thầu của hợp đồng nhập là mã văn bản, không liên kết).',
           'Trạng thái theo BPMN: Đang thương thảo (MS22) → Đang trình ký (MS22 ký nháy, Thủ trưởng ký, VContract) → Đang thực hiện (MS23 / MS24) → Đang thanh lý (MS23.04) → Đã thanh lý. <b>Hiệu lực</b> và <b>Tiến độ</b> là chỉ số suy ra: hiệu lực theo ngày hiệu lực / hết hạn; chậm tiến độ khi có mốc quá ngày kế hoạch chưa hoàn thành (job quét mốc, sự kiện CONTRACT_MILESTONE_LATE).',
-          'Màn tĩnh (D-22): MS22 chạy luồng sau W1 nếu cần demo.',
+          'Hợp đồng mẫu xem tĩnh; HĐ-2026-0052 chạy luồng (T25, D-48): Tạo hồ sơ ở tab Thương thảo & ký kết; ký xong tự có hồ sơ theo dõi MS23 ở tab Tiến độ thực hiện. MS23.01…04, MS24 dựng ở các bước sau của T25.',
+          'Không có cột Thao tác (D-43, team BA 30/10/2026: chưa có thao tác trên dòng).',
         ],
         q: ['P-80'], src: 'task-management/task-management.component · /task-management',
       },
@@ -210,7 +252,7 @@
       scr: 'SCR-85', name: 'Thêm mới hợp đồng', uc: 'Backlog W1_T10 › Hợp đồng › Khởi tạo hợp đồng từ KQLCNT; Sao chép thông tin từ gói thầu / KQLCNT; Liên kết gói thầu, đối tượng nguồn (dòng 425–429)', bpmn: 'MS22 bước 1 — Tiếp nhận kết quả LCNT',
       notes: [
         'Theo task-create (mode create). Chỉ chọn được gói thầu <b>Đã có KQLCNT</b>, chưa có hợp đồng, không bị tạm dừng ký (kiến nghị). Nhà thầu, giá trúng thầu, phạm vi (hạng mục), hình thức LCNT, loại hợp đồng <b>sao chép từ KQLCNT, chỉ xem</b> — tránh nhập lại (Backlog 426).',
-        'Lưu = tạo hợp đồng ở trạng thái Đang thương thảo và khởi tạo MS22 (prototype không chạy luồng). Số hợp đồng cấp khi ký.',
+        'Lưu = tạo hợp đồng ở trạng thái Đang thương thảo. Thật: khởi tạo MS22 ngay; prototype chỉ HĐ-2026-0052 chạy luồng (D-48). Số hợp đồng cấp khi ký.',
         'Giá trị hợp đồng không được vượt giá trúng thầu / giá gói thầu (kiểm tra ở bước đối chiếu MS22 và khi lập phụ lục).',
       ],
       src: 'task-management/components/task-create · /task-management/create',
@@ -269,10 +311,12 @@
         'Khuôn task-create (mode detail) + app-tabs; các tab chỉ xem, dữ liệu do bước BPMN ghi: <b>Thương thảo & ký kết</b> = MS22 (vòng thương thảo email, AI kiểm tra dự thảo — Not OK thì làm lại với NCC / sửa nội bộ, ký nháy TTMS + ĐVSD, Thủ trưởng VHT ký, gửi NCC ký VContract / giấy); <b>Tiến độ</b> = MS23 tổng quan (AI đọc HĐ trích mốc, đôn đốc giao hàng, cập nhật ngày thực tế); <b>Bàn giao & nghiệm thu</b> = MS23.02 / 23.03; <b>Văn bản phát sinh</b> = MS23.01; <b>Thanh lý</b> = MS23.04; <b>Thanh toán</b> = MS24 (hồ sơ thanh toán → đề nghị chuyển tiền ký 4 cấp → thanh toán → đồng bộ SAP).',
         'Bản đã ký là <b>bất biến</b>; thay đổi sau ký chỉ bằng phụ lục (MS23.01). Kiểm soát điều chỉnh: giá trị sau điều chỉnh không vượt giá gói thầu / giá trị nguồn; thời gian phù hợp dự án — validate khi lập phụ lục.',
         'So sánh phiên bản dự thảo / phụ lục = DEV-1 (như ĐXMS). Đồng bộ SAP = tích hợp tài chính (chưa giao PIC).',
-        `Cảnh báo: bảo đảm thực hiện sắp hết hạn trong ${warnDays('guar')} ngày khi nghĩa vụ chưa xong; hợp đồng sắp hết hạn trong ${warnDays('hd')} ngày; mốc quá hạn → Chậm tiến độ (Trigger CONTRACT_GUARANTEE_EXPIRING / CONTRACT_EXPIRING / CONTRACT_MILESTONE_LATE).`,
-        '<b>Giả lập P-80</b>: ngưỡng lấy theo số ngày "Trước hạn" của Trigger thông báo (sửa ở Trigger thông báo thì cảnh báo đổi theo). Khách chưa chốt số ngày, chưa chốt có tách theo loại hợp đồng hay không.',
+        `Cảnh báo: bảo đảm thực hiện sắp hết hạn trong ${warnDays('guar')} ngày khi nghĩa vụ chưa xong; hợp đồng sắp hết hạn trong ${warnDays('hd')} ngày; mốc quá hạn → Chậm tiến độ (sự kiện CONTRACT_GUARANTEE_EXPIRING / CONTRACT_EXPIRING / CONTRACT_MILESTONE_LATE).`,
+        '<b>Giả lập P-80</b>: ngưỡng là tham số hệ thống (sys_config) cố định — bảo đảm 30 ngày, hợp đồng 90 ngày (D-44: bỏ màn Trigger thông báo). Khách chưa chốt số ngày, chưa chốt có tách theo loại hợp đồng hay không.',
+        '<b>MS23 Tổng quan không có màn riêng (D-49):</b> HĐ-2026-0052 ký xong (MS22 bước 13) tự sinh hồ sơ theo dõi; tab Tiến độ thực hiện đọc hồ sơ này. Hệ thống thật cần API tổng hợp theo mã hợp đồng từ các hồ sơ con (plan T25 §5).',
+        '<b>Giả lập:</b> các sự kiện đến mốc, nhà thầu thông báo, đến hạn, biên bản đã ký bấm ở công cụ demo; bộ phận nhận thông báo, thời điểm nhắc 7 ngày trước hạn, mốc AI trích xuất là giả định, ngày thực tế lấy bằng ngày kế hoạch (P-120, P-135…P-143). Từ B4, B6 bước 5 nối với biên bản thật của luồng con; luồng con cần khởi tạo chưa có nút Tạo hồ sơ.',
       ],
-      q: ['P-80'], src: 'task-management/components/task-create (mode detail) · /task-management/detail/:id',
+      q: ['P-80', 'P-120', 'P-135', 'P-136', 'P-138', 'P-139', 'P-140', 'P-141', 'P-142', 'P-143'], src: 'task-management/components/task-create (mode detail) · /task-management/detail/:id',
     };
     const warn = [];
     if (h.held) warn.push(['error', h.held]);
@@ -284,7 +328,7 @@
 
     const tInfo = () => k.card('Thông tin chung hợp đồng', `<div class="ginfo c3">
         ${k.kv('Mã hợp đồng', esc(h.code))}${k.kv('Tên hợp đồng', esc(h.title), 'span2')}
-        ${k.kv('Số hợp đồng', h.no ? esc(h.no) : null)}${k.kv('Trạng thái', badge(...HD_ST[h.st]))}${k.kv('Bước hiện tại', esc(HD_STEP[h.st]))}
+        ${k.kv('Số hợp đồng', h.no ? esc(h.no) : null)}${k.kv('Trạng thái', badge(...HD_ST[h.st]))}${k.kv('Bước hiện tại', esc(h.stepName || HD_STEP[h.st]))}
         ${k.kv('Nguồn hình thành', esc(SRC_HD[h.src]))}${k.kv('Gói thầu', pkgLink(h))}${k.kv('KHLCNT', h.pkg && s.kh ? `<a class="link-red" href="#/khlcnt/${encodeURIComponent(s.kh)}">${esc(s.kh)}</a>` : esc(s.kh || '-'))}
         ${k.kv('Đối tượng nguồn (ĐXMS / KĐT)', s.originHref ? `<a class="link-red" href="#/${s.originHref}">${esc(s.origin)}</a>` : esc(s.origin || '-'))}${k.kv('Hình thức lựa chọn nhà thầu', esc(k.cat('hinh-thuc-lcnt', h.form)))}${k.kv('Loại hợp đồng', esc(k.cat('loai-hop-dong', h.type)))}
         ${k.kv('Đơn vị quản lý hợp đồng', esc(h.unit))}${k.kv('Đầu mối theo dõi', esc(h.owner))}${k.kv('Hình thức ký', h.sign ? (h.esign ? 'Ký điện tử (VContract)' : 'Ký giấy') : null)}</div>`)
@@ -317,7 +361,7 @@
         return k.emptyCard('Thương thảo & ký kết', 'Hợp đồng nhập từ dữ liệu cũ: không có hồ sơ thương thảo trên hệ thống.')
           + k.card('Hợp đồng đã ký', `<div class="ginfo c3">${k.kv('Số hợp đồng', esc(h.no))}${k.kv('Ngày ký', esc(h.sign))}${k.kv('Bản chính thức', `<a class="link-red" href="#" data-dl="${esc(h.no.replace(/\//g, '-'))}.pdf">${esc(h.no.replace(/\//g, '-'))}.pdf</a> · bất biến`)}</div>`);
       }
-      return k.card('Các vòng thương thảo', k.table([['Vòng', 70, 'c'], ['Ngày', 110], ['Nội dung', 300], ['Đã thống nhất', 280], ['Chưa thống nhất', 280], ['Biên bản', 200]], n.rounds,
+      return caseCard(h) + k.card('Các vòng thương thảo', k.table([['Vòng', 70, 'c'], ['Ngày', 110], ['Nội dung', 300], ['Đã thống nhất', 280], ['Chưa thống nhất', 280], ['Biên bản', 200]], n.rounds,
           (r) => `<td class="c">${esc(r[0])}</td><td class="num">${esc(r[1])}</td><td>${k.clamp(r[2])}</td><td>${k.clamp(r[3])}</td><td>${k.clamp(r[4])}</td><td>${r[5] ? `<a class="link-red" href="#" data-dl="${esc(r[5])}">${esc(r[5])}</a>` : k.dash}</td>`), 'Chưa có vòng thương thảo thì để trống')
         + k.card('Đối chiếu dự thảo hợp đồng', k.table([['Căn cứ', 160], ['Nội dung đối chiếu', 560], ['Kết quả', 120, 'c']], n.check,
           (r) => `<td>${esc(r[0])}</td><td>${k.clamp(r[1])}</td><td class="c">${r[2] === 'Khớp' ? badge('Khớp', 'success') : badge('Lệch', 'error')}</td>`), 'Với KQLCNT, HSMT / HSYC / HSMCG, HSDT / HSĐX / HSCG trúng thầu')
@@ -341,14 +385,29 @@
     const tTd = () => {
       if (!(h.ms || []).length) return k.emptyCard('Kế hoạch / mốc thực hiện', 'Mốc thực hiện được lập sau khi hợp đồng có hiệu lực (AI đọc hợp đồng trích mốc — MS23).');
       const rate = doneRate(h);
-      return k.card('Tình hình thực hiện', `<div class="ginfo c3">${k.kv('Tỷ lệ hoàn thành (theo khối lượng mốc)', rate + '%')}${k.kv('Giá trị đã nghiệm thu', ty(accSum(h), 2) + ' tỷ đồng (' + Math.round(accSum(h) / h.value * 100) + '%)')}${k.kv('Tiến độ', badge(...prog(h)))}</div>
+      return caseCard(h, 'MS23') + trackInfo(h) + k.card('Tình hình thực hiện', `<div class="ginfo c3">${k.kv('Tỷ lệ hoàn thành (theo khối lượng mốc)', rate + '%')}${k.kv('Giá trị đã nghiệm thu', ty(accSum(h), 2) + ' tỷ đồng (' + Math.round(accSum(h) / h.value * 100) + '%)')}${k.kv('Tiến độ', badge(...prog(h)))}</div>
           <div class="hd-bar" role="img" aria-label="Tỷ lệ hoàn thành ${rate}%"><span style="width:${rate}%"></span></div>`)
         + k.card('Kế hoạch / mốc thực hiện', k.table([['Mốc', 360], ['Kế hoạch', 120], ['Thực tế', 120], ['Khối lượng', 110, 'r'], ['Trạng thái', 190, 'c']], h.ms,
           (m) => { const late = !m[2] && dk(m[1]) < dk(TODAY), lateDone = m[2] && dk(m[2]) > dk(m[1]);
             return `<td>${k.clamp(m[0])}</td><td class="num">${esc(m[1])}</td><td class="num">${m[2] ? esc(m[2]) : k.dash}</td><td class="r num">${m[3]}%</td>
             <td class="c">${m[2] ? (lateDone ? badge(`Hoàn thành chậm ${days(m[1], m[2])} ngày`, 'warning') : badge('Hoàn thành', 'success')) : late ? badge(`Quá hạn ${days(m[1], TODAY)} ngày`, 'error') : badge('Chưa đến hạn', 'default')}</td>`; }), 'So sánh kế hoạch và thực tế')
         + k.card('Kết quả kiểm tra chất lượng (KCS)', k.table([['Đợt', 100], ['Ngày', 120], ['Hàng hoá', 360], ['Kết quả', 170, 'c']], (h.dl || []).filter((d) => d[3]),
-          (d) => `<td>${esc(d[1])}</td><td class="num">${esc(d[3])}</td><td>${k.clamp(d[5])}</td><td class="c">${d[6] === 'Đạt' ? badge('Đạt', 'success') : badge(d[6] || 'Chưa kiểm tra', d[6] ? 'error' : 'default')}</td>`));
+          (d) => `<td>${esc(d[1])}</td><td class="num">${esc(d[3])}</td><td>${k.clamp(d[5])}</td><td class="c">${d[6] === 'Đạt' ? badge('Đạt', 'success') : badge(d[6] || 'Chưa kiểm tra', d[6] ? 'error' : 'default')}</td>`))
+        + trackCards(h);
+    };
+    /* MS23 Tổng quan: kết quả AI trích xuất và các sự kiện đã ghi về hồ sơ theo dõi. */
+    const trackInfo = (x) => (x.track ? k.card('Thông tin AI trích xuất từ hợp đồng đã ký', `<div class="ginfo c3">${k.kv('Số hợp đồng', esc(x.no))}${k.kv('Ngày ký', esc(x.sign))}${k.kv('Nhà thầu', esc(nccName(x.ncc)))}
+        ${k.kv('Giá trị hợp đồng', ty(x.value, 2) + ' tỷ đồng')}${k.kv('Thời gian thực hiện', esc(x.exec))}${k.kv('Số mốc theo dõi', String(x.ms.length))}</div>`) : '');
+    const trackCards = (x) => {
+      if (!x.track) return '';
+      const v = x.track.vars;
+      return ((v.reminds || []).length ? k.card('Nhắc giao hàng đã gửi', k.table([['Mốc', 360], ['Hạn', 120], ['Ngày gửi', 120], ['Người nhận', 240], ['Kênh', 240]], v.reminds,
+          (r) => `<td>${k.clamp(r.ms)}</td><td class="num">${esc(r.plan)}</td><td class="num">${esc(r.at)}</td><td>${k.clamp(r.to)}</td><td>${k.clamp(r.ch)}</td>`)) : '')
+        + ((v.notices || []).length ? k.card('Thông báo giao hàng của nhà thầu', k.table([['Đợt', 260], ['Ngày dự kiến giao', 130], ['Địa điểm', 230], ['Kênh tiếp nhận', 120], ['Đã thông báo', 280]], v.notices,
+          (r) => `<td>${k.clamp(r.dot)}</td><td class="num">${esc(r.ngay)}</td><td>${k.clamp(r.site)}</td><td>${esc(r.kenh)}</td><td>${k.clamp(r.to)}</td>`), 'Hồ sơ giao hàng chuyển sang Bàn giao hàng hoá / dịch vụ') : '')
+        + ((v.triggers || []).length ? k.card('Luồng con cần khởi tạo', k.table([['Quy trình', 120], ['Tên', 220], ['Lý do', 320], ['Ngày', 120], ['Trạng thái', 170, 'c']], v.triggers,
+          (r) => `<td>${esc(r.flow)}</td><td>${esc(r.name)}</td><td>${k.clamp(r.why)}</td><td class="num">${esc(r.at)}</td><td class="c">${badge('Chờ khởi tạo', 'warning')}</td>`), 'Phòng Hợp đồng khởi tạo') : '')
+        + k.card('Nhật ký theo dõi', k.table([['Ngày', 120], ['Sự kiện', 340], ['Kết quả', 560]], v.trackLog || [], (r) => `<td class="num">${esc(r[0])}</td><td>${k.clamp(r[1])}</td><td>${k.clamp(r[2])}</td>`));
     };
     const tBg = () => {
       const remainItems = h.items.map((r, i) => [r[0], r[1], r[2], (h.dl || []).filter((d) => d[3]).reduce((s0, d) => s0 + qtyOf(h, d[0], i), 0)]);
@@ -400,6 +459,17 @@
       ${k.tabs('hd:' + h.code, [['info', 'Thông tin chung'], ['dt', 'Đối tác'], ['hm', 'Hạng mục'], ['tt', 'Thương thảo & ký kết'], ['bd', 'Bảo đảm & bảo hành'], ['td', 'Tiến độ thực hiện'],
         ['bg', 'Bàn giao & nghiệm thu'], ['pay', 'Thanh toán'], ['vb', 'Văn bản phát sinh'], ['tl', 'Thanh lý']],
         { info: tInfo, dt: tDt, hm: tHm, tt: tTt, bd: tBd, td: tTd, bg: tBg, pay: tPay, vb: tVb, tl: tTl })}</div>`;
+  }
+  /* Danh sách hồ sơ của hợp đồng (như card Danh sách hồ sơ của ĐXMS / KĐT): Tạo hồ sơ = start MS22, giao Phòng Hợp đồng (D-48: chỉ HĐ-2026-0052). */
+  function caseCard(h, proc) {
+    if (h.code !== RUN) return '';
+    const k = K(), c = Flow.caseOf(D.hdCaseCode(h.code, proc || 'MS22')), pid = Flow.state.persona, canNew = !proc && !c && (pid === 'phd' || D.allAccess(pid));
+    if (proc && !c) return '';
+    const rows = c ? [c] : [];
+    return `<section class="vcard pad24" data-hd-cases><div class="vcard-h"><h3>Danh sách hồ sơ</h3>${canNew ? `<button type="button" class="vbtn primary" data-hd-newcase="${esc(h.code)}">${icon('add')} Tạo hồ sơ</button>` : ''}</div>
+      ${k.table([['Mã hồ sơ', 170], ['Quy trình', 300], ['Trạng thái', 130, 'c'], ['Bước hiện tại', 320]], rows,
+    (x) => `<td><a class="link" data-go="ho-so-hd/${esc(x.code)}">${esc(x.code)}</a></td><td>${esc(x.vars.process)} — ${esc(D.hdProcesses[x.vars.process].name)}</td><td class="c">${x.status === 'approved' ? badge('Hoàn thành', 'success') : badge('Đang xử lý', 'info')}</td>
+          <td>${k.clamp(x.tokens.length ? [...new Set(x.tokens.map((t) => window.BPMN_FLOWS[x.vars.process].tasks[t.task].name))].join(', ') : D.hdProcesses[x.vars.process].end)}</td>`)}</section>`;
   }
   /* Nghiệm thu Đạt chưa có hồ sơ thanh toán → khởi tạo hồ sơ thanh toán (Backlog 491: lấy trực tiếp khối lượng đã nghiệm thu). */
   const payable = (h) => (h.acc || []).filter((a) => a[5] === 'Đạt' && !(h.pays || []).some((p) => p[2] === a[0]));
@@ -491,7 +561,7 @@
       info: {
         scr: 'SCR-87', name: 'Thỏa thuận khung & đơn hàng', uc: 'Backlog W1_T10 › Thỏa thuận khung & Đơn hàng (dòng 465–469)',
         notes: ['Khuôn task-management. Thỏa thuận khung hình thành từ KQLCNT (Quy chế cho phép); đơn hàng là các lần gọi hàng trong phạm vi khung. BE chặn đơn hàng làm tổng giá trị đã gọi vượt giá trị khung.',
-          `Cảnh báo sắp hết hạn trong ${warnDays('fw')} ngày (= số ngày "Trước hạn" của Trigger FRAMEWORK_EXPIRING — giả lập P-80).`,
+          `Cảnh báo sắp hết hạn trong ${warnDays('fw')} ngày (tham số hệ thống — giả lập P-80).`,
           '<b>Giả lập P-81</b>: quy trình đơn hàng chưa có BPMN. Prototype đặt luồng 4 bước Chờ nhà thầu xác nhận → Đang giao → Đã giao đủ → Đã thanh toán, chuyển bước ở hộp thoại đơn hàng; đơn hàng là dòng của thỏa thuận khung, không phải hợp đồng con.'],
         q: ['P-81'], src: 'task-management/task-management.component · /task-management',
       },
@@ -556,6 +626,14 @@
   document.addEventListener('click', async (e) => {
     const t = e.target;
     if (t.closest('[data-hd-import]')) { importDlg(); return; }
+    const nc = t.closest('[data-hd-newcase]');
+    if (nc) {
+      const hd = nc.dataset.hdNewcase;
+      Flow.startCase('MS22', { code: D.hdCaseCode(hd), parent: hd, clock: D.hdCaseClock });
+      toast('<b>Thành công</b><br>Thêm mới hồ sơ thành công');
+      location.hash = '#/task/' + Flow.caseTokens(Flow.state.persona, hd)[0].id;
+      return;
+    }
     const p = t.closest('[data-hd-pay]');
     if (p) { payDlg(p.dataset.hdPay); return; }
     const a = t.closest('[data-hd-annex]');
@@ -564,16 +642,6 @@
     if (nw) { orderNewDlg(nw.dataset.fwNew); return; }
     const o = t.closest('[data-fw-order]');
     if (o) { e.preventDefault(); e.stopImmediatePropagation(); orderDlg(...o.dataset.fwOrder.split('|')); return; }
-    const d = t.closest('[data-hd-del]');
-    if (d) {
-      e.stopImmediatePropagation();
-      const h = hdOf(d.dataset.hdDel);
-      const ok = await window.Catalog.confirm({ sev: 'danger', title: 'Xóa hợp đồng', desc: `Bạn có chắc chắn muốn xóa ${h.title} - ${h.code} không? Thao tác này không thể hoàn tác.`, hl: h.title, cancel: 'Hủy', ok: 'Xóa' });
-      if (!ok) return;
-      U.hd = U.hd.filter((x) => x.code !== h.code); persist();
-      toast('<b>Thành công</b><br>Xóa hợp đồng thành công');
-      rerender();
-    }
   }, true);
 
   function route(parts) {
@@ -584,5 +652,8 @@
   function enter(parts) { if (parts[0] === 'hop-dong' && parts[1] === 'create') resetForm(parts[2] && decodeURIComponent(parts[2])); }
   function reset() { U = { hd: [], add: {}, ord: {}, ordSt: {} }; persist(); }
   /* Cho Tổng quan / Báo cáo (S4: cùng một nguồn dữ liệu). */
-  window.HopDong = { route, enter, reset, byPkg, all, eff, prog, paidSum, remain, advOf, accSum, lateMs, guarWarn, doneRate, HD_ST, FW, called, ordersOf, hdSoon, warnDays, TODAY, days, dk };
+  /* Mở một tab của Chi tiết hợp đồng (công cụ demo). */
+  const setTab = (code, tab) => K().setTab('hd:' + code, tab);
+  const openTab = (code, tab) => { setTab(code, tab); location.hash = '#/hop-dong/' + encodeURIComponent(code); };
+  window.HopDong = { find: hdOf, kit: K, pkgOf: (h) => (h.pkg ? T().pkOf(h.pkg) : null), checkRows, setTab, openTab, route, enter, reset, byPkg, all, eff, prog, paidSum, remain, advOf, accSum, lateMs, guarWarn, doneRate, HD_ST, FW, called, ordersOf, hdSoon, warnDays, TODAY, days, dk };
 })();

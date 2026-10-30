@@ -21,7 +21,7 @@ test('D-15: menu theo 12 module Backlog; Quản lý quy trình có 3 mục (D-2)
   const tops = await page.locator('.sb-nav > .nav:not(.child) .l').allInnerTexts();
   // Vận hành trước, cấu hình sau; Tích hợp và Trợ lý AI ẩn (2026-10-07).
   expect(tops).toEqual(['Tổng quan', 'Việc của tôi', 'Quản lý đề xuất mua sắm', 'Quản lý khoản đầu tư', 'Quản lý thầu',
-    'Quản lý hợp đồng', 'Báo cáo', 'Quản lý quy trình', 'Danh mục dùng chung', 'Thông báo']);
+    'Quản lý hợp đồng', 'Báo cáo', 'Quản lý quy trình', 'Thông báo']);
   // Mục con của một nhóm = các nút .child liền sau nút nhóm.
   const kids = (label) => page.evaluate((l) => {
     let n = document.querySelector(`.sb-nav [data-toggle="${l}"]`).nextElementSibling;

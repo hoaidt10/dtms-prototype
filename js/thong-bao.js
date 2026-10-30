@@ -1,7 +1,7 @@
 /* Thông báo theo Backlog W1_T10 (T16 B3, plan docs/dtms/prototype-W1T10-backlog-chuan-bi.md §2k).
    Dựng theo source có sẵn: repo-khcn-bpmn-fe features/notification-template, features/notification-channel; BE be/messages
    (NotificationTemplateController, NotificationChannelConfigController, bảng notification_event_config cho Trigger).
-   SCR-88 #/mau-thong-bao, SCR-89 #/mau-thong-bao/create | edit/<id> | detail/<id>, SCR-90 #/kenh-thong-bao, SCR-91 #/trigger-thong-bao[/<mã>[/edit]]. */
+   SCR-88 #/mau-thong-bao, SCR-89 #/mau-thong-bao/create | edit/<id> | detail/<id>, SCR-90 #/kenh-thong-bao. SCR-91 Trigger thông báo bỏ theo D-44 (team BA 30/10/2026): sự kiện do BE cấu hình (notification_event_config), không có màn quản trị. */
 (function () {
   const D = window.D, Flow = window.Flow, S = window.Screens;
   const { esc, icon, vSelect, badge, toast, vModal } = window.UI;
@@ -45,8 +45,8 @@
     APP: '<svg viewBox="0 0 24 24" fill="none"><rect x="6.5" y="2.5" width="11" height="19" rx="2.5" stroke="currentColor" stroke-width="1.5"/><path d="M11 18.5h2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>',
   };
 
-  /* Trigger = notification_event_config: sự kiện do workflow bắn (EVENT_DRIVEN) hoặc job Quartz quét mốc hạn (SCHEDULED). */
-  const ROLES = ['Người xử lý bước', 'Người lập hồ sơ', 'Lãnh đạo đơn vị đề xuất', 'Chuyên viên TTMS', 'Đơn vị quản lý hợp đồng', 'Phòng Tài chính', 'Nhà cung cấp (ngoài hệ thống)'];
+  /* Sự kiện = notification_event_config: do workflow bắn (EVENT_DRIVEN) hoặc job Quartz quét mốc hạn (SCHEDULED). BE cấu hình,
+     không có màn quản trị (D-44); chỉ dùng cho khối "Sự kiện sử dụng mẫu" của Mẫu thông báo. */
   const E0 = [
     ['TASK_ASSIGNED', 'Giao việc xử lý bước quy trình', 'BPMN', 'EVENT_DRIVEN', null, null, ['Người xử lý bước'], ['IN_APP', 'EMAIL'], '/my-tasks/{id}', 'Task người dùng được tạo (Camunda user task created)'],
     ['TASK_DUE_SOON', 'Nhắc việc sắp đến hạn xử lý', 'BPMN', 'SCHEDULED', 'BEFORE_DUE', 1, ['Người xử lý bước'], ['IN_APP'], '/my-tasks/{id}', 'Hạn xử lý của task (SLA theo bước)'],
@@ -60,10 +60,6 @@
     ['PAYMENT_REQUEST_SIGNED', 'Đề nghị thanh toán đã được ký', 'DTMS', 'EVENT_DRIVEN', null, null, ['Phòng Tài chính', 'Đơn vị quản lý hợp đồng'], ['IN_APP'], '/hop-dong/{id}', 'Ký xong đề nghị chuyển tiền (MS24)'],
     ['FRAMEWORK_EXPIRING', 'Thỏa thuận khung sắp hết hạn', 'DTMS', 'SCHEDULED', 'BEFORE_DUE', 90, ['Đơn vị quản lý hợp đồng'], ['EMAIL'], '/thoa-thuan-khung/{id}', 'Ngày hết hạn thỏa thuận khung', 'INACTIVE'],
   ].map(([code, name, app, trig, timing, offset, roles, channels, cta, src, status]) => ({ code, name, app, trig, timing, offset, roles, channels, cta, src, status: status || 'ACTIVE' }));
-  const APP = { BPMN: 'Quản lý quy trình', DTMS: 'Đầu tư mua sắm' };
-  const TRIG = { EVENT_DRIVEN: 'Theo sự kiện nghiệp vụ', SCHEDULED: 'Theo lịch (quét mốc hạn)' };
-  const TIMING = { EXACT_DUE: 'Đúng hạn', BEFORE_DUE: 'Trước hạn', AFTER_DUE: 'Sau hạn' };
-  const timingText = (e) => (e.trig !== 'SCHEDULED' ? '-' : e.timing === 'EXACT_DUE' || !e.offset ? TIMING[e.timing] : `${TIMING[e.timing]} ${e.offset} ngày`);
 
   const KEY = 'dtms-proto-thong-bao';
   let U = null;
@@ -144,7 +140,7 @@
             ${k.kv('Tên mẫu thông báo', esc(t.name), 'span3')}${k.kv('Tiêu đề (Email/Web/App)', esc(t.subject), 'span3')}</div>
           <div><div class="tb-k">Nội dung mẫu</div><div class="tb-content">${esc(t.content || '-')}</div></div></section>
         ${k.card('Sự kiện sử dụng mẫu', k.table([['Mã sự kiện', 260], ['Tên sự kiện', 360], ['Trạng thái sự kiện', 170, 'c']], used,
-          (e) => `<td><a class="link" data-go="trigger-thong-bao/${encodeURIComponent(e.code)}">${esc(e.code)}</a></td><td>${k.clamp(e.name)}</td><td class="c">${e.status === 'ACTIVE' ? badge('Đang hoạt động', 'success') : badge('Dừng hoạt động', 'default')}</td>`))}
+          (e) => `<td>${esc(e.code)}</td><td>${k.clamp(e.name)}</td><td class="c">${e.status === 'ACTIVE' ? badge('Đang hoạt động', 'success') : badge('Dừng hoạt động', 'default')}</td>`))}
       </div>`;
     }
     const inp = (key, ph, max, extra) => `<input class="vctl" id="tb-${key}" data-tbf="${key}" maxlength="${max}" placeholder="${ph}" value="${esc(v[key])}" ${err[key] ? 'aria-invalid="true"' : ''} ${extra || ''}>`;
@@ -217,111 +213,13 @@
     };
   }
 
-  /* ---------- SCR-91 Trigger thông báo ---------- */
-  const eOf = (code) => U.ev.find((e) => e.code === code) || null;
-  function evList() {
-    // Theo: khuôn notification-template (danh sách + cột Trạng thái công tắc); dữ liệu = bảng notification_event_config của be/messages
-    const k = K();
-    return k.listPage({
-      id: 'trg', title: 'Trigger thông báo', ph: 'Tìm kiếm theo mã, tên sự kiện',
-      rows: () => U.ev.slice(), kwText: (e) => `${e.code} ${e.name}`,
-      empty: () => ({ code: '', name: '', app: null, trig: null, status: null }),
-      match: (e, f) => k.has(f.code, e.code) && k.has(f.name, e.name) && (!f.app || e.app === f.app) && (!f.trig || e.trig === f.trig) && (!f.status || e.status === f.status),
-      adv: (txt, sel) => `${txt('code', 'Mã sự kiện')}${txt('name', 'Tên sự kiện')}
-        ${sel('app', 'Phân hệ', { searchable: false, placeholder: 'Tất cả', options: Object.entries(APP).map(([value, label]) => ({ value, label })) })}
-        ${sel('trig', 'Loại kích hoạt', { searchable: false, placeholder: 'Tất cả', options: Object.entries(TRIG).map(([value, label]) => ({ value, label })) })}
-        ${sel('status', 'Trạng thái', { searchable: false, placeholder: 'Tất cả', options: [{ value: 'ACTIVE', label: 'Đang hoạt động' }, { value: 'INACTIVE', label: 'Dừng hoạt động' }] })}`,
-      cols: [['Thao tác', 70, 'c'], ['Trạng thái', 90, 'c'], ['Mã sự kiện', 270], ['Tên sự kiện', 320], ['Phân hệ', 170], ['Loại kích hoạt', 210], ['Mốc gửi', 140], ['Kênh gửi', 220]],
-      href: (e) => 'trigger-thong-bao/' + encodeURIComponent(e.code),
-      cell: (e) => `<td class="c"><div class="acts"><button type="button" class="cat-ic" data-go="trigger-thong-bao/${encodeURIComponent(e.code)}/edit" aria-label="Chỉnh sửa">${icon('edit')}</button></div></td>
-        <td class="c">${sw(e.status === 'ACTIVE', `data-ev-tg="${esc(e.code)}"`)}</td>
-        <td><a class="link" data-go="trigger-thong-bao/${encodeURIComponent(e.code)}">${esc(e.code)}</a></td><td>${k.clamp(e.name)}</td><td>${esc(APP[e.app])}</td><td>${esc(TRIG[e.trig])}</td>
-        <td>${esc(timingText(e))}</td><td><span class="ch-pills">${e.channels.map(chPill).join('')}</span></td>`,
-      info: {
-        scr: 'SCR-91', name: 'Trigger thông báo', uc: 'Backlog W1_T10 › Thông báo › Trigger — Gắn thông báo với sự kiện nghiệp vụ (dòng 189)',
-        notes: [
-          'Dữ liệu = bảng <b>notification_event_config</b> của be/messages (đã có entity + Liquibase, chưa có API / màn quản trị) → cần dev: API danh sách / cập nhật + màn này theo khuôn notification-template.',
-          'Mã sự kiện do hệ thống phát sinh (workflow bắn khi tạo task, trả lại, kết thúc quy trình; job Quartz quét mốc hạn) nên <b>không có Thêm mới / Xóa</b>; quản trị chỉ bật / tắt và chỉnh mốc gửi, vai nhận, kênh, đường dẫn.',
-          'Sự kiện gắn với mẫu theo mã: BE tìm mẫu <b>&lt;mã sự kiện&gt;_&lt;KÊNH&gt;</b> cho từng kênh được bật (findTemplate). Kênh không có mẫu đang hoạt động hoặc kênh tắt ở Kênh thông báo thì không gửi.',
-        ],
-        src: 'notification-template (khuôn) · BE notification_event_config',
-      },
-    });
-  }
-  const EF = { code: null, v: null, err: {} };
-  function evDetail(code, edit) {
-    // Theo: notification-template-form (DETAIL / EDIT) — form cấu hình sự kiện
-    const e = eOf(code), k = K();
-    if (!e) return `<div class="pg">${head({ title: 'Xem chi tiết trigger thông báo', back: 'trigger-thong-bao', lg: true })}${k.emptyCard('Thông tin chung', 'Không tìm thấy sự kiện thông báo')}</div>`;
-    if (edit && EF.code !== code) EF.code = code, EF.v = JSON.parse(JSON.stringify(e)), EF.err = {};
-    const v = edit ? EF.v : e;
-    const info = {
-      scr: 'SCR-91', name: 'Trigger thông báo', uc: 'Backlog W1_T10 › Trigger (dòng 189)',
-      notes: [
-        'Các trường theo cột của notification_event_config: event_code, event_name, app_code, trigger_type (SCHEDULED / EVENT_DRIVEN), timing_type (EXACT_DUE / BEFORE_DUE / AFTER_DUE) + offset_days, recipient_roles, enabled_channels, cta_path_template, status.',
-        'Mã sự kiện, phân hệ, loại kích hoạt và nguồn sự kiện do hệ thống định nghĩa — chỉ xem. Mốc gửi chỉ có với sự kiện Theo lịch.',
-        'Bảng "Mẫu thông báo theo kênh" tính theo quy ước mã của BE, chỉ xem; sửa nội dung ở Mẫu thông báo.',
-      ],
-      src: 'notification-template-form (khuôn) · BE notification_event_config',
-    };
-    const tplRows = ['IN_APP', 'EMAIL', 'SMS'].map((c) => ({ c, on: v.channels.includes(c), t: tplFor(v.code, c), g: (U.ch.find((x) => x.code === (c === 'IN_APP' ? 'WEB' : c)) || {}).on }));
-    const tplCard = k.card('Mẫu thông báo theo kênh', k.table([['Kênh', 120, 'c'], ['Gửi cho sự kiện', 140, 'c'], ['Mẫu thông báo', 300], ['Tình trạng gửi', 260]], tplRows,
-      (r) => `<td class="c">${chPill(r.c)}</td><td class="c">${r.on ? 'Có' : 'Không'}</td><td>${r.t ? `<a class="link" data-go="mau-thong-bao/detail/${r.t.id}">${esc(r.t.code)}</a>` : K().dash}</td>
-        <td>${!r.on ? K().dash : !r.t ? badge('Chưa có mẫu', 'error') : r.t.status !== 'ACTIVE' ? badge('Mẫu dừng hoạt động', 'warning') : !r.g ? badge('Kênh đang tắt', 'warning') : badge('Sẵn sàng gửi', 'success')}</td>`), 'Theo mã mẫu &lt;sự kiện&gt;_&lt;KÊNH&gt;');
-    if (!edit) {
-      return `<div class="pg">${head({ title: 'Xem chi tiết trigger thông báo', back: 'trigger-thong-bao', lg: true, info, right: `<button type="button" class="vbtn primary" data-go="trigger-thong-bao/${encodeURIComponent(code)}/edit">Chỉnh sửa</button>` })}
-        <section class="vcard pad24"><h3>Thông tin chung</h3><div class="ginfo c3">
-          ${k.kv('Mã sự kiện', esc(e.code))}${k.kv('Tên sự kiện', esc(e.name), 'span2')}
-          ${k.kv('Phân hệ', esc(APP[e.app]))}${k.kv('Loại kích hoạt', esc(TRIG[e.trig]))}${k.kv('Trạng thái', e.status === 'ACTIVE' ? 'Đang hoạt động' : 'Dừng hoạt động')}
-          ${k.kv('Nguồn sự kiện', esc(e.src), 'span2')}${k.kv('Mốc gửi', esc(timingText(e)))}
-          ${k.kv('Vai trò nhận thông báo', esc(e.roles.join(', ')), 'span2')}${k.kv('Kênh gửi', e.channels.map(chPill).join(' '))}
-          ${k.kv('Đường dẫn khi bấm thông báo', e.cta ? `<code>${esc(e.cta)}</code>` : null, 'span3')}</div></section>${tplCard}</div>`;
-    }
-    const err = EF.err;
-    const set = (key) => (x) => { v[key] = x; delete err[key]; rerender(); };
-    return `<form class="pg" data-ev-form>${head({ title: 'Chỉnh sửa trigger thông báo', back: 'trigger-thong-bao/' + encodeURIComponent(code), lg: true, info,
-        right: `<button type="button" class="vbtn secondary grey" data-go="trigger-thong-bao/${encodeURIComponent(code)}">Hủy</button><button type="submit" class="vbtn primary" id="ev-save">Lưu</button>` })}
-      <section class="vcard pad24"><h3>Thông tin chung</h3><div class="grid3">
-        ${k.field('Mã sự kiện', `<input class="vctl" value="${esc(v.code)}" disabled>`)}
-        ${k.field('Tên sự kiện', `<input class="vctl" id="ev-name" maxlength="255" value="${esc(v.name)}" ${err.name ? 'aria-invalid="true"' : ''}>`, { req: true, err: err.name, cls: 'span2' })}
-        ${k.field('Phân hệ', `<input class="vctl" value="${esc(APP[v.app])}" disabled>`)}
-        ${k.field('Loại kích hoạt', `<input class="vctl" value="${esc(TRIG[v.trig])}" disabled>`)}
-        ${k.field('Nguồn sự kiện', `<input class="vctl" value="${esc(v.src)}" disabled>`)}
-        ${v.trig === 'SCHEDULED' ? k.field('Mốc gửi', vSelect({ id: 'ev-timing', value: v.timing, options: Object.entries(TIMING).map(([value, label]) => ({ value, label })), onChange: set('timing') }), { req: true })
-          + k.field('Số ngày', `<input class="vctl" id="ev-offset" type="number" min="0" max="365" value="${v.timing === 'EXACT_DUE' ? 0 : esc(v.offset)}" ${v.timing === 'EXACT_DUE' ? 'disabled' : ''} ${err.offset ? 'aria-invalid="true"' : ''}>`, { req: v.timing !== 'EXACT_DUE', err: err.offset }) : ''}
-        ${k.field('Vai trò nhận thông báo', vSelect({ id: 'ev-roles', multi: true, clear: true, value: v.roles, placeholder: 'Chọn vai trò', invalid: !!err.roles, options: ROLES.map((r) => ({ value: r, label: r })), onChange: set('roles') }), { req: true, err: err.roles, cls: 'span2' })}
-        ${k.field('Kênh gửi', vSelect({ id: 'ev-ch', multi: true, clear: true, searchable: false, value: v.channels, placeholder: 'Chọn kênh', invalid: !!err.channels, options: Object.entries(CH).map(([value, label]) => ({ value, label })), onChange: set('channels') }), { req: true, err: err.channels })}
-        ${k.field('Đường dẫn khi bấm thông báo', `<input class="vctl" id="ev-cta" maxlength="255" placeholder="Ví dụ: /hop-dong/{id}" value="${esc(v.cta)}">`, { cls: 'span3' })}
-      </div></section>${tplCard}</form>`;
-  }
-  function saveEv() {
-    const v = EF.v, err = EF.err = {};
-    v.name = document.getElementById('ev-name').value.trim();
-    v.cta = document.getElementById('ev-cta').value.trim();
-    const off = document.getElementById('ev-offset');
-    if (off) v.offset = v.timing === 'EXACT_DUE' ? 0 : Number(off.value);
-    if (!v.name) err.name = 'Bạn cần nhập Tên sự kiện.';
-    if (off && v.timing !== 'EXACT_DUE' && !(v.offset >= 1 && v.offset <= 365)) err.offset = 'Số ngày từ 1 đến 365.';
-    if (!v.roles.length) err.roles = 'Bạn cần chọn Vai trò nhận thông báo.';
-    if (!v.channels.length) err.channels = 'Bạn cần chọn Kênh gửi.';
-    if (Object.keys(err).length) { rerender(); return; }
-    Object.assign(eOf(v.code), JSON.parse(JSON.stringify(v)));
-    persist(); EF.code = null;
-    toast('<b>Thành công</b><br>Cập nhật trigger thông báo thành công');
-    location.hash = '#/trigger-thong-bao/' + encodeURIComponent(v.code);
-  }
-
   /* ---------- Sự kiện ---------- */
   document.addEventListener('input', (e) => {
     const f = e.target.closest && e.target.closest('[data-tbf]');
     if (f) F.v[f.dataset.tbf] = f.value;
-    if (EF.v && e.target.id === 'ev-name') EF.v.name = e.target.value;
-    if (EF.v && e.target.id === 'ev-cta') EF.v.cta = e.target.value;
-    if (EF.v && e.target.id === 'ev-offset') EF.v.offset = Number(e.target.value);
   });
   document.addEventListener('submit', (e) => {
     if (e.target.matches('[data-tb-form]')) { e.preventDefault(); saveTpl(); }
-    if (e.target.matches('[data-ev-form]')) { e.preventDefault(); saveEv(); }
   });
   document.addEventListener('click', async (e) => {
     const t = e.target;
@@ -361,32 +259,18 @@
     }
     const cf = t.closest('[data-ch-cfg]');
     if (cf) { cfgDlg(cf.dataset.chCfg); return; }
-    const et = t.closest('[data-ev-tg]');
-    if (et) {
-      e.stopImmediatePropagation();
-      const r = eOf(et.dataset.evTg), act = r.status !== 'ACTIVE', hl = `${r.name} - ${r.code}`;
-      const ok = await confirm({ sev: act ? 'info' : 'warning', title: act ? 'Kích hoạt' : 'Dừng hoạt động', desc: `Bạn có chắc chắn muốn ${act ? 'kích hoạt' : 'dừng hoạt động'} sự kiện thông báo: ${hl} không?`, hl, cancel: 'Không', ok: 'Có' });
-      if (!ok) return;
-      r.status = act ? 'ACTIVE' : 'INACTIVE'; persist();
-      toast(`<b>Thành công</b><br>${act ? 'Kích hoạt' : 'Dừng hoạt động'} sự kiện thông báo thành công`);
-      rerender();
-    }
   }, true);
 
   /* Router */
   function route(parts) {
     const [a, b, c] = parts;
     if (a === 'mau-thong-bao') return b ? tplForm() : tplList();
-    if (a === 'kenh-thong-bao') return channels();
-    return b ? evDetail(decodeURIComponent(b), c === 'edit') : evList();
+    return channels();
   }
   function enter(parts) {
     const [a, b, c] = parts;
     if (a === 'mau-thong-bao' && b) enterForm(b === 'create' ? 'CREATE' : b === 'edit' ? 'EDIT' : 'DETAIL', c || null);
-    if (a === 'trigger-thong-bao') EF.code = null;
   }
   function reset() { try { localStorage.removeItem(KEY); } catch (e) { /* bỏ qua */ } U = null; load(); }
-  /* Ngưỡng cảnh báo (P-80, giả lập): số ngày "Trước hạn" của sự kiện SCHEDULED — màn Hợp đồng / Thỏa thuận khung / Báo cáo đọc cùng giá trị này. */
-  const warnDays = (code, dflt) => { const e = U.ev.find((x) => x.code === code); return e && e.timing === 'BEFORE_DUE' && e.offset > 0 ? e.offset : dflt; };
-  window.ThongBao = { route, enter, reset, events: () => U.ev, templates: () => U.t, warnDays };
+  window.ThongBao = { route, enter, reset, events: () => U.ev, templates: () => U.t };
 })();

@@ -57,7 +57,7 @@ test('B5: Danh sách hồ sơ ĐXMS theo profile-list — cột, tìm kiếm, t�
   await expect(page.locator('.pg-title')).toHaveText('Danh sách hồ sơ ĐXMS');
   await expect(page.locator('.sb-nav [data-go="ho-so-dxms"]')).toHaveClass(/active/);
   await expect(page.locator('.pg-head .r [data-create="hs"]')).toHaveText(/Thêm mới/);
-  await expect(page.locator('.vtable th')).toHaveText(['STT', 'Thao tác', 'Trạng thái', 'Mã hồ sơ', 'Mã ĐXMS', 'Tên hồ sơ', 'Loại hồ sơ', 'Đơn vị đề xuất',
+  await expect(page.locator('.vtable th')).toHaveText(['STT', 'Trạng thái', 'Mã hồ sơ', 'Mã ĐXMS', 'Tên hồ sơ', 'Loại hồ sơ', 'Đơn vị đề xuất',
     'Tổng giá trị (tỷ đồng)', 'Mức ưu tiên', 'Quy trình', 'Bước hiện tại', 'Ngày cập nhật']);
   await expect(page.locator('.vpager')).toContainText('Tổng số bản ghi: 13');
   await expect(page.locator('.vtable tbody tr')).toHaveCount(10);
@@ -514,3 +514,16 @@ test('C4: ?capture=1 — màn Quản trị quy trình ẩn nút (i); sơ đồ S
   await expect(page.locator('.bp-svg')).toBeVisible();
   await expect(page.locator('.bp-svg foreignObject')).toHaveCount(0);
 });
+
+for (const [h, title] of [['#/ho-so-dxms', 'Danh sách hồ sơ ĐXMS'], ['#/ho-so-kdt', 'Danh sách hồ sơ khoản đầu tư'],
+  ['#/khlcnt', 'Danh sách kế hoạch lựa chọn nhà thầu'], ['#/hop-dong', 'Danh sách hợp đồng']]) {
+  test(`D-43: ${title} không có cột Thao tác, mã vẫn mở chi tiết`, async ({ page }) => {
+    await fresh(page, h);
+    await expect(page.locator('.pg-title')).toHaveText(title);
+    await expect(page.locator('main .vtable th', { hasText: 'Thao tác' })).toHaveCount(0);
+    await expect(page.locator('main .vtable th').nth(1)).toHaveText('Trạng thái');
+    await page.locator('main .vtable tbody tr').first().locator('a.link').first().click();
+    await expect(page).not.toHaveURL(new RegExp(h + '$'));
+    expect(page.errors).toEqual([]);
+  });
+}

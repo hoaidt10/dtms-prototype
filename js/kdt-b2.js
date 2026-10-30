@@ -46,12 +46,10 @@
     const pages = Math.max(1, Math.ceil(all.length / L.size));
     if (L.page > pages) L.page = pages;
     const from = (L.page - 1) * L.size;
-    const mine = Flow.tokensFor(Flow.state.persona);
-    const cols = [['Thao tác', 80, 'c'], ['Trạng thái', 180, 'c'], ['Mã hồ sơ', 150], ['Mã KĐT', 160], ['Tên hồ sơ', 320], ['Loại hồ sơ', 150], ['Đơn vị đề xuất', 200],
+    const cols = [['Trạng thái', 180, 'c'], ['Mã hồ sơ', 150], ['Mã KĐT', 160], ['Tên hồ sơ', 320], ['Loại hồ sơ', 150], ['Đơn vị đề xuất', 200],
       ['Nhóm KĐT', 200], ['Nhánh hồ sơ', 220], ['Tổng mức vốn (tỷ đồng)', 170, 'r'], ['Bước hiện tại', 240], ['Ngày cập nhật', 140]];
     const body = all.slice(from, from + L.size).map((c, i) => {
-      const edit = c.live && Flow.state.kdt === c.kdt && mine.length ? `<button class="vbtn ghost icon" data-go="task/${mine[0].id}" title="Sửa" aria-label="Sửa">${icon('edit')}</button>` : '';
-      return `<tr class="click" data-go="${caseHref(c)}" data-code="${esc(c.code)}"><td class="ord">${from + i + 1}</td><td class="c"><div class="acts">${edit}</div></td>
+      return `<tr class="click" data-go="${caseHref(c)}" data-code="${esc(c.code)}"><td class="ord">${from + i + 1}</td>
         <td class="c">${badge(...CASE_ST[c.st])}</td><td><a class="link" data-go="${caseHref(c)}">${esc(c.code)}</a></td><td><a class="link" data-go="kdt/${encodeURIComponent(c.kdt)}">${esc(c.kdt)}</a></td>
         <td>${clamp(c.title)}</td><td>${c.kind === 'DC' ? 'Điều chỉnh KĐT' : 'Phê duyệt KĐT'}</td><td>${clamp(c.unit)}</td><td>${c.flow ? esc(D.kdtGroups[c.flow]) : '<span class="faint">Chưa xác định</span>'}</td>
         <td>${c.branch ? esc(D.kdtBranches[c.branch]) : dash}</td><td class="r num">${c.total != null ? ty(c.total) : dash}</td><td>${clamp(c.step)}</td><td class="num">${esc(c.updated)}</td></tr>`;
@@ -61,7 +59,7 @@
       notes: [
         'T16 B2: khuôn profile-list như Danh sách hồ sơ ĐXMS (SCR-02); cột Mã nhiệm vụ của source thay bằng <b>Mã KĐT</b>, thêm Nhóm KĐT, Nhánh hồ sơ (gộp BM-00 / hai giai đoạn), Tổng mức vốn thực tế.',
         'Hồ sơ là đối tượng con của KĐT (D-12): không có nút Thêm mới ở đây — hồ sơ tạo ở Chỉnh sửa KĐT › Tạo hồ sơ (Lưu = khởi tạo MS13). Mã hồ sơ mở Chi tiết hồ sơ KĐT; Mã KĐT mở Chi tiết KĐT.',
-        'Nhóm KĐT do hệ thống xác định sau bước 12 (trước đó "Chưa xác định"). Cột Thao tác: Sửa chỉ khi người đăng nhập có việc trên hồ sơ, mở màn xử lý việc đó.',
+        'Nhóm KĐT do hệ thống xác định sau bước 12 (trước đó "Chưa xác định"). Không có cột Thao tác (D-43, team BA 30/10/2026); xử lý việc mở từ Việc của tôi.',
       ],
       src: 'profile-management/profile-list · /khcn-profile-management',
     };

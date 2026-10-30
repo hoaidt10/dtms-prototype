@@ -20,6 +20,9 @@
   /* Nhãn danh mục (DMDC SCR-33/34/35); ô chọn chỉ có bản ghi đang hoạt động, trừ giá trị KĐT đang giữ. */
   const CAT = { field: 'linh-vuc', type: 'loai-kdt', nature: 'tinh-chat-tai-san' };
   const catLabel = (k, code) => { const r = window.Catalog.rows(CAT[k]).find((x) => x.code === code); return r ? r.name : code || ''; };
+  /* D-45: KĐT xuất phát từ nhiệm vụ / đề tài, dự án của Kế hoạch năm — cùng danh sách D.nhiemVu với ĐXMS (SCR-28). */
+  const nvText = (c) => { const n = c && D.nvOf(c); return n ? `${n.code} — ${n.name}` : ''; };
+  const nvOptions = (kind) => D.nhiemVu.map((n) => ({ value: n.code, label: kind ? `${n.code} — ${n.name} (${n.kind})` : `${n.code} — ${n.name}` }));
   const catOptions = (k, cur) => window.Catalog.rows(CAT[k]).filter((r) => r.active || r.code === cur).map((r) => ({ value: r.code, label: r.name }));
   const UNITS = [...new Set(D.personas.slice(0, 1).map((p) => p.unit).concat(D.kdtList.map((x) => x.unit), D.dxmsList.map((x) => x.unit)))];
 
@@ -62,13 +65,13 @@
   const rowsAll = () => Flow.kdtAll().map((x) => Object.assign({}, x, meta(x)));
 
   /* ---------- SCR-54 Danh sách KĐT ---------- */
-  const emptyFilter = () => ({ code: '', title: '', unit: null, field: null, type: null, group: [], stage: [] });
+  const emptyFilter = () => ({ code: '', title: '', nv: null, unit: null, field: null, type: null, group: [], stage: [] });
   const L = { kw: '', adv: false, f: emptyFilter(), d: emptyFilter(), page: 1, size: 10, psOpen: false };
   function filtered() {
     const f = L.f;
     return rowsAll().filter((x) => (!L.adv
       ? !L.kw || norm(x.code + ' ' + x.title).includes(norm(L.kw))
-      : (!f.code || norm(x.code).includes(norm(f.code))) && (!f.title || norm(x.title).includes(norm(f.title))) && (!f.unit || x.unit === f.unit)
+      : (!f.code || norm(x.code).includes(norm(f.code))) && (!f.title || norm(x.title).includes(norm(f.title))) && (!f.nv || x.nv === f.nv) && (!f.unit || x.unit === f.unit)
         && (!f.field || x.field === f.field) && (!f.type || x.type === f.type) && (!f.group.length || f.group.includes(x.group || 'NONE'))
         && (!f.stage.length || f.stage.includes(x.stage))));
   }
@@ -80,6 +83,7 @@
     return `<form class="adv" data-kdt-adv>
       <div class="grid3">
         ${txt('code', 'Mã KĐT')}${txt('title', 'Tên KĐT')}
+        ${sel('nv', 'Nhiệm vụ / Đề tài, dự án', { placeholder: 'Chọn nhiệm vụ / đề tài, dự án', options: nvOptions() })}
         ${sel('unit', 'Đơn vị đề xuất', { options: UNITS.map((u) => ({ value: u, label: u })) })}
         ${sel('field', 'Lĩnh vực', { searchable: false, options: catOptions('field') })}
         ${sel('type', 'Loại KĐT', { options: catOptions('type') })}
@@ -95,11 +99,11 @@
     const pages = Math.max(1, Math.ceil(rows.length / L.size));
     if (L.page > pages) L.page = pages;
     const from = (L.page - 1) * L.size;
-    const cols = [['Thao tác', 100, 'c'], ['Trạng thái', 200, 'c'], ['Mã KĐT', 150], ['Tên KĐT', 320], ['Đơn vị đề xuất', 200], ['Loại KĐT', 170],
+    const cols = [['Thao tác', 100, 'c'], ['Trạng thái', 200, 'c'], ['Mã KĐT', 150], ['Tên KĐT', 320], ['Nhiệm vụ / Đề tài, dự án', 280], ['Đơn vị đề xuất', 200], ['Loại KĐT', 170],
       ['Nhóm KĐT', 170], ['Tổng mức vốn (tỷ đồng)', 170, 'r'], ['Ngày cập nhật', 140]];
     const body = rows.slice(from, from + L.size).map((x, i) => `<tr class="click" data-go="${href(x.code)}" data-code="${esc(x.code)}">
         <td class="ord">${from + i + 1}</td><td class="c"><div class="acts">${iconBtn('edit', 'Sửa', `data-go="${href(x.code)}/edit"`)}${x.stage === 'NEW' ? `<span class="sep"></span>${iconBtn('del', 'Xoá', `data-del-kdt="${esc(x.code)}"`)}` : ''}</div></td>
-        <td class="c">${stageBadge(x.stage)}</td><td><a class="link" data-go="${href(x.code)}">${esc(x.code)}</a></td><td>${clamp(x.title)}</td><td>${clamp(x.unit)}</td>
+        <td class="c">${stageBadge(x.stage)}</td><td><a class="link" data-go="${href(x.code)}">${esc(x.code)}</a></td><td>${clamp(x.title)}</td><td>${nvText(x.nv) ? clamp(nvText(x.nv)) : dash}</td><td>${clamp(x.unit)}</td>
         <td>${clamp(catLabel('type', x.type))}</td><td>${x.group ? esc(x.group) : '<span class="faint">Chưa xác định</span>'}</td>
         <td class="r num">${x.value != null ? ty(x.value) : dash}</td><td class="num">${esc(x.updated)}</td></tr>`).join('');
     const info = {
@@ -177,8 +181,8 @@
     const x = code && Flow.findKdt(code);
     const u = persona(Flow.state.persona).unit;
     Object.assign(XF, { mode, code: code || null, err: {} });
-    XF.v = x ? { title: x.title, unit: x.unit, field: x.field, type: x.type, nature: x.nature, est: tyIn(x.est), period: x.period || '', secret: x.secret ? 'Có' : 'Không', purpose: x.purpose || '' }
-      : { title: '', unit: UNITS.includes(u) ? u : null, field: null, type: null, nature: null, est: '', period: '', secret: 'Không', purpose: '' };
+    XF.v = x ? { title: x.title, nv: x.nv || null, unit: x.unit, field: x.field, type: x.type, nature: x.nature, est: tyIn(x.est), period: x.period || '', secret: x.secret ? 'Có' : 'Không', purpose: x.purpose || '' }
+      : { title: '', nv: null, unit: UNITS.includes(u) ? u : null, field: null, type: null, nature: null, est: '', period: '', secret: 'Không', purpose: '' };
   }
   const notFound = (title) => `<div class="pg">${head({ title, back: 'kdt', lg: true })}<section class="vcard pad24"><div class="empty-t">Không tìm thấy khoản đầu tư.</div></section></div>`;
 
@@ -198,8 +202,9 @@
         'Theo task-create (mode create / edit), như Thêm mới ĐXMS: card <b>Thông tin chung KĐT</b>. Lưu chỉ tạo / cập nhật KĐT, <b>không khởi tạo quy trình</b> (D-12); về Danh sách KĐT. Mã KĐT tự sinh.',
         '<b>Không có trường Quy trình</b> (D-7): Lĩnh vực, Loại KĐT, Tính chất tài sản là 3 trong 04 yếu tố phân luồng (lấy từ Danh mục dùng chung); yếu tố thứ tư là tổng mức vốn thực tế sau báo giá. Hệ thống xác định nhóm MS13 / MS14 / MS15 và nhánh gộp BM-00 sau khi TTMS xác nhận ở bước 12.',
         'Tổng mức vốn dự kiến là giá trị ban đầu; tổng mức vốn hiệu lực lấy từ hồ sơ Hoàn thành gần nhất.',
+        '<b>Nhiệm vụ / Đề tài, dự án</b> bắt buộc (D-45, team BA 30/10/2026: KĐT xuất phát từ một nhiệm vụ hoặc đề tài, dự án của Kế hoạch năm) — cùng nguồn với ĐXMS; chọn xong thì Lĩnh vực mặc định theo nhiệm vụ (sửa được khi chưa có hồ sơ).',
       ].concat(edit ? ['Khi KĐT đã có hồ sơ, 3 yếu tố phân luồng bị khoá (hồ sơ giữ giá trị lúc TTMS xác nhận). Card <b>Danh sách hồ sơ</b> có nút <b>Tạo hồ sơ</b> như source (chỉ ở mode edit).'] : []),
-      q: ['P-51', 'P-59'], src: 'task-management/components/task-create · /task-management/' + (edit ? 'edit/:id' : 'create'),
+      q: ['P-51', 'P-59', 'P-113'], src: 'task-management/components/task-create · /task-management/' + (edit ? 'edit/:id' : 'create'),
     };
     return `<form class="pg" data-kdt-form>
       ${head({ title: edit ? 'Chỉnh sửa khoản đầu tư' : 'Thêm mới khoản đầu tư', back, lg: true, info, right: `<button type="button" class="vbtn secondary grey" data-go="${back}">Huỷ</button><button type="submit" class="vbtn primary" id="k-save">Lưu</button>` })}
@@ -207,6 +212,8 @@
         <div class="grid3">
           ${field('Mã KĐT', `<input class="vctl" placeholder="Hệ thống tự sinh" value="${esc(XF.code || '')}" disabled>`)}
           ${field('Tên KĐT', txt('title', 'Nhập tên khoản đầu tư', { max: 500 }), { req: true, err: err.title, cls: 'span2' })}
+          ${field('Nhiệm vụ / Đề tài, dự án', vSelect({ id: 'k-nv', value: v.nv, searchable: true, placeholder: 'Chọn nhiệm vụ / đề tài, dự án', invalid: !!err.nv,
+            options: nvOptions(true), onChange: (val) => { v.nv = val; delete err.nv; const n = D.nvOf(val); if (n && !v.field && !lock) v.field = n.field; rerender(); } }), { req: true, err: err.nv, cls: 'span2' })}
           ${field('Đơn vị đề xuất', vSelect({ id: 'k-unit', value: v.unit, searchable: true, placeholder: 'Chọn đơn vị đề xuất', invalid: !!err.unit, options: UNITS.map((u) => ({ value: u, label: u })), onChange: upd('unit') }), { req: true, err: err.unit })}
           ${cat('field', 'Lĩnh vực')}${cat('type', 'Loại KĐT')}${cat('nature', 'Tính chất tài sản')}
           ${field('Tổng mức vốn dự kiến (tỷ đồng)', txt('est', 'Nhập tổng mức vốn dự kiến'), { err: err.est })}
@@ -222,6 +229,7 @@
     ['title', 'est', 'period', 'purpose'].forEach((k) => { const el = document.getElementById('k-' + k); if (el) XF.v[k] = el.value; });
     const v = XF.v, err = XF.err = {};
     if (!v.title.trim()) err.title = 'Bạn cần nhập Tên KĐT.';
+    if (!v.nv) err.nv = 'Bạn cần chọn Nhiệm vụ / Đề tài, dự án.';
     if (!v.unit) err.unit = 'Bạn cần chọn Đơn vị đề xuất.';
     if (!v.field) err.field = 'Bạn cần chọn Lĩnh vực.';
     if (!v.type) err.type = 'Bạn cần chọn Loại KĐT.';
@@ -229,7 +237,7 @@
     const est = v.est.trim() === '' ? null : Number(v.est.trim().replace(/\./g, '').replace(',', '.'));
     if (est != null && (Number.isNaN(est) || est < 0)) err.est = 'Tổng mức vốn dự kiến không đúng định dạng.';
     if (Object.keys(err).length) { rerender(); return; }
-    const data = { title: v.title.trim(), unit: v.unit, field: v.field, type: v.type, nature: v.nature, est, period: v.period.trim(), secret: v.secret === 'Có', purpose: v.purpose.trim() };
+    const data = { title: v.title.trim(), nv: v.nv, unit: v.unit, field: v.field, type: v.type, nature: v.nature, est, period: v.period.trim(), secret: v.secret === 'Có', purpose: v.purpose.trim() };
     if (XF.mode === 'edit') { Flow.updateKdt(XF.code, data); toast('<b>Thành công</b><br>Cập nhật khoản đầu tư thành công!'); } else { Flow.createKdt(data); toast('<b>Thành công</b><br>Thêm mới khoản đầu tư thành công!'); }
     location.hash = '#/kdt';
   }
@@ -276,6 +284,7 @@
       ${head({ title: 'Xem chi tiết khoản đầu tư', back: 'kdt', lg: true, info, right: `<div class="row">${m.approved && !window.Thau.khBy('KDT', x.code).length ? `<button type="button" class="vbtn secondary" data-go="khlcnt/create/KDT/${encodeURIComponent(x.code)}">Lập KHLCNT</button>` : ''}<button type="button" class="vbtn primary" data-go="${href(x.code)}/edit">Chỉnh sửa</button></div>` })}
       ${window.Ycbg.tabs(x.code, `<section class="vcard pad24 gen"><h3>Thông tin chung KĐT</h3><div class="ginfo c3">
         ${kv('Mã KĐT', esc(x.code))}${kv('Tên KĐT', esc(x.title), 'span2')}
+        ${kv('Nhiệm vụ / Đề tài, dự án', nvText(x.nv) ? esc(nvText(x.nv)) : null, 'span3')}
         ${kv('Đơn vị đề xuất', esc(x.unit))}${kv('Người tạo', esc(x.creator))}${kv('Trạng thái', stageBadge(m.stage))}
         ${kv('Lĩnh vực', esc(catLabel('field', x.field)))}${kv('Loại KĐT', esc(catLabel('type', x.type)))}${kv('Tính chất tài sản', esc(catLabel('nature', x.nature)))}
         ${kv('Nhóm KĐT', m.group ? esc(GROUP[m.group]) : 'Chưa xác định')}${kv('Nhánh hồ sơ', m.branch ? esc(BRANCH[m.branch]) : null)}${kv('Tổng mức vốn hiệu lực', m.value != null ? ty(m.value) + ' tỷ đồng' : null)}

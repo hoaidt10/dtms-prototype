@@ -52,10 +52,11 @@ Mở `index.html` bằng Chrome hoặc Edge. Không cần mạng, không cần b
 - **Công cụ demo** (nút nổi góc dưới phải): **Hồ sơ demo** (0117 · MS01.01 / 0124 · MS01.02 / 0098 · MS01.03 — đổi bộ thì luồng đặt lại, ý kiến ❓ giữ nguyên;
   bộ 0124/0098 mở Thêm mới hồ sơ khoá ĐXMS đó), nhảy tới cảnh của bộ đang chọn (MS01.01: 1–9 theo §2.4; MS01.02: 2-1…2-4; MS01.03: 3-1…3-7 theo plan
   MS01.02/.03 §3.4), nhánh phụ (MS01.01: 6 nhánh, đầu tiên là B-3e; MS01.03: B-3a…d), reset luồng (về trước bước Thêm mới ĐXMS; xoá ĐXMS và hồ sơ
-  đã tạo trên prototype), mở danh sách điểm ❓, **Khôi phục dữ liệu mẫu** (DMDC, E-Form, thầu, hợp đồng, thông báo — các dữ liệu "Reset luồng" không xoá).
+  đã tạo trên prototype), mở danh sách điểm ❓, **Khôi phục dữ liệu mẫu** (DMDC, E-Form, thầu, hợp đồng, thông báo — các dữ liệu "Reset luồng" không xoá; cả quy trình và luật hiển thị), đổi ca **Đồng bộ từ Camunda**.
   Bộ KĐT-2026-0032 · MS13 xem mục Khoản đầu tư. Thầu, Hợp đồng, Thông báo, Tổng quan, Báo cáo là màn tĩnh (D-17, D-22) nên không có bộ demo.
 - **Điểm ❓:** bấm nhãn tím `❓ P-xx` trên màn để ghi ý kiến. Trang `#/cho-chot` tổng hợp mọi điểm (P-01…P-16, P-22, P-26, P-27…P-36 của DMDC, P-37…P-41 của Quản trị quy trình, P-43…P-49 của E-Form, P-50…P-62 và P-90…P-95 của Khoản đầu tư, …) và xuất ra Markdown/CSV.
-- **Danh mục dùng chung** (T8, D-14): menu cấp cha; mục con Tổng quan (`#/dmdc`, SCR-30) và từng danh mục (`#/dmdc/<danh-mục>`),
+- **Danh sách Phân hệ** (T24 D-42, SCR-101 `#/phan-he`): logo topbar về màn này; thẻ / bảng, nhớ lựa chọn. Danh mục dùng chung mở sidebar riêng (`D.dmdcMenu`), Đầu tư mua sắm mở Việc của tôi, phân hệ khác mở Đang phát triển.
+- **Danh mục dùng chung** (T8; T24 D-42 rời menu ĐTMS sang phân hệ riêng, route cũ giữ): mục con Tổng quan (`#/dmdc`, SCR-30) và từng danh mục (`#/dmdc/<danh-mục>`),
   vào được cả qua ô trên Tổng quan. Menu con và ô lọc theo vai (❓ P-36): vai **Quản trị hệ thống** (Đặng Thu Trang) thấy cả 10 danh mục, Chuyên viên TTMS thấy 2, vai khác không thấy.
   Bước B1 dựng khuôn chung theo ecat `common-catalog` và danh mục Nguồn vốn (SCR-32): lọc Trạng thái, tìm kiếm, Thêm mới/Chỉnh sửa trong hộp thoại,
   Dừng hoạt động/Kích hoạt, Xoá (bản ghi đang dùng bị chặn — P-33). Bước B2 thêm 7 danh mục SCR-33…39 cùng khuôn (Lĩnh vực đầu tư, Loại khoản đầu tư
@@ -70,7 +71,11 @@ Mở `index.html` bằng Chrome hoặc Edge. Không cần mạng, không cần b
 - **Quản lý quy trình** (T9; tên theo Backlog, D-15): gồm Quản lý quy trình (`#/quy-trinh`), Ma trận hành động (`#/ma-tran`),
   Giám sát tiến trình (`#/giam-sat-tien-trinh`); route cũ `#/ph/quy-trinh`, `#/ph/ma-tran` tự chuyển sang. Bước B1 dựng Giám sát tiến trình (SCR-48)
   theo `process-monitoring`: chỉ xem, liên kết duy nhất ở cột Mã hồ sơ (mở Chi tiết hồ sơ, quay lại đúng trang). Vai xem được (❓ P-41): Quản trị hệ thống,
-  Chuyên viên TTMS. Quy trình BPMN và Ma trận hành động còn mở màn Đang phát triển (B2–B4).
+  Chuyên viên TTMS.
+- **Quản lý quy trình** (T24 D-46, spec `e2e/quy-trinh-t24.spec.mjs`):
+  - **Luật quyết định nút:** nút màn xử lý việc lấy theo luật đang Kích hoạt (quy trình + bước, màn Xử lý công việc, vai), Tên hiển thị là nhãn nút. MS02, MS13, MS14 chưa có luật mẫu nên giữ nguyên nút; bước 10a chưa có luật cũng giữ nút. Chi tiết hồ sơ không có nút.
+  - **Đồng bộ từ Camunda:** lần đầu MS13, MS14, MS01.03 có phiên bản mới, MS14 phiên bản 1 Dừng hoạt động, sinh 2 luật còn thiếu của MS01.03; lần sau không đổi. Nút demo nổi › Đồng bộ từ Camunda chọn ca Đang có phiên, Lỗi Camunda. Reset luồng đưa quy trình và luật về mẫu.
+  - **Quyền:** `D.perms` / `D.can` theo mã của FE (QT, HTN, DMHS / DMHD, DTO, GS). Thử bằng tài khoản **Cao Thị Hạnh** (Người dùng quản trị quy trình): không đồng bộ, không lịch sử phiên bản, Ma trận chỉ xem.
 - **Quản lý E-Form** (T10): Danh mục dùng chung › Quản lý E-form (D-16; `#/eform`, route cũ `#/ph/eform` tự chuyển), theo ecat
   `common-catalog/catalogs/e-form`. Bước B1: Danh sách biểu mẫu e-form (SCR-49 — lọc Trạng thái, tìm khi gõ, công tắc, Xoá chặn biểu mẫu đang gắn
   bước quy trình ❓ P-47, Xuất excel ra CSV) và Lịch sử cập nhật (SCR-53). Chỉ vai Quản trị hệ thống (❓ P-48). 12 biểu mẫu mẫu của luồng MS01
@@ -138,7 +143,9 @@ Mở `index.html` bằng Chrome hoặc Edge. Không cần mạng, không cần b
 | `js/bao-cao.js` | T16 B3 Tổng quan SCR-92 (`#/tong-quan`, lọc + 7 tab) và Báo cáo SCR-93 (`#/bao-cao/<nhóm>`, khuôn chung + 14 báo cáo + KPI theo bước) theo hr-tools `report-dashboard`; số liệu hợp nhất từ ĐXMS / KĐT / KHLCNT / gói / HĐ |
 | `js/bpmn-diagram.js` | Hình vẽ trang MS01 v1.1 (toạ độ, màu, tên task; đã bỏ ghi chú N0x/Q0x) sinh bằng `node tools/bpmn-diagram-extract.mjs`. Không sửa tay. Nguồn theo trang (D-31): MS01 / MS01 v1.1 đọc `ĐTMS.drawio`; MS02 ver1.1 (`bpmn-diagram-ms02.js`, T21 D-38), MS13 / MS14 (`bpmn-diagram-ms13.js`, `-ms14.js`) đọc `ĐTMS-121026.drawio` |
 | `js/bpmn-view.js` | Vẽ BPMN bằng SVG cho màn Xem BPMN (kéo/cuộn để di chuyển, phóng to; tô bước đang xử lý); `?capture=1` vẽ bản gọn cho Figma |
-| `js/data.js` | Persona, menu 12 module Backlog (D-15; mục cũ ở `D.oldMenu`), điều hướng luồng, hồ sơ mẫu, điểm ❓ |
+| `js/phan-he.js` | T24 SCR-101 Danh sách Phân hệ (`#/phan-he`), khuôn core-fe `subsystem-list` |
+| `js/quy-trinh.js`, `js/ma-tran.js` | Quản lý quy trình SCR-41/42/48 (đồng bộ Camunda T24 Q2) và Ma trận hành động SCR-43…47 (`MaTran.allowed` quyết định nút màn xử lý việc, T24 Q1) |
+| `js/data.js` | Persona, mã quyền `D.perms`, menu 12 module Backlog (D-15; mục cũ ở `D.oldMenu`), điều hướng luồng, hồ sơ mẫu, điểm ❓ |
 | `js/flow.js` | Bộ máy luồng: token song song, join, cổng, bộ đếm vòng, đồng hồ NLV cho KPI. Định nghĩa luồng theo quy trình của hồ sơ (`D.flows[D.familyOf(process)]`, `Flow.def()` / `Flow.tasks()`): MS01.0x dùng `D.flow`, MS13 dùng `D.flows.MS13` (T18: khối chung theo vòng `td`, bước 13 / cổng cấp duyệt `auth` / `capGate`, tuyến Tập đoàn 63–74 `tdKind` / `tdSend` / `tdResult` (văn bản Tập đoàn ở `vars.tdDocs`), khối ký chung 75–78 `kySign` / `vo` / `kyReturn` — đích của nút ký giữ ở `vars.ky`, lượt đã ký ở `vars.kyLog`); bộ đếm theo vòng (`bump`), cổng đọc lựa chọn trên màn (`when(vars, ui)`, `run`) |
 | `js/ui.js`, `js/screens.js`, `js/app.js` | Helper giao diện, các màn hình, khung và router |
 | `js/eform-run.js` | Bộ chạy eForm (bản rút gọn của `vht-e-form`): đọc schema Camunda Form, FEEL rút gọn, dialog 85vw Hủy / Lưu nháp / Xác nhận |
@@ -171,6 +178,7 @@ Trong `prototype/dtms`: `npm install` rồi `npx playwright install chromium` (l
 
 | 10 (T16 B4) | Xuất lại Figma (2026-10-09): **267 màn**, 11 page (thêm 09 Quản lý ĐXMS, 10 KĐT & Thầu, 11 Hợp đồng · Thông báo · Báo cáo — Backlog W1_T10), Topbar + 47 Sidebar component, 158 link (0 lỗi), 12 flow, Cover v0.3. Section cũ được dọn frame trước khi dựng lại. Comment Figma chưa resolve (MCP không có API comment; cần FIGMA_TOKEN) | Xong, chờ review |
 | 11 | Xuất lại Figma (2026-10-12): **326 màn**, 13 page (thêm 12 Điều chỉnh ĐXMS · MS02 — 19 màn T21; 13 Luồng mua sắm (T17 · phương án Gộp) — 12 màn SCR-95…98; SCR-99 vào page 05; page 07 Khoản đầu tư 72 màn theo BPMN 12/10 của T18, kèm SCR-100), Topbar + 50 Sidebar component, 196 link, 13 flow, Cover v0.4. Frame cũ dọn hết trước khi dựng | Xong, chờ review |
+| 12 (T24, 2026-10-30) | Yêu cầu team BA 30/10: bỏ cột Thao tác 4 danh sách, bỏ Trigger, KĐT ↔ Nhiệm vụ / Đề tài, Danh sách Phân hệ + DMDC riêng, Thầu theo hệ thống cũ (T1–T8), Quản lý quy trình Q1–Q5. Figma chưa xuất lại. Hợp đồng chạy luồng: T25 |
 
 **Xuất Figma** (dữ liệu ~2,3 MB vượt 50 KB/lần gọi `use_figma`, nên đi qua ảnh dữ liệu):
 1. `node tools/capture.mjs <cap>` (thêm `"<trang>"` để chụp riêng một trang) → `node tools/compact.mjs <cap>` → `node tools/gen.mjs <cap> bundle > bundle.json` → `node tools/figma-pack.mjs bundle.json data.png` (PNG xám không nén, có kiểm khứ hồi).

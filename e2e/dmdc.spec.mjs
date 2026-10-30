@@ -17,21 +17,22 @@ const asAdmin = async (page, hash) => {
 };
 const row = (page, code) => page.locator('.vtable tbody tr', { hasText: code });
 
-test('D-14: Danh mục dùng chung là menu cấp cha — Tổng quan + Quản lý E-form (D-16) + 18 danh mục (T16 B1, T17 SCR-99, T18 SCR-100); mục con sáng theo route; không có nút quay lại', async ({ page }) => {
+test('D-42: Danh mục dùng chung là phân hệ riêng — menu ĐTMS không có; sidebar riêng: Tổng quan, E-form, danh mục chung, nhóm Đầu tư mua sắm (18 danh mục); mục sáng theo route; không có nút quay lại', async ({ page }) => {
   await asAdmin(page, '#/viec-cua-toi');
   const tops = await page.locator('.sb-nav > .nav:not(.child) .l').allInnerTexts();
-  expect(tops).toContain('Danh mục dùng chung');
-  await page.locator('.sb-nav [data-toggle="Danh mục dùng chung"]').click();
-  const kids = page.locator('.sb-nav .nav.child[data-go^="dmdc"] .l');
-  await expect(kids).toHaveCount(19);
-  await expect(kids.first()).toHaveText('Tổng quan');
-  await expect(page.locator('.sb-nav [data-go="dmdc"] + .nav.child')).toHaveAttribute('data-go', 'eform');
+  expect(tops).not.toContain('Danh mục dùng chung');
+  await expect(page.locator('.sb-nav [data-go="eform"]')).toHaveCount(0);
+  await page.evaluate(() => { location.hash = '#/dmdc/nguon-von'; });
+  await expect(page.locator('.sb-head .t')).toHaveText('Danh mục dùng chung');
+  await expect(page.locator('.sb-nav [data-go^="dmdc/"]')).toHaveCount(18);
+  await expect(page.locator('.sb-nav [data-go="dmdc"] .l')).toHaveText('Tổng quan');
+  await expect(page.locator('.sb-nav [data-go="dmdc"] + .nav')).toHaveAttribute('data-go', 'eform');
   await page.locator('.sb-nav [data-go="dmdc"]').click();
   await expect(page).toHaveURL(/#\/dmdc$/);
   await expect(page.locator('.ov-title')).toHaveText('Các module trong phân hệ');
   await expect(page.locator('.ov-tile')).toHaveCount(18);
   await expect(page.locator('.ov-tile').nth(5)).toContainText('Danh mục Nguồn vốn');
-  await expect(page.locator('.ov-tile').nth(5).locator('.n')).toHaveText('5');
+  await expect(page.locator('.ov-tile').nth(5).locator('.n')).toHaveText('6');
   await page.locator('.ov-tile', { hasText: 'Nguồn vốn' }).click();
   await expect(page).toHaveURL(/#\/dmdc\/nguon-von$/);
   await expect(page.locator('.sb-nav [data-go="dmdc/nguon-von"]')).toHaveClass(/active/);
@@ -45,9 +46,8 @@ test('P-36: menu con lọc theo vai; vào thẳng danh mục không được xem
   await fresh(page, '#/dmdc/nguon-von');
   await expect(page.locator('main .ov-empty')).toHaveText('Bạn chưa được cấp quyền truy cập chức năng này');
   await page.evaluate(() => Flow.setPersona('lan'));
-  await page.locator('.sb-nav [data-toggle="Danh mục dùng chung"]').click();
-  await expect(page.locator('.sb-nav .nav.child[data-go^="dmdc"] .l')).toHaveText(['Tổng quan', 'Nhà cung cấp / Nhà thầu', 'Loại đối tác', 'Loại hàng hoá / dịch vụ', 'Đơn vị tính', 'Tiền tệ']);
-  await expect(page.locator('.sb-nav .nav.child[data-go="eform"]')).toHaveCount(1);
+  await expect(page.locator('.sb-nav [data-go^="dmdc"] .l')).toHaveText(['Tổng quan', 'Nhà cung cấp / Nhà thầu', 'Loại đối tác', 'Đơn vị tính', 'Tiền tệ', 'Loại hàng hoá / dịch vụ']);
+  await expect(page.locator('.sb-nav [data-go="eform"]')).toHaveCount(1);
 });
 
 test('P-36: Tổng quan lọc ô theo vai', async ({ page }) => {
@@ -62,7 +62,7 @@ test('B1 ecat: danh sách Nguồn vốn — cột, lọc Trạng thái, tìm ki�
   await asAdmin(page, '#/dmdc/nguon-von');
   await expect(page.locator('.pg-title')).toHaveText('Danh sách nguồn vốn');
   await expect(page.locator('.vtable th')).toHaveText(['STT', 'Thao tác', 'Trạng thái', 'Mã nguồn vốn', 'Tên nguồn vốn', 'Mô tả']);
-  await expect(page.locator('.vtable tbody tr')).toHaveCount(5);
+  await expect(page.locator('.vtable tbody tr')).toHaveCount(6);
   await expect(row(page, 'VAY').locator('.vswitch')).not.toHaveClass(/on/);
   await expect(row(page, 'SXKD').locator('td').last()).toHaveText('Vốn sản xuất kinh doanh');
   await expect(row(page, 'VAY').locator('td').last()).toHaveText('-');
@@ -73,7 +73,7 @@ test('B1 ecat: danh sách Nguồn vốn — cột, lọc Trạng thái, tìm ki�
   await page.locator('[data-vsel-clear="cat-st-nguon-von"]').click();
   // Tìm kiếm theo mã hoặc tên, không dấu, khi nhấn Enter.
   await page.locator('[data-cat-kw]').fill('dau tu');
-  await expect(page.locator('.vtable tbody tr')).toHaveCount(5);
+  await expect(page.locator('.vtable tbody tr')).toHaveCount(6);
   await page.locator('[data-cat-kw]').press('Enter');
   await expect(page.locator('.vtable tbody tr')).toHaveCount(1);
   await expect(page.locator('.vtable tbody')).toContainText('DTPT');
@@ -127,8 +127,8 @@ test('B1 ecat: Dừng hoạt động / Kích hoạt qua hộp thoại xác nhậ
   await row(page, 'SXKD').locator('.vswitch').click();
   const cf = page.locator('.vconfirm.warning');
   await expect(cf.locator('h2')).toHaveText('Dừng hoạt động');
-  await expect(cf.locator('p')).toHaveText('Bạn có chắc chắn muốn dừng hoạt động nguồn vốn: Vốn SXKD - SXKD không?');
-  await expect(cf.locator('p b')).toHaveText('Vốn SXKD - SXKD');
+  await expect(cf.locator('p')).toHaveText('Bạn có chắc chắn muốn dừng hoạt động nguồn vốn: Chi phí sản xuất kinh doanh - SXKD không?');
+  await expect(cf.locator('p b')).toHaveText('Chi phí sản xuất kinh doanh - SXKD');
   await cf.locator('.vconfirm-b.ghost').click();
   await expect(row(page, 'SXKD').locator('.vswitch')).toHaveClass(/on/);
   await row(page, 'SXKD').locator('.vswitch').click();
@@ -636,17 +636,17 @@ test('B5 §5.4: ngưỡng dừng hoạt động không áp dụng; cổng kiểm
   expect(page.errors).toEqual([]);
 });
 
-test('B5 §6: Nguồn vốn ở task 04 chọn từ danh mục; nguồn vốn dừng hoạt động không hiện; mặc định theo gợi ý AI (Vốn KHCN)', async ({ page }) => {
+test('B5 §6: Nguồn vốn ở task 04 chọn từ danh mục; nguồn vốn dừng hoạt động không hiện; mặc định theo gợi ý AI (Quỹ phát triển khoa học công nghệ)', async ({ page }) => {
   await asAdmin(page, '#/viec-cua-toi');
   await openTask(page, 4, 'minh');
   // eForm task 04: ô Nguồn vốn = select, options đọc từ biến fundOptions (E1); mặc định là nguồn vốn AI trích từ căn cứ (G2 mặc định Chấp nhận).
   await openForm(page);
-  await expect(page.locator('[data-vsel="ef-fund"] .vsel-label')).toHaveText('Vốn KHCN');
-  expect(await optLabels(page, 'ef-fund')).toEqual(['Vốn KHCN', 'Vốn đầu tư phát triển', 'Vốn SXKD', 'Chi phí thường xuyên']);
-  await pick(page, 'ef-fund', 'Vốn SXKD');
-  await expect(page.locator('[data-vsel="ef-fund"] .vsel-label')).toHaveText('Vốn SXKD');
+  await expect(page.locator('[data-vsel="ef-fund"] .vsel-label')).toHaveText('Quỹ phát triển khoa học công nghệ');
+  expect(await optLabels(page, 'ef-fund')).toEqual(['Quỹ phát triển khoa học công nghệ', 'Đầu tư phát triển', 'Chi phí sản xuất kinh doanh', 'Vốn góp của chủ sở hữu', 'Chi phí thường xuyên']);
+  await pick(page, 'ef-fund', 'Chi phí sản xuất kinh doanh');
+  await expect(page.locator('[data-vsel="ef-fund"] .vsel-label')).toHaveText('Chi phí sản xuất kinh doanh');
   await closeForm(page);
-  // Hồ sơ đang giữ Vốn SXKD; Quản trị dừng hoạt động Vốn SXKD: form vẫn hiện giá trị đang giữ; lựa chọn mới không còn Vốn SXKD (P-33).
+  // Hồ sơ đang giữ Chi phí sản xuất kinh doanh; Quản trị dừng hoạt động Chi phí sản xuất kinh doanh: form vẫn hiện giá trị đang giữ; lựa chọn mới không còn Chi phí sản xuất kinh doanh (P-33).
   await page.evaluate(() => Flow.setUi('fund', 'SXKD'));
   await page.evaluate(() => { Flow.setPersona('qt'); location.hash = '#/dmdc/nguon-von'; });
   await row(page, 'SXKD').locator('[data-cat-tg]').click();
@@ -654,11 +654,11 @@ test('B5 §6: Nguồn vốn ở task 04 chọn từ danh mục; nguồn vốn d�
   await expect(row(page, 'SXKD').locator('.vswitch')).not.toHaveClass(/on/);
   await page.evaluate(() => { Flow.setPersona('minh'); location.hash = '#/task/' + Flow.state.tokens.find((k) => k.task === 4).id; });
   await openForm(page);
-  await expect(page.locator('[data-vsel="ef-fund"] .vsel-label')).toHaveText('Vốn SXKD');
+  await expect(page.locator('[data-vsel="ef-fund"] .vsel-label')).toHaveText('Chi phí sản xuất kinh doanh');
   await closeForm(page);
   await page.evaluate(() => Flow.setUi('fund', 'KHCN'));
   await openForm(page);
-  expect(await optLabels(page, 'ef-fund')).toEqual(['Vốn KHCN', 'Vốn đầu tư phát triển', 'Chi phí thường xuyên']);
+  expect(await optLabels(page, 'ef-fund')).toEqual(['Quỹ phát triển khoa học công nghệ', 'Đầu tư phát triển', 'Vốn góp của chủ sở hữu', 'Chi phí thường xuyên']);
   expect(page.errors).toEqual([]);
 });
 

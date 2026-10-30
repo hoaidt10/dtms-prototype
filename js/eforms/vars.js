@@ -248,6 +248,7 @@
 
   /* ---------- Biến cho form của token ---------- */
   function of(tok) {
+    if (Flow.state.parent) return window.EForms.hd.vars(tok);
     const u = U(), n = tok.task, ci = Flow.ci();
     const v = { hoSo: hoSo(), phienBan: kdt() ? kdtVer() : version(), tt: tt(), clName: clName(), lan: pad2(bm04Round()) };
 
@@ -846,7 +847,7 @@
     'BM-14': () => ({ name: 'Báo cáo kết quả thẩm định KĐT', html: docBm14() }),
     'BM-18': () => ({ name: 'Quyết định phê duyệt KĐT', html: docBm18() }),
   };
-  const doc = (code) => (DOC[code] ? DOC[code]() : null);
+  const doc = (code) => (Flow.state.parent ? window.EForms.hd.doc(code) : DOC[code] ? DOC[code]() : null);
 
   /* ---------- Kiểm tra phía BE khi submit (G3, G7/E3, KĐT bước 12) ----------
      Tài liệu bắt buộc theo hành động (E3) đọc ở Danh sách tài liệu (Flow.ui[key] = đã tải lên). */
@@ -859,6 +860,7 @@
   /* Comment #5: báo giá của từng NCC nhận YCBG — bắt buộc với nút "Báo giá đạt". Comment #22: phiếu nhận xét Tập đoàn — tuỳ chọn. */
   const quoteKey = (code) => 'quote_' + code;
   function reqDocs(tok) {
+    if (Flow.state.parent) return window.EForms.hd.reqDocs(tok);
     const list = ((REQ_DOCS[kdt() ? 'MS13' : 'MS01'][tok.task]) || []).map(([key, name]) => ({ key, name, have: !!U()[key] }));
     if (!kdt() && String(tok.task) === '10') (U().nccSel || nccDefault()).forEach((c) => list.push({ key: quoteKey(c), name: `Báo giá — ${nccName(c)}`, have: !!U()[quoteKey(c)], only: /^Báo giá đạt/ }));
     if (kdt() && String(tok.task) === '78') list.push({ key: kyScanKey(), name: `Bản scan ${(Flow.state.vars.ky || {}).doc || 'văn bản'} đã ký`, have: !!U()[kyScanKey()] });
@@ -869,7 +871,7 @@
     const n = tok.task, lbl = choice ? choice.label : '';
     const miss = reqDocs(tok).find((x) => !x.have && !x.opt && (!x.only || x.only.test(lbl)));
     if (miss && !(kdt() && n === 32 && /^Chưa/.test(lbl))) return `Bạn cần tải lên ${miss.name} ở Danh sách tài liệu.`;
-    if (!vals) return null;
+    if (!vals || Flow.state.parent) return null;
     if (n === 1 && (of(tok).basisDocOptions.find((o) => o.value === vals.basisDoc) || {}).type !== vals.basisType) return 'Văn bản căn cứ không thuộc loại căn cứ đã chọn.';
     if (n === 5 && lbl.startsWith('Xác nhận') && (vals.bocTach || []).some((r) => r.remain != null && r.prop > r.remain)) return 'Có dòng vượt số lượng còn lại sau trừ lùi.';
     if (!kdt() && n === 16 && small() && !(vals.cqcmSel || []).includes('TC')) return 'Hồ sơ dưới 160 tỷ: CQCM Tài chính bắt buộc (QT B8.2).';

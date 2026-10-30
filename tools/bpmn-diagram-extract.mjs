@@ -14,6 +14,14 @@ const PAGES = {
   'MS02 ver1.1': { src: NEW, out: 'bpmn-diagram-ms02.js' },
   MS13: { src: NEW, out: 'bpmn-diagram-ms13.js', tasks: Array.from({ length: 78 }, (_, k) => String(k + 1)) },
   MS14: { src: NEW, out: 'bpmn-diagram-ms14.js' },
+  /* T25 B0: 7 trang Hợp đồng bản 12/10. */
+  MS22: { src: NEW, hd: true, out: 'bpmn-diagram-ms22.js', tasks: Array.from({ length: 13 }, (_, k) => String(k + 1)) },
+  'MS23 - Tổng quan': { src: NEW, hd: true, out: 'bpmn-diagram-ms23.js', tasks: Array.from({ length: 5 }, (_, k) => String(k + 1)) },
+  'MS23.01': { src: NEW, hd: true, out: 'bpmn-diagram-ms23-01.js', tasks: Array.from({ length: 12 }, (_, k) => String(k + 1)) },
+  'MS23.02': { src: NEW, hd: true, out: 'bpmn-diagram-ms23-02.js', tasks: Array.from({ length: 22 }, (_, k) => String(k + 1)) },
+  'MS23.03': { src: NEW, hd: true, out: 'bpmn-diagram-ms23-03.js', tasks: Array.from({ length: 14 }, (_, k) => String(k + 1)) },
+  'MS23.04': { src: NEW, hd: true, out: 'bpmn-diagram-ms23-04.js', tasks: Array.from({ length: 14 }, (_, k) => String(k + 1)) },
+  MS24: { src: NEW, hd: true, out: 'bpmn-diagram-ms24.js', tasks: Array.from({ length: 20 }, (_, k) => String(k + 1)) },
 };
 
 const files = {};
@@ -179,7 +187,8 @@ function extract(PAGE, conf) {
   /* Chỉ giữ phần một sơ đồ BPMN đã deploy có (như bpmn-js hiển thị): bỏ tiêu đề/chú giải trang, ghi chú N0x/Q0x và
      "Liên quan task" ngoài pool, ghi chú vàng "Trước Start"; task chỉ hiện tên (không số, không Tác nhân/Thực hiện/Biểu mẫu).
      Trang có nhiều pool (MS02) giữ phần nằm trong pool nào đó. */
-  const pools = nodes.filter((n) => n.k === 'pool');
+  /* Trang MS22 chỉ vẽ lane, không có pool → khung là các lane. */
+  const pools = nodes.some((n) => n.k === 'pool') ? nodes.filter((n) => n.k === 'pool') : nodes.filter((n) => n.k === 'lane');
   if (!pools.length) throw new Error(`${PAGE}: không có pool`);
   const top = Math.min(...pools.map((p) => p.y));
   const inPool = (n) => pools.some((p) => n.y >= p.y - 0.5 && n.y < p.y + p.h && n.x < p.x + p.w && n.x + n.w > p.x);
@@ -199,6 +208,20 @@ function extract(PAGE, conf) {
   for (let j = edges.length - 1; j >= 0; j--) {
     const sig = JSON.stringify(edges[j]);
     if (edgeSeen.has(sig)) edges.splice(j, 1); else edgeSeen.add(sig);
+  }
+
+  /* Trang Hợp đồng (conf.hd): một số mũi tên trong bản vẽ chưa gắn đầu / cuối, toạ độ đầu mũi lạc xa khung (DG-MS23.02 §D 16).
+     Bỏ điểm lạc để hình đúng tỉ lệ, không tự nối vào ô nào; các mũi tên này ghi ở plan T25 §9 để hỏi BA. */
+  if (conf.hd) {
+    const inFrame = ([px, py]) => pools.some((p) => px >= p.x - 300 && px <= p.x + p.w + 300 && py >= p.y - 300 && py <= p.y + p.h + 300);
+    for (let j = edges.length - 1; j >= 0; j--) {
+      const e = edges[j];
+      if (e.p.every(inFrame)) continue;
+      e.p = e.p.filter(inFrame);
+      if (e.p.length < 2) { edges.splice(j, 1); continue; }
+      /* Nhãn tính theo điểm lạc → đặt lại giữa đoạn còn lại. */
+      if (e.l) e.l = e.l.map((l) => [r1((e.p[0][0] + e.p[1][0]) / 2), r1((e.p[0][1] + e.p[1][1]) / 2), l[2]]);
+    }
   }
 
   /* Thông tin phần tử cho panel Chi tiết quy trình. Tác nhân: dòng "Tác nhân:" của nhãn, không có thì lấy tên lane chứa task. */
@@ -242,7 +265,8 @@ function extract(PAGE, conf) {
       const plus = keep.some((m) => m.k === 'text' && m.html && lines(m.html).join('') === '+' && Math.abs(m.x + m.w / 2 - n.x - n.w / 2) < n.w * 0.6 && Math.abs(m.y + m.h / 2 - n.y - n.h / 2) < n.h * 0.6);
       const par = t === '+' || plus || /parallel/i.test(n.html || '');
       n.el = { id: 'Gateway_' + (++gwN), type: par ? 'parallelGateway' : 'exclusiveGateway', name: par || /^[XO]$/i.test(t) ? '' : t };
-    } else if (n.k === 'ev' || n.k === 'ev2') {
+    } else if ((n.k === 'ev' || n.k === 'ev2') && !(conf.hd && n.w < 30 && !inDeg.get(n) && !outDeg.get(n))) {
+      /* Trang Hợp đồng: chấm tròn nhỏ cạnh nhãn USER TASK là hình trang trí, không bấm được. */
       const t = n.html ? lines(n.html).join(' ') : '';
       const type = !inDeg.get(n) ? 'startEvent' : !outDeg.get(n) ? 'endEvent' : 'intermediateThrowEvent';
       n.el = { id: (type === 'startEvent' ? 'StartEvent_' : type === 'endEvent' ? 'EndEvent_' : 'Event_') + (++evN), type, name: t };

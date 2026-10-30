@@ -7,7 +7,15 @@ import { readFileSync, writeFileSync } from 'node:fs';
 const BPMN = '../../../project-knowledge/03. Thiết kế (Tài liệu BA)/BPMN/';
 /* D-38 (T21): MS02 đọc trang "MS02 ver1.1" bản 12/10 (bản 12/10 không đổi trang này so với 28/09). */
 const PAGES = { MS13: { key: 'MS13', src: 'ĐTMS-121026.drawio', out: 'bpmn-tasks-ms13.js', count: 78 },
-  'MS02 ver1.1': { key: 'MS02', src: 'ĐTMS-121026.drawio', out: 'bpmn-tasks-ms02.js', count: 61 } };
+  'MS02 ver1.1': { key: 'MS02', src: 'ĐTMS-121026.drawio', out: 'bpmn-tasks-ms02.js', count: 61 },
+  /* T25 B0: 7 trang Hợp đồng bản 12/10. */
+  MS22: { key: 'MS22', hd: true, src: 'ĐTMS-121026.drawio', out: 'bpmn-tasks-ms22.js', count: 13 },
+  'MS23 - Tổng quan': { key: 'MS23', hd: true, src: 'ĐTMS-121026.drawio', out: 'bpmn-tasks-ms23.js', count: 5 },
+  'MS23.01': { key: 'MS23.01', hd: true, src: 'ĐTMS-121026.drawio', out: 'bpmn-tasks-ms23-01.js', count: 12 },
+  'MS23.02': { key: 'MS23.02', hd: true, src: 'ĐTMS-121026.drawio', out: 'bpmn-tasks-ms23-02.js', count: 22 },
+  'MS23.03': { key: 'MS23.03', hd: true, src: 'ĐTMS-121026.drawio', out: 'bpmn-tasks-ms23-03.js', count: 14 },
+  'MS23.04': { key: 'MS23.04', hd: true, src: 'ĐTMS-121026.drawio', out: 'bpmn-tasks-ms23-04.js', count: 14 },
+  MS24: { key: 'MS24', hd: true, src: 'ĐTMS-121026.drawio', out: 'bpmn-tasks-ms24.js', count: 20 } };
 const files = {};
 let x = '';
 const xmlDec = (s) => s.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&#xa;/gi, '\n').replace(/&amp;/g, '&');
@@ -101,7 +109,8 @@ function extract(PAGE, conf) {
       const plus = texts.find((t) => one(t.label) === '+' && Math.hypot(center(t.id).x - a.x, center(t.id).y - a.y) < Math.max(a.w, a.h) * 0.6);
       if (plus) usedText.add(plus.id);
       const par = one(c.label) === '+' || !!plus;
-      const own = one(c.label) !== '+' ? one(c.label) : '';
+      /* Các trang Hợp đồng (conf.hd) ghi dấu "X" trong hình thoi, câu hỏi nằm ở ô chữ cạnh đó. */
+      const own = one(c.label) !== '+' && !(conf.hd && one(c.label) === 'X') ? one(c.label) : '';
       gws[id] = { kind: par ? 'and' : 'xor', name: own || c.at.Name || near(c.id, 260) };
       ref[c.id] = id;
     } else if (s.ellipse) {
@@ -118,6 +127,8 @@ function extract(PAGE, conf) {
   let en = 0, sn = 1;
   for (const c of ordered.filter((v) => v.style.ellipse && ref[v.id])) {
     const inn = edges.some((e) => e[1] === c.id), out = edges.some((e) => e[0] === c.id);
+    /* Trang Hợp đồng: chấm tròn nhỏ cạnh nhãn USER TASK chỉ là hình trang trí, không phải sự kiện. */
+    if (conf.hd && !inn && !out && c.g.w < 30) continue;
     /* Nhiều sự kiện bắt đầu (bản 12/10: khối ký chung 75–78 có sự kiện "Đến bước trình ký" riêng) → S, S2… */
     const id = !inn ? (edges.some((e) => e[0] === c.id && e[1] === '1') ? 'S' : 'S' + (++sn)) : !out ? 'E' + (++en) : 'I' + (++en);
     evs[id] = { kind: !inn ? 'start' : !out ? 'end' : 'mid', name: one(c.label) || near(c.id, 220) };

@@ -1,4 +1,4 @@
-/* Danh mục dùng chung (DMDC) — menu cấp cha Danh mục dùng chung (#/dmdc, D-14 thay D-1).
+/* Danh mục dùng chung (DMDC) — phân hệ Danh mục dùng chung của toàn hệ thống (#/dmdc, D-42 thay D-14).
    Khuôn theo fe/repo-khcn-ecat-fe/src/app/features/common-catalog: mỗi danh mục chỉ khai báo cấu hình
    (như CatalogConfig), khuôn chung dựng danh sách, bộ lọc, hộp thoại Thêm mới/Chỉnh sửa, xác nhận và toast. */
 (function () {
@@ -318,9 +318,10 @@
         { key: 'description', label: 'Mô tả', type: 'textarea', max: 500, minWidth: 260 },
       ],
       seed: [
-        ['KHCN', 'Vốn KHCN', 'Quỹ phát triển khoa học và công nghệ của VHT', true, 14],
-        ['DTPT', 'Vốn đầu tư phát triển', 'Nguồn vốn đầu tư phát triển theo kế hoạch năm', true, 6],
-        ['SXKD', 'Vốn SXKD', 'Vốn sản xuất kinh doanh', true, 0],
+        ['KHCN', 'Quỹ phát triển khoa học công nghệ', 'Quỹ phát triển khoa học và công nghệ của VHT', true, 14],
+        ['DTPT', 'Đầu tư phát triển', 'Nguồn vốn đầu tư phát triển theo kế hoạch năm', true, 6],
+        ['SXKD', 'Chi phí sản xuất kinh doanh', 'Vốn sản xuất kinh doanh', true, 0],
+        ['VCSH', 'Vốn góp của chủ sở hữu', 'Theo danh sách nguồn vốn của hệ thống mua sắm hiện hành', true, 0],
         ['CPTX', 'Chi phí thường xuyên', 'Chi phí hoạt động thường xuyên của đơn vị', true, 3],
         ['VAY', 'Vốn vay', '', false, 0],
       ] },
@@ -444,22 +445,24 @@
   const ARROW = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M20 12H4M15.5 16.5S20 13.186 20 12s-4.5-4.5-4.5-4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
   const canSee = (key) => { const p = Flow.state.persona, c = byKey(key); return !!c && (p === 'qt' || D.allAccess(p) || (c.roles || []).includes(p)); };
   const visible = () => CATALOGS.filter((c) => canSee(c.key));
-  /* Mục con của menu cha Danh mục dùng chung (D-14): Tổng quan, Quản lý E-form (D-16) + từng danh mục, cùng thứ tự với ô trên Tổng quan. */
-  const menuGroup = D.menu.find((m) => m.dmdc);
-  if (menuGroup) menuGroup.children = menuGroup.children.slice(0, 2).concat(CATALOGS.map((c) => ({ label: c.title, path: 'dmdc/' + c.key, scr: c.scr, dmdc: c.key })));
+  /* Sidebar phân hệ Danh mục dùng chung (D-42): danh mục chung nối sau các mục sẵn có, danh mục riêng ĐTMS vào nhóm Đầu tư mua sắm (P-112). */
+  const COMMON = ['nha-cung-cap', 'loai-doi-tac', 'nguon-von', 'linh-vuc', 'don-vi-tinh', 'tien-te'];
+  const dtmsGroup = D.dmdcMenu.pop();
+  dtmsGroup.children = CATALOGS.filter((c) => !COMMON.includes(c.key)).map((c) => ({ label: c.title, path: 'dmdc/' + c.key, scr: c.scr, dmdc: c.key }));
+  D.dmdcMenu.push(...CATALOGS.filter((c) => COMMON.includes(c.key)).map((c) => ({ label: c.title, icon: c.icon, path: 'dmdc/' + c.key, scr: c.scr, dmdc: c.key })), dtmsGroup);
 
   function overview() {
     // Theo: fe/repo-khcn-ecat-fe/src/app/features/common-catalog/overview/common-catalog-overview.component.html
     const info = {
       scr: 'SCR-30', name: 'Tổng quan Danh mục dùng chung', uc: 'UC-12-05 · UR-DOC-05, UR-DOC-06, BR-04',
       notes: [
-        'Vị trí (D-14, thay D-1): Danh mục dùng chung là menu cấp cha như ecat common-catalog; mục con là Tổng quan và từng danh mục. Căn cứ: CN sheet "WBS pha 1" mục 1.0 để Danh mục dùng chung là module riêng.',
+        'Vị trí (D-42, thay D-14; team BA 30/10/2026): Danh mục dùng chung là <b>phân hệ của toàn hệ thống</b> như ecat common-catalog, vào từ Danh sách Phân hệ; sidebar riêng gồm Tổng quan, Quản lý E-form, danh mục chung và nhóm danh mục Đầu tư mua sắm. Căn cứ: CN sheet "WBS pha 1" mục 1.0 để Danh mục dùng chung là module riêng.',
         'Menu con và ô trên Tổng quan cùng lọc theo vai (P-36).',
         'Ô lọc theo vai (P-36): Quản trị hệ thống thấy mọi danh mục; Chuyên viên TTMS thấy Nhà cung cấp / Nhà thầu và Loại hàng hoá / dịch vụ; vai khác thấy thông báo chưa được cấp quyền.',
         'Đã dựng 16 danh mục: 10 danh mục SCR-31…40 và 6 danh mục thêm theo Backlog W1_T10 (T16 B1): Loại đối tác, Đơn vị tính, Tiền tệ, Loại gói thầu, Phương pháp đánh giá, Hình thức bảo đảm (SCR-67…72). Ngưỡng phân luồng là bảng quy tắc, dùng cùng khuôn danh sách.',
         'Thứ tự menu và ô theo Backlog; Nhà cung cấp / Nhà thầu, Nguồn vốn, Lĩnh vực đầu tư, Ngưỡng phân luồng không có trong Backlog nhưng luồng MS01 / MS13 đang dùng nên giữ. Backlog ghi "Tính chất KĐT" = danh mục Tính chất tài sản hình thành.',
       ],
-      q: ['P-36', 'P-27'], src: 'ecat common-catalog/overview · /common-catalog',
+      q: ['P-36', 'P-27', 'P-112'], src: 'ecat common-catalog/overview · /common-catalog',
     };
     const cards = visible();
     const tile = (c) => `<a class="ov-tile" href="#/dmdc/${c.key}" data-go="dmdc/${c.key}">
@@ -589,7 +592,7 @@
       scr: c.scr, name: 'Danh sách ' + c.entity, uc: 'UC-12-05 · UR-DOC-05, BR-04',
       notes: [
         'Khuôn chung theo ecat common-catalog: Thêm mới / Chỉnh sửa là hộp thoại vht-modal 520px — ngoại lệ so với rule B6 (trang riêng) vì màn tương đương trong ecat dùng hộp thoại.',
-        'Vị trí (D-14): mỗi danh mục có dòng riêng dưới menu cha Danh mục dùng chung, như ecat; vì vậy không có nút quay lại. Vai không được xem danh mục (P-36) thấy thông báo chưa được cấp quyền.',
+        'Vị trí (D-42): mỗi danh mục có dòng riêng trên sidebar của phân hệ Danh mục dùng chung, như ecat; vì vậy không có nút quay lại. Vai không được xem danh mục (P-36) thấy thông báo chưa được cấp quyền.',
         'Lọc Trạng thái áp ngay khi chọn; ô tìm kiếm (mã hoặc tên) áp khi nhấn Enter. Phân trang 10 / 25 / 50 như ecat.',
         'Xem chi tiết (Backlog): bấm Mã mở cùng hộp thoại ở chế độ chỉ xem, nút Đóng / Chỉnh sửa. ecat chưa có chế độ này — làm theo mode view của display-rule-form (FE thêm tham số mode cho catalog-form-dialog, BE dùng API lấy chi tiết sẵn có).',
         'Mã: chữ không dấu, số, "-", "_"; dấu và khoảng trắng tự bỏ, tự viết hoa; không sửa được khi Chỉnh sửa; không trùng. Tên: chữ, số, khoảng trắng, "-".',

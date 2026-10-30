@@ -67,9 +67,10 @@
     G = diagram(o.page);
     if (!G) return `<div class="bp-vp bp-msg" style="height:${height || 520}px">Chưa có sơ đồ để hiển thị.</div>`;
     if (document.body.classList.contains('cap')) return `<div class="bp-vp" style="height:${height || 520}px">${capSvg(active, height || 520, o.focus)}</div>`;
-    const tb = o.toolbar ? `<div class="bp-tb"><button type="button" class="bp-tbb" data-bpz="in" aria-label="Phóng to">${ZOOM_IN}</button><button type="button" class="bp-tbb" data-bpz="out" aria-label="Thu nhỏ">${ZOOM_OUT}</button></div>` : '';
+    const tb = o.toolbar ? `<div class="bp-tb"><button type="button" class="bp-tbb" data-bpz="in" aria-label="Phóng to">${ZOOM_IN}</button><button type="button" class="bp-tbb" data-bpz="out" aria-label="Thu nhỏ">${ZOOM_OUT}</button><button type="button" class="bp-tbb" data-bpz="mini" aria-label="Bản đồ thu nhỏ">${MINI}</button></div>` : '';
     return `<div class="bp-vp${o.select ? ' pick' : ''}" data-bpmn="${esc(key)}" data-page="${esc(o.page)}" data-active="${esc(active.join(','))}"${o.focus ? ` data-focus="${esc(o.focus.join(','))}"` : ''} style="height:${height || 520}px">${svg(active, o)}${tb}</div>`;
   }
+  const MINI = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="5" width="18" height="14" rx="2"/><rect x="11" y="11" width="7" height="5" rx="1"/></svg>';
   const ZOOM_IN = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3M11 8v6M8 11h6"/></svg>';
   const ZOOM_OUT = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3M8 11h6"/></svg>';
 
@@ -121,7 +122,28 @@
     return `<svg class="bp-svg" xmlns="http://www.w3.org/2000/svg" viewBox="${vx} ${vy} ${vw} ${vh}" preserveAspectRatio="xMidYMid slice">${parts.join('')}</svg>`;
   }
 
-  const apply = (vp, v) => { vp.querySelector('.bp-root').setAttribute('transform', `translate(${v.tx} ${v.ty}) scale(${v.s})`); };
+  const apply = (vp, v) => {
+    vp.querySelector('.bp-root').setAttribute('transform', `translate(${v.tx} ${v.ty}) scale(${v.s})`);
+    const f = vp.querySelector('.bp-mini-vw');
+    if (f) { f.setAttribute('x', -v.tx / v.s); f.setAttribute('y', -v.ty / v.s); f.setAttribute('width', vp.clientWidth / v.s); f.setAttribute('height', vp.clientHeight / v.s); }
+  };
+
+  /* Bản đồ thu nhỏ (diagram-js-minimap của bpmn-viewer: đóng khi mở, góc dưới trái, 200×112): toàn sơ đồ + khung vùng đang xem; bấm để nhảy tới. */
+  function toggleMini(vp, v, g) {
+    const old = vp.querySelector('.bp-mini');
+    if (old) old.remove();
+    if (!v.mini) return;
+    const [x, y, w, h] = g.box, parts = g.nodes.filter((n) => ['task', 'gw', 'ev', 'ev2'].includes(n.k))
+      .map((n) => `<rect x="${n.x}" y="${n.y}" width="${n.w}" height="${n.h}" fill="#76777A"/>`).join('');
+    vp.insertAdjacentHTML('beforeend', `<div class="bp-mini"><svg viewBox="${x} ${y} ${w} ${h}" preserveAspectRatio="xMidYMid meet">${parts}<rect class="bp-mini-vw"/></svg></div>`);
+    const box = vp.querySelector('.bp-mini'), svg = box.querySelector('svg');
+    box.addEventListener('pointerdown', (e) => {
+      e.stopPropagation();
+      const p = new DOMPoint(e.clientX, e.clientY).matrixTransform(svg.getScreenCTM().inverse());
+      v.tx = vp.clientWidth / 2 - p.x * v.s; v.ty = vp.clientHeight / 2 - p.y * v.s;
+      apply(vp, v);
+    });
+  }
 
   /* Lần đầu: canh giữa bước đang xử lý ở mức đọc được chữ; không có bước nào thì vừa khung (fit-viewport). */
   function initial(vp, active) {
@@ -140,11 +162,14 @@
       G = diagram(vp.dataset.page);
       const vk = key + '|' + vp.dataset.page + '|' + vp.dataset.active;
       const v = views[vk] || (views[vk] = initial(vp, vp.dataset.focus ? vp.dataset.focus.split(',') : active));
+      const g = G;
+      toggleMini(vp, v, g);
       apply(vp, v);
       /* Toolbar (bpmn-viewer handleZoomIn/Out): phóng quanh tâm khung. Source cộng/trừ 0,1 mức zoom; sơ đồ ĐTMS mở ở ~0,04 nên nhân 1,25. */
       vp.querySelectorAll('[data-bpz]').forEach((b) => {
         b.addEventListener('pointerdown', (e) => e.stopPropagation());
         b.addEventListener('click', () => {
+          if (b.dataset.bpz === 'mini') { v.mini = !v.mini; toggleMini(vp, v, g); apply(vp, v); return; }
           const s2 = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, b.dataset.bpz === 'in' ? v.s * ZOOM_FACTOR : v.s / ZOOM_FACTOR));
           const mx = vp.clientWidth / 2, my = vp.clientHeight / 2;
           v.tx = mx - ((mx - v.tx) * s2) / v.s; v.ty = my - ((my - v.ty) * s2) / v.s; v.s = s2;

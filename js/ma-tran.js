@@ -5,8 +5,8 @@
   const { esc, icon, infoBtn, vSelect, pager, norm, toast, badge } = window.UI;
   const rerender = () => window.App.render();
 
-  /* P-41: Ma trận hành động chỉ Quản trị hệ thống. */
-  const ROLES_ALLOWED = ['qt'];
+  /* T24 Q3: mỗi tab là một module quyền riêng như action-matrix-permissions (HTN, DMHS / DMHD, DTO); D.perms thay cho danh sách vai (P-41, P-118). */
+  const can = (code) => D.can(Flow.state.persona, code);
   const TODAY = '28/09/2026';
   const BASE = 'ma-tran';
 
@@ -39,6 +39,8 @@
   const WHO_ROLES = { minh: ['R-DVDX-CQ'], hai: ['R-DVDX-CH'], lan: ['R-TTMS'], 'cqcm:doer': ['R-CQCM', 'R-TC'], 'cqcm:signer': ['R-CQCM-CH'],
     binh: ['R-PTGD'], tgd: ['R-TGD-VHT'], td: ['R-BAN-DTXD'] };
   const labelOf = (opts, v) => (opts.find((o) => o.value === v) || {}).label || '';
+  /* Cần vai trò của bước (T24 Q4) = mã + tên vai theo who của bước; who là tài khoản thì lấy vai của tài khoản. */
+  const roleLabels = (who) => (WHO_ROLES[who] || [D.roleOf(who)]).filter(Boolean).map((r) => labelOf(ROLES, r) || r);
 
   /* Quy trình áp dụng — danh sách quy trình của SCR-41; bước = User Task trên sơ đồ phiên bản đang hoạt động.
      MS01.01 / .02 / .03 là ba quy trình riêng (P-37) dùng chung trang MS01 v1.1: bỏ các bước không áp dụng cho quy trình (D.notApplicable). */
@@ -124,14 +126,14 @@
   const byId = (id) => RULES.find((r) => String(r.id) === String(id));
 
   /* ---------- Khung Ma trận hành động (action-matrix.component) ---------- */
-  const TABS = [{ path: 'display-rule', label: 'Luật hiển thị hành động' }, { path: 'bpmn-reconcile', label: 'Đối soát BPMN' }, { path: 'action-catalog', label: 'Danh mục hành động' }];
+  const TABS = [{ path: 'display-rule', label: 'Luật hiển thị hành động', perm: 'HTN00' }, { path: 'bpmn-reconcile', label: 'Đối soát BPMN', perm: 'DTO00' }, { path: 'action-catalog', label: 'Danh mục hành động', perm: 'DMHS00' }];
   const noAccess = (title) => `<div class="pg">${title}<div class="vcard pad24"><p class="ov-empty">Bạn chưa được cấp quyền truy cập chức năng này</p></div></div>`;
 
   function shell(tab, info, action, body) {
     // Theo: fe/repo-khcn-bpmn-fe/src/app/features/action-matrix/action-matrix.component.html (tiêu đề 20, tab pill, nút của tab bên phải)
     return `<div class="pg">
       <h1 class="pg-title">Ma trận hành động${infoBtn(info)}</h1>
-      <div class="pg-head"><nav class="mt-tabs" aria-label="Ma trận hành động">${TABS.map((t) => `<a class="mt-tab ${t.path === tab ? 'on' : ''}" href="#/${BASE}/${t.path}" data-go="${BASE}/${t.path}" ${t.path === tab ? 'aria-current="page"' : ''}>${t.label}</a>`).join('')}</nav>
+      <div class="pg-head"><nav class="mt-tabs" aria-label="Ma trận hành động">${TABS.filter((t) => can(t.perm)).map((t) => `<a class="mt-tab ${t.path === tab ? 'on' : ''}" href="#/${BASE}/${t.path}" data-go="${BASE}/${t.path}" ${t.path === tab ? 'aria-current="page"' : ''}>${t.label}</a>`).join('')}</nav>
         ${action ? `<div class="r">${action}</div>` : ''}</div>
       ${body}</div>`;
   }
@@ -160,7 +162,8 @@
   function reconRows(proc) {
     const used = new Set();
     return branches(proc).map((b) => {
-      const r = RULES.find((x) => !used.has(x) && x.proc === proc && x.step === b.step && x.action === b.act);
+      const fit = (x) => !used.has(x) && x.proc === proc && x.step === b.step && x.action === b.act;
+      const r = RULES.find((x) => fit(x) && x.name === b.label.slice(0, 50)) || RULES.find(fit);
       if (r) used.add(r);
       return Object.assign({}, b, { rule: r || null, actName: (actionBy(b.act) || {}).name || b.act });
     });
@@ -174,16 +177,16 @@
       'Dữ liệu mẫu: ở mỗi quy trình MS01.01 / .02 / .03, 2 nhánh của bước "Xử lý ĐXMS không khớp quy trình" (Chuyển quy trình / Sửa lại — thêm theo quyết định chọn quy trình khi tạo ĐXMS) cố ý chưa có luật. Đồng bộ → hỏi xác nhận → tạo 2 luật cho quy trình đang chọn (vd MS01_01_T10A_…), 2 dòng thành Đã khớp; luật mới hiện ở đầu tab Luật hiển thị hành động.',
       'Ô Quy trình áp dụng là một phần của truy vấn, không bỏ chọn được; mở ở quy trình đầu tiên (MS01.01). Ba quy trình MS01 dùng chung sơ đồ MS01 v1.1 nhưng chỉ đối soát các bước áp dụng cho quy trình (MS01.03 không có bước 12, 41–58; MS01.01 / .02 không có bước 11, 38–40). MS02 / MS13 / MS14 chưa có mô tả nhánh: "Chưa có dữ liệu", đồng bộ tạo 0 luật.',
       'Tìm theo mã luật khớp hoặc tên bước (Enter). Phân trang tại chỗ 10/20/50 như source (API trả cả danh sách một lần).',
-      'Quyền (P-41): chỉ Quản trị hệ thống.',
+      'Quyền (T24 Q3, P-118): DTO00 vào tab; DTO02 mới có nút Đồng bộ/Đối soát luật từ BPMN.',
     ],
-    q: ['P-39'], src: 'action-matrix/catalogs/bpmn-reconcile · /action-matrix/bpmn-reconcile',
+    q: ['P-39', 'P-118'], src: 'action-matrix/catalogs/bpmn-reconcile · /action-matrix/bpmn-reconcile',
   });
 
   function reconcile() {
     // Theo: fe/repo-khcn-bpmn-fe/src/app/features/action-matrix/catalogs/bpmn-reconcile/bpmn-reconcile.component.html
     //       + bpmn-reconcile.facade.ts, constants/bpmn-reconcile-columns.constants.ts
     const info = reconInfo();
-    if (!(ROLES_ALLOWED.includes(Flow.state.persona) || D.allAccess(Flow.state.persona))) return noAccess(`<h1 class="pg-title">Ma trận hành động${infoBtn(info)}</h1>`);
+    if (!can('DTO00')) return noAccess(`<h1 class="pg-title">Ma trận hành động${infoBtn(info)}</h1>`);
     if (!R.wf) R.wf = processOptions()[0].value;
     const rows = reconRows(R.wf).filter((x) => !R.kw || norm(x.rule ? x.rule.code : '').includes(norm(R.kw)) || norm(x.stepName).includes(norm(R.kw)));
     const { from, rows: pg } = slice(R, rows);
@@ -204,7 +207,7 @@
         <thead><tr><th class="ord">STT</th>${cols.map(([h]) => `<th>${h}</th>`).join('')}</tr></thead>
         <tbody>${body || emptyRow(cols.length + 1)}</tbody></table></div>
       ${pager({ id: 'mtr', total: rows.length, page: R.page, size: R.size, open: R.psOpen })}</div>`;
-    return shell('bpmn-reconcile', info, `<button type="button" class="vbtn primary" data-mt="sync">${icon('reload')} Đồng bộ/Đối soát luật từ BPMN</button>`, card);
+    return shell('bpmn-reconcile', info, can('DTO02') ? `<button type="button" class="vbtn primary" data-mt="sync">${icon('reload')} Đồng bộ/Đối soát luật từ BPMN</button>` : '', card);
   }
 
   /* Đồng bộ luật từ BPMN: tạo luật cho mọi nhánh Thiếu luật của quy trình đang chọn (hỏi trước, nêu tên quy trình). */
@@ -213,12 +216,31 @@
     const yes = await window.Catalog.confirm({ sev: 'info', title: 'Đồng bộ luật từ BPMN',
       desc: `Hệ thống sẽ tạo luật hiển thị hành động cho các nhánh còn thiếu của ${proc}. Bạn có chắc chắn muốn đồng bộ không?`, hl: proc, cancel: 'Không', ok: 'Có' });
     if (!yes) return;
-    const missing = reconRows(R.wf).filter((x) => !x.rule);
+    ok(`Đã tạo ${fillMissing(R.wf)} luật hiển thị hành động từ BPMN`);
+    rerender();
+  }
+  /* Sinh luật cho mọi nhánh Thiếu luật của quy trình; dùng chung với Đồng bộ từ Camunda (T24 Q2). */
+  function fillMissing(proc) {
+    const missing = reconRows(proc).filter((x) => !x.rule);
     const taken = new Set(RULES.map((r) => r.code));
     let id = Math.max(0, ...RULES.map((r) => r.id));
     RULES.unshift(...missing.map((b) => ruleOf(b, ++id, ruleCode(b, taken), TODAY, TODAY)));
-    ok(`Đã tạo ${missing.length} luật hiển thị hành động từ BPMN`);
-    rerender();
+    return missing.length;
+  }
+
+  /* T24 Q1: nút trên màn xử lý việc theo luật (GET available-actions: luật ACTIVE của quy trình + bước + màn, vai của người dùng cộng vai của task).
+     Không có luật khớp → không có nút, như BE. Ngoại lệ dữ liệu mẫu: quy trình chưa có mô tả nhánh (MS02, MS13, MS14) và bước 10a chưa có luật nào thì giữ nguyên nút,
+     để 10a còn chạy được khi chưa đối soát. Tên hiển thị của luật là nhãn nút (rule.displayName). */
+  function allowed(proc, task, label, pid) {
+    if (!MS01.includes(proc)) return { show: true, label };
+    const rows = reconRows(proc).filter((x) => x.task === String(task));
+    const row = rows.find((x) => x.label === label);
+    if (!row || (String(task) === '10a' && !rows.some((x) => x.rule))) return { show: true, label };
+    const r = row.rule;
+    if (!r || !r.active || r.screen !== 'TASK') return { show: false, label };
+    const mine = row.roles.concat(D.roleOf(pid) || []);
+    if (!D.allAccess(pid) && r.roles.length && !r.roles.some((x) => mine.includes(x))) return { show: false, label };
+    return { show: true, label: r.name !== label.slice(0, 50) ? r.name : label };
   }
 
   /* ---------- SCR-46 Danh mục hành động (action-catalog-list) ---------- */
@@ -248,22 +270,22 @@
       'Outcome BPMN = giá trị biến mà nhánh BPMN ghi khi bấm hành động (vd approved=true); chỉ xem, không sửa trên UI (UR-WF-02 "outcome/biến nghiệp vụ" — source cũng chỉ xem).',
       'Danh mục mẫu 10 hành động suy từ nhãn nút của luồng MS01 v1.1; "Lưu" chưa có luật nào nên cột Mã luật áp dụng là "-".',
       'Tìm nhanh theo mã hoặc tên hành động (Enter); Tìm kiếm nâng cao 3 trường như source; hai kiểu tìm độc lập. Quay lại từ màn chi tiết về đúng trang / bộ lọc.',
-      'Quyền (P-41): chỉ Quản trị hệ thống.',
+      'Quyền (T24 Q3, P-118): DMHS00 vào tab; DMHD02 mới có liên kết Mã hành động và màn Xem chi tiết hành động.',
     ],
-    q: ['P-39'], src: 'action-matrix/catalogs/action-catalog/action-catalog-list · /action-matrix/action-catalog',
+    q: ['P-118'], src: 'action-matrix/catalogs/action-catalog/action-catalog-list · /action-matrix/action-catalog',
   });
 
   function catalog() {
     // Theo: fe/repo-khcn-bpmn-fe/src/app/features/action-matrix/catalogs/action-catalog/action-catalog-list.component.html
     //       + action-catalog.facade.ts, constants/action-catalog-columns.constants.ts, action-catalog.constants.ts
     const info = catInfo();
-    if (!(ROLES_ALLOWED.includes(Flow.state.persona) || D.allAccess(Flow.state.persona))) return noAccess(`<h1 class="pg-title">Ma trận hành động${infoBtn(info)}</h1>`);
+    if (!can('DMHS00')) return noAccess(`<h1 class="pg-title">Ma trận hành động${infoBtn(info)}</h1>`);
     const rows = catRows();
     const { from, rows: pg } = slice(C, rows);
     const cols = [['Mã hành động', 200], ['Tên hành động', 220], ['Mã luật áp dụng', 420], ['Outcome BPMN', 180]];
     const body = pg.map((a, i) => `<tr data-code="${a.code}">
         <td class="ord">${from + i + 1}</td>
-        <td><a class="link" href="#/${BASE}/action-catalog/${a.code}" data-go="${BASE}/action-catalog/${a.code}">${esc(a.code)}</a></td>
+        <td>${can('DMHD02') ? `<a class="link" href="#/${BASE}/action-catalog/${a.code}" data-go="${BASE}/action-catalog/${a.code}">${esc(a.code)}</a>` : esc(a.code)}</td>
         <td>${esc(a.name)}</td><td>${tagList(a.rules)}</td><td>${esc(a.outcome || '-')}</td></tr>`).join('');
     const d = C.d;
     const txt = (k, label, ph) => `<div class="vfield"><div class="lr"><label>${label}</label></div><input class="vctl" data-mcf="${k}" maxlength="255" placeholder="${ph}" value="${esc(d[k])}"></div>`;
@@ -294,7 +316,7 @@
       src: 'action-matrix/catalogs/action-catalog/action-catalog-detail · /action-matrix/action-catalog/:id',
     };
     const head = `<div class="pg-head"><div class="l"><button type="button" class="vbtn back" data-mt-back aria-label="Quay lại">${icon('back')}</button><h1 class="pg-title">Xem chi tiết hành động${infoBtn(info)}</h1></div></div>`;
-    if (!(ROLES_ALLOWED.includes(Flow.state.persona) || D.allAccess(Flow.state.persona))) return noAccess(head);
+    if (!can('DMHD02')) return noAccess(head);
     const a = actionBy(code);
     if (!a) return `<div class="pg">${head}<div class="vcard pad24"><div class="empty-t">Không tìm thấy dữ liệu.</div></div></div>`;
     const procs = [...new Set(RULES.filter((r) => r.action === code).map((r) => r.proc))].map((p) => workflows().find((w) => w.code === p)).filter(Boolean);
@@ -351,17 +373,19 @@
       'Mã hành động là liên kết sang Xem chi tiết hành động. Tên hành động là tên trong Danh mục hành động, không phải Tên hiển thị của nút.',
       'Tìm kiếm nhanh theo mã luật hoặc tên hành động (Enter); Tìm kiếm nâng cao có 6 trường (5 ô chữ + Trạng thái) như source. Hai kiểu tìm độc lập, chỉ một kiểu có hiệu lực.',
       'Dữ liệu mẫu sinh từ luồng MS01 v1.1 cho từng quy trình MS01.01 / .02 / .03 (ba quy trình riêng — P-37 đã chốt): mỗi nút hành động của mỗi bước người dùng áp dụng cho quy trình là một luật (mã MS01_01_T&lt;bước&gt;_&lt;hành động&gt;). Ở mỗi quy trình, hai nút của bước "Xử lý ĐXMS không khớp quy trình" (Sửa lại / Chuyển quy trình) cố ý chưa có luật để demo Đối soát BPMN.',
-      'Thêm / sửa / xoá / kích hoạt chạy thật trong phiên; tải lại trang hoặc "Reset luồng" ở nút demo thì về dữ liệu mẫu. Luật chưa quyết định nút trên màn xử lý việc (P-39).',
-      'Quyền (P-41): chỉ Quản trị hệ thống; vai khác thấy thông báo chưa được cấp quyền.',
+      'Thêm / sửa / xoá / kích hoạt chạy thật trong phiên; tải lại trang hoặc "Reset luồng" ở nút demo thì về dữ liệu mẫu. ',
+      'Áp dụng luật (T24 Q1, P-39): nút trên màn xử lý việc lấy theo luật đang Kích hoạt của quy trình + bước, màn Xử lý công việc, đúng vai; Tên hiển thị là nhãn nút. Tắt / xoá luật hoặc đổi sang màn khác thì nút ẩn. Chi tiết hồ sơ không có nút (source không gọi available-actions ở màn này). Chỉ các nhánh sẵn có của bước mới thành nút; luật thêm cho hành động ngoài BPMN không sinh nút vì không có nhánh để chạy.',
+      'Ngoại lệ dữ liệu mẫu: MS02, MS13, MS14 chưa có luật nên giữ nguyên nút; bước 10a chưa có luật nào thì giữ nút để luồng còn chạy (thật: không có nút cho tới khi đối soát).',
+      'Quyền (T24 Q3, P-118): HTN00 vào tab; HTN02 Thêm mới; HTN03 Sửa + công tắc Trạng thái; HTN05 Xoá; HTN04 liên kết Mã luật; DMHD02 liên kết Mã hành động. Không có quyền thì ẩn, công tắc khoá.',
     ],
-    q: ['P-39'], src: 'action-matrix/catalogs/display-rule/display-rule-list · /action-matrix/display-rule',
+    q: ['P-39', 'P-118'], src: 'action-matrix/catalogs/display-rule/display-rule-list · /action-matrix/display-rule',
   });
 
   function list() {
     // Theo: fe/repo-khcn-bpmn-fe/src/app/features/action-matrix/catalogs/display-rule/display-rule-list.component.html
     //       + display-rule.facade.ts, constants/display-rule-columns.constants.ts, action-matrix.constants.ts (10/20/50)
     const info = listInfo();
-    if (!(ROLES_ALLOWED.includes(Flow.state.persona) || D.allAccess(Flow.state.persona))) return noAccess(`<h1 class="pg-title">Ma trận hành động${infoBtn(info)}</h1>`);
+    if (!can('HTN00')) return noAccess(`<h1 class="pg-title">Ma trận hành động${infoBtn(info)}</h1>`);
     const rows = filtered();
     const pages = Math.max(1, Math.ceil(rows.length / L.size));
     if (L.page > pages) L.page = pages;
@@ -372,12 +396,12 @@
       const a = actionBy(r.action) || {};
       return `<tr data-id="${r.id}">
         <td class="ord">${from + i + 1}</td>
-        <td class="c"><div class="acts"><button type="button" class="cat-ic" data-mt-edit="${r.id}" title="Sửa" aria-label="Sửa">${icon('edit')}</button><span class="sep"></span>
-          <button type="button" class="cat-ic del" data-mt-del="${r.id}" title="Xoá" aria-label="Xoá">${icon('del')}</button></div></td>
-        <td class="c"><button type="button" class="vswitch ${r.active ? 'on' : ''}" role="switch" aria-checked="${r.active}" data-mt-tg="${r.id}"
+        <td class="c"><div class="acts">${can('HTN03') ? `<button type="button" class="cat-ic" data-mt-edit="${r.id}" title="Sửa" aria-label="Sửa">${icon('edit')}</button>` : ''}${can('HTN03') && can('HTN05') ? '<span class="sep"></span>' : ''}
+          ${can('HTN05') ? `<button type="button" class="cat-ic del" data-mt-del="${r.id}" title="Xoá" aria-label="Xoá">${icon('del')}</button>` : ''}</div></td>
+        <td class="c"><button type="button" class="vswitch ${r.active ? 'on' : ''} ${can('HTN03') ? '' : 'ro'}" role="switch" aria-checked="${r.active}" ${can('HTN03') ? `data-mt-tg="${r.id}"` : 'disabled'}
           aria-label="${r.active ? 'Ngừng kích hoạt' : 'Kích hoạt'}"><span></span></button></td>
-        <td><a class="link clamp" href="#/${BASE}/display-rule/${r.id}/view" data-go="${BASE}/display-rule/${r.id}/view">${esc(r.code)}</a></td>
-        <td><a class="link clamp" href="#/${BASE}/action-catalog/${r.action}" data-go="${BASE}/action-catalog/${r.action}">${esc(r.action)}</a></td>
+        <td>${can('HTN04') ? `<a class="link clamp" href="#/${BASE}/display-rule/${r.id}/view" data-go="${BASE}/display-rule/${r.id}/view">${esc(r.code)}</a>` : `<span class="clamp">${esc(r.code)}</span>`}</td>
+        <td>${can('DMHD02') ? `<a class="link clamp" href="#/${BASE}/action-catalog/${r.action}" data-go="${BASE}/action-catalog/${r.action}">${esc(r.action)}</a>` : `<span class="clamp">${esc(r.action)}</span>`}</td>
         <td><span class="clamp">${esc(a.name || '')}</span></td><td><span class="clamp">${esc(procLabel(r.proc))}</span></td>
         <td class="num">${esc(r.created)}</td><td class="num">${esc(r.updated)}</td></tr>`;
     }).join('');
@@ -389,7 +413,7 @@
       <div class="vtable-vp" style="max-height:calc(100vh - 360px)"><table class="vtable mt-table"><thead><tr><th class="ord">STT</th>${cols.map(([h, w, a, fix]) => `<th class="${a || ''}" style="${fix ? `width:${w}px;max-width:${w}px;` : ''}min-width:${w}px">${h}</th>`).join('')}</tr></thead>
         <tbody>${body || `<tr><td class="vtable-empty" colspan="${cols.length + 1}"><img src="assets/empty-table.svg" alt="">Chưa có dữ liệu</td></tr>`}</tbody></table></div>
       ${pager({ id: 'mt', total: rows.length, page: L.page, size: L.size, open: L.psOpen })}</div>`;
-    return shell('display-rule', info, `<button type="button" class="vbtn primary" data-go="${BASE}/display-rule/create">${icon('add')} Thêm mới</button>`, card);
+    return shell('display-rule', info, can('HTN02') ? `<button type="button" class="vbtn primary" data-go="${BASE}/display-rule/create">${icon('add')} Thêm mới</button>` : '', card);
   }
 
   /* ---------- vht-confirm-dialog (dùng chung với Danh mục dùng chung) ---------- */
@@ -499,13 +523,13 @@
         'Loại không chọn tay: tự điền theo Hành động đã chọn và luôn khoá. Bước trong điều kiện lọc theo Quy trình áp dụng (User Task trên sơ đồ phiên bản đang hoạt động); đổi quy trình thì xoá bước đã chọn.',
         'Mã luật hành động: tự viết hoa, chỉ chữ không dấu, số, "-", "_", tối đa 50 ký tự; không sửa được khi Chỉnh sửa; trùng mã → báo lỗi, giữ nguyên form. Tên hiển thị tối đa 50 ký tự.',
         'Huỷ / quay lại khi đã nhập → hỏi "Bạn có chắc muốn hủy?". Màn Xem có nút Chỉnh sửa; tiêu đề "Xem chi tiết luật hiển thị nút" lấy nguyên chuỗi source.',
-        'Xem trước = nút như sẽ hiện trên màn Xử lý công việc + các vai trò thấy nút; chưa nối vào màn xử lý việc thật (P-39).',
+        'Xem trước = nút như sẽ hiện trên màn Xử lý công việc + các vai trò thấy nút; luật đang Kích hoạt quyết định nút thật trên màn đó (T24 Q1, P-39).',
         'Quy trình áp dụng: 6 quy trình của Danh sách quy trình (MS01.01 / .02 / .03 là ba quy trình riêng — P-37 đã chốt); Bước trong điều kiện chỉ gồm bước áp dụng cho quy trình. Biểu mẫu sử dụng: biểu mẫu đang hoạt động ở Quản lý E-Form (Mã - Tên; Checklist 01/02 = CL-01/02); luật đang gắn biểu mẫu đã dừng hoạt động vẫn hiện biểu mẫu đó kèm "(Dừng hoạt động)". Vai trò thực hiện: vai trò theo URD.',
       ],
       q: ['P-39'], src: 'action-matrix/catalogs/display-rule/display-rule-form · /action-matrix/display-rule/create | :id/edit | :id/view',
     };
     const headL = `<div class="l"><button type="button" class="vbtn back" data-mt-cancel aria-label="Quay lại">${icon('back')}</button><h1 class="pg-title">${esc(title)}${infoBtn(info)}</h1></div>`;
-    if (!(ROLES_ALLOWED.includes(Flow.state.persona) || D.allAccess(Flow.state.persona))) return noAccess(`<div class="pg-head">${headL}</div>`);
+    if (!can({ create: 'HTN02', edit: 'HTN03', view: 'HTN04' }[mode])) return noAccess(`<div class="pg-head">${headL}</div>`);
     const rule = id != null ? byId(id) : null;
     if (id != null && !rule) return `<div class="pg"><div class="pg-head">${headL}</div><div class="vcard pad24"><div class="empty-t">Không tìm thấy dữ liệu.</div></div></div>`;
     const route = `${mode}/${id || ''}`;
@@ -515,7 +539,7 @@
     }
     const v = F.v, view = mode === 'view';
     const right = view
-      ? `<button type="button" class="vbtn primary" data-go="${BASE}/display-rule/${id}/edit">Chỉnh sửa</button>`
+      ? (can('HTN03') ? `<button type="button" class="vbtn primary" data-go="${BASE}/display-rule/${id}/edit">Chỉnh sửa</button>` : '')
       : '<button type="button" class="vbtn secondary grey" data-mt-cancel>Huỷ</button><button type="button" class="vbtn primary" data-mt-save>Lưu</button>';
     const actionOpts = ACTIONS.map((a) => ({ value: a.code, label: `${a.code} - ${a.name}` }));
     const rolesLabels = v.roles.map((r) => labelOf(ROLES, r)).filter(Boolean);
@@ -629,5 +653,5 @@
     return list();
   }
 
-  window.MaTran = { route, list, form, reconcile, catalog, catalogDetail, rules: () => RULES, reconRows, ACTIONS, TYPES, reset: () => { RULES = seed(); } };
+  window.MaTran = { route, list, form, reconcile, catalog, catalogDetail, rules: () => RULES, reconRows, fillMissing, allowed, roleLabels, ACTIONS, TYPES, reset: () => { RULES = seed(); } };
 })();

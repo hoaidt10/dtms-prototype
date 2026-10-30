@@ -26,7 +26,7 @@ test('D-9: menu Khoản đầu tư mở #/kdt; route cũ #/ph/kdt chuyển hư�
 
 test('SCR-54: cột, trạng thái suy từ hồ sơ, nhóm KĐT, phân trang, Xoá chỉ khi chưa có hồ sơ', async ({ page }) => {
   await fresh(page, '#/kdt');
-  await expect(page.locator('.vtable th')).toHaveText(['STT', 'Thao tác', 'Trạng thái', 'Mã KĐT', 'Tên KĐT', 'Đơn vị đề xuất', 'Loại KĐT', 'Nhóm KĐT', 'Tổng mức vốn (tỷ đồng)', 'Ngày cập nhật']);
+  await expect(page.locator('.vtable th')).toHaveText(['STT', 'Thao tác', 'Trạng thái', 'Mã KĐT', 'Tên KĐT', 'Nhiệm vụ / Đề tài, dự án', 'Đơn vị đề xuất', 'Loại KĐT', 'Nhóm KĐT', 'Tổng mức vốn (tỷ đồng)', 'Ngày cập nhật']);
   await expect(page.locator('.vtable tbody tr')).toHaveCount(10);
   await expect(page.locator('[data-pager="kdt"] .tot')).toHaveText('Tổng số bản ghi: 13');
   await expect(row(page, 'KĐT-2026-0033').locator('.vbadge')).toHaveText('Chưa có hồ sơ');
@@ -72,9 +72,11 @@ test('SCR-55: Thêm mới — bắt buộc, không có trường Quy trình, Lư
   await expect(page.locator('.pg-title')).toHaveText('Thêm mới khoản đầu tư');
   await expect(page.locator('main label', { hasText: /^Quy trình$/ })).toHaveCount(0);
   await page.locator('#k-save').click();
-  await expect(page.locator('.vfield.invalid .msg')).toHaveText(['Bạn cần nhập Tên KĐT.', 'Bạn cần chọn Lĩnh vực.', 'Bạn cần chọn Loại KĐT.', 'Bạn cần chọn Tính chất tài sản.']);
+  await expect(page.locator('.vfield.invalid .msg')).toHaveText(['Bạn cần nhập Tên KĐT.', 'Bạn cần chọn Nhiệm vụ / Đề tài, dự án.', 'Bạn cần chọn Lĩnh vực.', 'Bạn cần chọn Loại KĐT.', 'Bạn cần chọn Tính chất tài sản.']);
   await page.locator('#k-title').fill('Đầu tư hệ thống đo kiểm OTA tích hợp phục vụ nhiệm vụ KHCN 5G-A');
-  await pick(page, 'k-field', 'Viễn thông - CNTT');
+  // D-45: chọn nhiệm vụ / đề tài → Lĩnh vực mặc định theo nhiệm vụ
+  await pick(page, 'k-nv', 'DT-KHCN-2027-002');
+  await expect(page.locator('[data-vsel="k-field"]')).toContainText('Viễn thông - CNTT');
   await pick(page, 'k-type', 'Khoa học công nghệ');
   await pick(page, 'k-nature', 'Cần tích hợp');
   await page.locator('#k-est').fill('120,5');
@@ -84,6 +86,7 @@ test('SCR-55: Thêm mới — bắt buộc, không có trường Quy trình, Lư
   await expect(page.locator('.vtable tbody tr').first()).toContainText('KĐT-2026-0032');
   await expect(page.locator('.vtable tbody tr').first().locator('.vbadge')).toHaveText('Chưa có hồ sơ');
   await expect(page.locator('.vtable tbody tr').first()).toContainText('120,50');
+  await expect(page.locator('.vtable tbody tr').first()).toContainText('DT-KHCN-2027-002 — Đề tài phát triển trạm 5G-Advanced năm 2027');
   expect(await page.evaluate(() => Flow.state.status)).toBe('new');
   // Lưu trên trình duyệt; xoá được khi chưa có hồ sơ.
   await page.reload();

@@ -23,7 +23,7 @@ test('Menu: Thông báo, Hợp đồng, Báo cáo mở màn thật; route cũ #/
   await as(page, 'minh', '#/ph/hop-dong');
   await expect(page).toHaveURL(/#\/hop-dong$/);
   for (const [h, t] of [['#/ph/po', 'Danh sách thỏa thuận khung'], ['#/ph/mau-thong-bao', 'Mẫu thông báo'], ['#/ph/kenh-thong-bao', 'Kênh thông báo'],
-    ['#/ph/trigger-thong-bao', 'Trigger thông báo'], ['#/ph/bao-cao', 'Báo cáo tổng hợp'], ['#/ph/bao-cao-lcnt', 'Báo cáo lựa chọn nhà thầu'], ['#/tong-quan', 'Tổng quan']]) {
+    ['#/ph/bao-cao', 'Báo cáo tổng hợp'], ['#/ph/bao-cao-lcnt', 'Báo cáo lựa chọn nhà thầu'], ['#/tong-quan', 'Tổng quan']]) {
     await go(page, h);
     await expect(page.locator('.pg-title')).toHaveText(t);
     expect(await mainText(page)).not.toMatch(BA);
@@ -161,19 +161,15 @@ test('Kênh thông báo: 4 kênh, bật SMS có xác nhận Kích hoạt; cấu 
   expect(page.errors).toEqual([]);
 });
 
-test('Trigger thông báo: mẫu theo kênh tính theo mã <sự kiện>_<KÊNH>; sửa mốc gửi, vai nhận bắt buộc', async ({ page }) => {
-  await as(page, 'qt', '#/trigger-thong-bao');
-  await expect(rows(page)).toHaveCount(10);
-  await go(page, '#/trigger-thong-bao/TASK_OVERDUE');
-  const t = card(page, 'Mẫu thông báo theo kênh');
-  await expect(t.locator('tbody tr').nth(0)).toContainText('Chưa có mẫu'); // In-app
-  await expect(t.locator('tbody tr').nth(1)).toContainText('Sẵn sàng gửi'); // Email
-  await expect(t.locator('tbody tr').nth(2)).toContainText('Mẫu dừng hoạt động'); // SMS
-  await page.locator('.pg-head [data-go="trigger-thong-bao/TASK_OVERDUE/edit"]').click();
-  await expect(page.locator('.pg-title')).toHaveText('Chỉnh sửa trigger thông báo');
-  await page.locator('[data-vsel="ev-roles"] [data-vsel-clear]').click();
-  await page.locator('#ev-save').click();
-  await expect(page.locator('main')).toContainText('Bạn cần chọn Vai trò nhận thông báo.');
+test('D-44: bỏ Trigger thông báo — menu Thông báo còn 2 mục, route cũ mở trang Đang phát triển, sự kiện của mẫu không còn link', async ({ page }) => {
+  await as(page, 'qt', '#/mau-thong-bao');
+  await expect(page.locator('.sb-nav [data-go="trigger-thong-bao"]')).toHaveCount(0);
+  await expect(page.locator('.sb-nav [data-go="kenh-thong-bao"]')).toHaveCount(1);
+  await go(page, '#/trigger-thong-bao');
+  await expect(page.locator('main')).toContainText('Tính năng đang được phát triển');
+  await go(page, '#/mau-thong-bao');
+  await rows(page).first().locator('a.link').first().click();
+  await expect(card(page, 'Sự kiện sử dụng mẫu').locator('a')).toHaveCount(0);
   expect(page.errors).toEqual([]);
 });
 
@@ -226,16 +222,9 @@ test('Báo cáo: 6 nhóm, mọi báo cáo dựng không lỗi; drill-down lọc 
   expect(page.errors).toEqual([]);
 });
 
-test('Giả lập P-80: ngưỡng cảnh báo theo số ngày "Trước hạn" của Trigger; sửa Trigger thì Thỏa thuận khung đổi theo', async ({ page }) => {
+test('Giả lập P-80: ngưỡng cảnh báo là tham số hệ thống (thỏa thuận khung 90 ngày)', async ({ page }) => {
   await as(page, 'admin', '#/thoa-thuan-khung');
   await expect(rows(page).filter({ hasText: 'TTK-2025-0007' })).toContainText('Sắp hết hạn (85 ngày)');
-  await go(page, '#/trigger-thong-bao/FRAMEWORK_EXPIRING/edit');
-  await page.locator('#ev-offset').fill('60');
-  await page.locator('#ev-save').click();
-  await go(page, '#/thoa-thuan-khung');
-  await expect(rows(page).filter({ hasText: 'TTK-2025-0007' })).toContainText('Đang hiệu lực');
-  await go(page, '#/trigger-thong-bao/CONTRACT_EXPIRING');
-  await expect(page.locator('main')).toContainText('Hợp đồng sắp hết hạn');
   expect(page.errors).toEqual([]);
 });
 

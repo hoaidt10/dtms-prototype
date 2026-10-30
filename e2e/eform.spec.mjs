@@ -21,9 +21,8 @@ const asAdmin = async (page, hash) => {
 const row = (page, code) => page.locator(`.ef-table tbody tr[data-code="${code}"]`);
 const rows = (page) => page.locator('.ef-table tbody tr[data-code]');
 
-test('D-16: mục Quản lý E-form dưới Danh mục dùng chung mở #/eform; route cũ #/ph/eform chuyển hướng', async ({ page }) => {
-  await asAdmin(page, '#/viec-cua-toi');
-  await page.locator('.sb-nav [data-toggle="Danh mục dùng chung"]').click();
+test('D-42: mục Quản lý E-form ở sidebar phân hệ Danh mục dùng chung mở #/eform; route cũ #/ph/eform chuyển hướng', async ({ page }) => {
+  await asAdmin(page, '#/dmdc');
   await expect(page.locator('.sb-nav [data-go="eform"] .l')).toHaveText('Quản lý E-form');
   await page.locator('.sb-nav [data-go="eform"]').click();
   await expect(page).toHaveURL(/#\/eform$/);

@@ -119,7 +119,7 @@ test('SCR-42: chi tiết theo workflow-detail — Thông tin quy trình, sơ đ�
   await expect(page.locator('.ginfo .v').nth(5)).toHaveText('Hoạt động');
   await expect(page.locator('.ginfo .vbadge')).toHaveCount(0);
   await expect(page.locator('.bp-vp[data-page="MS01 v1.1"]')).toHaveCSS('height', '500px');
-  await expect(page.locator('.bp-tb [data-bpz]')).toHaveCount(2);
+  await expect(page.locator('.bp-tb [data-bpz]')).toHaveCount(3);
   await expect(page.locator('.trail h3')).toHaveText('Lịch sử phiên bản');
   await expect(page.locator('.wf-vh .vn')).toHaveText(['v1.1', 'v1.0']);
   await expect(page.locator('.wf-vh .mk.on')).toHaveCount(1);
@@ -160,7 +160,7 @@ test('SCR-42: bấm phần tử sơ đồ → viền đỏ + panel nhóm theo lo
   await clickElement(page, 'Activity_44');
   await expect(panel.locator('.wf-el-h .t')).toHaveText('serviceTask');
   await expect(panel.locator('.vacc-h')).toHaveText(['Chung', 'Tài liệu mô tả', 'Tích hợp']);
-  await expect(panel.locator('.wf-f .k').last()).toHaveText('Job type (Worker xử lý)');
+  await expect(panel.locator('.wf-f .k').last()).toHaveText('Mô tả Job Type');
   await panel.locator('[data-wf="close-el"]').click();
   await expect(page.locator('.wf-el')).toHaveCount(0);
   await expect(page.locator('.wf-dg')).not.toHaveClass(/sel/);

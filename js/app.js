@@ -5,10 +5,13 @@
 
   let collapsed = false;
   let demoOpen = false;
-  const openGroups = new Set(D.menu.filter((m) => m.open).map((m) => m.label));
+  const openGroups = new Set(D.menu.concat(D.dmdcMenu).filter((m) => m.open).map((m) => m.label));
   try { collapsed = localStorage.getItem('dtms-proto-sb') === '1'; } catch (e) { /* bỏ qua */ }
 
   const route = () => (location.hash.replace(/^#\/?/, '') || 'viec-cua-toi');
+  /* D-42: khung theo phân hệ — Danh sách Phân hệ (không sidebar), Danh mục dùng chung (sidebar riêng), còn lại Đầu tư mua sắm. */
+  const appOf = (r) => (r === 'phan-he' || r.startsWith('ph/he-') ? 'picker'
+    : r === 'dmdc' || r.startsWith('dmdc/') || r === 'eform' || r.startsWith('eform/') || r.startsWith('ph/dm-') ? 'dmdc' : 'dtms');
 
   /* Mục menu đang được chọn theo route. */
   function activePath(r) {
@@ -21,10 +24,9 @@
     if (r.startsWith('khlcnt')) return 'khlcnt';
     if (r.startsWith('goi-thau')) return 'goi-thau';
     if (r.startsWith('cong-khai-thau')) return 'cong-khai-thau';
-    if (r.startsWith('hop-dong')) return 'hop-dong';
+    if (r.startsWith('hop-dong') || r.startsWith('ho-so-hd')) return 'hop-dong';
     if (r.startsWith('thoa-thuan-khung')) return 'thoa-thuan-khung';
     if (r.startsWith('mau-thong-bao')) return 'mau-thong-bao';
-    if (r.startsWith('trigger-thong-bao')) return 'trigger-thong-bao';
     if (r === 'ho-so' || r.startsWith('ho-so/')) return Flow.state.kdt ? 'kdt' : 'ho-so-dxms';
     if (r.startsWith('ho-so')) return 'ho-so-dxms';
     if (r.startsWith('dxms')) return 'dxms';
@@ -37,12 +39,13 @@
     return r;
   }
 
-  function topbar() {
+  function topbar(app) {
+    const prod = app === 'dmdc' ? { code: 'DMDC', name: 'Danh mục dùng chung' } : D.product;
     const p = persona(Flow.state.persona);
-    const n = Flow.tokensFor(p.id).length;
+    const n = Flow.pendingCount(p.id);
     return `<header class="topbar">
-      <a class="brand" href="#/viec-cua-toi" aria-label="Về trang chủ"><span class="brand-logo">VHT</span>
-        <span class="brand-text"><span>${D.product.code}</span><span>${D.product.name}</span></span></a>
+      <a class="brand" href="#/phan-he" aria-label="Về Danh sách Phân hệ"><span class="brand-logo">VHT</span>
+        <span class="brand-text"><span>${prod.code}</span><span>${prod.name}</span></span></a>
       <div class="topbar-right">
         <button class="bell" aria-label="Thông báo" data-go="viec-cua-toi">${icon('bell')}${n ? `<span class="count">${n}</span>` : ''}</button>
         <span class="rule"></span>
@@ -55,7 +58,7 @@
     const childActive = kids.some((k) => k.path === act);
     const isActive = m.path && m.path === act;
     const open = openGroups.has(m.label) || childActive;
-    const badge = m.badge === 'tasks' ? Flow.tokensFor(Flow.state.persona).length : 0;
+    const badge = m.badge === 'tasks' ? Flow.pendingCount(Flow.state.persona) : 0;
     const cls = ['nav', level ? 'child' : '', isActive ? 'active' : '', childActive ? 'has-active' : '', open ? 'open' : ''].join(' ');
     const btn = `<button class="${cls}" ${m.path ? `data-go="${m.path}"` : `data-toggle="${esc(m.label)}"`} title="${esc(m.label)}">
       ${m.icon ? `<span class="i">${icon(m.icon)}</span>` : ''}<span class="l">${esc(m.label)}</span>
@@ -63,17 +66,21 @@
     return btn + (kids.length && open ? kids.map((k) => navItem(k, level + 1, act)).join('') : '');
   }
 
-  function sidebar(act) {
+  function sidebar(act, app) {
+    const dm = app === 'dmdc';
+    /* Danh mục dùng chung: mục phẳng và nhóm Đầu tư mua sắm cùng lọc theo vai (P-36). */
+    const items = dm ? D.dmdcMenu.filter((m) => (m.dmdc ? window.Catalog.canSee(m.dmdc) : !m.dmdcGroup || m.children.some((k) => window.Catalog.canSee(k.dmdc))))
+      : window.Luong.menu().filter((m) => !m.hidden);
     return `<aside class="sidebar ${collapsed ? 'collapsed' : ''}">
-      <div class="sb-head"><span class="ic">${icon('phan_he_mua_sam')}</span><span class="t">Đầu tư mua sắm</span></div>
+      <div class="sb-head"><span class="ic">${icon(dm ? 'danh_muc_dung_chung' : 'phan_he_mua_sam')}</span><span class="t">${dm ? 'Danh mục dùng chung' : 'Đầu tư mua sắm'}</span></div>
       <div class="sb-rule"></div>
-      <nav class="sb-nav">${window.Luong.menu().filter((m) => !m.hidden).map((m) => navItem(m, 0, act)).join('')}</nav>
+      <nav class="sb-nav">${items.map((m) => navItem(m, 0, act)).join('')}</nav>
       <div class="sb-foot">v1.0 - © 2026</div>
       <button class="sb-toggle" id="sbt" aria-label="${collapsed ? 'Mở rộng menu' : 'Thu gọn menu'}">${icon('collapse')}</button></aside>`;
   }
 
   function findMenu(path) {
-    for (const g of D.menu) {
+    for (const g of D.menu.concat(D.dmdcMenu)) {
       if (g.path === path) return { item: g, group: null };
       for (const k of g.children || []) if (k.path === path) return { item: k, group: g };
     }
@@ -90,6 +97,7 @@
 
   function content(r) {
     const [a, b, c] = r.split('/');
+    if (a === 'phan-he') return window.PhanHe.page();
     if (a === 'giam-sat-tien-trinh') return window.QuyTrinh.monitor();
     if (a === 'quy-trinh') return b ? window.QuyTrinh.detail(b) : window.QuyTrinh.list();
     if (a === 'ma-tran') return window.MaTran.route(r.split('/').slice(1));
@@ -111,7 +119,9 @@
     if (a === 'cong-khai-thau') return window.CongKhai.route();
     /* T16 B3: Hợp đồng (SCR-84…87), Thông báo (SCR-88…91), Báo cáo (SCR-93). */
     if (a === 'hop-dong' || a === 'thoa-thuan-khung') return window.HopDong.route(r.split('/'));
-    if (a === 'mau-thong-bao' || a === 'kenh-thong-bao' || a === 'trigger-thong-bao') return window.ThongBao.route(r.split('/'));
+    /* T25: hồ sơ con của hợp đồng (D-47), khuôn SCR-20. */
+    if (a === 'ho-so-hd') return S.hdCaseDetail(b, c);
+    if (a === 'mau-thong-bao' || a === 'kenh-thong-bao') return window.ThongBao.route(r.split('/'));
     if (a === 'bao-cao' && b) return window.BaoCao.report(b);
     /* Hồ sơ (con): SCR-02 danh sách, SCR-25 thêm mới [/<mã ĐXMS>], SCR-20 chi tiết hồ sơ mẫu — theo profile-management. */
     if (a === 'ho-so-dxms' && b === 'create') return S.profileCreate();
@@ -138,20 +148,26 @@
   /* Công cụ demo: chọn hồ sơ demo (bộ D.demoSets — plan MS01.02/.03 §8.1), cảnh và nhánh phụ của bộ đang chọn. */
   function demoPanel() {
     const st = Flow.state, set = Flow.demoSet();
+    /* Bộ demo Hợp đồng: việc đang chờ đọc từ kho hồ sơ con (đang ở màn khác thì S là luồng chính). */
+    const pendingDemo = set.hd ? Flow.caseTokens('admin', set.hd) : st.tokens;
     return `<div class="demo-fab"><button class="demo-btn ${demoOpen ? 'on' : ''}" id="demo" aria-label="Công cụ demo" title="Công cụ demo">${icon('tool')}</button>
       ${demoOpen ? `<div class="demo-panel">
         <h4>Công cụ demo (không thuộc giao diện app)</h4>
         <div class="row"><a class="btn sm secondary" href="#/chon-vai">Chọn vai</a></div>
         <h4>Phương án menu ĐXMS (T17)</h4>
         <div class="row"><button class="btn sm ${window.Luong.isGop() ? 'secondary' : 'primary'}" data-luong-mode="tach">Tách: ĐXMS · Hồ sơ</button><button class="btn sm ${window.Luong.isGop() ? 'primary' : 'secondary'}" data-luong-mode="gop">Gộp: Luồng mua sắm</button></div>
+        <h4>Đồng bộ từ Camunda</h4>
+        <div class="row">${window.QuyTrinh.syncDemo()}</div>
         <h4>Hồ sơ demo</h4>
         <div class="row">${D.demoSets.map((d) => `<button class="btn sm ${d.key === set.key ? 'primary' : 'secondary'}" data-demo-set="${d.key}">${esc(d.label)}</button>`).join('')}</div>
         <h4>Việc đang chờ</h4>
-        <div class="scene-list">${st.tokens.length ? st.tokens.map((k) => `<button data-persona="${k.who}"><span class="n">${esc(persona(k.who).short.slice(0, 2))}</span>${esc(persona(k.who).short)} · ${esc(Flow.taskName(k.task))}<span class="tk">task ${String(k.task).padStart(2, '0')}</span></button>`).join('') : '<span class="faint" style="font-size:12px">Không có việc đang chờ.</span>'}</div>
+        <div class="scene-list">${pendingDemo.length ? pendingDemo.map((k) => `<button data-persona="${k.who}"><span class="n">${esc(persona(k.who).short.slice(0, 2))}</span>${esc(persona(k.who).short)} · ${esc(k.name || Flow.taskName(k.task))}<span class="tk">task ${String(k.task).padStart(2, '0')}</span></button>`).join('') : '<span class="faint" style="font-size:12px">Không có việc đang chờ.</span>'}</div>
         <h4>Nhảy tới cảnh · ${esc(set.label)}</h4>
         <div class="scene-list">${set.scenes.map((s) => `<button data-scene="${s.n}"><span class="n">${s.n}</span>${esc(s.name)}<span class="tk">task ${s.tasks}</span></button>`).join('')}</div>
         ${set.branches.length ? `<h4>Nhánh phụ (mở khi khách hỏi)</h4>
         <div class="scene-list">${set.branches.map((b, i) => `<button data-branch="${i}"><span class="n">↳</span>${esc(b.name)}<span class="tk">task ${b.tasks}</span></button>`).join('')}</div>` : ''}
+        ${set.events ? `<h4>Sự kiện theo dõi hợp đồng</h4>
+        <div class="scene-list">${set.events.map((v, i) => `<button data-hd-event="${i}"><span class="n">↯</span>${esc(v.label)}<span class="tk">${v.tasks}</span></button>`).join('')}</div>` : ''}
         <h4>Hồ sơ</h4>
         <div class="row"><button class="btn sm secondary" id="reset">Reset luồng</button><a class="btn sm secondary" href="#/ho-so">Chi tiết hồ sơ</a><a class="btn sm secondary" href="#/cho-chot">Điểm ❓ (${Object.keys(st.qNotes).length}/${Object.keys(D.openPoints).length})</a></div>
         <div class="row"><button class="btn sm secondary" id="reset-eform">Khôi phục dữ liệu mẫu</button></div>
@@ -161,6 +177,8 @@
 
   /* Cảnh bắt đầu trước khi có hồ sơ: bộ MS01.01 mở Thêm mới ĐXMS (SCR-28); bộ có ĐXMS mẫu mở Thêm mới hồ sơ khoá ĐXMS đó (SCR-25). */
   function openStart(set) {
+    /* Bộ Hợp đồng: cảnh 1 mở Chi tiết hợp đồng, tab Thương thảo & ký kết có nút Tạo hồ sơ. */
+    if (set.hd) { window.HopDong.openTab(set.hd, set.tab || 'tt'); return; }
     if (set.dxms === D.dxmsCode0) { openCreate('dxms'); return; }
     /* Bộ KĐT: cảnh 1 bắt đầu từ Thêm mới KĐT (SCR-55). */
     if (set.kdt) { if (location.hash === '#/kdt/create') { window.Kdt.enter(['create']); render(); } else location.hash = '#/kdt/create'; return; }
@@ -174,6 +192,8 @@
   function render() {
     const r = route();
     if (MOVED[r]) { location.replace('#/' + MOVED[r]); return; }
+    /* D-47: màn của hồ sơ con nạp S của hồ sơ đó; màn khác dùng luồng chính. */
+    Flow.focus(r);
     const base = r.split('/').slice(0, 2).join('/');
     if (((r.startsWith('ho-so-dxms/') && !r.startsWith('ho-so-dxms/create')) || r.startsWith('ho-so-kdt/')) && !(lastRoute || '').startsWith(base)) detailFrom = lastRoute;
     if (r !== lastRoute) { S.enter(r); if (r.split('/')[0] === 'kdt') window.Kdt.enter(r.split('/').slice(1)); window.Thau.enter(r.split('/')); window.Luong.enter(r.split('/')); window.HopDong.enter(r.split('/')); window.ThongBao.enter(r.split('/')); }
@@ -181,8 +201,9 @@
     const act = activePath(r);
     const main = document.querySelector('.main');
     const keepScroll = main && main.dataset.route === r ? main.scrollTop : 0;
-    document.getElementById('app').innerHTML = topbar()
-      + `<div class="shell">${sidebar(act)}<main class="main" data-route="${esc(r)}">${content(r)}</main></div>` + demoPanel();
+    const app = appOf(r);
+    document.getElementById('app').innerHTML = topbar(app)
+      + `<div class="shell">${app === 'picker' ? '' : sidebar(act, app)}<main class="main" data-route="${esc(r)}">${content(r)}</main></div>` + demoPanel();
     document.querySelector('.main').scrollTop = keepScroll;
     /* Đổi trang: đưa mục menu đang chọn vào tầm nhìn (các mục cuối menu như Danh mục dùng chung). */
     const on = !keepScroll && document.querySelector('.sb-nav .nav.active');
@@ -233,6 +254,13 @@
     const ok = (m) => toast(`<b>Thành công</b><br>${m}`);
     /* Hồ sơ KĐT: tổng mức vốn không thuộc MS13 → Thông báo chuyển luồng (SCR-66); kết thúc khác → Chi tiết KĐT. */
     const kdt = Flow.state.kdt;
+    /* Hồ sơ con của hợp đồng: kết thúc → Chi tiết hợp đồng. */
+    if (Flow.state.parent) {
+      if (Flow.state.status !== 'running') { ok('Hợp đồng đã ký đầy đủ, chuyển sang theo dõi thực hiện.'); location.hash = '#/hop-dong/' + encodeURIComponent(Flow.state.parent); return; }
+      ok(choice && choice.sign ? 'Đã gửi văn bản đi trình ký.' : 'Thực hiện hành động thành công.');
+      location.hash = '#/viec-cua-toi';
+      return;
+    }
     if (kdt && Flow.state.status === 'moved') {
       ok(`Hồ sơ đã chuyển luồng ${esc(Flow.state.movedTo.process)}. Hồ sơ mới: <b>${esc(Flow.state.movedTo.code)}</b>.`);
       location.hash = `#/kdt/${encodeURIComponent(kdt)}/chuyen-luong`;
@@ -277,7 +305,7 @@
     el.style.top = (r.bottom + 8) + 'px';
     el.style.right = (window.innerWidth - r.right) + 'px';
     el.innerHTML = `<div class="hd"><b>Chuyển tài khoản</b></div>`
-      + D.personas.map((p) => { const n = Flow.tokensFor(p.id).length; return `<button data-persona="${p.id}" class="${p.id === Flow.state.persona ? 'on' : ''}">${avatar(p.id, 'sm')}<span style="flex:1">${esc(p.name)}<br><span class="faint" style="font-size:12px">${esc(p.role)}</span></span>${n ? `<span class="tag red">${n}</span>` : ''}</button>`; }).join('');
+      + D.personas.map((p) => { const n = Flow.pendingCount(p.id); return `<button data-persona="${p.id}" class="${p.id === Flow.state.persona ? 'on' : ''}">${avatar(p.id, 'sm')}<span style="flex:1">${esc(p.name)}<br><span class="faint" style="font-size:12px">${esc(p.role)}</span></span>${n ? `<span class="tag red">${n}</span>` : ''}</button>`; }).join('');
     document.body.appendChild(el);
     setTimeout(() => document.addEventListener('click', function off() { el.remove(); document.removeEventListener('click', off); }), 0);
   }
@@ -324,8 +352,20 @@
       toast(`Cảnh ${s.n} · ${esc(s.name)} — vai ${esc(persona(Flow.state.persona).name)}`, 'info');
       demoOpen = false;
       if (s.start === 'NEW') { openStart(set); return; }
-      const mine = Flow.tokensFor(Flow.state.persona).find((k) => String(k.task) === String(s.start)) || Flow.tokensFor(Flow.state.persona)[0];
+      const pool = set.hd ? Flow.caseTokens(Flow.state.persona, set.hd) : Flow.tokensFor(Flow.state.persona);
+      const mine = pool.find((k) => String(k.task) === String(s.start)) || pool[0];
+      if (set.tab) window.HopDong.setTab(set.hd, set.tab);
       location.hash = mine ? `#/task/${mine.id}` : s.go ? '#/' + s.go : '#/ho-so';
+      render(); return;
+    }
+    /* D-49: sự kiện của MS23 Tổng quan (đến mốc, nhà thầu thông báo, đến hạn, biên bản đã ký) không có màn riêng. */
+    const he = t.closest('[data-hd-event]');
+    if (he) {
+      const set = Flow.demoSet(), v = set.events[Number(he.dataset.hdEvent)];
+      demoOpen = false;
+      if (Flow.hdEvent(set.hd, v.key, v.data)) toast(`Sự kiện: ${esc(v.label)}`, 'info');
+      else toast('Hợp đồng chưa ký đầy đủ, chưa có hồ sơ theo dõi.', 'warn');
+      window.HopDong.openTab(set.hd, set.tab);
       render(); return;
     }
     const br = t.closest('[data-branch]');
@@ -333,19 +373,20 @@
       const b = Flow.demoSet().branches[Number(br.dataset.branch)];
       Flow.jumpTo(b.task, b.who, b.vars, b.process, b.dxms, b.ui, b.settle, b.pre);
       demoOpen = false;
-      const mine = Flow.tokensFor(b.who).find((k) => String(k.task) === String(b.task));
+      const hdSet = Flow.demoSet().hd;
+      const mine = (hdSet ? Flow.caseTokens(b.who, hdSet) : Flow.tokensFor(b.who)).find((k) => String(k.task) === String(b.task));
       toast(`Nhánh phụ: ${esc(b.name)} — vai ${esc(persona(b.who).name)}`, 'info');
       location.hash = `#/task/${mine.id}`;
       render(); return;
     }
     if (t.closest('#reset')) {
-      const m = modal(`<div class="modal-h"><h3>Reset luồng?</h3></div><div class="modal-b">Xoá hồ sơ đang chạy và các ĐXMS, hồ sơ đã tạo trên prototype, quay về trước bước Thêm mới ĐXMS (SCR-28). Ý kiến ❓ đã ghi được giữ lại.</div>
+      const m = modal(`<div class="modal-h"><h3>Reset luồng?</h3></div><div class="modal-b">Xoá hồ sơ đang chạy và các ĐXMS, hồ sơ đã tạo trên prototype, đưa quy trình và luật hiển thị về mẫu, quay về trước bước Thêm mới ĐXMS (SCR-28). Ý kiến ❓ đã ghi được giữ lại.</div>
         <div class="modal-f"><button class="btn secondary" data-close>Huỷ</button><button class="btn primary" id="rs">Reset</button></div>`);
       m.el.querySelector('#rs').onclick = () => { m.close(); Flow.reset(); Flow.setPersona('minh'); demoOpen = false; location.hash = '#/viec-cua-toi'; toast('Đã reset luồng.'); };
       return;
     }
     /* Reset luồng không đụng dữ liệu DMDC, E-Form, thầu, hợp đồng, thông báo; khôi phục riêng ở đây. */
-    if (t.closest('#reset-eform')) { window.Catalog.reset(); window.EForm.reset(); window.Thau.reset(); window.CongKhai.reset(); window.HopDong.reset(); window.ThongBao.reset(); demoOpen = false; render(); toast('Đã khôi phục dữ liệu DMDC, E-Form, thầu, hợp đồng, thông báo.'); return; }
+    if (t.closest('#reset-eform')) { window.Catalog.reset(); window.EForm.reset(); window.Thau.reset(); window.CongKhai.reset(); window.HopDong.reset(); window.ThongBao.reset(); window.MaTran.reset(); window.QuyTrinh.resetSync(); demoOpen = false; render(); toast('Đã khôi phục dữ liệu DMDC, E-Form, thầu, hợp đồng, thông báo, quy trình, luật hiển thị.'); return; }
     const a = t.closest('[data-act]');
     if (a && !a.disabled) { act(a.dataset.act, Number(a.dataset.choice)); return; }
     const ex = t.closest('[data-export]');

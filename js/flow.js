@@ -12,6 +12,13 @@
 
   let S = null;
 
+  /* D-47 (T25): một hợp đồng có nhiều hồ sơ con chạy song song (MS22, MS23.x, MS24). Engine vẫn chạy một S: S của mỗi hồ sơ con nằm trong CASES theo mã,
+     mở việc nào thì nạp S của hồ sơ đó (openCase), rời màn thì về luồng chính (toMain). MAIN = S luồng chính trong lúc đang nạp hồ sơ con; null = S là luồng chính.
+     Mã việc của hồ sơ con kèm mã hồ sơ. Trên hệ thống thật mỗi hồ sơ con là một process instance riêng. */
+  const CASES_KEY = 'dtms-proto-cases-v1';
+  let CASES = {};
+  let MAIN = null;
+
   /* Luồng theo quy trình của hồ sơ đang chạy (plan KĐT §6 #2): F() = định nghĩa luồng trong D.flows, T() = task BPMN của trang tương ứng.
      MS01.01 / .02 / .03 dùng chung D.flow (trang MS01 v1.1); MS13 dùng D.flows.MS13 + BPMN_FLOWS.MS13 (trang MS13). */
   const fam = () => D.familyOf(S && S.vars.process);
@@ -227,12 +234,108 @@
     if (S && S.kdt && S.status !== 'new') S.kdtCases = liveKdt().map((c) => Object.assign({}, c, { live: false })).concat(S.kdtCases);
   }
 
-  function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { /* bỏ qua */ } }
+  /* Vai đang đăng nhập và dữ liệu CARRY đi theo khi đổi S giữa luồng chính và hồ sơ con. */
+  const passOn = (from, to) => { carry(from, to); to.persona = from.persona; return to; };
+  function saveCases() { try { localStorage.setItem(CASES_KEY, JSON.stringify(CASES)); } catch (e) { /* bỏ qua */ } }
+  function save() {
+    if (MAIN) { passOn(S, MAIN); saveCases(); }
+    try { localStorage.setItem(KEY, JSON.stringify(MAIN || S)); } catch (e) { /* bỏ qua */ }
+  }
   function load() {
     try { const raw = localStorage.getItem(KEY); if (raw) return JSON.parse(raw); } catch (e) { /* bỏ qua */ }
     return null;
   }
+  function loadCases() {
+    try { return JSON.parse(localStorage.getItem(CASES_KEY) || '{}') || {}; } catch (e) { return {}; }
+  }
   function emit() { save(); listeners.forEach((fn) => fn(S)); }
+
+  /* Dữ liệu mẫu theo đối tượng cha của S luồng chính — gọi khi khởi động và khi rời hồ sơ con. */
+  function useMainCase() {
+    D.useCase(S.kdt || S.dxms || demoSet().dxms || demoSet().kdt);
+    useAdj();
+  }
+  /* Về luồng chính. Không emit: gọi trong lúc đổi route, trước khi vẽ màn. */
+  function toMain() {
+    if (!MAIN) return;
+    const m = MAIN;
+    passOn(S, m);
+    saveCases();
+    S = m;
+    MAIN = null;
+    useMainCase();
+    save();
+  }
+  /* Nạp S của hồ sơ con `code`. Trả về false nếu không có hồ sơ đó. */
+  function openCase(code) {
+    const next = CASES[code];
+    if (!next) return false;
+    if (next === S) return true;
+    if (!MAIN) MAIN = S;
+    passOn(S, next);
+    S = next;
+    save();
+    return true;
+  }
+  /* Tạo hồ sơ con và start instance: o = { code, parent (mã hợp đồng), name, at (bước bắt đầu, mặc định 1), vars, clock }.
+     Trả về mã hồ sơ; hồ sơ con trùng mã (chạy lại demo) được thay. */
+  function openNew(process, o) {
+    const next = passOn(S, fresh(process));
+    if (!MAIN) MAIN = S;
+    next.clock = o.clock != null ? o.clock : S.clock;
+    S = next;
+    Object.assign(S, { code: o.code, name: o.name || null, parent: o.parent || null, status: 'running' });
+    if (o.ui) S.ui = JSON.parse(JSON.stringify(o.ui));
+    Object.assign(S.vars, o.vars || {});
+    CASES[o.code] = S;
+    log('START', { system: true, action: `Khởi tạo ${o.code} theo quy trình ${process}` });
+    enter(o.at != null ? o.at : 1, {});
+  }
+  function startCase(process, o) {
+    openNew(process, o);
+    emit();
+    return o.code;
+  }
+  /* Route quyết định S nào đang nạp: việc (task/<mã hồ sơ con>:k…) và chi tiết hồ sơ con (ho-so-hd/<mã>) nạp hồ sơ đó, route khác về luồng chính. */
+  function focus(route) {
+    const m = /^(?:task\/([^/:]+):|ho-so-hd\/([^/]+))/.exec(route || '');
+    if (!m || !openCase(m[1] || m[2])) toMain();
+  }
+  /* Quy trình kế tiếp tự khởi tạo khi hồ sơ con kết thúc (MS22 ký xong → MS23): start trong kho, S vẫn là hồ sơ vừa xong. */
+  function spawnNext() {
+    const nx = S.parent && (D.hdProcesses[fam()] || {}).then;
+    if (!nx) return;
+    const cur = S, o = nx(S, Flow.dateOf(S.clock));
+    openNew(o.process, { code: D.hdCaseCode(S.parent, o.process), parent: S.parent, vars: o.vars });
+    S = cur;
+  }
+  /* Sự kiện vào hồ sơ đang nạp (MS23 Tổng quan): nhánh độc lập, không phải bước kế tiếp của nhánh khác. */
+  function fireEvent(key, data) {
+    S.vars.evt = data || {};
+    enter(key, {});
+  }
+  /* Tua hồ sơ con của bộ demo Hợp đồng (D-48): tạo lại hồ sơ, đi theo nhánh chính tới bước `target`; 'NEW' = xoá hồ sơ, về trước bước Tạo hồ sơ. Luồng chính giữ nguyên.
+     set.base: bộ của quy trình đi sau (MS23 sau MS22) — chạy xong quy trình nền, nạp hồ sơ kế tiếp, phát các sự kiện của cảnh (evts) rồi mới tua. */
+  function ffCase(target, set, ui, settle, pre, evts) {
+    toMain();
+    S.demoKey = set.key;
+    Flow.cases(set.hd).forEach((c) => { delete CASES[c.code]; });
+    if (target === 'NEW') { saveCases(); return; }
+    if (set.base) {
+      openNew(set.base, { code: D.hdCaseCode(set.hd, set.base), parent: set.hd, clock: D.hdCaseClock, ui, vars: pre });
+      advanceTo('END');
+      openCase(D.hdCaseCode(set.hd, set.key));
+      /* Sự kiện trước xử lý xong rồi mới tới sự kiện sau; việc của sự kiện cuối do tua bên dưới quyết định. */
+      (evts || []).forEach((e, i) => { if (i) advanceTo('END'); fireEvent(e.key, e.data); });
+    } else openNew(set.key, { code: D.hdCaseCode(set.hd, set.key), parent: set.hd, clock: D.hdCaseClock, ui, vars: pre });
+    advanceTo(target, settle);
+  }
+  /* Xoá toàn bộ hồ sơ con (Reset luồng). */
+  function clearCases() {
+    CASES = {};
+    MAIN = null;
+    try { localStorage.removeItem(CASES_KEY); } catch (e) { /* bỏ qua */ }
+  }
 
   /* Task BPMN của quy trình (MS01: 1–61, 10a, 10b); các khoá khác trong định nghĩa luồng là cổng / điểm nối của prototype. */
   const isTask = (k) => Object.prototype.hasOwnProperty.call(T(), String(k));
@@ -289,7 +392,8 @@
       S.status = key === 'END' ? 'approved' : 'stopped';
       const endKdt = (S.vars.tdKind && S.vars.tdKind !== 'CT' ? 'Kết thúc — hoàn tất phê duyệt cấp Tập đoàn: ' : 'Kết thúc — ')
         + (S.vars.branch === 'BM00' ? 'hồ sơ gộp BM-00 đã ký duyệt' : 'Quyết định phê duyệt KĐT');
-      log(key, { system: true, action: key === 'END' ? (S.kdt ? endKdt : 'Kết thúc — ĐXMS đã phê duyệt') : 'Kết thúc theo chỉ đạo khác' });
+      log(key, { system: true, action: key === 'END' ? (S.parent ? (D.hdProcesses[fam()] || {}).end : S.kdt ? endKdt : 'Kết thúc — ĐXMS đã phê duyệt') : 'Kết thúc theo chỉ đạo khác' });
+      if (key === 'END') spawnNext();
       return;
     }
     if (key === 'END_MOVED') {
@@ -305,16 +409,16 @@
       return;
     }
     /* 76 Trình và nhận kết quả ký VOffice (service): gửi hồ sơ, callback trả trạng thái + PDF đã ký → G3. Giả lập lỗi gửi (ui.voFail, P-94):
-       token ở 76 cho người trình, nút Gửi lại chạy lại bước này. */
+       token ở 76 cho người trình, nút Gửi lại chạy lại bước này. D-50: f.vo = true là VOffice; f.vo = 'VContract' là cùng cơ chế qua VContract. */
     if (f.vo) {
-      const k = S.vars.ky || {};
+      const k = S.vars.ky || {}, ch = f.vo === true ? 'VOffice' : f.vo;
       if (S.ui && S.ui.voFail) {
         S.ui.voFail = false;
-        log(key, { system: true, action: `Lỗi gửi VOffice — ${k.doc} chưa trình được (P-94)` });
+        log(key, { system: true, action: `Lỗi gửi ${ch} — ${k.doc} chưa trình được (P-94)` });
         addToken(key, ctx, k.by);
         return;
       }
-      log(key, { system: true, action: `Trình ký VOffice ${k.doc} — đã nhận callback, lưu PDF đã ký` });
+      log(key, { system: true, action: `Trình ký ${ch} ${k.doc} — đã nhận callback, lưu PDF đã ký` });
       return enter(f.next, ctx);
     }
 
@@ -353,6 +457,8 @@
         return enter(k.to, ctx);
       }
       if (f.run) f.run(S.vars, S.ui || (S.ui = {}));
+      /* Nhánh sự kiện kết thúc ở đây, hồ sơ vẫn chạy (MS23 Tổng quan không có sự kiện kết thúc chung — DG-MS23 §C.8). */
+      if (f.stop) { if (isService) log(key, { system: true, action: T()[key].name, t: S.clock }); return; }
       if (isService) {
         const a = f.auth ? kdtAuth() : null;
         /* 66 chuyển hồ sơ lên Tập đoàn theo hình thức ký công văn (65) — P-99; 74 nhận văn bản Tập đoàn đã ký theo loại hồ sơ trình. */
@@ -412,7 +518,8 @@
   function addToken(key, ctx, who) {
     S.seq += 1;
     const w = who || whoFor(key, ctx), cands = candsOf(key);
-    S.tokens.push(Object.assign({ id: 'k' + S.seq, task: key, group: ctx.group || null, cqcm: ctx.cqcm || null,
+    /* Hồ sơ con: mã việc kèm mã hồ sơ để route task/<mã> tìm đúng hồ sơ (D-47). */
+    S.tokens.push(Object.assign({ id: (S.parent ? S.code + ':' : '') + 'k' + S.seq, task: key, group: ctx.group || null, cqcm: ctx.cqcm || null,
       who: cands ? cands[0] : w, since: ctx.t != null ? ctx.t : S.clock }, cands ? { cands } : {}));
   }
 
@@ -424,17 +531,19 @@
     return fin;
   }
 
-  /* Khối ký chung 75–78 (D-34; Camunda: call activity DTMS_KY_CHUNG, biến hinhThucKy, mat). Nút ký của bước ký MS13 (`sign`, P-91)
-     không đi thẳng tới đích mà vào S2 "Đến bước trình ký" → G1 "Hồ sơ Mật?": Mật → 77 (bắt buộc bản cứng); không Mật → 75 chọn hình thức
-     (prototype: hộp thoại Trình ký của bước ký — điểm tự quyết B3-1) → G2 → 76 VOffice | 77 → 78 → G3 → về bước chính (vars.ky.to).
-     Mật = lựa chọn ở bước 4 (ui.secret), chưa chọn thì theo KĐT. */
+  /* Khối ký chung (D-34, D-50; Camunda: call activity DTMS_KY_CHUNG, biến hinhThucKy, mat). Quy trình nào có khối ký thì khai báo ở D.kyConf
+     { choose: bước ghi hình thức, soft: bước ký điện tử, hard: bước ký bản cứng, vcontract: bước ký VContract nếu có }. Nút ký (`sign`, P-91) không đi thẳng tới đích
+     mà vào khối: Mật → hard (bắt buộc bản cứng); không Mật → chọn hình thức (prototype: hộp thoại Trình ký của bước ký — điểm tự quyết T18 B3-1)
+     → bước theo hình thức → G3 → về bước chính (vars.ky.to). Mật = lựa chọn ở bước 4 (ui.secret), chưa chọn thì theo KĐT. */
   const isMat = () => (S.ui && S.ui.secret != null ? !!S.ui.secret : !!(Flow.findKdt(S.kdt) || {}).secret);
-  const viaKy = (choice) => !!(S.kdt && choice && choice.sign);
+  const kyConf = () => D.kyConf[fam()] || null;
+  const viaKy = (choice) => !!(kyConf() && choice && choice.sign);
+  const KY_NAME = { soft: 'VOffice', hard: 'Bản cứng', vcontract: 'VContract' };
   function kySign(tok, choice, mode, ctx) {
-    const mat = isMat(), m = mat || mode === 'hard' ? 'hard' : 'soft';
+    const c = kyConf(), mat = isMat(), m = mat || mode === 'hard' ? 'hard' : mode === 'vcontract' && c.vcontract != null ? 'vcontract' : 'soft';
     S.vars.ky = { task: tok.task, doc: choice.sign, to: choice.to, by: tok.who, signer: tok.who, mode: m, mat };
-    if (!mat) log(75, { who: tok.who, action: `Chọn hình thức ký ${choice.sign}: ${m === 'hard' ? 'Bản cứng' : 'VOffice'}` });
-    enter(m === 'hard' ? 77 : 76, ctx);
+    if (!mat) log(c.choose, { who: tok.who, action: `Chọn hình thức ký ${choice.sign}: ${KY_NAME[m]}` });
+    enter(c[m], ctx);
   }
 
   /* Hoàn thành token bằng lựa chọn `choice` (object trong F()[key].choices, hoặc null = next mặc định). */
@@ -445,7 +554,8 @@
     const fin = advanceClock(tok, f);
     S.tokens = S.tokens.filter((t) => t.id !== tokenId);
     const label = choice ? choice.label : (f.actionLabel || 'Hoàn thành');
-    log(tok.task, { who: tok.who, action: label, reason: reason || null, cqcm: tok.cqcm, since: tok.since });
+    /* D-50: bước của bên ngoài hệ thống (f.external, vd. NCC ký): người xử lý chỉ ghi nhận kết quả, không có tài khoản bên ngoài đăng nhập. */
+    log(tok.task, Object.assign({ who: tok.who, action: label, reason: reason || null, cqcm: tok.cqcm, since: tok.since }, f.external ? { party: f.external } : {}));
     if (f.round) S.vars.round += 1;
     if (f.bump) bump(f.bump);
     if (choice && choice.set) Object.assign(S.vars, choice.set);
@@ -475,14 +585,16 @@
 
   /* Bộ demo (D.demoSets): theo ĐXMS của hồ sơ đang chạy; chưa có hồ sơ thì theo bộ vừa chọn ở công cụ demo. */
   const setOf = (key) => D.demoSets.find((d) => d.key === key) || D.demoSets[0];
-  const demoSet = () => (S.dxms && D.demoSets.find((d) => d.dxms === S.dxms || (d.also || []).includes(S.dxms)))
+  const demoSet = () => (S.parent && D.demoSets.find((d) => d.hd === S.parent && d.key === fam())) || (S.demoKey && setOf(S.demoKey).hd && setOf(S.demoKey))
+    || (S.dxms && D.demoSets.find((d) => d.dxms === S.dxms || (d.also || []).includes(S.dxms)))
     || (S.kdt && D.demoSets.find((d) => d.kdt === S.kdt || (d.also || []).includes(S.kdt))) || setOf(S.demoKey);
 
   /* Tua nhanh từ đầu theo nhánh chính cho tới khi có token ở task `target` (hoặc kết thúc).
      dxms = ĐXMS của hồ sơ (bộ dữ liệu mẫu); ui = lựa chọn đặt sẵn trên màn (vd. ĐVĐX bảo lưu ý kiến ở task 26);
      pre = biến đặt ngay sau khi khởi tạo, trước khi tua (vd. bản chụp danh mục Phân cấp thẩm quyền KĐT — vars.auth). */
   function fastForward(target, process, dxms, ui, settle, pre) {
-    const key = (D.demoSets.find((d) => d.dxms === (dxms || D.dxmsCode0) || d.kdt === dxms || (d.also || []).includes(dxms)) || D.demoSets[0]).key;
+    toMain();
+    const key =(D.demoSets.find((d) => d.dxms === (dxms || D.dxmsCode0) || d.kdt === dxms || (d.also || []).includes(dxms)) || D.demoSets[0]).key;
     S = carry({ qNotes: S ? S.qNotes : {} }, fresh(process || 'MS01.01'));
     S.demoKey = key;
     if (ui) S.ui = JSON.parse(JSON.stringify(ui));
@@ -492,6 +604,9 @@
     if (p) delete p.adj;
     start(Object.assign({ dxms }, adj || {}));
     if (p) Object.assign(S.vars, p);
+    advanceTo(target, settle);
+  }
+  function advanceTo(target, settle) {
     let guard = 0;
     while (S.status === 'running' && guard++ < 400) {
       /* settle: đã tới task đích nhưng còn nhánh song song khác → làm xong nhánh đó trước (vd. Ban Tài chính đã xác nhận khi TTMS mở bước 12). */
@@ -524,15 +639,43 @@
       /* Trạng thái lưu từ bản trước khi có KĐT. */
       ['kdtUser', 'kdtDel', 'kdtCases'].forEach((k) => { if (!S[k]) S[k] = []; });
       if (!S.kdtEdit) S.kdtEdit = {};
-      D.useCase(S.kdt || S.dxms || demoSet().dxms || demoSet().kdt);
-      useAdj();
+      CASES = loadCases();
+      useMainCase();
     },
     onChange(fn) { listeners.push(fn); },
-    /* Về trạng thái chưa tạo hồ sơ — chạy lại từ SCR-25. */
-    reset() { const keep = S ? S.qNotes : {}; const p = S ? S.persona : 'minh'; S = fresh(); S.qNotes = keep; S.persona = p; D.useCase(D.dxmsCode0); emit(); },
+    /* Về trạng thái chưa tạo hồ sơ — chạy lại từ SCR-25. Hồ sơ con của hợp đồng cũng xoá. */
+    reset() { toMain(); clearCases(); const keep = S ? S.qNotes : {}; const p = S ? S.persona : 'minh'; S = fresh(); S.qNotes = keep; S.persona = p; D.useCase(D.dxmsCode0); emit(); },
+    /* D-47: kho hồ sơ con. startCase = tạo + start; openCase / toMain = nạp / rời; cases = các hồ sơ con (lọc theo mã hợp đồng);
+       caseTokens = việc đang chờ của `pid` trên mọi hồ sơ con, kèm caseCode vì mã token chỉ duy nhất trong một hồ sơ. */
+    startCase,
+    openCase,
+    toMain,
+    focus,
+    inCase: () => !!MAIN,
+    cases(parent) { return Object.values(CASES).filter((c) => !parent || c.parent === parent); },
+    caseOf(code) { return CASES[code] || null; },
+    caseTokens(pid, parent) {
+      return Flow.cases(parent).flatMap((c) => c.tokens.filter((t) => D.allAccess(pid) || t.who === pid || (t.cands || []).includes(pid)).map((t) => Object.assign({}, t, { caseCode: c.code,
+        name: window.BPMN_FLOWS[D.familyOf(c.vars.process)].tasks[t.task].name })));
+    },
+    /* Sự kiện của hồ sơ theo dõi hợp đồng (D-49): chạy trên hồ sơ MS23 rồi trả về hồ sơ đang nạp. Chưa có hồ sơ (hợp đồng chưa ký xong) thì trả về false. */
+    hdEvent(hd, key, data) {
+      const code = D.hdCaseCode(hd, 'MS23'), back = MAIN ? S.code : null;
+      if (!openCase(code)) return false;
+      fireEvent(key, data);
+      if (!back) toMain(); else openCase(back);
+      emit();
+      return true;
+    },
+    /* Số việc đang chờ của `pid` trên luồng chính và mọi hồ sơ con (chuông, menu Việc của tôi, chuyển tài khoản). */
+    pendingCount(pid) {
+      const m = MAIN || S;
+      return m.tokens.filter((t) => D.allAccess(pid) || t.who === pid || (t.cands || []).includes(pid)).length + Flow.caseTokens(pid).length;
+    },
     /* SCR-25 Lưu (loại Phê duyệt): start instance theo quy trình người dùng chọn; sau đó không đổi được quy trình.
        opts: { dxms, name }. Prototype chạy một hồ sơ: hồ sơ đang chạy trước đó (nếu có) được thay. */
     create(process, opts) {
+      toMain();
       freezeKdt();
       keepLive(false);
       S = carry(S, fresh(process));
@@ -543,6 +686,7 @@
        trong một lần Lưu — trên hệ thống thật BE gọi lần lượt API tạo ĐXMS, tạo hồ sơ (profile-form). Tệp căn cứ gắn hồ sơ vào Danh sách tài liệu.
        Task 01 giao người tạo nếu người tạo thuộc vai trò Chuyên quản đã chọn. Trả về mã ĐXMS. */
     createLuong(data, opts) {
+      toMain();
       const creator = S.persona, code = nextDxmsCode(), now = Flow.dateOf(S.clock);
       S.dxmsUser.unshift(Object.assign({ creator: window.D.personas.find((p) => p.id === creator).name, created: now }, data, { code, updated: now, luong: true }));
       S = carry(S, fresh(opts.process));
@@ -636,6 +780,7 @@
     /* Thêm mới hồ sơ Phê duyệt KĐT: Lưu = khởi tạo instance MS13 (bước 1 giao người tạo); nhóm MS13/14/15 chưa xác định tới cổng phân luồng
        sau bước 11 ‖ 12 (D-7). Prototype chạy một hồ sơ: hồ sơ đang chạy trước đó được thay (hồ sơ KĐT cũ giữ lại ở trạng thái hiện tại). */
     createKdtCase(opts) {
+      toMain();
       const who = S.persona;
       freezeKdt();
       S = carry(S, fresh('MS13'));
@@ -653,6 +798,7 @@
     /* SCR-25 Lưu (loại Điều chỉnh, T21 D-36): start instance MS02 như hồ sơ Phê duyệt. opts: { dxms, name, before?, total?, reason? }.
        Hồ sơ đang chạy đã hoàn thành (vd. vừa phê duyệt ĐXMS này) được giữ vào danh sách hồ sơ để làm căn cứ điều chỉnh. Trả về mã hồ sơ. */
     createAdj(opts) {
+      toMain();
       freezeKdt();
       keepLive(true);
       const who = S.persona;
@@ -687,6 +833,12 @@
     jumpToScene(n, key) {
       const set = key ? setOf(key) : demoSet();
       const sc = set.scenes.find((s) => String(s.n) === String(n));
+      if (set.hd) {
+        ffCase(sc.start, set, sc.ui, false, sc.pre, (sc.evts || []).map((i) => set.events[i]));
+        S.persona = sc.who; S.lastScene = n;
+        emit();
+        return sc;
+      }
       const keep = S.qNotes;
       fastForward(sc.start, set.key, sc.kdt || sc.dxms || set.dxms || set.kdt, sc.ui, false, sc.pre);
       S.qNotes = keep; S.persona = sc.who; S.lastScene = n;
@@ -696,6 +848,13 @@
     /* Nhánh phụ: tua tới `task` (hồ sơ của `dxms` tạo theo `process`, mặc định ĐXMS-2026-0117 · MS01.01), đặt lựa chọn trên màn (ui),
        biến (vd. round) và vai. */
     jumpTo(task, who, vars, process, dxms, ui, settle, pre) {
+      const hs = D.demoSets.find((d) => d.hd && d.key === process);
+      if (hs) {
+        ffCase(task, hs, ui, settle, pre);
+        S.persona = who; Object.assign(S.vars, vars || {});
+        emit();
+        return;
+      }
       const keep = S.qNotes;
       fastForward(task, process, dxms, ui, settle, pre);
       S.qNotes = keep; S.persona = who; Object.assign(S.vars, vars || {});
@@ -715,6 +874,12 @@
     /* Hồ sơ đang chạy: dữ liệu mẫu + mã, tên, quy trình của instance. */
     /* Hồ sơ đang chạy: dữ liệu mẫu + mã, tên, quy trình của instance + thông tin ĐXMS cha (title = tên ĐXMS, name = tên hồ sơ). */
     ci() {
+      /* Hồ sơ con của hợp đồng: dữ liệu lấy từ hợp đồng cha (hop-dong.js). */
+      if (S.parent) {
+        const h = (window.HopDong && window.HopDong.find(S.parent)) || {};
+        return Object.assign({}, D.caseInfo, { code: S.code, dxms: S.parent, hd: S.parent, isHd: true, kind: 'HD', title: h.title, name: S.name || h.title, flow: S.vars.process,
+          unit: h.unit, total: h.value, owner: h.owner, ncc: h.ncc, secret: false });
+      }
       if (S.kdt) {
         const k = Flow.findKdt(S.kdt) || {};
         return Object.assign({}, D.caseInfo, { code: S.code || '—', dxms: S.kdt, kdt: S.kdt, isKdt: true, kind: 'PD', title: k.title || D.caseInfo.title,
@@ -755,6 +920,8 @@
       const own = (x) => String(stepOf(x)) === String(n);
       if (S.tokens.some(own)) return 'active';
       if (S.history.some(own)) return 'done';
+      /* Bước chỉ chạy khi có phát sinh (MS22 bước 6, 7). */
+      if ((F()[n] || {}).optional) return 'cond';
       if ((S.kdt ? D.kdtNa(S.vars, isMat()) : D.naOf(S.vars)).includes(Number(n))) return 'na';
       /* Ký bản cứng 77–78 của hồ sơ không Mật: chỉ chạy khi người trình chọn Bản cứng ở 75. */
       if (S.kdt && !isMat() && ['77', '78'].includes(String(n))) return 'cond';
@@ -762,7 +929,7 @@
       return 'todo';
     },
     currentStage() {
-      if (S.status !== 'running' || S.kdt) return null;
+      if (S.status !== 'running' || S.kdt || S.parent) return null;
       const nums = S.tokens.map((t) => t.task).filter(isTask).map((k) => parseInt(k, 10));
       const n = nums.length ? Math.min(...nums) : 1;
       return window.D.stages.find((s) => n >= s.from && n <= s.to);

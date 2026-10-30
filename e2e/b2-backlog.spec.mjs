@@ -138,12 +138,10 @@ test('KHLCNT: Lập KHLCNT từ KĐT đã duyệt → giá trị được duyệ
   await expect(page.locator('.pg-head [data-go^="khlcnt/create"]')).toHaveCount(0);
   await page.locator('.dx-tabs [data-dtab="ket-qua-kdt"]').click();
   await expect(card(page, 'Triển khai mua sắm')).toContainText('KHLCNT-2026-0018');
-  // Danh sách: dự thảo tạo trên prototype có nút Xoá
+  // Danh sách: không có cột Thao tác (D-43); dự thảo mới hiện trong danh sách
   await go(page, '#/khlcnt');
-  await page.locator('main .vtable tbody tr', { hasText: 'KHLCNT-2026-0018' }).locator('[data-kh-del]').click();
-  await page.locator('#cf-ok').click();
-  expect(await lastToast(page)).toContain('Xóa kế hoạch lựa chọn nhà thầu thành công');
-  await expect(page.locator('main .vtable tbody tr', { hasText: 'KHLCNT-2026-0018' })).toHaveCount(0);
+  await expect(page.locator('main .vtable th', { hasText: 'Thao tác' })).toHaveCount(0);
+  await expect(page.locator('main .vtable tbody tr', { hasText: 'KHLCNT-2026-0018' })).toHaveCount(1);
   expect(await mainText(page)).not.toMatch(BA);
   expect(page.errors).toEqual([]);
 });
@@ -159,7 +157,10 @@ test('Chi tiết KHLCNT: phân bổ công việc khớp giá trị được duy�
   await page.locator('.dx-tabs [data-ttab="phien-ban"]').click();
   await expect(card(page, 'So sánh KHLCNT trước / sau điều chỉnh').locator('tbody tr')).toHaveCount(3);
   await page.locator('.dx-tabs [data-ttab="ket-qua"]').click();
-  await expect(card(page, 'Văn bản của KHLCNT').locator('tbody tr')).toHaveCount(3);
+  await expect(card(page, 'Văn bản của KHLCNT').locator('tbody tr')).toHaveCount(5);
+  await expect(card(page, 'Văn bản của KHLCNT')).toContainText('KH202609-006-00');
+  await expect(card(page, 'Văn bản của KHLCNT')).toContainText('1000009790');
+  await expect(card(page, 'Kết quả kiểm tra KHLCNT').locator('tbody tr')).toHaveCount(16);
   await page.locator('[data-kh-adj]').click();
   await page.locator('#adj-ok').click();
   await expect(page.locator('#adj-err')).toBeVisible();
@@ -173,7 +174,7 @@ test('Chi tiết KHLCNT: phân bổ công việc khớp giá trị được duy�
   // KHLCNT đang kiểm tra: kết quả kiểm tra có nội dung chưa đạt
   await go(page, '#/khlcnt/' + encodeURIComponent('KHLCNT-2026-0016'));
   await page.locator('.dx-tabs [data-ttab="ket-qua"]').click();
-  await expect(card(page, 'Kết quả kiểm tra KHLCNT')).toContainText('Chưa đạt');
+  await expect(card(page, 'Kết quả kiểm tra KHLCNT').locator('tbody tr', { hasText: 'Không đáp ứng' })).toHaveCount(1);
   expect(await mainText(page)).not.toMatch(BA);
   expect(page.errors).toEqual([]);
 });
@@ -223,6 +224,68 @@ test('Nhà thầu & kiểm soát rủi ro: 3 tab, nhà thầu bị cấm lấy t
   await page.locator('[data-nttab="cam"]').click();
   await expect(card(page, 'Nhà thầu bị cấm / hạn chế')).toContainText('Cấm đến 31/12/2026');
   await expect(card(page, 'Lịch sử vi phạm và chế tài').locator('tbody tr')).toHaveCount(3);
+  expect(await mainText(page)).not.toMatch(BA);
+  expect(page.errors).toEqual([]);
+});
+
+test('T24 B3 — KHLCNT theo hệ thống cũ: cột, lọc Quy chế / Cấp phê duyệt / Ngày QĐ; form Quy chế áp dụng, Người phụ trách; Tổng bằng chữ; tab Tờ trình', async ({ page }) => {
+  await as(page, 'minh', '#/khlcnt');
+  await expect(page.locator('main .vtable th')).toHaveText(['STT', 'Trạng thái', 'Mã KHLCNT', 'Tên KHLCNT', 'Quy chế áp dụng', 'Cấp phê duyệt', 'Người phụ trách', 'Loại đối tượng nguồn', 'Mã đối tượng nguồn', 'Đơn vị lập',
+    'Số QĐ KHLCNT', 'Ngày QĐ KHLCNT', 'Ngày đăng tải KHLCNT', 'Số gói thầu', 'Tổng giá gói thầu (tỷ đồng)', 'Ngày cập nhật']);
+  const row9 = page.locator('main .vtable tbody tr', { hasText: 'KHLCNT-2026-0009' });
+  await expect(row9).toContainText('0719/QĐ-VHT');
+  await expect(row9).toContainText('03/09/2026');
+  // Lọc: Theo luật chỉ còn KHLCNT-2026-0011; Tập đoàn chỉ còn 0016; khoảng ngày QĐ
+  await page.locator('[data-tl="khl:adv"]').click();
+  await page.locator('[data-vsel="tf-khl-qc"]').click();
+  await page.locator('.vsel-panel .vsel-opt', { hasText: 'Theo luật' }).click();
+  await page.locator('form[data-tadv="khl"] button[type="submit"]').click();
+  await expect(page.locator('main .vtable tbody tr')).toHaveCount(1);
+  await expect(page.locator('main .vtable tbody tr')).toContainText('KHLCNT-2026-0011');
+  await page.locator('[data-tl="khl:reset"]').click();
+  await page.locator('[data-tf="khl:from"]').fill('01/09/2026');
+  await page.locator('[data-tf="khl:to"]').fill('10/09/2026');
+  await page.locator('form[data-tadv="khl"] button[type="submit"]').click();
+  await expect(page.locator('main .vtable tbody tr')).toHaveCount(1);
+  await expect(page.locator('main .vtable tbody tr')).toContainText('KHLCNT-2026-0009');
+  // Form: Quy chế mặc định MSTX, Người phụ trách mặc định người tạo; bỏ hai ô cũ
+  await go(page, '#/khlcnt/create');
+  await expect(page.locator('[data-vsel="kh-qc"]')).toContainText('Mua sắm thường xuyên');
+  await expect(page.locator('[data-vsel="kh-level"]')).toContainText('Tổng Công ty');
+  await expect(page.locator('[data-vsel="kh-owner"]')).toContainText('Nguyễn Văn Minh');
+  await expect(page.locator('[data-vsel="kh-regular"]')).toHaveCount(0);
+  // Chi tiết: Số gói thầu, Tổng bằng chữ; tab Tờ trình
+  await go(page, '#/khlcnt/' + encodeURIComponent('KHLCNT-2026-0009'));
+  await page.locator('.dx-tabs [data-ttab="goi"]').click();
+  await expect(card(page, 'Danh sách gói thầu')).toContainText('21-2026-VHT-K2');
+  await expect(page.locator('[data-kh-words]')).toHaveText('Hai trăm mười ba tỷ, sáu trăm triệu đồng');
+  await page.locator('.dx-tabs [data-ttab="to-trinh"]').click();
+  await expect(card(page, 'Thành viên Tổ thẩm định').locator('tbody tr')).toHaveCount(5);
+  await expect(card(page, 'Giải trình nội dung KHLCNT').locator('tbody tr')).toHaveCount(9);
+  await expect(card(page, 'Chi tiết danh mục mua sắm thuộc gói thầu').locator('tbody tr')).toHaveCount(6);
+  expect(await mainText(page)).not.toMatch(BA);
+  expect(page.errors).toEqual([]);
+});
+
+test('T24 B3 — Gói thầu theo form hệ thống cũ: trường định danh, tiền tệ + tỷ giá, nguồn n-n có Giá trị phân bổ, qua mạng', async ({ page }) => {
+  await as(page, 'minh', '#/goi-thau/GT-2026-0032');
+  const g = card(page, 'Thông tin chung gói thầu');
+  for (const x of ['Số gói thầu', 'Ký hợp đồng', 'Không mật', 'Hỗn hợp', 'Đơn vị giám sát', 'Bên mời thầu', 'TGĐ Tập đoàn']) await expect(g).toContainText(x);
+  const n = card(page, 'Nguồn gói thầu');
+  await expect(n.locator('tbody tr')).toHaveCount(2);
+  await expect(n.locator('tfoot')).toContainText('190,00');
+  await page.locator('.dx-tabs [data-ttab="pa"]').click();
+  await expect(card(page, 'Phương án lựa chọn nhà thầu')).toContainText('Qua mạng Viettel');
+  await go(page, '#/goi-thau/GT-2026-0035');
+  await expect(card(page, 'Giá gói thầu')).toContainText('USD');
+  await expect(card(page, 'Giá gói thầu')).toContainText('25.400');
+  await go(page, '#/goi-thau/GT-2026-0024');
+  await expect(card(page, 'Thông tin chung gói thầu')).toContainText('Mật');
+  await page.locator('.dx-tabs [data-ttab="pa"]').click();
+  await expect(card(page, 'Phương án lựa chọn nhà thầu')).toContainText('Qua mạng đấu thầu quốc gia');
+  await expect(card(page, 'Phương án lựa chọn nhà thầu')).toContainText('Áp dụng danh sách ngắn');
+  await go(page, '#/goi-thau/GT-2026-0034');
+  await expect(card(page, 'Tiến độ')).toContainText('Tháng 11/2026');
   expect(await mainText(page)).not.toMatch(BA);
   expect(page.errors).toEqual([]);
 });
