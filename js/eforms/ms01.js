@@ -43,10 +43,11 @@
   const F = {
     1: { id: 'dtms-ms01-t01-can-cu', q: ['P-01', 'P-26'],
       schema: (h) => ({ components: [
+        tbl('Dòng dự toán đề tài / dự án đã bóc tách khi tạo luồng', 'duToanChon', [['loai', 'Loại chi phí'], ['khoanMuc', 'Khoản mục chi phí'], ['dvt', 'ĐVT'], ['sl', 'Số lượng đề xuất'], ['giaTri', 'Giá trị dự tính (tỷ)'], ['duToan', 'Giá trị dự toán (tỷ)'], ['goiThau', 'Hình thành gói thầu']], '=count(duToanChon) = 0'),
         sel('basisType', 'Loại căn cứ', req({ values: window.D.basisTypes.filter((b) => !(h.procOf(h.proc()).noTypes || []).includes(b.id)).map((b) => ({ label: b.name, value: b.id })), layout: { columns: 8 } })),
         sel('basisDoc', 'Văn bản căn cứ đã phê duyệt', req({ valuesExpression: '=basisDocOptions[item.type = basisType]', searchable: true, layout: { columns: 8 } })),
         tbl('Văn bản căn cứ hợp với quy trình, theo loại đã chọn', 'basisDocs[item.typeId = basisType]', [['so', 'Số'], ['ngay', 'Ngày'], ['loai', 'Loại'], ['trichYeu', 'Trích yếu'], ['giaTri', 'Giá trị (tỷ)'], ['conLai', 'Còn lại (tỷ)'], ['tdDuyet', 'CT/TGĐ TĐ đã duyệt']])] }),
-      notes: (h) => [`Quy trình ${h.proc()} (${h.condOf(h.proc())}): BE nạp vào biến <code>basisDocOptions</code> các văn bản căn cứ hợp với quy trình và còn giá trị; ô Văn bản căn cứ lọc theo Loại căn cứ bằng <code>valuesExpression</code> (E1); BE kiểm văn bản đúng loại khi submit; loại căn cứ không dùng cho quy trình không có trong form của quy trình này (mỗi quy trình MS01.01/.02/.03 một form).`,
+      notes: (h) => ['T29 S8 (D-60): bảng "Dòng dự toán đề tài / dự án đã bóc tách khi tạo luồng" là khối chỉ xem (loại 3) đọc biến <code>duToanChon</code> do BE ghi khi start từ hạng mục của ĐXMS (Thêm mới luồng mua sắm); ẩn khi không có dòng. Danh mục hàng hoá để rà soát, báo giá chưa nối với dòng dự toán — B3 (S4).', `Quy trình ${h.proc()} (${h.condOf(h.proc())}): BE nạp vào biến <code>basisDocOptions</code> các văn bản căn cứ hợp với quy trình và còn giá trị; ô Văn bản căn cứ lọc theo Loại căn cứ bằng <code>valuesExpression</code> (E1); BE kiểm văn bản đúng loại khi submit; loại căn cứ không dùng cho quy trình không có trong form của quy trình này (mỗi quy trình MS01.01/.02/.03 một form).`,
         'Giá trị được kiểm tra sau báo giá (cổng "Giá trị khớp quy trình đã chọn?" sau task 10). Hoàn thành → hệ thống lấy dữ liệu (task 02), AI gợi ý thông tin cơ bản (task 03).'],
       write: (v) => pick(v, ['basisType', 'basisDoc']) },
 
@@ -66,6 +67,8 @@
 
     5: { id: 'dtms-ms01-t05-boc-tach', q: ['P-03'],
       schema: () => ({ components: [
+        tbl('Dòng dự toán đề tài / dự án đã bóc tách khi tạo luồng', 'duToanChon', [['loai', 'Loại chi phí'], ['khoanMuc', 'Khoản mục chi phí'], ['dvt', 'ĐVT'], ['sl', 'Số lượng đề xuất'],
+          ['giaTri', 'Giá trị dự tính (tỷ)'], ['duToan', 'Giá trị dự toán (tỷ)'], ['goiThau', 'Hình thành gói thầu']], '=count(duToanChon) = 0'),
         txt('### Cấu trúc căn cứ\n{{basisTreeText}}\n*Nguồn bóc tách: {{bocTachNguon}}*'),
         B.dl('bocTach', 'Bóc tách danh mục hàng hoá', [
           txt('**{{this.n}}. {{this.name}}**\nĐVT: {{this.uom}} · {{this.nhom}}', 6),
@@ -73,7 +76,7 @@
           num('prop', 'SL đề xuất', req({ validate: { required: true, min: 0 }, layout: { columns: 3 } })),
           txt('{{if this.remain != null and this.prop > this.remain then "**Vượt số còn lại**" else ""}}', 2),
           txt('*{{this.warn}}*', 16, '=this.warn = ""')])] }),
-      notes: (h) => [`Trừ lùi: số đã dùng ở ĐXMS khác bị trừ khỏi số lượng gốc của căn cứ.${window.D.items.filter((i) => i.used).map((i) => ` Dòng ${i.n} đã dùng ${i.used} ở ĐXMS khác nên còn ${i.bom - i.used}.`).join('')}`,
+      notes: (h) => ['T29 S8 (D-60): bảng "Dòng dự toán đề tài / dự án đã bóc tách khi tạo luồng" là khối chỉ xem (loại 3) đọc biến <code>duToanChon</code> do BE ghi khi start từ hạng mục của ĐXMS (Thêm mới luồng mua sắm); ẩn khi không có dòng. Danh mục hàng hoá để rà soát, báo giá chưa nối với dòng dự toán — B3 (S4).', `Trừ lùi: số đã dùng ở ĐXMS khác bị trừ khỏi số lượng gốc của căn cứ.${window.D.items.filter((i) => i.used).map((i) => ` Dòng ${i.n} đã dùng ${i.used} ở ĐXMS khác nên còn ${i.bom - i.used}.`).join('')}`,
         'G3: cột "Vượt số còn lại" là cảnh báo ngay trong dòng; chặn thật ở BE khi submit (validator theo quy trình) — luật hiển thị không có điều kiện theo biến.',
         'Dòng không có trong dự toán/eBOM: chỉ cảnh báo, không chặn (BBLV 09/09). Căn cứ thiếu thông tin → nút "Thiếu thông tin căn cứ" (quay lại task 04).'],
       write: (v) => pick(v, ['bocTach']) },
@@ -206,7 +209,7 @@
     26: { id: 'dtms-ms01-t26-ket-qua-bm04', q: ['P-22'],
       schema: () => ({ components: [
         banner('Hồ sơ bị trả lại ở bước “{{traLaiKy.buoc}}” — {{traLaiKy.nguoi}}: “{{traLaiKy.lyDo}}”', '=traLaiKy = null'),
-        tbl('Trạng thái phiếu BM-04', 'bm04TrangThai', [['cqcm', 'CQCM'], ['nguoi', 'Người lập / chỉ huy'], ['lan', 'Lần'], ['ky', 'Ký'], ['khongOk', 'Không OK']]),
+        tbl('Trạng thái phiếu BM-04', 'bm04TrangThai', [['cqcm', 'CQCM'], ['nguoi', 'Người lập / chỉ huy'], ['lan', 'Lần'], ['tinhTrang', 'Tình trạng'], ['soNgay', 'Số ngày xử lý'], ['ky', 'Ký'], ['khongOk', 'Không OK']]),
         txt('### AI kiểm tra xung đột giữa các BM-04: Không có xung đột\nKhông có cặp ý kiến mâu thuẫn giữa các CQCM trên cùng một mục của BM-01.'),
         B.aiBox('đồng bộ ý kiến các CQCM và hướng dẫn sửa', '{{aiDongBo}}'),
         B.dl('quyetDinhYKien', 'Quyết định của đơn vị với từng ý kiến Không OK (AI tóm tắt)', [

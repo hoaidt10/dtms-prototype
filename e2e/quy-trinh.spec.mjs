@@ -31,7 +31,8 @@ test('D-15: menu theo 12 module Backlog; Quản lý quy trình có 3 mục (D-2)
   }, label);
   await page.locator('.sb-nav [data-toggle="Quản lý quy trình"]').click();
   expect(await kids('Quản lý quy trình')).toEqual(['Quản lý quy trình', 'Ma trận hành động', 'Giám sát tiến trình']);
-  expect(await kids('Quản lý đề xuất mua sắm')).toEqual(['Đề xuất mua sắm', 'Hồ sơ đề xuất mua sắm', 'Yêu cầu báo giá ĐXMS']);
+  // T29 D-63: thêm Đề tài / dự án (SCR-103) đầu nhóm.
+  expect(await kids('Quản lý đề xuất mua sắm')).toEqual(['Đề tài / dự án', 'Đề xuất mua sắm', 'Hồ sơ đề xuất mua sắm', 'Yêu cầu báo giá ĐXMS']);
   await page.locator('.sb-nav [data-toggle="Quản lý khoản đầu tư"]').click();
   expect(await kids('Quản lý khoản đầu tư')).toEqual(['Khoản đầu tư', 'Hồ sơ khoản đầu tư', 'Yêu cầu báo giá KĐT']);
   await page.locator('.sb-nav [data-toggle="Quản lý thầu"]').click();

@@ -43,6 +43,22 @@
 
   /* ---------- BM-04, giải trình (task 19–28) ---------- */
   const respOf = (c) => ((U().resp || {})[c]) || (D.responses[c] || {}).decision || 'Tiếp thu';
+  /* T29 F8 (HT-DXMS-NOTE màn 6, 10; GIẢ LẬP P-191) — tình trạng thẩm định của từng CQCM ở lần gửi gần nhất.
+     Chưa xem: việc lập phiếu (19) chưa có bản lưu nháp; Đang xem: đã lưu nháp, hoặc đang trình chỉ huy CQCM ký (20);
+     Đã đồng ý / Yêu cầu sửa: phiếu đã ký, không có / có mục Không OK. Số ngày xử lý = ngày làm việc từ lúc gửi (18) tới lúc ký (chưa ký: tới hôm nay). */
+  function reviewRows() {
+    const sent = Flow.lastOf(18);
+    if (kdt() || adj() || !sent) return [];
+    const drafts = U().efDraft || {};
+    return selCqcm().map((c) => {
+      const toks = Flow.state.tokens.filter((t) => t.cqcm === c.id);
+      const signed = Flow.state.history.filter((h) => h.task === 20 && h.cqcm === c.id && /^Đồng ý/.test(h.action) && h.t >= sent.t).pop();
+      const st = signed ? (opinionsOf(c.id).some((o) => !o.ok) ? 'Yêu cầu sửa' : 'Đã đồng ý')
+        : toks.some((t) => t.task === 20 || drafts[t.id]) ? 'Đang xem' : 'Chưa xem';
+      const end = signed ? signed.t : Flow.state.clock;
+      return { id: c.id, unit: c.unit, who: pname(c.doer), st, sent: Flow.dateOf(sent.t), at: signed ? Flow.dateOf(signed.t) : null, days: ty(Math.max(0, end - sent.t), 1) };
+    });
+  }
   function opinionsOf(c) {
     const edits = (U().bm04 || {})[c] || {}, base = D.opinions[c] || {};
     const accepted = Flow.state.vars.round > 0 && respOf(c) === 'Bảo lưu';
@@ -165,6 +181,8 @@
 
   /* Checklist 01/02 của ĐXMS (§5.6): tình trạng tự điền từ tài liệu đã có trên hồ sơ. */
   const checklistRows = () => D.checklist.map((c) => {
+    /* T29 F7: phụ lục "nếu có" — Đủ khi đơn vị đã tải lên ở Danh sách tài liệu. */
+    if (c.up) return { nhom: c.g, muc: c.name, so: U()[c.up] ? 'Đã tải lên' : c.no, yeuCau: c.req, tinhTrang: U()[c.up] ? 'Đủ' : 'Không có' };
     const ok = c.by == null ? null : Flow.taskStatus(c.by) !== 'todo' || c.by === draftTask();
     return { nhom: c.g, muc: c.name, so: c.no, yeuCau: c.req, tinhTrang: ok == null ? 'Không có' : ok ? 'Đủ' : 'Thiếu' };
   });
@@ -294,6 +312,13 @@
     v.fundOptions = window.Catalog.rows('nguon-von').filter((r) => r.active || r.code === v.fund).map((r) => ({ value: r.code, label: r.name }));
     v.aiGoiY = aiRows('aiGoiY', D.aiBasic.map((a) => ({ key: a.key, muc: a.label, goiY: a.value, nguon: `${a.from} (căn cứ ${basisDoc() ? basisDoc().no : ''})` })), 'Chấp nhận');
     if (kdt()) { const k = kd(); v.kdtInfo = { linhVuc: catName('linh-vuc', k.field), loai: catName('loai-kdt', k.type), tinhChat: catName('tinh-chat-tai-san', k.nature) }; }
+
+    /* T29 S8 (D-60) — dòng dự toán đề tài / dự án đã bóc tách khi tạo luồng: BE ghi biến khi start từ hạng mục của ĐXMS (bảng giữ chỗ căn cứ).
+       Chỉ xem ở bước 01, 05; danh mục hàng hoá để rà soát, báo giá vẫn là bocTach (nối vào ở B3 — S4). */
+    const xDt = !kdt() && Flow.findDxms(Flow.state.dxms);
+    const ctName = (t) => (D.costTypes.find(([k]) => k === t) || [t, t])[1];
+    v.duToanChon = ((xDt && xDt.cost) || []).map((r) => ({ loai: ctName(r.type), khoanMuc: r.item, dvt: r.uom || '-', sl: r.qty == null ? '-' : r.qty,
+      giaTri: ty(r.value), duToan: ty(r.budget), goiThau: r.pkg || '-' }));
 
     /* 05 */
     v.basisTreeText = D.tree.map((x) => (x.children ? `- **${x.name}**: ${x.children.map((c) => `${c.name} (${c.lines.length} dòng)`).join('; ')}` : `- **${x.name}** (${x.lines.length} dòng)`)).join('\n');
@@ -440,8 +465,9 @@
     const rb = returnedFrom();
     v.traLaiKy = rb ? { buoc: Flow.taskName(rb.task), nguoi: pname(rb.who), lyDo: rb.reason } : null;
     const signedBy = Flow.state.history.filter((h) => h.task === 20 && /^Đồng ý/.test(h.action)).map((h) => h.cqcm);
+    const rv = reviewRows();
     v.bm04TrangThai = selCqcm().map((c) => ({ cqcm: c.unit, nguoi: `${persona(c.doer).short} / ${persona(c.signer).short}`, lan: pad2(bm04Round()), ky: signedBy.includes(c.id) ? 'Đã ký' : 'Chưa ký',
-      khongOk: opinionsOf(c.id).filter((o) => !o.ok).length }));
+      khongOk: opinionsOf(c.id).filter((o) => !o.ok).length, tinhTrang: (rv.find((r) => r.id === c.id) || {}).st || '-', soNgay: (rv.find((r) => r.id === c.id) || {}).days || '-' }));
     v.quyetDinhYKien = nok().map((o) => ({ cqcm: o.cqcm, cqcmTen: cqcmUnit(o.cqcm), muc: o.sec, yKien: o.text, quyetDinh: respOf(o.cqcm) }));
     v.vongGiaiTrinh = Flow.state.vars.round;
     /* Comment #13, #15 — AI đồng bộ ý kiến các CQCM theo mục BM-01 (service task 25). */
@@ -864,6 +890,8 @@
     const list = ((REQ_DOCS[kdt() ? 'MS13' : 'MS01'][tok.task]) || []).map(([key, name]) => ({ key, name, have: !!U()[key] }));
     if (!kdt() && String(tok.task) === '10') (U().nccSel || nccDefault()).forEach((c) => list.push({ key: quoteKey(c), name: `Báo giá — ${nccName(c)}`, have: !!U()[quoteKey(c)], only: /^Báo giá đạt/ }));
     if (kdt() && String(tok.task) === '78') list.push({ key: kyScanKey(), name: `Bản scan ${(Flow.state.vars.ky || {}).doc || 'văn bản'} đã ký`, have: !!U()[kyScanKey()] });
+    /* T29 F7 (HT-DXMS-NOTE màn 8): phụ lục của Tờ trình tải lên ở bước lập dự thảo, không bắt buộc. */
+    if (!kdt() && !adj() && String(tok.task) === String(draftTask())) D.phuLuc.forEach(([key, name]) => list.push({ key, name, opt: true, have: !!U()[key] }));
     if (!kdt() && tok.task === 60 && !small() && Flow.state.vars.reportTD) list.push({ key: 'tdReviewFile', name: 'Phiếu nhận xét của Tập đoàn', have: !!U().tdReviewFile, opt: true });
     return list;
   }
@@ -874,7 +902,7 @@
     if (Flow.state.parent) return window.EForms.hd.check(tok, choice, vals);
     if (!vals) return null;
     if (n === 1 && (of(tok).basisDocOptions.find((o) => o.value === vals.basisDoc) || {}).type !== vals.basisType) return 'Văn bản căn cứ không thuộc loại căn cứ đã chọn.';
-    if (n === 5 && lbl.startsWith('Xác nhận') && (vals.bocTach || []).some((r) => r.remain != null && r.prop > r.remain)) return 'Có dòng vượt số lượng còn lại sau trừ lùi.';
+    if (n === 5 && (lbl.startsWith('Xác nhận') || lbl === 'Gửi rà soát tồn kho') && (vals.bocTach || []).some((r) => r.remain != null && r.prop > r.remain)) return 'Có dòng vượt số lượng còn lại sau trừ lùi.';
     if (!kdt() && n === 16 && small() && !(vals.cqcmSel || []).includes('TC')) return 'Hồ sơ dưới 160 tỷ: CQCM Tài chính bắt buộc (QT B8.2).';
     if (kdt() && n === 12 && lbl === 'Xác nhận OK' && (vals.yeuTo || []).some((r) => !r.dung)) return 'Có yếu tố chưa đúng — chọn “Không OK” và nhập lý do.';
     if (n === 7 && (vals.ruaSoatKho || []).some((r) => r.coKho && r.fromStock > r.max)) return 'Số dùng từ kho vượt số khả dụng hoặc số đề xuất.';
@@ -891,6 +919,6 @@
     of, doc, check, reqDocs,
     h: { tdk, kdt, small, tt, clName, draftTask, proc, procOf, condOf, version, kdtVer, basisDoc, basisSel, quoteFail, quoteAttempt, nok, respOf, selCqcm, stg, tdKey,
       needHost, hostOf, kNeed, kd, catName, signOf, returnedFrom, aiFinal, aiOf, buyItems, rvIdx, fixOf, HOSTS, pname, lineRemain, propOf, bm04Round,
-      adj, adjTh, adjBranch, adjLan, adjCross, adjRows },
+      adj, adjTh, adjBranch, adjLan, adjCross, adjRows, reviewRows, opinionsOf },
   };
 })();

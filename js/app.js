@@ -19,6 +19,7 @@
     /* T17 phương án Gộp: luồng, ĐXMS, hồ sơ ĐXMS cùng thuộc mục Luồng mua sắm. */
     if (r === 'luong' || r.startsWith('luong/')) return 'luong';
     if (window.Luong.isGop() && (r.startsWith('dxms') || r.startsWith('ho-so-dxms') || ((r === 'ho-so' || r.startsWith('ho-so/')) && !Flow.state.kdt))) return 'luong';
+    if (r === 'de-tai' || r.startsWith('de-tai/')) return 'de-tai';
     if (r.startsWith('ho-so-kdt')) return 'ho-so-kdt';
     if (r.startsWith('ycbg-kdt')) return 'ycbg-kdt';
     if (r.startsWith('khlcnt')) return 'khlcnt';
@@ -105,6 +106,8 @@
     if (a === 'viec-cua-toi') return S.viecCuaToi(b);
     /* T17 phương án Gộp: SCR-95 Danh sách luồng, SCR-96 Tạo luồng (luong.js). */
     if (a === 'luong') return window.Luong.route(r.split('/'));
+    /* T29 S6, S7: SCR-103 Danh sách đề tài / dự án, SCR-104 Chi tiết (de-tai.js). */
+    if (a === 'de-tai') return window.DeTai.route(r.split('/'));
     /* ĐXMS (cha): SCR-27 danh sách, SCR-28 thêm mới / chỉnh sửa, SCR-29 chi tiết — theo task-management. */
     if (a === 'dxms' && b === 'create') return S.dxmsForm();
     if (a === 'dxms' && b && c === 'edit') return S.dxmsForm();
@@ -392,7 +395,7 @@
       return;
     }
     /* Reset luồng không đụng dữ liệu DMDC, E-Form, thầu, hợp đồng, thông báo; khôi phục riêng ở đây. */
-    if (t.closest('#reset-eform')) { window.Catalog.reset(); window.EForm.reset(); window.Thau.reset(); window.CongKhai.reset(); window.HopDong.reset(); window.ThongBao.reset(); window.MaTran.reset(); window.QuyTrinh.resetSync(); demoOpen = false; render(); toast('Đã khôi phục dữ liệu DMDC, E-Form, thầu, hợp đồng, thông báo, quy trình, luật hiển thị.'); return; }
+    if (t.closest('#reset-eform')) { window.Catalog.reset(); window.EForm.reset(); window.Thau.reset(); window.CongKhai.reset(); window.HopDong.reset(); window.ThongBao.reset(); window.MaTran.reset(); window.QuyTrinh.resetSync(); D.duToanReset(); demoOpen = false; render(); toast('Đã khôi phục dữ liệu DMDC, E-Form, thầu, hợp đồng, thông báo, quy trình, luật hiển thị, dự toán đề tài / dự án.'); return; }
     const a = t.closest('[data-act]');
     if (a && !a.disabled) { act(a.dataset.act, Number(a.dataset.choice)); return; }
     const ex = t.closest('[data-export]');

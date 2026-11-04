@@ -221,7 +221,7 @@ test('SCR-97: Chi tiết luồng 6 tab; Nhân sự thực hiện theo bước �
   await expect(page.locator('main')).toContainText(await page.evaluate(() => Flow.state.code));
   await expect(page.locator('main')).toContainText('Quy trình hồ sơ');
   await page.locator('[data-ltab="can-cu"]').click();
-  await expect(page.locator('.vtable tbody tr')).toHaveCount(2);
+  await expect(page.locator('main .vcard').first().locator('.vtable tbody tr')).toHaveCount(2);
   await expect(page.locator('main')).toContainText('Kế hoạch mua sắm năm');
   await page.locator('[data-ltab="nhan-su"]').click();
   await expect(stepRow(page, '17')).toContainText('Đinh Thị Mai');

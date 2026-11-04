@@ -133,7 +133,8 @@
     3: { next: 4 },
     4: { who: 'minh', scr: 'SCR-04', next: 5, nlv: 0.5 },
     5: { who: 'minh', scr: 'SCR-05', nlv: 1, choices: [
-      { label: 'Xác nhận danh mục', to: 6, main: true, set: { basisOk: true } },
+      /* T29 Q5: Xác nhận danh mục = gửi danh mục sang Bộ phận Kho / QLTS rà soát tồn kho (service task 06). */
+      { label: 'Gửi rà soát tồn kho', to: 6, main: true, set: { basisOk: true } },
       { label: 'Thiếu thông tin căn cứ', to: 6, kind: 'secondary', set: { basisOk: false } }] },
     6: { varGate: { basisOk: { true: 7, false: 4 } } },
     7: { who: 'minh', scr: 'SCR-06', next: 8, nlv: 1 },
@@ -843,7 +844,7 @@
     { code: 'ĐXMS-2026-0110', nv: 'KHN-2026-TTVT', title: 'Mua sắm bộ đàm chuyên dụng cho đội thử nghiệm hiện trường', unit: 'Trung tâm Vô tuyến', est: 6.8, priority: 'Khẩn', period: '10/2026 – 12/2026', creator: 'Nguyễn Văn Minh', created: '15/09/2026', updated: '15/09/2026' },
     { code: 'ĐXMS-2026-0106', nv: 'KHN-2026-VHT', title: 'Mua sắm phần mềm thiết kế mạch in và mô phỏng tín hiệu', unit: 'Trung tâm Thiết kế vi mạch', est: 21.3, priority: 'Thường', period: '11/2026 – 12/2026', creator: 'Trịnh Quốc Việt', created: '01/09/2026', updated: '01/09/2026' },
     { code: 'ĐXMS-2026-0103', nv: 'NV-KHCN-2025-031', title: 'Mua sắm hệ thống mô phỏng mạng lõi 5G', unit: 'Trung tâm Mạng lõi', est: 210.5, priority: 'Thường', period: '10/2026 – 06/2027', creator: 'Đặng Thu Trang', created: '28/07/2026', updated: '28/07/2026' },
-    { code: 'ĐXMS-2026-0101', nv: 'KHN-2026-VHT', title: 'Mua sắm thiết bị đo kiểm tương thích điện từ (EMC)', unit: 'Phòng Chất lượng', est: 168.0, priority: 'Khẩn', period: '01/2027 – 12/2027', creator: 'Bùi Minh Quang', created: '21/07/2026', updated: '21/07/2026' },
+    { code: 'ĐXMS-2026-0101', nv: 'NV-KHCN-2026-014', title: 'Mua sắm thiết bị đo kiểm tương thích điện từ (EMC)', unit: 'Phòng Chất lượng', est: 168.0, priority: 'Khẩn', period: '01/2027 – 12/2027', creator: 'Bùi Minh Quang', created: '21/07/2026', updated: '21/07/2026' },
     { code: 'ĐXMS-2026-0098', nv: 'KHN-2026-TTVT', title: 'Mua sắm linh kiện RF cho mẫu thử nghiệm', unit: 'Trung tâm Vô tuyến', est: 45.2, priority: 'Thường', period: '11/2026 – 03/2027', creator: 'Nguyễn Văn Minh', created: '02/09/2026', updated: '02/09/2026', purpose: 'Linh kiện RF và vỏ cơ khí cho lô mẫu thử nghiệm module RRU.' },
     { code: 'ĐXMS-2026-0095', nv: 'KHN-2026-VHT', title: 'Mua sắm vật tư tiêu hao cho xưởng sản xuất thử', unit: 'Nhà máy sản xuất thử nghiệm', est: 3.9, priority: 'Thường', period: '09/2026 – 12/2026', creator: 'Phan Văn Lộc', created: '12/08/2026', updated: '12/08/2026' },
     { code: 'ĐXMS-2026-0089', nv: 'KHN-2026-VHT', title: 'Mua sắm thiết bị thử nghiệm môi trường', unit: 'Phòng Chất lượng', est: 18.7, priority: 'Thượng khẩn', period: '10/2026 – 03/2027', creator: 'Bùi Minh Quang', created: '04/08/2026', updated: '04/08/2026', secret: true },
@@ -1124,6 +1125,19 @@
     'P-183': { q: 'Trưởng phòng không duyệt: tập hợp lại toàn bộ hay chỉ hoàn thiện HOC', src: 'DG-MS23.02 §D 13', def: 'GIẢ LẬP — về bước 14 theo mũi tên bản vẽ, đi lại AI kiểm tra và hoàn thiện', scr: 'SCR-102' },
     'P-184': { q: 'Ngoài ngày bàn giao còn cập nhật gì; thiếu ngày thì sao; tránh cập nhật hai lần', src: 'DG-MS23.02 §D 15', def: 'GIẢ LẬP — chỉ cập nhật ngày; ngày bàn giao bắt buộc nhập ở bước 21; nhận diện theo mã hồ sơ', scr: 'SCR-102' },
     'P-185': { q: 'Mũi tên chưa gắn đầu cuối: 2 → 3, 9 → 10, 10 → cổng hướng xử lý, 15 → 14', src: 'DG-MS23.02 §D 16; plan T25 §9 B0', def: 'GIẢ LẬP — chạy theo diễn giải', scr: 'SCR-102' },
+    /* T29 S5 — trường theo HT-DXMS-NOTE ("TTr" trong Note = ĐXMS), plan docs/dtms/prototype-T29-dxms-khao-sat-0411-chuan-bi.md §3.9, D-59. */
+    'P-189': { q: 'Nghĩa của "Cập nhật người xem" ở hệ thống cũ: ai được thêm, được xem những gì, có hết hạn không', src: 'HT-DXMS-NOTE màn 7; plan T29 F9', def: 'GIẢ LẬP — người tạo ĐXMS thêm người dùng được xem ĐXMS và mọi hồ sơ của nó (chỉ xem, không xử lý việc), ngoài phạm vi xem theo vai trò', scr: 'SCR-97' },
+    'P-190': { q: 'Danh mục Khối đơn vị và đơn vị thuộc từng khối', src: 'HT-DXMS-NOTE màn 1, 6 (Khối 1, 2, 3, Khối cơ quan)', def: 'GIẢ LẬP — Khối 1: Trung tâm Vô tuyến, Trung tâm Mạng lõi; Khối 2: Trung tâm Phần mềm, Trung tâm Thiết kế vi mạch; Khối 3: Nhà máy sản xuất thử nghiệm; Khối cơ quan: các phòng, ban', scr: 'SCR-95' },
+    'P-191': { q: 'Tình trạng của từng CQCM: Chưa xem / Đang xem lấy theo sự kiện nào; Số ngày xử lý tính từ đâu tới đâu', src: 'HT-DXMS-NOTE màn 6, 10; plan T29 F8', def: 'GIẢ LẬP — Chưa xem: việc lập phiếu nhận xét chưa có bản lưu nháp; Đang xem: đã lưu nháp hoặc đang trình chỉ huy CQCM ký; Đã đồng ý / Yêu cầu sửa: phiếu đã ký, không có / có mục Không OK. Số ngày xử lý: ngày làm việc từ lúc gửi yêu cầu thẩm định tới lúc ký phiếu (chưa ký thì tới hôm nay)', scr: 'SCR-20' },
+    'P-193': { q: 'Dự toán của nhiệm vụ / đề tài, dự án (Loại chi phí, Khoản mục, Giá trị, Hình thành gói thầu) lấy từ đâu; một Loại chi phí có chọn lại được ở đợt sau không', src: 'HT-DXMS-NOTE màn 4, 5, 8; GA-KDT-0411; DTMS_Q_0070', def: 'GIẢ LẬP — dự toán nhập tại ĐTMS ở SCR-104 cho mọi Loại (D-65), dữ liệu mẫu PL1–PL6 theo đề tài / dự án; card bóc tách chỉ hiện khoản mục Chi mua sắm còn khả dụng; Loại KHCN thì dòng thêm vào là hạng mục căn cứ (D-60), loại khác chỉ tham khảo, căn cứ là tệp đính kèm (D-30); chọn lại được một khoản mục ở nhiều đợt tới khi hết phần còn lại', scr: 'SCR-96' },
+    'P-194': { q: 'Danh sách người thẩm định chọn ngay khi tạo luồng (DX-08): có bắt buộc không, bước 16 có được sửa không', src: 'HT-DXMS-NOTE màn 8; DX-08', def: 'GIẢ LẬP — không bắt buộc; danh sách điền sẵn vào bước 16 (chọn CQCM), đơn vị và TTMS vẫn sửa được ở bước 16, 17; chọn Đích danh hoặc Theo vai trò của phòng ban (D-62)', scr: 'SCR-96' },
+    'P-192': { q: 'Số, Ngày Tờ trình có từ thời điểm nào; Đợt mua sắm đánh số tự động hay đơn vị nhập', src: 'HT-DXMS-NOTE màn 7, 8; plan T29 F5, F6', def: 'GIẢ LẬP — Số, Ngày Tờ trình cấp khi hồ sơ gửi yêu cầu thẩm định (BM-03 trình ký kèm Tờ trình); Đợt = số thứ tự ĐXMS của cùng nhiệm vụ / đề tài, dự án, hệ thống gợi ý, đơn vị sửa được', scr: 'SCR-96' },
+    /* T29 v0.4 — YC-DXMS-PROTO (plan §3.10). SCR-103 Đề tài / dự án dựng ở B8. */
+    'P-195': { q: 'Đề tài / dự án không phải Loại KHCN (SXKD, Dự án đầu tư, Hoạt động TX…) có thông tin chung lấy từ đâu ở Pha 1', src: 'YC-DXMS-PROTO §2.1; HT-DXMS-NOTE màn 1; TPL-DADT-EX', def: 'GIẢ LẬP — danh sách hiện mọi Loại (D-61); Loại KHCN có nguồn "KHCN (đồng bộ)", loại khác "Nhập ở hệ thống cũ", chỉ xem. Dự toán nhập tại ĐTMS cho mọi Loại (D-65); bóc tách làm căn cứ ĐXMS chỉ Loại KHCN (D-60), loại khác căn cứ vẫn là tệp đính kèm (D-30)', scr: 'SCR-103' },
+    'P-196': { q: 'Số tồn kho lấy từ WMS bằng API hay Bộ phận Kho / QLTS nhập tay', src: 'YC-DXMS-PROTO §4.3; BG-0411; BM-RSTK; INDEX C14; DTMS_Q_0080', def: 'GIẢ LẬP — NV QLTS / Thủ kho nhập ở tab Rà soát tồn kho; nút "Lấy số tồn từ WMS" điền số mẫu, người nhập vẫn sửa được', scr: 'SCR-97' },
+    'P-197': { q: 'YC-DXMS-PROTO §6 ghi Đồng ý chuyển sang "BM-05 hoặc BM-09", Yêu cầu sửa trả ĐV "giải trình (BM-02)" — khác BPMN bước 19–26 (BM-04, AI tóm tắt NOK sau khi đủ BM-04)', src: 'YC-DXMS-PROTO §6; BPMN-DTMS MS01 v1.1 bước 19–26; QT-10.2.1 (BM-05 = Báo cáo kết quả thẩm định)', def: 'Theo BPMN: Đồng ý / Yêu cầu sửa là kết luận BM-04 của từng CQCM; hồ sơ về ĐV sau bước 23–25', scr: 'SCR-11' },
+    'P-198': { q: 'Loại dự án (chi tiết) ứng với từng Loại ngoài KHCN; Note có 6 Loại, TPL-DADT-IM chỉ 4; "Hỗ trợ KHCN" thuộc Loại nào', src: 'HT-DXMS-NOTE màn 1, 4; TPL-DADT-IM sheet List', def: 'GIẢ LẬP — KHCN: 7 giá trị theo Note; Hoạt động TX: Thường xuyên; SXKD: Dự án Kinh doanh, Dự án sản xuất, Chương trình nội bộ; Dự án đầu tư: Dự án đầu tư mua sắm tài sản, Dự án đầu tư xây dựng Kinh doanh thử nghiệm; Dự án đầu tư khác, Dự án kinh doanh khác: chưa có, hiện toàn bộ 14 giá trị; Hỗ trợ KHCN chưa xếp vào Loại nào', scr: 'SCR-103' },
+    'P-199': { q: 'Ô Nhập tay của dòng dự toán khi không tick: Thuế GTGT tính thế nào (câu ghi chú bị bỏ dở)', src: 'HT-DXMS-NOTE màn 5', def: 'GIẢ LẬP — không tick: Thuế GTGT = Giá trị trước thuế × %VAT, ô Thuế khoá; tick: người dùng tự nhập Thuế GTGT. Giá trị sau thuế = trước thuế + Thuế GTGT', scr: 'SCR-104' },
     /* T25 B5 — MS23.01 Văn bản phát sinh, DG-MS23.01 §D. P-173 thêm khi dựng. */
     'P-161': { q: 'Danh mục loại văn bản, mẫu tương ứng, điều kiện được xem là sửa đổi hợp đồng', src: 'DG-MS23.01 §D 1', def: 'GIẢ LẬP — bốn loại Phụ lục hợp đồng, Biên bản làm việc, Biên bản phạt, Văn bản khác; chỉ Phụ lục hợp đồng là sửa đổi hợp đồng', scr: 'SCR-102' },
     'P-162': { q: 'Phạm vi được phép sửa đổi, điều kiện xin ý kiến Đơn vị sử dụng, cách ghi nhận đã thống nhất', src: 'DG-MS23.01 §D 2; QT-10.2.4 Bước 9.1, 9.2', def: 'GIẢ LẬP — chuyên viên xác nhận được phép sửa đổi, ghi nội dung đã thống nhất ở bước 2; Đơn vị sử dụng không có việc riêng', scr: 'SCR-102' },
@@ -1178,6 +1192,8 @@
     { label: 'Tổng quan', icon: 'tong_quan', path: 'tong-quan', scr: 'SCR-92' },
     { label: 'Việc của tôi', icon: 'view_list', path: 'viec-cua-toi', scr: 'SCR-01', badge: 'tasks' },
     { label: 'Quản lý đề xuất mua sắm', icon: 'phan_he_mua_sam', open: true, bl: 'Quản lý đề xuất mua sắm', due: 'B1 (07/10)', children: [
+      /* T29 D-63: Đề tài / dự án (SCR-103) — nguồn căn cứ của ĐXMS. */
+      { label: 'Đề tài / dự án', path: 'de-tai', scr: 'SCR-103' },
       { label: 'Đề xuất mua sắm', path: 'dxms', scr: 'SCR-27' },
       { label: 'Hồ sơ đề xuất mua sắm', path: 'ho-so-dxms', scr: 'SCR-02' },
       { label: 'Yêu cầu báo giá ĐXMS', path: 'ycbg', scr: 'SCR-73' }] },
@@ -1310,17 +1326,25 @@
     { id: 'qd5', no: '0412/QĐ-VHT', date: '15/01/2026', title: 'Phê duyệt Kế hoạch SXKD năm 2026 của Trung tâm Vô tuyến', type: 'khsx', group: false, value: 320.0, remain: 58.6 },
   ];
   /* Nhiệm vụ / đề tài, dự án mà ĐXMS phải chọn khi tạo (comment Figma #1, P-69): nhiệm vụ KHCN, dự án SXKD (PAKD) hoặc kế hoạch mua sắm
-     thường xuyên năm (KHN). basis = văn bản căn cứ phê duyệt nhiệm vụ (D.basisDocs); src = nguồn đối soát ở task 08 (comment #4, P-73). */
+     thường xuyên năm (KHN). basis = văn bản căn cứ phê duyệt nhiệm vụ (D.basisDocs); src = nguồn đối soát ở task 08 (comment #4, P-73).
+     T29 D-66: đây là danh mục **Đề tài / dự án** (SCR-103); nhiệm vụ KHCN là bản ghi có loai = 'KHCN'. loai / loaiCt theo HT-DXMS-NOTE màn 1
+     (ánh xạ P-198); nguon: 'khcn' = thông tin chung đồng bộ từ phân hệ KHCN, 'cu' = loại khác, nhập ở hệ thống cũ (P-195). */
   D.nhiemVu = [
-    { code: 'NV-KHCN-2026-014', name: 'Phát triển trạm gNodeB thế hệ 2', kind: 'Nhiệm vụ KHCN', basis: 'qd1', src: 'mbom', field: 'VTCNTT', fund: 'KHCN' },
-    { code: 'NV-KHCN-2026-006', name: 'Anten mảng pha băng Ka', kind: 'Nhiệm vụ KHCN', basis: 'qd2', src: 'mbom', field: 'QP', fund: 'KHCN' },
-    { code: 'NV-KHCN-2025-031', name: 'Hệ thống mạng lõi 5G SA', kind: 'Nhiệm vụ KHCN', basis: 'qd3', src: 'mbom', field: 'VTCNTT', fund: 'KHCN' },
-    { code: 'DA-2026-002', name: 'Sản xuất module RRU 5G giai đoạn 2026–2028', kind: 'Dự án SXKD', basis: 'qd4', src: 'dutoan', field: 'VTCNTT', fund: 'SXKD' },
-    { code: 'KHN-2026-TTVT', name: 'Mua sắm thường xuyên năm 2026 — Trung tâm Vô tuyến', kind: 'Mua sắm thường xuyên (KHN)', basis: 'qd5', src: 'khn', field: 'VTCNTT', fund: 'CPTX' },
-    { code: 'KHN-2026-VHT', name: 'Mua sắm thường xuyên năm 2026 — các đơn vị VHT', kind: 'Mua sắm thường xuyên (KHN)', basis: null, src: 'khn', field: 'KHAC', fund: 'CPTX' },
+    { code: 'NV-KHCN-2026-014', name: 'Phát triển trạm gNodeB thế hệ 2', kind: 'Nhiệm vụ KHCN', basis: 'qd1', src: 'mbom', field: 'VTCNTT', fund: 'KHCN', loai: 'KHCN', loaiCt: 'Đề tài KHCN', nguon: 'khcn' },
+    { code: 'NV-KHCN-2026-006', name: 'Anten mảng pha băng Ka', kind: 'Nhiệm vụ KHCN', basis: 'qd2', src: 'mbom', field: 'QP', fund: 'KHCN', loai: 'KHCN', loaiCt: 'Dự án KHCN', nguon: 'khcn' },
+    { code: 'NV-KHCN-2025-031', name: 'Hệ thống mạng lõi 5G SA', kind: 'Nhiệm vụ KHCN', basis: 'qd3', src: 'mbom', field: 'VTCNTT', fund: 'KHCN', loai: 'KHCN', loaiCt: 'Chương trình KHCN', nguon: 'khcn' },
+    { code: 'DA-2026-002', name: 'Sản xuất module RRU 5G giai đoạn 2026–2028', kind: 'Dự án SXKD', basis: 'qd4', src: 'dutoan', field: 'VTCNTT', fund: 'SXKD', loai: 'SXKD', loaiCt: 'Dự án sản xuất', nguon: 'cu', total: 420.0 },
+    { code: 'KHN-2026-TTVT', name: 'Mua sắm thường xuyên năm 2026 — Trung tâm Vô tuyến', kind: 'Mua sắm thường xuyên (KHN)', basis: 'qd5', src: 'khn', field: 'VTCNTT', fund: 'CPTX', loai: 'Hoạt động TX', loaiCt: 'Thường xuyên', nguon: 'cu', total: 320.0 },
+    { code: 'KHN-2026-VHT', name: 'Mua sắm thường xuyên năm 2026 — các đơn vị VHT', kind: 'Mua sắm thường xuyên (KHN)', basis: null, src: 'khn', field: 'KHAC', fund: 'CPTX', loai: 'Hoạt động TX', loaiCt: 'Thường xuyên', nguon: 'cu', total: 85.0 },
     /* D-45: nhiệm vụ / đề tài, dự án làm gốc cho KĐT (Kế hoạch năm 2027). */
-    { code: 'DT-KHCN-2027-002', name: 'Đề tài phát triển trạm 5G-Advanced năm 2027', kind: 'Nhiệm vụ KHCN', basis: null, src: 'mbom', field: 'VTCNTT', fund: 'KHCN' },
-    { code: 'KHN-2027-DTPT', name: 'Kế hoạch đầu tư phát triển năm 2027 — VHT', kind: 'Dự án SXKD', basis: null, src: 'khn', field: 'KHAC', fund: 'SXKD' },
+    { code: 'DT-KHCN-2027-002', name: 'Đề tài phát triển trạm 5G-Advanced năm 2027', kind: 'Nhiệm vụ KHCN', basis: null, src: 'mbom', field: 'VTCNTT', fund: 'KHCN', loai: 'KHCN', loaiCt: 'Đề tài KHCN', nguon: 'khcn' },
+    { code: 'KHN-2027-DTPT', name: 'Kế hoạch đầu tư phát triển năm 2027 — VHT', kind: 'Dự án SXKD', basis: null, src: 'khn', field: 'KHAC', fund: 'SXKD', loai: 'Dự án đầu tư', loaiCt: 'Dự án đầu tư mua sắm tài sản', nguon: 'cu', total: 260.0 },
+    /* T29 S6 — 4 dòng mẫu của TPL-DADT-EX sheet1 (danh sách Đề tài / dự án hệ thống cũ). total = Tổng dự toán được duyệt (tỷ đồng):
+       dự toán mẫu (D.duToanOf) quy về đúng tổng này. Thuộc tính màn Đề tài / dự án ở de-tai.js (D.deTaiInfo). */
+    { code: '009-26-VHT-RDP-DS', name: 'Nghiên cứu, phát triển mạng 5G dành cho đường sắt tốc độ cao', kind: 'Nhiệm vụ KHCN', basis: null, src: 'mbom', field: 'VTCNTT', fund: 'KHCN', total: 108.35, loai: 'KHCN', loaiCt: 'Đề tài KHCN', nguon: 'khcn' },
+    { code: '020-26-VHT-BP-C', name: 'PAKD hệ thống 5G Private Network cho đối tác Công ty JST (Thái Lan)', kind: 'Dự án SXKD', basis: null, src: 'dutoan', field: 'VTCNTT', fund: 'VG', total: 3.95, loai: 'SXKD', loaiCt: 'Dự án Kinh doanh', nguon: 'cu' },
+    { code: '004-26-VHT-RDP-DS', name: 'Nghiên cứu xây dựng hệ thống quản lý không phận tầm thấp và thử nghiệm giải pháp phục vụ kinh tế tầm thấp', kind: 'Nhiệm vụ KHCN', basis: null, src: 'mbom', field: 'VTCNTT', fund: 'KHCN', total: 147.54, loai: 'KHCN', loaiCt: 'Đề tài KHCN', nguon: 'khcn' },
+    { code: '005-26-VHT-BP-M', name: 'VHT.26.GP.MX.5G.26', kind: 'Dự án SXKD', basis: null, src: 'dutoan', field: 'VTCNTT', fund: 'VG', total: 548.26, loai: 'SXKD', loaiCt: 'Dự án Kinh doanh', nguon: 'cu' },
   ];
   D.nvOf = (code) => D.nhiemVu.find((x) => x.code === code) || null;
   /* Quy tắc bảo mật mẫu cho ĐXMS Mật (comment Figma #12, P-70) — AI kiểm tra khi Lưu, chỉ cảnh báo. */
@@ -1354,6 +1378,65 @@
   ];
   const NCC0 = { 'NCC-000001': ['NCC Alpha', 'VNĐ'], 'NCC-000002': ['NCC Beta', 'VNĐ'], 'NCC-000003': ['NCC Gamma', 'USD'] };
   D.nccOf = (code) => ({ code, short: (NCC0[code] || [code])[0], currency: (NCC0[code] || [])[1] || 'VNĐ' });
+  /* T29 F7 — loại tài liệu phụ lục của Tờ trình (HT-DXMS-NOTE màn 8). Thật: danh mục Loại tài liệu, gắn bước lập dự thảo. */
+  D.phuLuc = [
+    ['plMuaSam', 'Phụ lục Danh mục mua sắm chi tiết'], ['plVtlk', 'Phụ lục Danh mục mua sắm chi tiết (VTLK)'], ['plCtkt', 'Phụ lục Chỉ tiêu kỹ thuật'],
+    ['plCtsp', 'Phụ lục Cấu trúc sản phẩm'], ['plBanVe', 'Phụ lục Danh mục bản vẽ'], ['plTrichLuc', 'Phụ lục Trích lục nguồn'],
+  ];
+  /* T29 cách 1 — Thông tin dự án / đề tài (bảng bóc tách chi phí từ dự toán, HT-DXMS-NOTE màn 4, 5, 8). Dự toán chưa liên thông từ KHCN
+     (DTMS_Q_0070) → GIẢ LẬP P-193: mỗi nhiệm vụ / đề tài, dự án có các dòng dự toán theo Loại chi phí PL1–PL6, giá trị gồm VAT (tỷ đồng). */
+  D.costTypes = [['PL1', 'PL1 - Chi phí xây dựng'], ['PL2', 'PL2 - Chi phí vật tư thiết bị'], ['PL3', 'PL3 - Chi phí quản lý dự án'],
+    ['PL4', 'PL4 - Chi phí tư vấn đầu tư xây dựng'], ['PL5', 'PL5 - Chi phí khác'], ['PL6', 'PL6 - Chi phí dự phòng']];
+  D.fundNames = { KHCN: 'Quỹ phát triển KHCN', SXKD: 'Đầu tư phát triển', CPTX: 'Chi phí sản xuất kinh doanh', VG: 'Vốn góp của chủ sở hữu' };
+  /* T29 S7 (D-65) — bảng dự toán **nhập tại ĐTMS** cho mọi Loại đề tài / dự án (HT-DXMS-NOTE hàng 5, 6; sheet "KHCN Thông tin Dự toán" ghi KHCN
+     không cung cấp). Một bảng dùng chung cho SCR-104 tab Dự toán chi phí và card bóc tách chi phí SCR-96. Thật: bảng dự toán trong CSDL ĐTMS + API CRUD.
+     Dòng: value = giá trị sau thuế (gồm VAT, tỷ đồng); pre, vat, tax, manual (ô Nhập tay); qty = khối lượng cần thực hiện, uom; buy = Chi mua sắm
+     (chỉ TTMS đổi, D-64); status, note. Dữ liệu mẫu (P-193): dòng 1–5 giữ id, loại, khoản mục của cách 1; dòng 6–9 theo YC-DXMS-PROTO §3.1 (chi phí
+     quản lý, nhân công, hội thảo không qua TTMS); nv.total có thì quy về đúng Tổng dự toán. */
+  const r2 = (v) => Math.round(v * 100) / 100;
+  /* P-199 (GIẢ LẬP): không tick Nhập tay thì Thuế GTGT = trước thuế × %VAT; tick thì lấy số người dùng nhập. */
+  D.duToanCalc = (l) => { const tax = l.manual ? Number(l.tax) || 0 : r2(l.pre * l.vat / 100); return { tax, value: r2(l.pre + tax) }; };
+  function duToanSeed(code) {
+    const nv = D.nvOf(code);
+    if (!nv) return [];
+    const k = [...code].reduce((a, ch) => a + ch.charCodeAt(0), 0) % 7;
+    const lines = [['PL2', 'Thiết bị, máy đo chuyên dụng', 120 + k * 12.5, 'Bộ', 4, true], ['PL2', 'Vật tư, linh kiện', 18.4 + k, 'Lô', 1, true],
+      ['PL4', 'Tư vấn lập hồ sơ mời thầu, đánh giá HSDT', 0.85, 'Gói', 1, true], ['PL5', 'Đào tạo, chuyển giao công nghệ', 6.2 + k / 2, 'Gói', 1, true], ['PL6', 'Dự phòng phí', 9.5, 'Gói', 1, false],
+      ['PL2', 'Máy tính xách tay cấu hình cao', 0.45, 'Chiếc', 10, true], ['PL3', 'Chi phí quản lý dự án', 3.2, 'Gói', 1, false],
+      ['PL5', 'Chi phí nhân công thực hiện', 14.6, 'Gói', 1, false], ['PL5', 'Hội thảo, công tác phí', 1.1, 'Gói', 1, false]];
+    const raw = lines.reduce((s, l) => s + l[2], 0), f = nv.total ? nv.total / raw : 1;
+    return lines.map(([type, item, value, uom, qty, buy], i) => {
+      const pre = r2((value * f) / 1.1), c = D.duToanCalc({ pre, vat: 10, manual: false });
+      return { id: `${code}-${i + 1}`, code, name: nv.name, fund: D.fundNames[nv.fund] || 'Đầu tư phát triển', type, item, value: c.value, pre, vat: 10, tax: c.tax, manual: false,
+        uom, qty, buy, status: 'Đang thực hiện', note: '' };
+    });
+  }
+  const DUTOAN = {};
+  D.duToanOf = (code) => { if (!DUTOAN[code]) DUTOAN[code] = duToanSeed(code); return DUTOAN[code]; };
+  /* Lưu một dòng (thêm mới khi chưa có id). Trả về dòng đã lưu. */
+  D.duToanSave = (code, line) => {
+    const ls = D.duToanOf(code), nv = D.nvOf(code);
+    const l = Object.assign({ code, name: nv.name, fund: D.fundNames[nv.fund] || 'Đầu tư phát triển', buy: false, status: 'Đang thực hiện', note: '' }, line, D.duToanCalc(line));
+    if (!l.id) { l.id = `${code}-${ls.reduce((m, x) => Math.max(m, Number(x.id.split('-').pop()) || 0), 0) + 1}`; ls.push(l); } else ls.splice(ls.findIndex((x) => x.id === l.id), 1, l);
+    return l;
+  };
+  D.duToanDel = (code, id) => { const ls = D.duToanOf(code); ls.splice(ls.findIndex((x) => x.id === id), 1); };
+  D.duToanReset = () => { Object.keys(DUTOAN).forEach((k) => delete DUTOAN[k]); };
+  /* Chỉ số một dòng (YC-DXMS-PROTO §3.3, BG-0411 mục 4). uses = các đợt ĐXMS dùng dòng: { st (trạng thái ĐXMS), qty, value }.
+     Đã đăng ký = ĐXMS đã phê duyệt (OK); đang giữ = ĐXMS đang phê duyệt / điều chỉnh; còn lại = dự toán − đã đăng ký − đang giữ.
+     Giá trị thực hiện = hợp đồng đã ký của phần đã phê duyệt (GIẢ LẬP: 94 %, thật lấy từ phân hệ Hợp đồng / SAP); tiết kiệm = đã phê duyệt − thực hiện. */
+  D.duToanExecRate = 0.94;
+  D.duToanStats = (l, uses) => {
+    const sum = (f) => uses.filter(f).reduce((s, u) => s + (u.value || 0), 0);
+    const live = (u) => u.st === 'OK' || u.st === 'PD' || u.st === 'DC';
+    const ok = r2(sum((u) => u.st === 'OK')), held = r2(sum((u) => u.st === 'PD' || u.st === 'DC')), exec = r2(ok * D.duToanExecRate);
+    return { ok, held, qty: uses.filter(live).reduce((s, u) => s + (u.qty || 0), 0), exec, saving: r2(ok - exec), remain: r2(l.value - ok - held) };
+  };
+  /* T29 F1 — Khối đơn vị (GIẢ LẬP P-190). */
+  D.blocks = ['Khối 1', 'Khối 2', 'Khối 3', 'Khối cơ quan'];
+  D.unitBlock = { 'Trung tâm Vô tuyến': 'Khối 1', 'Trung tâm Mạng lõi': 'Khối 1', 'Trung tâm Phần mềm': 'Khối 2', 'Trung tâm Thiết kế vi mạch': 'Khối 2',
+    'Nhà máy sản xuất thử nghiệm': 'Khối 3' };
+  D.blockOf = (unit) => (unit ? D.unitBlock[unit] || 'Khối cơ quan' : null);
   D.checklist = [
     { g: 'I', name: 'Văn bản căn cứ (QĐ nhiệm vụ KHCN)', no: '1482/QĐ-VHT', req: 'Bắt buộc', by: 1 },
     { g: 'I', name: 'Tờ trình đề xuất mua sắm (BM-01)', no: 'Dự thảo', req: 'Bắt buộc', by: 12 },
@@ -1361,6 +1444,8 @@
     { g: 'II', name: 'Kết quả rà soát tồn kho', no: 'RSTK-2026-0311', req: 'Bắt buộc', by: 7 },
     { g: 'II', name: 'Thuyết minh (BM-02)', no: 'Dự thảo', req: 'Bắt buộc', by: 12 },
     { g: 'III', name: 'Hợp đồng tương tự', no: '—', req: 'Nếu có', by: null },
+    /* T29 F7 — phụ lục đính kèm theo HT-DXMS-NOTE màn 8: đơn vị tải lên ở bước lập dự thảo Tờ trình (Danh sách tài liệu, nếu có). */
+    ...D.phuLuc.map(([key, name]) => ({ g: 'III', name, no: '—', req: 'Nếu có', by: null, up: key })),
   ];
   D.bm04Sections = ['Căn cứ', 'Sự cần thiết', 'Phạm vi, số lượng', 'Giá trị & cơ sở giá', 'Nguồn vốn', 'Biện pháp thực hiện', 'Phương án kỹ thuật – công nghệ'];
   D.opinions = {
@@ -1445,6 +1530,7 @@
       { g: 'II', name: 'Kết quả rà soát tồn kho', no: 'RSTK-2026-0342', req: 'Bắt buộc', by: 7 },
       { g: 'II', name: 'Thuyết minh (BM-02)', no: 'Dự thảo', req: 'Bắt buộc', by: 12 },
       { g: 'III', name: 'Hợp đồng tương tự', no: '—', req: 'Nếu có', by: null },
+      ...D.phuLuc.map(([key, name]) => ({ g: 'III', name, no: '—', req: 'Nếu có', by: null, up: key })),
     ],
     opinions: {
       TC: { 'Nguồn vốn': { ok: false, text: 'Cần ghi rõ nguồn vốn thuộc kế hoạch vốn SXKD năm 2027 đã giao cho Trung tâm.', guide: 'Bổ sung số, ngày văn bản giao kế hoạch vốn tại mục "Nguồn vốn" của BM-01.' } },

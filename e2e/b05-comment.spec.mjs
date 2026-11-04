@@ -18,7 +18,7 @@ test('#1, #12 SCR-28: Nhiệm vụ / Đề tài bắt buộc; Mật → AI kiể
   await fresh(page, '#/dxms/create');
   await page.locator('#x-title').fill('Mua sắm anten băng Ka');
   await page.locator('#x-save').click();
-  await expect(page.locator('.vfield.invalid .msg')).toHaveText(['Bạn cần chọn Nhiệm vụ / Đề tài, dự án.']);
+  await expect(page.locator('.vfield.invalid .msg')).toHaveText(['Bạn cần chọn Đề tài / dự án.']);
   await expect(page.locator('[data-sec-check]')).toHaveCount(0);
   await page.locator('[data-vsel="x-nv"]').click();
   await page.locator('.vsel-panel [data-opt="NV-KHCN-2026-006"]').click();

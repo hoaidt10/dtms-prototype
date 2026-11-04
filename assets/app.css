@@ -1076,6 +1076,9 @@ a.rp-tile, button.rp-tile { cursor: pointer; } .rp-tile.on { border-color: #EE00
 /* T17 Luồng mua sắm (phương án Gộp) — SCR-96 Tạo luồng */
 .lf-err { color: #d92d20; font-size: 13px; margin: 0 0 12px; }
 .lf-empty { padding: 24px 0 8px; color: #76777A; font-size: 14px; }
+.lf-legal { margin-top: 16px; }
+.lf-legal .k { font-size: 13px; color: #76777A; margin-bottom: 4px; }
+.lf-legal .v { font-size: 14px; white-space: pre-line; }
 [data-lf-members] .vfield .msg { margin: 4px 0 0; }
 [data-lf-members] .vtable { table-layout: fixed; width: 100%; }
 /* T17 B2 — SCR-98 Cập nhật nhân sự: khối Ảnh hưởng của thay đổi */

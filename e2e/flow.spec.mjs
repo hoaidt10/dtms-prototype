@@ -11,7 +11,7 @@ test('SCR-28 → SCR-25: tạo ĐXMS không start quy trình; Tạo hồ sơ kho
   await expect(page.locator('.pg-title')).toContainText('Thêm mới ĐXMS');
   await expect(page.locator('input[placeholder="Hệ thống tự sinh"]')).toBeDisabled();
   await page.locator('#x-save').click();
-  await expect(page.locator('.vfield.invalid .msg')).toHaveText(['Bạn cần nhập Tên ĐXMS.', 'Bạn cần chọn Nhiệm vụ / Đề tài, dự án.']);
+  await expect(page.locator('.vfield.invalid .msg')).toHaveText(['Bạn cần nhập Tên ĐXMS.', 'Bạn cần chọn Đề tài / dự án.']);
   await page.locator('[data-vsel="x-nv"]').click();
   await page.locator('.vsel-panel [data-opt="NV-KHCN-2026-014"]').click();
   await page.locator('#x-est').fill('abc');

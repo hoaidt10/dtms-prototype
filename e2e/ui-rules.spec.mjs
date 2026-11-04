@@ -58,7 +58,7 @@ test('B5: Danh sách hồ sơ ĐXMS theo profile-list — cột, tìm kiếm, t�
   await expect(page.locator('.sb-nav [data-go="ho-so-dxms"]')).toHaveClass(/active/);
   await expect(page.locator('.pg-head .r [data-create="hs"]')).toHaveText(/Thêm mới/);
   await expect(page.locator('.vtable th')).toHaveText(['STT', 'Trạng thái', 'Mã hồ sơ', 'Mã ĐXMS', 'Tên hồ sơ', 'Loại hồ sơ', 'Đơn vị đề xuất',
-    'Tổng giá trị (tỷ đồng)', 'Mức ưu tiên', 'Quy trình', 'Bước hiện tại', 'Ngày cập nhật']);
+    'Tổng giá trị (tỷ đồng)', 'Mức ưu tiên', 'Quy trình', 'Bước hiện tại', 'Số Tờ trình', 'Ngày Tờ trình', 'Ngày gửi thẩm định', 'Người tạo', 'Ngày cập nhật']);
   await expect(page.locator('.vpager')).toContainText('Tổng số bản ghi: 13');
   await expect(page.locator('.vtable tbody tr')).toHaveCount(10);
   await page.locator('.vpager [data-pg="2"]').first().click();
@@ -114,8 +114,8 @@ test('B5: Danh sách ĐXMS theo task-management — cột, chỉ ô tìm kiếm,
   await expect(page.locator('.sb-nav [data-go="dxms"]')).toHaveClass(/active/);
   await expect(page.locator('.pg-head .r [data-create="dxms"]')).toHaveText(/Thêm mới/);
   await expect(page.locator('[data-l="adv"]')).toHaveCount(0);
-  await expect(page.locator('.vtable th')).toHaveText(['STT', 'Thao tác', 'Trạng thái', 'Mã ĐXMS', 'Tên ĐXMS', 'Đơn vị đề xuất',
-    'Giá trị hiệu lực (tỷ đồng)', 'Mức ưu tiên', 'Ngày cập nhật']);
+  await expect(page.locator('.vtable th')).toHaveText(['STT', 'Thao tác', 'Trạng thái', 'Mã ĐXMS', 'Tên ĐXMS', 'Đề tài / dự án', 'Đợt', 'Đơn vị đề xuất',
+    'Giá trị hiệu lực (tỷ đồng)', 'Mức ưu tiên', 'Người tạo', 'Ngày cập nhật']);
   await expect(page.locator('.vpager')).toContainText('Tổng số bản ghi: 13');
   const st = (code) => page.locator(`tr[data-code="${code}"] .vbadge`);
   await expect(st('ĐXMS-2026-0119')).toHaveText('Chưa có hồ sơ');
