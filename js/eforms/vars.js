@@ -871,7 +871,8 @@
     const n = tok.task, lbl = choice ? choice.label : '';
     const miss = reqDocs(tok).find((x) => !x.have && !x.opt && (!x.only || x.only.test(lbl)));
     if (miss && !(kdt() && n === 32 && /^Chưa/.test(lbl))) return `Bạn cần tải lên ${miss.name} ở Danh sách tài liệu.`;
-    if (!vals || Flow.state.parent) return null;
+    if (Flow.state.parent) return window.EForms.hd.check(tok, choice, vals);
+    if (!vals) return null;
     if (n === 1 && (of(tok).basisDocOptions.find((o) => o.value === vals.basisDoc) || {}).type !== vals.basisType) return 'Văn bản căn cứ không thuộc loại căn cứ đã chọn.';
     if (n === 5 && lbl.startsWith('Xác nhận') && (vals.bocTach || []).some((r) => r.remain != null && r.prop > r.remain)) return 'Có dòng vượt số lượng còn lại sau trừ lùi.';
     if (!kdt() && n === 16 && small() && !(vals.cqcmSel || []).includes('TC')) return 'Hồ sơ dưới 160 tỷ: CQCM Tài chính bắt buộc (QT B8.2).';

@@ -518,7 +518,7 @@
   /* Giả lập P-138: bộ phận nhận thông báo giao hàng. */
   D.hdNotifyTo = 'Đơn vị sử dụng; Phòng Quản lý tài sản; Phòng Tài chính kế toán';
   /* Đến hạn hoặc phát sinh chứng từ: luồng con cần khởi tạo (GIẢ LẬP P-120 — Phòng Hợp đồng khởi tạo). */
-  const HD_TRIGGER = { 'MS23.01': ['Văn bản phát sinh', 'Có phát sinh cần lập văn bản'], 'MS23.03': ['Nghiệm thu', 'Đến hạn nghiệm thu'], 'MS23.04': ['Thanh lý', 'Đến hạn thanh lý'] };
+  const HD_TRIGGER = { 'MS23.01': ['Văn bản phát sinh', 'Có phát sinh cần lập văn bản'], 'MS23.03': ['Nghiệm thu', 'Đến hạn nghiệm thu'] };
   D.flows.MS23 = {
     1: { nlv: 0.5, q: ['P-135'], stop: true, run: (v) => {
       v.track = { at: v.signed, ms: (D.hdTrack[v.hd] || []).map((m) => Object.assign({}, m, { plan: dayAdd(v.signed, m.days), actual: null })) };
@@ -537,21 +537,201 @@
       v.notices = (v.notices || []).concat([{ dot: m.name, ngay: u.tdNgayDuKien || m.plan, site: u.tdDiaDiem || m.site, kenh: u.tdKenh || 'Email', at, to: D.hdNotifyTo, file: !!u.tdTb }]);
       trackLog(v, at, 'Nhà thầu thông báo giao hàng', `Đã thông báo các bộ phận, chuyển hồ sơ giao hàng: ${m.name}`);
       ['tdDot', 'tdNgayDuKien', 'tdDiaDiem', 'tdKenh', 'tdNoiDung', 'tdTb'].forEach((k) => { delete u[k]; });
+    }, spawn: (v) => { /* Mỗi đợt một hồ sơ MS23.02; nhà thầu báo lại cùng đợt thì không sinh thêm. */
+      const n = v.notices[v.notices.length - 1];
+      return window.Flow.cases(v.hd).some((c) => c.vars.process === 'MS23.02' && c.vars.msName === n.dot) ? null : { process: 'MS23.02', name: n.dot, clock: window.Flow.clockOf(n.at), vars: { msName: n.dot } };
     } },
     S4: { gw: true, stop: true, run: (v) => {
-      const [name, why] = HD_TRIGGER[v.evt.flow], nt = v.track.ms.find((m) => m.kind === 'NT'), at = v.evt.flow === 'MS23.01' ? dayAdd(v.signed, 30) : nt.plan;
-      v.triggers = (v.triggers || []).concat([{ flow: v.evt.flow, name, why, at }]);
+      const [name, why0] = HD_TRIGGER[v.evt.flow], why = v.evt.why || why0, nt = v.track.ms.find((m) => m.kind === 'NT'), at = v.evt.date || (v.evt.flow === 'MS23.01' ? dayAdd(v.signed, 30) : nt.plan);
+      v.triggers = (v.triggers || []).concat([Object.assign({ flow: v.evt.flow, name, why, at }, v.evt.kcs ? { kcs: v.evt.kcs } : {})]);
       trackLog(v, at, why, `Cần khởi tạo ${v.evt.flow} ${name}`);
     } },
     5: { nlv: 0.5, q: ['P-139', 'P-140'], stop: true, run: (v) => {
-      const m = nextMs(v, v.evt.kind);
+      if (v.evt.kind === 'TL') { trackLog(v, v.evt.date || v.signed, `Có ${v.evt.loai} đã ký đầy đủ`, 'AI ghi nhận kết quả thanh lý vào hồ sơ hợp đồng'); return; }
+      if (v.evt.kind === 'VB') {
+        /* Tiến độ có hiệu lực (GIẢ LẬP P-171): phụ lục gia hạn dời mốc chưa hoàn thành; mốc đã xong và nhắc đã gửi giữ nguyên. */
+        const open = v.evt.days ? v.track.ms.filter((m) => !m.actual) : [];
+        open.forEach((m) => { m.plan = dayAdd(m.plan, v.evt.days); });
+        trackLog(v, v.evt.date, `Có ${v.evt.loai} đã ký đầy đủ`, open.length ? `AI cập nhật tiến độ có hiệu lực: dời ${open.length} mốc chưa hoàn thành thêm ${v.evt.days} ngày` : 'AI ghi nhận thông tin phát sinh vào hồ sơ hợp đồng');
+        return;
+      }
+      const m = v.evt.ms ? v.track.ms.find((x) => x.name === v.evt.ms && !x.actual) : nextMs(v, v.evt.kind);
       if (!m) { trackLog(v, v.signed, `Có ${v.evt.loai} đã ký đầy đủ`, 'Không có mốc tương ứng, không cập nhật'); return; }
-      m.actual = m.plan;
+      m.actual = v.evt.date || m.plan;
       trackLog(v, m.actual, `Có ${v.evt.loai} đã ký đầy đủ`, `AI cập nhật ngày thực tế ${m.actual}: ${m.name}`);
     } },
   };
-  /* Mã hồ sơ theo mã hợp đồng và quy trình; mốc đầu = ngày tạo hợp đồng mẫu 05/10/2026 (2 NLV sau 01/10). */
-  D.hdCaseCode = (hd, process) => D.hdProcesses[process || 'MS22'].prefix + hd.slice(3);
+  /* T25 B3 — MS24 Thanh toán theo từng đợt (DG-MS24): mỗi đợt một hồ sơ con. Hai tuyến ký 4 cấp độc lập về nhánh sửa: bảng tổng hợp 7 → 8 → 9 → 10, trả về 11 → 7; đề nghị chuyển tiền 13 → 14 → 15 → 16, trả về 17 → 12 → 13.
+     Hình thức ký chọn một lần ở bước 12 (DG-MS24 §C.21), các cấp bấm Đồng ý và ký, không mở hộp thoại Trình ký (GIẢ LẬP P-152). Người ký Phòng tài chính = Trưởng phòng TCKT (P-124). Đồng bộ SAP lỗi: việc Gửi lại cho Phòng TCKT (P-125).
+     Kế hoạch thanh toán theo hợp đồng: value = giá trị đề nghị, adv = khấu trừ tạm ứng, hold = giữ lại bảo hành (tỷ đồng); need = mốc phải có ngày thực tế mới tạo được hồ sơ, HOLD = chưa tới kỳ. GIẢ LẬP P-147. */
+  D.hdPayPlan = { 'HĐ-2026-0052': [
+    { name: 'Tạm ứng', cond: 'Ký hợp đồng và nộp bảo lãnh tạm ứng', rate: 20, value: 38.24, adv: 0, hold: 0 },
+    { name: 'Thanh toán đợt 1', cond: 'Bàn giao đợt 1', rate: 61, value: 116.6, adv: 23.32, hold: 5.83, need: ['GIAO', 0] },
+    { name: 'Thanh toán đợt 2', cond: 'Nghiệm thu tổng thể', rate: 39, value: 74.6, adv: 14.92, hold: 3.73, need: ['NT', 0] },
+    { name: 'Giữ lại bảo hành', cond: 'Hết thời hạn bảo hành năm đầu', rate: 5, value: 9.56, adv: 0, hold: 0, need: ['HOLD'] }] };
+  const noTable = (v, u) => u.ttBangTH === false;
+  const kyTT = (who, to, back, what, o) => Object.assign({ who, scr: 'SCR-102', nlv: 1, choices: [{ label: 'Đồng ý và ký', to, main: true }, { label: `Không đồng ý — sửa ${what}`, to: back, kind: 'secondary', reason: true }] }, o);
+  const onTable = { optional: noTable, q: ['P-124', 'P-150'] }, onReq = { q: ['P-124', 'P-150'] };
+  D.flows.MS24 = {
+    1: { who: 'phd', scr: 'SCR-102', nlv: 1, q: ['P-144'], actionLabel: 'Gửi hồ sơ thanh toán', next: 2 },
+    2: { who: 'phd', scr: 'SCR-102', nlv: 1, q: ['P-145', 'P-147'], choices: [{ label: 'Đủ căn cứ thanh toán', to: 4, main: true }, { label: 'Yêu cầu bổ sung hồ sơ', to: 3, kind: 'secondary', reason: true }] },
+    3: { who: 'phd', scr: 'SCR-102', nlv: 1, optional: true, q: ['P-144'], actionLabel: 'Gửi lại kiểm tra', next: 2 },
+    4: { nlv: 0.5, q: ['P-148'], when: (v, u) => (noTable(v, u) ? 12 : 5) },
+    5: { who: 'phd', scr: 'SCR-102', nlv: 1, optional: noTable, actionLabel: 'Cung cấp hoá đơn', next: 6 },
+    6: { nlv: 0.5, optional: noTable, q: ['P-149'], next: 7 },
+    7: kyTT('tckt', 8, 11, 'bảng tổng hợp', onTable),
+    8: kyTT('tgd', 9, 11, 'bảng tổng hợp', onTable),
+    9: kyTT('vthu', 10, 11, 'bảng tổng hợp', onTable),
+    10: kyTT('td', 12, 11, 'bảng tổng hợp', onTable),
+    11: { who: 'phd', scr: 'SCR-102', nlv: 1, optional: true, actionLabel: 'Trình ký lại từ Phòng tài chính', next: 7 },
+    12: { who: 'phd', scr: 'SCR-102', nlv: 1, q: ['P-152'], actionLabel: 'Hoàn thiện và trình ký', next: 13 },
+    13: kyTT('tckt', 14, 17, 'đề nghị', onReq),
+    14: kyTT('tgd', 15, 17, 'đề nghị', onReq),
+    15: kyTT('vthu', 16, 17, 'đề nghị', onReq),
+    16: kyTT('td', 18, 17, 'đề nghị', onReq),
+    17: { who: 'phd', scr: 'SCR-102', nlv: 1, optional: true, q: ['P-151'], actionLabel: 'Hoàn thiện lại đề nghị', next: 12 },
+    18: { who: 'tckt', scr: 'SCR-102', nlv: 1, q: ['P-153'], actionLabel: 'Đã thanh toán', next: 19 },
+    19: { who: 'tckt', scr: 'SCR-102', nlv: 0.5, q: ['P-146'], actionLabel: 'Cập nhật trạng thái', next: 20 },
+    20: { nlv: 0.5, scr: 'SCR-102', q: ['P-125'], retry: { flag: 'sapFail', who: 'tckt', fail: 'Lỗi đồng bộ SAP — chưa ghi nhận được trạng thái thanh toán' }, next: 'END', choices: [{ label: 'Gửi lại SAP', to: 20, main: true }] },
+  };
+  D.hdProcesses.MS24 = { name: 'Thanh toán hợp đồng theo từng đợt', page: 'MS24', type: 'Thanh toán hợp đồng', end: 'Hoàn tất lần thanh toán — đã đồng bộ SAP', prefix: 'HSTT-', tab: 'pay', done: 'Hoàn tất lần thanh toán, đã đồng bộ SAP.' };
+  D.hdProcesses.MS22.done = 'Hợp đồng đã ký đầy đủ, chuyển sang theo dõi thực hiện.';
+  /* T25 B4 — MS23.03 Nghiệm thu + MS23.04 Thanh lý (DG-MS23.03, DG-MS23.04). Hai hồ sơ con báo cho nhau bằng tín hiệu (D.hdSignals; thật: message correlate theo mã hợp đồng):
+     G1: MS23.03 xong bước 6 → khởi tạo MS23.04 (f.spawn). G2: MS23.04 kiểm tra đạt, ký chung → MS23.03 bước 7. G3: MS23.03 xong bước 13 → MS23.04 bước 13.
+     Phương án ký chốt một lần ở MS23.03 bước 6, MS23.04 đọc lại (GIẢ LẬP P-155). Ký chung chỉ có một tuyến ký ở MS23.03, trả về thì sửa ở MS23.03 bước 6 (P-156).
+     MS23.03 bước 14 và MS23.04 bước 14 phát sự kiện MS23 bước 5, dùng chung một chức năng cập nhật (DG-MS23.03 §B.5). Giám đốc = Phó TGĐ, Tổng Giám đốc = TGĐ VHT (GIẢ LẬP P-157). */
+  const isChung = (v) => v.plan === 'CHUNG', notChung = (v) => !isChung(v);
+  D.flows['MS23.03'] = {
+    g1k: { gw: true, when: (v) => (v.kcs === 'DV' ? 2 : 1) },
+    1: { who: 'lan', scr: 'SCR-102', nlv: 1, optional: (v) => v.kcs === 'DV', actionLabel: 'Gửi báo cáo KCS', next: 3 },
+    2: { who: 'dvsd', scr: 'SCR-102', nlv: 1, optional: (v) => v.kcs !== 'DV', actionLabel: 'Gửi báo cáo KCS', next: 3 },
+    3: { who: 'phd', scr: 'SCR-102', nlv: 1, choices: [{ label: 'Đủ hồ sơ, KCS đạt', to: 5, main: true }, { label: 'Thiếu chứng từ — yêu cầu bổ sung', to: 3, kind: 'secondary', reason: true }, { label: 'KCS chưa đạt — khắc phục', to: 4, kind: 'secondary', reason: true }] },
+    4: { who: 'dvsd', scr: 'SCR-102', nlv: 2, optional: true, actionLabel: 'Hoàn thành khắc phục', next: 'g1k' },
+    5: { nlv: 0.5, next: 6 },
+    6: { who: 'phd', scr: 'SCR-102', nlv: 2, q: ['P-155'], actionLabel: 'Hoàn thiện biên bản', next: 'g3' },
+    g3: { gw: true, run: (v, u) => { v.plan = v.plan || u.tnPhuongAn || 'RIENG'; }, spawn: (v) => ({ process: 'MS23.04', at: 'g1', vars: { plan: v.plan } }), when: (v) => (isChung(v) ? 'w7' : 8) },
+    w7: { gw: true, when: (v) => (v.sig_g2 ? 7 : 'h7') },
+    h7: { gw: true, stop: true, run: (v) => { v.hold = 'Chờ biên bản thanh lý hoàn thiện từ MS23.04'; } },
+    7: { who: 'phd', scr: 'SCR-102', nlv: 1, optional: notChung, actionLabel: 'Tập hợp bộ hồ sơ', next: 8 },
+    8: { nlv: 0.5, q: ['P-158'], run: (v, u) => { v.aiNt = { ok: !u.tnAiFail }; u.tnAiFail = false; }, when: (v) => (v.aiNt.ok ? 9 : 6) },
+    9: kyTT('tphd', 10, 6, 'biên bản', { q: ['P-156'] }),
+    10: kyTT('binh', 11, 6, 'biên bản', { q: ['P-156', 'P-157'] }),
+    11: { who: 'vthu', scr: 'SCR-102', nlv: 1, q: ['P-154'], choices: [{ label: 'Hồ sơ đạt', to: 12, main: true }, { label: 'Không đạt — trả hoàn thiện', to: 6, kind: 'secondary', reason: true }] },
+    12: kyTT('tgd', 13, 6, 'biên bản', { q: ['P-156', 'P-157'] }),
+    13: { who: 'phd', scr: 'SCR-102', nlv: 1, external: 'Nhà thầu / Nhà cung cấp', actionLabel: 'Cập nhật biên bản đã ký', next: 'g3s' },
+    g3s: { gw: true, signal: ['MS23.04', 'g3'], next: 14 },
+    14: { nlv: 0.5, signal: ['MS23', 'nt'], next: 'END' },
+  };
+  D.flows['MS23.04'] = {
+    g1: { gw: true, when: (v) => (v.plan === 'KHONG' ? 'e1' : 1) },
+    e1: { gw: true, run: (v) => { v.endText = 'Không thực hiện thanh lý — chỉ nghiệm thu theo MS23.03'; }, when: () => 'END' },
+    1: { who: 'phd', scr: 'SCR-102', nlv: 1, q: ['P-155'], actionLabel: 'Hoàn thành kiểm tra', next: 'g2' },
+    g2: { gw: true, when: (v) => (isChung(v) ? 2 : 3) },
+    2: { who: 'phd', scr: 'SCR-102', nlv: 1, optional: notChung, actionLabel: 'Hoàn thành chuẩn bị', next: 6 },
+    3: { who: 'phd', scr: 'SCR-102', nlv: 1, optional: isChung, choices: [{ label: 'Nghiệm thu đã ký xong, đủ bảo lãnh', to: 4, main: true }, { label: 'Tiếp tục chờ, bổ sung bảo lãnh', to: 3, kind: 'secondary' }] },
+    4: { who: 'phd', scr: 'SCR-102', nlv: 1, optional: isChung, actionLabel: 'Hoàn thành chuẩn bị', next: 5 },
+    5: { who: 'phd', scr: 'SCR-102', nlv: 2, optional: isChung, q: ['P-159'], actionLabel: 'Ghi nhận quyết toán', next: 6 },
+    6: { nlv: 0.5, next: 7 },
+    7: { who: 'phd', scr: 'SCR-102', nlv: 2, actionLabel: 'Hoàn thiện biên bản', next: 8 },
+    8: { nlv: 0.5, q: ['P-158'], run: (v, u) => { v.aiTl = { ok: !u.tlAiFail }; u.tlAiFail = false; }, when: (v) => (v.aiTl.ok ? 'g6' : 7) },
+    g6: { gw: true, when: (v) => (isChung(v) ? 'g2s' : 9) },
+    g2s: { gw: true, stop: true, signal: ['MS23.03', 'g2'], run: (v) => { v.hold = 'Chờ kết quả ký chung từ MS23.03'; } },
+    9: kyTT('tphd', 10, 7, 'biên bản', { optional: isChung }),
+    10: kyTT('binh', 11, 7, 'biên bản', { optional: isChung, q: ['P-157'] }),
+    11: { who: 'vthu', scr: 'SCR-102', nlv: 1, optional: isChung, choices: [{ label: 'Hồ sơ đạt', to: 12, main: true }, { label: 'Không đạt — trả hoàn thiện', to: 7, kind: 'secondary', reason: true }] },
+    12: kyTT('tgd', 13, 7, 'biên bản', { optional: isChung, q: ['P-157'] }),
+    13: { who: 'phd', scr: 'SCR-102', nlv: 1, q: ['P-160'], external: 'Nhà thầu / Nhà cung cấp', actionLabel: 'Cập nhật biên bản đã ký', next: 14 },
+    14: { nlv: 0.5, signal: ['MS23', 'tl'], next: 'END' },
+  };
+  /* Tín hiệu vào hồ sơ đích: trả về bước đi tiếp (null = hồ sơ chưa chờ, chỉ ghi nhận). s = ui của hồ sơ gửi. */
+  const release = (to) => (v) => { if (!v.hold) return null; delete v.hold; return to; };
+  D.hdSignals = { 'MS23.03': { g2: release(7) }, 'MS23.04': { g3: release(13) },
+    MS23: { nt: (v, u, s) => { v.evt = { loai: 'biên bản nghiệm thu', kind: 'NT', date: s.tnNgay }; return 5; }, tl: (v, u, s) => { v.evt = { loai: 'biên bản thanh lý', kind: 'TL', date: s.tlNgay }; return 5; } } };
+  D.hdProcesses['MS23.03'] = { name: 'Nghiệm thu hàng hoá / dịch vụ', page: 'MS23.03', type: 'Nghiệm thu', end: 'Có nghiệm thu đã ký đầy đủ', prefix: 'HSNT-', tab: 'bg', done: 'Biên bản nghiệm thu đã ký đầy đủ, đã cập nhật ngày nghiệm thu thực tế.',
+    start: { name: 'Nghiệm thu tổng thể', at: 'g1k', vars: { kcs: 'TS' } } };
+  D.hdProcesses['MS23.04'] = { name: 'Thanh lý hợp đồng', page: 'MS23.04', type: 'Thanh lý', end: 'Hoàn tất biên bản thanh lý', prefix: 'HSTL-', tab: 'tl', done: 'Hoàn tất biên bản thanh lý hợp đồng.' };
+  /* T25 B5 — MS23.01 Văn bản phát sinh (DG-MS23.01): mỗi văn bản một hồ sơ con. Phụ lục hợp đồng là sửa đổi hợp đồng (cổng G1, GIẢ LẬP P-161), đi qua 2, 3; loại khác hợp nhất thẳng tới 4.
+     Bước 4 không đạt về 1, làm lại nhánh tương ứng. Bước 7 không có cổng: chỉ ghi kết quả, không chặn (P-167). Người có thẩm quyền = TGĐ VHT (GIẢ LẬP P-163). Hình thức ký chọn ở bước 9, các cấp bấm Đồng ý và ký như B3-2.
+     Bước 12 phát sự kiện MS23 bước 5: dùng chung một chức năng cập nhật, mỗi hồ sơ ký một lần (P-170); phụ lục gia hạn thì mốc chưa hoàn thành dời theo (P-171). Giá trị, ngày hết hạn của hợp đồng đọc từ hồ sơ đã xong (hop-dong.js liveDocs). */
+  D.hdVbTypes = ['Phụ lục hợp đồng', 'Biên bản làm việc', 'Biên bản phạt', 'Văn bản khác'];
+  D.hdVbSua = (u) => (u.vbLoai || D.hdVbTypes[0]) === D.hdVbTypes[0];
+  const notSua = (v, u) => !D.hdVbSua(u);
+  D.flows['MS23.01'] = {
+    1: { who: 'phd', scr: 'SCR-102', nlv: 1, q: ['P-161', 'P-166'], actionLabel: 'Hoàn thành lập thông tin', next: 'g1' },
+    g1: { gw: true, when: (v, u) => (D.hdVbSua(u) ? 2 : 'g3') },
+    2: { who: 'phd', scr: 'SCR-102', nlv: 1, optional: notSua, q: ['P-162', 'P-173'], actionLabel: 'Trình đề xuất sửa đổi', next: 3 },
+    3: { who: 'tgd', scr: 'SCR-102', nlv: 1, optional: notSua, q: ['P-163'], choices: [{ label: 'Duyệt đề xuất', to: 'g3', main: true }, { label: 'Chưa duyệt — hoàn thiện tờ trình', to: 2, kind: 'secondary', reason: true }] },
+    g3: { gw: true, next: 4 },
+    4: { nlv: 0.5, q: ['P-166'], run: (v, u) => { v.aiVbIn = { ok: !u.vbAiFail }; u.vbAiFail = false; }, when: (v) => (v.aiVbIn.ok ? 5 : 1) },
+    5: { nlv: 0.5, next: 6 },
+    6: { who: 'phd', scr: 'SCR-102', nlv: 2, q: ['P-168'], actionLabel: 'Hoàn thiện văn bản', next: 7 },
+    7: { nlv: 0.5, q: ['P-167'], run: (v, u) => { v.aiVbOut = { warn: !!u.vbAiWarn }; u.vbAiWarn = false; }, next: 8 },
+    8: { who: 'tphd', scr: 'SCR-102', nlv: 1, q: ['P-164'], choices: [{ label: 'Phê duyệt để trình ký', to: 9, main: true }, { label: 'Không duyệt — hoàn thiện lại', to: 6, kind: 'secondary', reason: true }] },
+    9: { who: 'phd', scr: 'SCR-102', nlv: 1, q: ['P-169'], actionLabel: 'Trình ký', next: 10 },
+    10: kyTT('tgd', 11, 9, 'hồ sơ trình ký', { q: ['P-163', 'P-165'] }),
+    11: { who: 'phd', scr: 'SCR-102', nlv: 1, q: ['P-169', 'P-172'], external: 'Nhà thầu / Nhà cung cấp', actionLabel: 'Cập nhật và gửi lại', next: 12 },
+    12: { nlv: 0.5, q: ['P-170', 'P-171'], signal: ['MS23', 'vb'], next: 'END' },
+  };
+  D.hdSignals.MS23.vb = (v, u, s, c) => {
+    if ((v.vbDone || []).includes(c.code)) return null;
+    v.vbDone = (v.vbDone || []).concat(c.code);
+    v.evt = { loai: (s.vbLoai || D.hdVbTypes[0]).toLowerCase(), kind: 'VB', date: s.vbNgayKy || window.Flow.dateOf(c.clock), days: D.hdVbSua(s) ? Number(s.vbGiaHan) || 0 : 0 };
+    return 5;
+  };
+  D.hdProcesses['MS23.01'] = { name: 'Văn bản phát sinh khi thực hiện hợp đồng', page: 'MS23.01', type: 'Văn bản phát sinh', end: 'Hoàn tất một văn bản phát sinh', prefix: 'HSVB-', tab: 'vb', many: true, done: 'Hoàn tất văn bản phát sinh, đã cập nhật thông tin hợp đồng.',
+    start: { name: 'Văn bản phát sinh', at: 1, vars: {}, date: (t) => { const x = (t.triggers || []).filter((r) => r.flow === 'MS23.01').pop(); return x ? x.at : dayAdd(t.signed, 30); } } };
+  D.hdProcesses['MS23.03'].start.date = (t) => t.track.ms.find((m) => m.kind === 'NT').plan;
+  /* T25 B6 — MS23.02 Bàn giao (DG-MS23.02): mỗi đợt giao một hồ sơ con, tự sinh khi MS23 bước 4 chuyển thông báo giao hàng (không có nút Tạo hồ sơ). Mũi tên thiếu trên bản vẽ (2 → 3, 9 → 10, 10 → cổng, 15 → 14) đi theo diễn giải (P-185).
+     Không đạt lần đầu → 7; đã bổ sung, thay thế mà vẫn không đạt → 9. Hạn 7 ngày làm việc từ ngày lập biên bản (GIẢ LẬP P-122), P.QLTS quyết định ở bước 7 theo diễn giải. Nhánh kết thúc khác nhau, không gộp thành đã bàn giao: dịch vụ → MS23.03; phạt → mở MS23.01, chờ; ý kiến → chờ; hủy → kết thúc theo phạm vi (DG-MS23.02 §C.24).
+     Bước 22 phát sự kiện MS23 bước 5 cho đúng mốc của đợt, mỗi hồ sơ một lần (P-184). Không thêm cấp ký: tuyến ký HOC nằm ngoài bước 21 (GIẢ LẬP P-123). */
+  const isDv = (v, u) => u.bgLoai === 'Dịch vụ', notDv = (v, u) => !isDv(v, u);
+  const addWork = (s, n) => { const [d, m, y] = s.split('/').map(Number), x = new Date(y, m - 1, d); for (let k = n; k > 0;) { x.setDate(x.getDate() + 1); if (x.getDay() % 6) k -= 1; } return [x.getDate(), x.getMonth() + 1].map((p) => String(p).padStart(2, '0')).join('/') + '/' + x.getFullYear(); };
+  const bg = (o) => Object.assign({ who: 'phd', scr: 'SCR-102', nlv: 1 }, o);
+  D.flows['MS23.02'] = {
+    1: bg({ q: ['P-175'], actionLabel: 'Hoàn thành tiếp nhận', next: 'g1' }),
+    g1: { gw: true, when: (v, u) => (isDv(v, u) ? 4 : 2) },
+    2: bg({ optional: isDv, actionLabel: 'Gửi thông báo giao hàng', next: 3 }),
+    3: bg({ who: 'qlts', optional: isDv, q: ['P-175'], actionLabel: 'Ghi nhận giao nhận', next: 5 }),
+    4: bg({ who: 'dvsd', optional: notDv, q: ['P-180'], actionLabel: 'Xác nhận thực hiện dịch vụ', next: 'e1' }),
+    e1: { gw: true, signal: ['MS23', 'dv'], run: (v) => { v.endText = 'Có hồ sơ dịch vụ cho MS23.03, Đơn vị sử dụng tiếp tục chủ trì nghiệm thu'; }, when: () => 'END' },
+    5: bg({ who: 'qlts', optional: isDv, q: ['P-174'], actionLabel: 'Gửi yêu cầu kiểm tra', next: 6 }),
+    6: bg({ who: 'dvsd', optional: isDv, q: ['P-174', 'P-176'], choices: [{ label: 'Đạt', to: 14, main: true }, { label: 'Không đạt', to: 'g3', kind: 'secondary', reason: true }] }),
+    g3: { gw: true, when: (v) => (v.bgThayThe ? 9 : 7) },
+    7: bg({ who: 'qlts', optional: true, q: ['P-122'], choices: [{ label: 'Cho bổ sung / thay thế', to: 'h8', main: true }, { label: 'Từ chối ngay', to: 9, kind: 'secondary', reason: true }] }),
+    h8: { gw: true, run: (v) => { v.bgHan = addWork(window.Flow.dateOf(window.Flow.state.clock), 7); }, next: 8 },
+    8: bg({ who: 'qlts', optional: true, q: ['P-122'], choices: [{ label: 'Có hàng trong hạn', to: 3, main: true, set: { bgThayThe: true } }, { label: 'Không khắc phục trong hạn', to: 9, kind: 'secondary', reason: true }] }),
+    9: bg({ who: 'qlts', optional: true, q: ['P-122', 'P-185'], actionLabel: 'Ghi nhận quyền từ chối', next: 10 }),
+    10: bg({ who: 'dvsd', optional: true, q: ['P-177', 'P-185'], choices: [{ label: 'Phạt / hồ sơ xử lý', to: 11, main: true }, { label: 'Không hoàn thành mục tiêu mua sắm — hủy', to: 12, kind: 'secondary' }, { label: 'Vướng mắc đặc thù — xin ý kiến', to: 13, kind: 'secondary' }] }),
+    11: bg({ optional: true, q: ['P-178'], actionLabel: 'Chuyển xử lý vi phạm', next: 'e3' }),
+    e3: { gw: true, stop: true, run: (v) => { v.hold = 'Chuyển MS23.01, chờ kết quả xử lý'; }, spawn: () => ({ process: 'MS23.01', ui: { vbLoai: D.hdVbTypes[2] } }) },
+    12: bg({ optional: true, q: ['P-123'], actionLabel: 'Hoàn tất thủ tục hủy', next: 'e2' }),
+    e2: { gw: true, run: (v, u) => { v.endText = `Kết thúc — hủy ${(u.bgPhamVi || D.hdBgHuy[0]).toLowerCase()}`; }, when: () => 'END' },
+    13: bg({ optional: true, q: ['P-179'], actionLabel: 'Trình xin ý kiến', next: 'e4' }),
+    e4: { gw: true, stop: true, run: (v) => { v.hold = 'Chờ ý kiến chỉ đạo của Người có thẩm quyền'; } },
+    14: bg({ q: ['P-181'], choices: [{ label: 'Đủ hàng, chứng từ, căn cứ chất lượng', to: 16, main: true }, { label: 'Chưa đủ — bổ sung', to: 15, kind: 'secondary', reason: true }] }),
+    15: bg({ optional: true, q: ['P-185'], actionLabel: 'Xác nhận lại', next: 14 }),
+    16: { nlv: 0.5, q: ['P-182'], run: (v, u) => { v.aiBgIn = { ok: !u.bgAiFail }; u.bgAiFail = false; }, when: (v) => (v.aiBgIn.ok ? 17 : 14) },
+    17: { nlv: 0.5, next: 18 },
+    18: bg({ nlv: 2, q: ['P-181'], actionLabel: 'Hoàn thiện HOC', next: 19 }),
+    19: { nlv: 0.5, q: ['P-182'], run: (v, u) => { v.aiBgOut = { ok: !u.bgAiFail2 }; u.bgAiFail2 = false; }, when: (v) => (v.aiBgOut.ok ? 20 : 18) },
+    20: bg({ who: 'tphd', q: ['P-183'], choices: [{ label: 'Phê duyệt để trình ký', to: 21, main: true }, { label: 'Không duyệt — hoàn thiện lại', to: 14, kind: 'secondary', reason: true }] }),
+    21: bg({ q: ['P-123'], external: 'Nhà thầu / Nhà cung cấp', actionLabel: 'Cập nhật HOC đã ký', next: 22 }),
+    22: { nlv: 0.5, q: ['P-184'], signal: ['MS23', 'bg'], next: 'END' },
+  };
+  D.hdBgHuy = ['Phần hàng hoá lỗi', 'Toàn bộ hợp đồng'];
+  D.hdSignals.MS23.bg = (v, u, s, c) => {
+    if ((v.bgDone || []).includes(c.code)) return null;
+    v.bgDone = (v.bgDone || []).concat(c.code);
+    v.evt = { loai: 'HOC', kind: 'GIAO', ms: c.vars.msName, date: s.bgNgay || null };
+    return 5;
+  };
+  D.hdSignals.MS23.dv = (v, u, s, c) => { v.evt = { flow: 'MS23.03', why: 'Có hồ sơ dịch vụ cần nghiệm thu', kcs: 'DV', date: window.Flow.dateOf(c.clock) }; return 'S4'; };
+  D.hdProcesses['MS23.02'] = { name: 'Bàn giao hàng hoá / dịch vụ', page: 'MS23.02', type: 'Bàn giao', end: 'Hoàn tất hồ sơ bàn giao', prefix: 'HSBG-', tab: 'bg', many: true, auto: true, done: 'Hoàn tất hồ sơ bàn giao, đã cập nhật ngày bàn giao thực tế.' };
+  D.hdProcesses.MS24.many = true;
+  /* Tên bước hiện trên màn không mang ghi chú chờ chốt của bản vẽ ("[? Q2]"); điểm này nằm ở (i). */
+  Object.keys(D.hdProcesses).forEach((p) => Object.values((window.BPMN_FLOWS[p] || {}).tasks || {}).forEach((t) => { t.name = t.name.replace(/\s*\[\?[^\]]*\]/g, ''); }));
+  /* Mã hồ sơ theo mã hợp đồng và quy trình; quy trình many (MS24, MS23.01) mỗi lần một hồ sơ (n). Mốc đầu = ngày tạo hợp đồng mẫu 05/10/2026 (2 NLV sau 01/10). */
+  D.hdCaseCode = (hd, process, n) => { const p = D.hdProcesses[process || 'MS22']; return p.prefix + hd.slice(3) + (p.many ? '-' + String(n || 1).padStart(2, '0') : ''); };
   D.hdCaseClock = 2;
   /* T25: mỗi trang Hợp đồng là một quy trình riêng (MS22, MS23, MS23.01…04, MS24). */
   D.familyOf = (process) => { const h = /^(MS22|MS23(?:\.0[1-4])?|MS24)/.exec(process || ''); return h ? h[1] : /^MS13/.test(process || '') ? 'MS13' : /^MS02/.test(process || '') ? 'MS02' : 'MS01'; };
@@ -908,6 +1088,56 @@
     'P-132': { q: 'Email bước 12 gửi thông báo / liên kết VContract hay bản hợp đồng; bản giấy gửi và nhận thế nào', src: 'DG-MS22 §D 11', def: 'GIẢ LẬP — chọn hình thức bằng nút, ghi chú cách gửi trong form', scr: 'SCR-102' },
     'P-133': { q: 'Nguồn mã hàng ở bước 2 và cách cập nhật', src: 'DG-MS22 §D 10', def: 'GIẢ LẬP — ĐVSD nhập mã hàng theo từng hạng mục', scr: 'SCR-102' },
     'P-134': { q: 'Hợp đồng đang tạm dừng ký do kiến nghị KQLCNT (Điều 38): chặn ở bước nào của MS22, gỡ bằng gì', src: 'BPMN-DTMS trang MS22 không thể hiện; HĐ-2026-0052', def: 'GIẢ LẬP — bước 9 bắt buộc nhập số văn bản giải quyết kiến nghị trước khi trình ký', scr: 'SCR-102' },
+    /* T25 B3 — MS24, DG-MS24 §D. */
+    'P-124': { q: 'Chức danh, thẩm quyền người ký Phòng tài chính trong hai tuyến; "có thể là Trưởng phòng" chưa là kết luận', src: 'DG-MS24 §D 3', def: 'GIẢ LẬP — Trưởng phòng Tài chính kế toán ký bước 7, 13 và làm bước 18, 19', scr: 'SCR-102' },
+    'P-125': { q: 'Dữ liệu đồng bộ SAP, thời điểm, thành công / thất bại, gửi lại, tiêu chí kết thúc lần thanh toán', src: 'DG-MS24 §D 12', def: 'GIẢ LẬP — bước 20 ghi Thành công / Lỗi; lỗi thì Phòng Tài chính kế toán có việc Gửi lại SAP như VOffice P-94', scr: 'SCR-102' },
+    'P-144': { q: 'Đơn vị, người tập hợp và bổ sung hồ sơ (Chuyên quản / ĐVMS); tên đầy đủ YCCT, nguồn giao việc', src: 'DG-MS24 §D 1', def: 'GIẢ LẬP — chuyên viên Phòng Hợp đồng (vai R-DVMS) làm bước 1, 3; không tách tài khoản với nhân sự chuyên thanh toán', scr: 'SCR-102' },
+    'P-145': { q: 'Hợp đồng nào bắt buộc bảng tổng hợp; ai chọn Có / Không', src: 'DG-MS24 §D 2', def: 'GIẢ LẬP — nhân sự chuyên thanh toán chọn ở bước 2, mặc định Có', scr: 'SCR-102' },
+    'P-146': { q: 'Tên trạng thái, thông tin và minh chứng bắt buộc theo phương thức thanh toán ở bước 19', src: 'DG-MS24 §D 4', def: 'GIẢ LẬP — một trạng thái Đã thanh toán; bắt buộc tải minh chứng, không phân theo phương thức', scr: 'SCR-102' },
+    'P-147': { q: 'Checklist đủ căn cứ theo tạm ứng, bảo lãnh, giai đoạn; ai chốt ở bước 2; kế hoạch và số tiền từng đợt', src: 'DG-MS24 §D 5', def: 'GIẢ LẬP — kế hoạch thanh toán đặt trong dữ liệu mẫu; đợt có mốc chưa có ngày thực tế thì không tạo được hồ sơ; khi kiểm tra người xử lý chọn nút', scr: 'SCR-102' },
+    'P-148': { q: 'Mẫu đề nghị chuyển tiền và bảng tổng hợp, thông tin bắt buộc, nguồn dữ liệu', src: 'DG-MS24 §D 6', def: 'GIẢ LẬP — mã văn bản tạm TT-DNCT, TT-BTH, nội dung tự đặt', scr: 'SCR-102' },
+    'P-149': { q: 'AI đọc hoá đơn thế nào, tổng hợp gì, xử lý thiếu / sai dữ liệu, ai rà soát trước khi trình ký', src: 'DG-MS24 §D 7', def: 'GIẢ LẬP — bảng tổng hợp lấy từ số hoá đơn và kế hoạch thanh toán; không có bước rà soát riêng', scr: 'SCR-102' },
+    'P-150': { q: 'Trả sửa rồi ký lại: quản lý phiên bản, chữ ký, ý kiến của bản trước', src: 'DG-MS24 §D 8', def: 'GIẢ LẬP — trình lại đủ các cấp từ Phòng tài chính; ý kiến giữ ở lịch sử hồ sơ', scr: 'SCR-102' },
+    'P-151': { q: 'Sửa đề nghị làm đổi số tiền / hoá đơn của bảng tổng hợp đã ký thì xử lý thế nào (BPMN không quay về tuyến bảng tổng hợp)', src: 'DG-MS24 §D 9', def: 'GIẢ LẬP — số tiền đọc theo kế hoạch, bước 17 không sửa số tiền', scr: 'SCR-102' },
+    'P-152': { q: 'Hình thức ký ngoài VOffice / VContract, phạm vi tích hợp, cách ghi nhận đã ký hoặc từ chối', src: 'DG-MS24 §D 10', def: 'GIẢ LẬP — chọn một lần ở bước 12, mỗi cấp bấm Đồng ý và ký, không gọi tích hợp', scr: 'SCR-102' },
+    'P-153': { q: 'Căn cứ xác định đã thanh toán; chuyển tiền lỗi; minh chứng tiền mặt', src: 'DG-MS24 §D 11', def: 'GIẢ LẬP — Phòng Tài chính kế toán nhập ngày, số chứng từ; chưa dựng chuyển tiền lỗi', scr: 'SCR-102' },
+    /* T25 B4 — MS23.03, MS23.04: hai DG này không có mục cần đặc tả, các điểm dưới từ bản vẽ và khi dựng. */
+    'P-154': { q: 'MS23.03: Văn thư kiểm tra không đạt quay về bước nào (bản vẽ để nhánh treo, diễn giải chỉ ghi "trả Phòng Hợp đồng")', src: 'BPMN-DTMS trang MS23.03 cổng G7; DG-MS23.03 §C.11', def: 'GIẢ LẬP — về bước 6, như các cấp ký khác', scr: 'SCR-102' },
+    'P-155': { q: 'Ai chốt phương án ký chung / riêng: MS23.03 bước 6 và MS23.04 bước 1 đều kiểm tra', src: 'DG-MS23.03 §C.6; DG-MS23.04 §C.1', def: 'GIẢ LẬP — chốt một lần ở MS23.03 bước 6; MS23.04 bước 1 chỉ xác nhận', scr: 'SCR-102' },
+    'P-156': { q: 'Ký chung bị trả: sửa biên bản thanh lý ở đâu, có cần qua lại MS23.04 không', src: 'DG-MS23.03 §C.15; DG-MS23.04 §C.15', def: 'GIẢ LẬP — sửa ở MS23.03 bước 6, biên bản thanh lý giữ nguyên, tập hợp lại ở bước 7', scr: 'SCR-102' },
+    'P-157': { q: '"Giám đốc" và "Tổng Giám đốc" của hai tuyến ký là chức danh nào', src: 'DG-MS23.03 §B.3; DG-MS23.04 §B.3', def: 'GIẢ LẬP — Giám đốc = Phó Tổng Giám đốc, Tổng Giám đốc = Tổng Giám đốc VHT', scr: 'SCR-102' },
+    'P-158': { q: 'Tiêu chí AI kiểm tra hồ sơ sau hoàn thiện ở MS23.03 bước 8, MS23.04 bước 8', src: 'DG-MS23.03 §C.8; DG-MS23.04 §C.8', def: 'GIẢ LẬP — mặc định đạt; nhánh không đạt bật bằng công cụ demo', scr: 'SCR-102' },
+    'P-159': { q: 'Nội dung, căn cứ quyết toán giá trị ở nhánh ký riêng; nhánh ký chung quyết toán ở đâu', src: 'DG-MS23.04 §B.5, §C.5', def: 'GIẢ LẬP — nhập giá trị quyết toán, mặc định bằng giá trị hợp đồng; ký chung lấy giá trị hợp đồng', scr: 'SCR-102' },
+    'P-160': { q: 'Thanh lý khi chưa thanh toán đủ hoặc chưa hết bảo hành: có chặn không', src: 'DG-MS23.04 không nêu; MS24 không có mũi tên sang thanh lý', def: 'GIẢ LẬP — không chặn; tab Thanh lý hiện điều kiện chưa hoàn thành', scr: 'SCR-102' },
+    /* T25 B6 — MS23.02 Bàn giao, DG-MS23.02 §D (16 điểm; P-122 gộp §D 4, 5; P-123 gộp §D 8, 14). */
+    'P-122': { q: 'Hạn 7 ngày tính ngày làm việc hay ngày lịch, căn cứ có hàng trong hạn; ai quyết định từ chối ngay hay cho thay thế', src: 'DG-MS23.02 §D 4, 5', def: 'GIẢ LẬP — 7 ngày làm việc từ ngày lập biên bản, trừ thứ Bảy, Chủ nhật; ngày giao bổ sung phải trong hạn; Phòng Quản lý tài sản quyết định ở bước 7 theo diễn giải', scr: 'SCR-102' },
+    'P-123': { q: 'Tuyến ký HOC, hình thức ký; tuyến duyệt và hồ sơ hủy', src: 'DG-MS23.02 §D 8, 14', def: 'GIẢ LẬP — không thêm cấp ký: bước 21 chọn hình thức, ghi nhận đã đủ chữ ký; hủy không có tuyến duyệt riêng, hủy toàn bộ thì hợp đồng Chấm dứt', scr: 'SCR-102' },
+    'P-174': { q: 'Phân công kiểm tra chất lượng giữa Phòng Quản lý tài sản và Đơn vị sử dụng', src: 'DG-MS23.02 §D 1', def: 'GIẢ LẬP — Phòng Quản lý tài sản lập yêu cầu, Đơn vị sử dụng ghi nhận kết quả, không có bước duyệt kết quả', scr: 'SCR-102' },
+    'P-175': { q: 'Mẫu giao nhận, hồ sơ kho, yêu cầu kiểm tra và thao tác trên ĐTMS / SAP', src: 'DG-MS23.02 §D 2', def: 'GIẢ LẬP — tải hồ sơ ở Danh sách tài liệu; thao tác SAP chưa dựng', scr: 'SCR-102' },
+    'P-176': { q: 'Tiêu chí đạt / không đạt, cách ghi nhận lần đầu và sau thay thế, minh chứng', src: 'DG-MS23.02 §D 3', def: 'GIẢ LẬP — người kiểm tra chọn Đạt / Không đạt, bắt buộc tải kết quả KCS; form ghi rõ lần kiểm tra lại', scr: 'SCR-102' },
+    'P-177': { q: 'Tiêu chí, thẩm quyền chọn phạt, hủy hay xin ý kiến; quản lý phạm vi hàng lỗi', src: 'DG-MS23.02 §D 6', def: 'GIẢ LẬP — Đơn vị sử dụng chọn một hướng ở bước 10', scr: 'SCR-102' },
+    'P-178': { q: 'Sau khi MS23.01 có kết quả xử lý vi phạm, hồ sơ quay lại đâu hay kết thúc', src: 'DG-MS23.02 §D 7', def: 'GIẢ LẬP — bước 11 mở hồ sơ MS23.01 Biên bản phạt; hồ sơ bàn giao giữ trạng thái chờ, không tự nối lại', scr: 'SCR-102' },
+    'P-179': { q: 'Nhánh tiếp theo sau ý kiến chỉ đạo ở bước 13', src: 'DG-MS23.02 §D 9', def: 'GIẢ LẬP — hồ sơ giữ trạng thái chờ ý kiến chỉ đạo, chưa có bước tiếp', scr: 'SCR-102' },
+    'P-180': { q: 'Mẫu xác nhận dịch vụ, cách chuyển hồ sơ sang MS23.03', src: 'DG-MS23.02 §D 10', def: 'GIẢ LẬP — xong bước 4 ghi dòng Luồng con cần khởi tạo; hồ sơ MS23.03 tạo từ dòng này đi nhánh KCS dịch vụ; mốc giao không cập nhật vì không có HOC', scr: 'SCR-102' },
+    'P-181': { q: 'Tên gọi, mẫu HOC chính thức; lập theo từng đợt hay toàn bộ; hồ sơ bắt buộc', src: 'DG-MS23.02 §D 11', def: 'GIẢ LẬP — mỗi đợt một HOC; BG-HOC, BG-TB, BG-BBKD, BG-TTR là mã tạm', scr: 'SCR-102' },
+    'P-182': { q: 'Tiêu chí AI bước 16, 19, xử lý cảnh báo, ai xác nhận', src: 'DG-MS23.02 §D 12', def: 'GIẢ LẬP — mặc định đạt; nhánh không đạt bật bằng công cụ demo', scr: 'SCR-102' },
+    'P-183': { q: 'Trưởng phòng không duyệt: tập hợp lại toàn bộ hay chỉ hoàn thiện HOC', src: 'DG-MS23.02 §D 13', def: 'GIẢ LẬP — về bước 14 theo mũi tên bản vẽ, đi lại AI kiểm tra và hoàn thiện', scr: 'SCR-102' },
+    'P-184': { q: 'Ngoài ngày bàn giao còn cập nhật gì; thiếu ngày thì sao; tránh cập nhật hai lần', src: 'DG-MS23.02 §D 15', def: 'GIẢ LẬP — chỉ cập nhật ngày; ngày bàn giao bắt buộc nhập ở bước 21; nhận diện theo mã hồ sơ', scr: 'SCR-102' },
+    'P-185': { q: 'Mũi tên chưa gắn đầu cuối: 2 → 3, 9 → 10, 10 → cổng hướng xử lý, 15 → 14', src: 'DG-MS23.02 §D 16; plan T25 §9 B0', def: 'GIẢ LẬP — chạy theo diễn giải', scr: 'SCR-102' },
+    /* T25 B5 — MS23.01 Văn bản phát sinh, DG-MS23.01 §D. P-173 thêm khi dựng. */
+    'P-161': { q: 'Danh mục loại văn bản, mẫu tương ứng, điều kiện được xem là sửa đổi hợp đồng', src: 'DG-MS23.01 §D 1', def: 'GIẢ LẬP — bốn loại Phụ lục hợp đồng, Biên bản làm việc, Biên bản phạt, Văn bản khác; chỉ Phụ lục hợp đồng là sửa đổi hợp đồng', scr: 'SCR-102' },
+    'P-162': { q: 'Phạm vi được phép sửa đổi, điều kiện xin ý kiến Đơn vị sử dụng, cách ghi nhận đã thống nhất', src: 'DG-MS23.01 §D 2; QT-10.2.4 Bước 9.1, 9.2', def: 'GIẢ LẬP — chuyên viên xác nhận được phép sửa đổi, ghi nội dung đã thống nhất ở bước 2; Đơn vị sử dụng không có việc riêng', scr: 'SCR-102' },
+    'P-163': { q: 'Ai duyệt đề xuất sửa đổi ở bước 3, ai ký từng loại văn bản ở bước 10; khi nào cần ý kiến chuyên môn', src: 'DG-MS23.01 §D 3', def: 'GIẢ LẬP — Tổng Giám đốc VHT cho cả hai bước và mọi loại văn bản; ý kiến chuyên môn là trường không bắt buộc', scr: 'SCR-102' },
+    'P-164': { q: 'Tiêu chí, nội dung phê duyệt trước trình ký ở bước 8 và phạm vi áp dụng theo loại văn bản', src: 'DG-MS23.01 §D 4', def: 'GIẢ LẬP — mọi loại văn bản đều qua Trưởng phòng Hợp đồng; không duyệt về bước 6, qua lại bước 7', scr: 'SCR-102' },
+    'P-165': { q: 'Không được ký duyệt: loại văn bản khác phụ lục có quay bước 9 không; khi nào phải hoàn thiện lại nội dung', src: 'DG-MS23.01 §D 5', def: 'GIẢ LẬP — mọi loại về bước 9 theo mũi tên bản vẽ; không có nhánh về bước 6', scr: 'SCR-102' },
+    'P-166': { q: 'Checklist chứng từ, căn cứ của AI ở bước 4, cách ghi nhận yêu cầu sửa ở bước 1', src: 'DG-MS23.01 §D 6', def: 'GIẢ LẬP — mặc định đạt; nhánh không đạt bật bằng công cụ demo; về bước 1 rồi đi lại nhánh tương ứng, phụ lục duyệt lại đề xuất', scr: 'SCR-102' },
+    'P-167': { q: 'Kết quả AI bước 7: ai xử lý cảnh báo, có chặn chuyển bước 8 không', src: 'DG-MS23.01 §D 7', def: 'GIẢ LẬP — không chặn; cảnh báo hiện ở bước 8 để Trưởng phòng Hợp đồng quyết định', scr: 'SCR-102' },
+    'P-168': { q: 'Danh mục và mẫu biểu thực tế của từng loại văn bản', src: 'DG-MS23.01 §D 8', def: 'GIẢ LẬP — dự thảo một mẫu chung; VB-TTR, VB-DT là mã tạm, chưa phải mã biểu mẫu', scr: 'SCR-102' },
+    'P-169': { q: 'Chữ ký bắt buộc theo loại văn bản, cách theo dõi nhà thầu ký, danh mục hình thức ký và gửi, bằng chứng gửi', src: 'DG-MS23.01 §D 9', def: 'GIẢ LẬP — hình thức ký VContract, Ký cứng, Hình thức khác; hình thức gửi Email, VContract, Bưu chính, Bàn giao trực tiếp; bằng chứng gửi chưa dựng', scr: 'SCR-102' },
+    'P-170': { q: 'Nhận diện mỗi hồ sơ ký để cập nhật một lần, xác định ngày thực tế, nội dung và hiệu lực phụ lục', src: 'DG-MS23.01 §D 10', def: 'GIẢ LẬP — nhận diện theo mã hồ sơ; hiệu lực phụ lục bằng ngày ký nhập ở bước 11', scr: 'SCR-102' },
+    'P-171': { q: 'Khi phụ lục sửa tiến độ: thời điểm dùng mốc mới, xử lý mốc cũ', src: 'DG-MS23.01 §D 11', def: 'GIẢ LẬP — có hiệu lực ngay sau bước 12; mốc chưa hoàn thành dời theo số ngày gia hạn, mốc đã xong và nhắc đã gửi giữ nguyên', scr: 'SCR-102' },
+    'P-172': { q: 'Thiếu bản ký, AI không đọc được, ký bị từ chối, gửi lại không thành công', src: 'DG-MS23.01 §D 12', def: 'GIẢ LẬP — bắt buộc tải bản ký ở bước 11; ký bị từ chối đi nhánh bước 10; các lỗi còn lại chưa dựng', scr: 'SCR-102' },
+    'P-173': { q: 'Phụ lục đổi giá trị: kế hoạch thanh toán, phân bổ các đợt có đổi theo không', src: 'DG-MS23.01 không nêu; QT-10.2.4 Bước 9', def: 'GIẢ LẬP — giá trị hợp đồng đổi, kế hoạch thanh toán giữ nguyên; phần chênh lệch hiện ở Còn phải thanh toán', scr: 'SCR-102' },
     /* T25 B2 — MS23 Tổng quan, DG-MS23 §D. */
     'P-120': { q: 'Mốc / phát sinh nào kích hoạt MS23.01, .03, .04; ai khởi tạo, tự động hay không', src: 'DG-MS23 §D 5', def: 'GIẢ LẬP — sự kiện kích hoạt bằng công cụ demo; ghi vào danh sách luồng con cần khởi tạo, Phòng Hợp đồng khởi tạo', scr: 'SCR-86' },
     'P-135': { q: 'AI trích xuất những thông tin, mốc nào từ hợp đồng; ai kiểm tra và xác nhận trước khi dùng', src: 'DG-MS23 §D 1', def: 'GIẢ LẬP — trích 3 mốc (2 đợt giao, nghiệm thu tổng thể) và thông tin chung; không có bước xác nhận vì BPMN không có', scr: 'SCR-86' },
@@ -1603,15 +1833,122 @@
     { key: 3, label: 'Nhà thầu thông báo giao hàng', tasks: '03' },
     { key: 'S4', label: 'Có phát sinh — cần văn bản phát sinh', tasks: 'MS23.01', data: { flow: 'MS23.01' } },
     { key: 'S4', label: 'Đến hạn nghiệm thu', tasks: 'MS23.03', data: { flow: 'MS23.03' } },
-    { key: 'S4', label: 'Đến hạn thanh lý', tasks: 'MS23.04', data: { flow: 'MS23.04' } },
-    { key: 5, label: 'Luồng con có biên bản bàn giao đã ký', tasks: '05', data: { loai: 'biên bản bàn giao', kind: 'GIAO' } },
-    { key: 5, label: 'Luồng con có biên bản nghiệm thu đã ký', tasks: '05', data: { loai: 'biên bản nghiệm thu', kind: 'NT' } }], scenes: [
+    { key: 5, label: 'Luồng con có biên bản bàn giao đã ký', tasks: '05', hidden: true, data: { loai: 'biên bản bàn giao', kind: 'GIAO' } }
+  ], scenes: [
     { n: 'T1', name: 'Hợp đồng đã ký: AI trích mốc, lưu hồ sơ theo dõi', start: 'END', tasks: '01', who: 'phd', go: hdHref },
     { n: 'T2', name: 'Đến mốc giao hàng: tự động nhắc', start: 'END', tasks: '02', who: 'phd', go: hdHref, evts: [0] },
     { n: 'T3', name: 'Phòng Hợp đồng ghi nhận thông báo giao hàng', start: 3, tasks: '03', who: 'phd', go: hdHref, evts: [0, 1] },
     { n: 'T4', name: 'Thông báo các bộ phận, chuyển hồ sơ giao hàng', start: 'END', tasks: '04', who: 'phd', go: hdHref, evts: [0, 1] },
-    { n: 'T5', name: 'Đến hạn: cần khởi tạo luồng con', start: 'END', tasks: 'MS23.01, .03, .04', who: 'phd', go: hdHref, evts: [0, 1, 2, 3, 4] },
-    { n: 'T6', name: 'Biên bản đã ký: AI cập nhật ngày thực tế', start: 'END', tasks: '05', who: 'phd', go: hdHref, evts: [0, 1, 5] }], branches: [] });
+    { n: 'T5', name: 'Đến hạn: cần khởi tạo luồng con', start: 'END', tasks: 'MS23.01, .03', who: 'phd', go: hdHref, evts: [0, 1, 2, 3] },
+    { n: 'T6', name: 'Biên bản đã ký: AI cập nhật ngày thực tế', start: 'END', tasks: '05', who: 'phd', go: hdHref, evts: [0, 1, 4] }], branches: [] });
+  /* MS24 (T25 B3): chạy sau MS22; cảnh tua hồ sơ đợt Tạm ứng; BASE = hợp đồng đã ký, chưa có hồ sơ thanh toán. */
+  D.demoSets.push({ key: 'MS24', hd: HD_DEMO, base: 'MS22', tab: 'pay', vars: { dot: 0 }, label: 'HĐ-2026-0052 · MS24', scenes: [
+    { n: 'P1', name: 'Tạo hồ sơ thanh toán đợt Tạm ứng', start: 'BASE', tasks: '—, 01', who: 'phd', go: hdHref },
+    { n: 'P2', name: 'Tiếp nhận, kiểm tra căn cứ', start: 2, tasks: '02', who: 'phd' },
+    { n: 'P3', name: 'Xuất đề nghị, cung cấp hoá đơn', start: 5, tasks: '04, 05', who: 'phd' },
+    { n: 'P4', name: 'AI lập bảng tổng hợp, Phòng tài chính ký', start: 7, tasks: '06, 07', who: 'tckt' },
+    { n: 'P5', name: 'Thủ trưởng VHT, Văn thư, TGĐ Tập đoàn ký bảng tổng hợp', start: 10, tasks: '08–10', who: 'td' },
+    { n: 'P6', name: 'Hoàn thiện đề nghị, chọn hình thức ký', start: 12, tasks: '12', who: 'phd' },
+    { n: 'P7', name: 'Phòng tài chính ký đề nghị', start: 13, tasks: '13', who: 'tckt' },
+    { n: 'P8', name: 'TGĐ Tập đoàn ký đề nghị', start: 16, tasks: '14–16', who: 'td' },
+    { n: 'P9', name: 'Thanh toán tiền', start: 18, tasks: '18', who: 'tckt' },
+    { n: 'P10', name: 'Cập nhật trạng thái, tải minh chứng', start: 19, tasks: '19', who: 'tckt' },
+    { n: 'P11', name: 'Tổng kết: đã đồng bộ SAP, tab Thanh toán', start: 'END', tasks: '20', who: 'phd', go: hdHref }], branches: [
+    { name: 'Hồ sơ chưa đủ căn cứ — bổ sung', tasks: '02 → 03 → 02', task: 2, who: 'phd' },
+    { name: 'Hợp đồng không yêu cầu bảng tổng hợp', tasks: '04 → 12', task: 12, who: 'phd', ui: { ttBangTH: false } },
+    { name: 'Văn thư trả bảng tổng hợp', tasks: '09 → 11 → 07', task: 9, who: 'vthu' },
+    { name: 'TGĐ Tập đoàn trả đề nghị', tasks: '16 → 17 → 12 → 13', task: 16, who: 'td' },
+    { name: 'Đồng bộ SAP lỗi — Gửi lại', tasks: '20 → 20', task: 20, who: 'tckt', ui: { sapFail: true } }] });
+  /* MS23.03 + .04 (T25 B4): pre.legs = lộ trình tua qua các hồ sơ con [quy trình, bước đích, ui]; 'END' = chạy tới khi hết việc (đang chờ tín hiệu cũng dừng). */
+  const NT = 'MS23.03', TL = 'MS23.04', CH = { tnPhuongAn: 'CHUNG' };
+  const sc = (n, name, start, tasks, who, legs, o) => Object.assign({ n, name, start, tasks, who, go: hdHref, pre: legs ? { legs } : undefined }, o);
+  D.demoSets.push({ key: NT, hd: HD_DEMO, base: 'MS22', baseEvts: [{ key: 'S4', data: { flow: NT } }], tab: 'td', label: 'HĐ-2026-0052 · Nghiệm thu, thanh lý ký riêng', scenes: [
+    sc('N1', 'Đến hạn nghiệm thu: tạo hồ sơ từ tab Tiến độ', 'BASE', '—', 'phd'),
+    sc('N2', 'Trung tâm Mua sắm gửi báo cáo KCS tài sản', 1, '01', 'lan', [[NT, 1]]),
+    sc('N3', 'Tiếp nhận, kiểm tra căn cứ', 3, '03', 'phd', [[NT, 3]]),
+    sc('N4', 'Hoàn thiện biên bản, chọn phương án ký', 6, '05, 06', 'phd', [[NT, 6]]),
+    sc('N5', 'Trưởng phòng Hợp đồng ký duyệt', 9, '08, 09', 'tphd', [[NT, 9]]),
+    sc('N6', 'Giám đốc ký', 10, '10', 'binh', [[NT, 10]]),
+    sc('N7', 'Văn thư kiểm tra', 11, '11', 'vthu', [[NT, 11]]),
+    sc('N8', 'Tổng Giám đốc ký', 12, '12', 'tgd', [[NT, 12]]),
+    sc('N9', 'Cập nhật biên bản đã ký đầy đủ', 13, '13', 'phd', [[NT, 13]]),
+    sc('N10', 'Tổng kết: ngày nghiệm thu thực tế, tab Bàn giao & nghiệm thu', 'END', '14', 'phd', [[NT, 'END']], { tab: 'bg' }),
+    sc('L1', 'MS23.04: kiểm tra yêu cầu thanh lý', 1, '.04 · 01', 'phd', [[NT, 9], [TL, 1]]),
+    sc('L2', 'MS23.04: chờ MS23.03 hoàn tất, đủ bảo lãnh', 3, '.04 · 03', 'phd', [[NT, 'END'], [TL, 3]]),
+    sc('L3', 'MS23.04: quyết toán giá trị', 5, '.04 · 04, 05', 'phd', [[NT, 'END'], [TL, 5]]),
+    sc('L4', 'MS23.04: hoàn thiện biên bản thanh lý', 7, '.04 · 06, 07', 'phd', [[NT, 'END'], [TL, 7]]),
+    sc('L5', 'MS23.04: tuyến ký riêng, Trưởng phòng Hợp đồng', 9, '.04 · 08, 09', 'tphd', [[NT, 'END'], [TL, 9]]),
+    sc('L6', 'MS23.04: Tổng Giám đốc ký', 12, '.04 · 10–12', 'tgd', [[NT, 'END'], [TL, 12]]),
+    sc('L7', 'MS23.04: cập nhật biên bản thanh lý đã ký', 13, '.04 · 13', 'phd', [[NT, 'END'], [TL, 13]]),
+    sc('L8', 'Tổng kết: hợp đồng Đã thanh lý', 'END', '.04 · 14', 'phd', [[NT, 'END'], [TL, 'END']], { tab: 'tl' })], branches: [
+    { name: 'Thiếu chứng từ — bổ sung', tasks: '03 → 03', task: 3, who: 'phd', pre: { legs: [[NT, 3]] } },
+    { name: 'KCS chưa đạt — khắc phục, ký lại KCS', tasks: '03 → 04 → 01', task: 3, who: 'phd', pre: { legs: [[NT, 3]] } },
+    { name: 'Nghiệm thu dịch vụ: Đơn vị sử dụng gửi KCS', tasks: '02', task: 2, who: 'dvsd', pre: { legs: [[NT, 2, null, { kcs: 'DV' }]] } },
+    { name: 'AI kiểm tra không đạt — sửa biên bản', tasks: '08 → 06', task: 6, who: 'phd', pre: { legs: [[NT, 6, { tnAiFail: true }]] } },
+    { name: 'Văn thư trả hồ sơ', tasks: '11 → 06', task: 11, who: 'vthu', pre: { legs: [[NT, 11]] } },
+    { name: 'Hợp đồng không yêu cầu thanh lý', tasks: 'chỉ nghiệm thu', task: 9, who: 'tphd', pre: { legs: [[NT, 9, { tnPhuongAn: 'KHONG' }]] } },
+    { name: 'MS23.04: Tổng Giám đốc trả — sửa, trình lại từ Trưởng phòng', tasks: '.04 · 12 → 07', task: 12, who: 'tgd', pre: { legs: [[NT, 'END'], [TL, 12]] } }] });
+  D.demoSets.push({ key: TL, hd: HD_DEMO, base: 'MS22', baseEvts: [{ key: 'S4', data: { flow: NT } }], tab: 'tl', label: 'HĐ-2026-0052 · Nghiệm thu, thanh lý ký chung', scenes: [
+    sc('C1', 'Hoàn thiện biên bản nghiệm thu, chọn ký chung', 6, '.03 · 06', 'phd', [[NT, 6, CH]]),
+    sc('C2', 'MS23.04: kiểm tra điều kiện ký chung (G1)', 1, '.04 · 01', 'phd', [[NT, 'END', CH], [TL, 1]]),
+    sc('C3', 'MS23.04: chuẩn bị biên bản thanh lý', 2, '.04 · 02', 'phd', [[NT, 'END', CH], [TL, 2]]),
+    sc('C4', 'MS23.04: hoàn thiện biên bản thanh lý', 7, '.04 · 06, 07', 'phd', [[NT, 'END', CH], [TL, 7]]),
+    sc('C5', 'Tập hợp hai biên bản (G2)', 7, '.03 · 07', 'phd', [[NT, 'END', CH], [TL, 'END'], [NT, 7]]),
+    sc('C6', 'Một tuyến ký: Trưởng phòng Hợp đồng', 9, '.03 · 08, 09', 'tphd', [[NT, 'END', CH], [TL, 'END'], [NT, 9]]),
+    sc('C7', 'Một tuyến ký: Tổng Giám đốc', 12, '.03 · 10–12', 'tgd', [[NT, 'END', CH], [TL, 'END'], [NT, 12]]),
+    sc('C8', 'Cập nhật biên bản nghiệm thu đã ký, gửi kết quả (G3)', 13, '.03 · 13', 'phd', [[NT, 'END', CH], [TL, 'END'], [NT, 13]]),
+    sc('C9', 'MS23.04: cập nhật biên bản thanh lý đã ký', 13, '.04 · 13', 'phd', [[NT, 'END', CH], [TL, 'END'], [NT, 'END'], [TL, 13]]),
+    sc('C10', 'Tổng kết: hợp đồng Đã thanh lý', 'END', '.04 · 14', 'phd', [[NT, 'END', CH], [TL, 'END'], [NT, 'END'], [TL, 'END']])], branches: [
+    { name: 'Tổng Giám đốc trả hồ sơ ký chung — sửa, tập hợp lại', tasks: '.03 · 12 → 06 → 07', task: 12, who: 'tgd', pre: { legs: [[NT, 'END', CH], [TL, 'END'], [NT, 12]] } }] });
+  /* MS23.01 (T25 B5): hồ sơ đầu tiên của hợp đồng; mặc định Phụ lục hợp đồng. */
+  const VB = 'MS23.01', vbAt6 = (vbLoai) => [[VB, 6, { vbLoai }]];
+  D.demoSets.push({ key: VB, hd: HD_DEMO, base: 'MS22', baseEvts: [{ key: 'S4', data: { flow: VB } }], tab: 'vb', label: 'HĐ-2026-0052 · Văn bản phát sinh', scenes: [
+    sc('V1', 'Có phát sinh: tạo hồ sơ từ tab Tiến độ hoặc Văn bản phát sinh', 'BASE', '—', 'phd', null, { tab: 'td' }),
+    sc('V2', 'Lập thông tin, chọn loại văn bản', 1, '01', 'phd', [[VB, 1]]),
+    sc('V3', 'Lập và trình đề xuất sửa đổi', 2, '02', 'phd', [[VB, 2]]),
+    sc('V4', 'Tổng Giám đốc duyệt đề xuất', 3, '03', 'tgd', [[VB, 3]]),
+    sc('V5', 'AI kiểm tra, soạn dự thảo; hoàn thiện văn bản', 6, '04–06', 'phd', [[VB, 6]]),
+    sc('V6', 'AI kiểm tra; Trưởng phòng Hợp đồng phê duyệt', 8, '07, 08', 'tphd', [[VB, 8]]),
+    sc('V7', 'Chọn hình thức, trình ký', 9, '09', 'phd', [[VB, 9]]),
+    sc('V8', 'Tổng Giám đốc ký', 10, '10', 'tgd', [[VB, 10]]),
+    sc('V9', 'Cập nhật bản ký đầy đủ, gửi lại nhà thầu', 11, '11', 'phd', [[VB, 11]]),
+    sc('V10', 'Tổng kết: AI cập nhật, tab Văn bản phát sinh', 'END', '12', 'phd', [[VB, 'END', { vbGiaTri: 2.5, vbGiaHan: 30, vbNoiDung: 'Bổ sung khối lượng lắp đặt, gia hạn 30 ngày' }]])], branches: [
+    { name: 'Biên bản làm việc: không qua đề xuất sửa đổi', tasks: '01 → 04', task: 6, who: 'phd', pre: { legs: vbAt6(D.hdVbTypes[1]) } },
+    { name: 'Biên bản phạt: nhập giá trị phạt', tasks: '06', task: 6, who: 'phd', pre: { legs: vbAt6(D.hdVbTypes[2]) } },
+    { name: 'Đề xuất chưa duyệt — hoàn thiện tờ trình', tasks: '03 → 02', task: 3, who: 'tgd', pre: { legs: [[VB, 3]] } },
+    { name: 'AI kiểm tra căn cứ không đạt — sửa thông tin', tasks: '04 → 01', task: 3, who: 'tgd', pre: { legs: [[VB, 3, { vbAiFail: true }]] } },
+    { name: 'AI cảnh báo trước duyệt, vẫn chuyển duyệt', tasks: '07 → 08', task: 8, who: 'tphd', pre: { legs: [[VB, 8, { vbAiWarn: true }]] } },
+    { name: 'Trưởng phòng Hợp đồng không duyệt', tasks: '08 → 06 → 07', task: 8, who: 'tphd', pre: { legs: [[VB, 8]] } },
+    { name: 'Tổng Giám đốc không ký — trình ký lại', tasks: '10 → 09', task: 10, who: 'tgd', pre: { legs: [[VB, 10]] } }] });
+  /* MS23.02 (T25 B6): hồ sơ tự sinh từ MS23 bước 4 (chặng đầu); via = các nút không phải nhánh chính phải bấm trên đường tới bước đích. */
+  const BG = 'MS23.02', bgLeg = (to, u, via) => ({ legs: [['MS23', 'END'], [BG, to, u, null, via]] }), bgs = (n, name, start, tasks, who, o) => sc(n, name, start, tasks, who, bgLeg(start).legs, o);
+  const FAIL = [6, 'Không đạt'], NOGO = [7, 'Từ chối ngay'], VP = [FAIL, NOGO, [9], [10, 'Phạt']];
+  D.demoSets.push({ key: BG, hd: HD_DEMO, base: 'MS22', baseEvts: [{ key: 3 }], tab: 'bg', label: 'HĐ-2026-0052 · Bàn giao', scenes: [
+    sc('G1', 'Nhà thầu thông báo: ghi nhận ở Việc của tôi', 'BASE', 'MS23 · 03', 'phd', null, { tab: 'td' }),
+    bgs('G2', 'Nhận thông báo bàn giao, phân loại', 1, '01', 'phd'),
+    bgs('G3', 'Lập và gửi thông báo giao hàng', 2, '02', 'phd'),
+    bgs('G4', 'Phòng Quản lý tài sản ghi nhận giao nhận, hồ sơ kho', 3, '03', 'qlts'),
+    bgs('G5', 'Lập yêu cầu kiểm tra chất lượng', 5, '05', 'qlts'),
+    bgs('G6', 'Đơn vị sử dụng ghi nhận kết quả kiểm tra', 6, '06', 'dvsd'),
+    bgs('G7', 'Tập hợp, xác nhận đủ hồ sơ bàn giao', 14, '14', 'phd'),
+    bgs('G8', 'AI kiểm tra, soạn HOC; hoàn thiện HOC', 18, '16–18', 'phd'),
+    bgs('G9', 'AI kiểm tra; Trưởng phòng Hợp đồng phê duyệt', 20, '19, 20', 'tphd'),
+    bgs('G10', 'Trình ký, cập nhật HOC đã ký', 21, '21', 'phd'),
+    sc('G11', 'Tổng kết: ngày bàn giao thực tế, tab Bàn giao & nghiệm thu', 'END', '22', 'phd', [['MS23', 'END'], [BG, 'END', { bgNgay: null }]])], branches: [
+    { name: 'Dịch vụ: Đơn vị sử dụng xác nhận, chuyển nghiệm thu', tasks: '01 → 04', task: 4, who: 'dvsd', pre: bgLeg(4, { bgLoai: 'Dịch vụ' }) },
+    { name: 'Kết quả không đạt lần đầu', tasks: '06 → 07', task: 6, who: 'dvsd', pre: bgLeg(6) },
+    { name: 'Lập biên bản không đạt, chọn hướng xử lý', tasks: '07 → 08, 09', task: 7, who: 'qlts', pre: bgLeg(7, null, [FAIL]) },
+    { name: 'Theo dõi bổ sung, thay thế trong 7 ngày', tasks: '08 → 03, 09', task: 8, who: 'qlts', pre: bgLeg(8, null, [FAIL, [7, 'Cho bổ sung']]) },
+    { name: 'Sau thay thế vẫn không đạt', tasks: '06 → 09', task: 6, who: 'dvsd', pre: bgLeg(6, null, [FAIL, [7, 'Cho bổ sung'], [8, 'Có hàng']]) },
+    { name: 'Ghi nhận quyền từ chối', tasks: '09', task: 9, who: 'qlts', pre: bgLeg(9, null, [FAIL, NOGO]) },
+    { name: 'Chọn hướng xử lý theo hợp đồng', tasks: '10 → 11, 12, 13', task: 10, who: 'dvsd', pre: bgLeg(10, null, [FAIL, NOGO, [9]]) },
+    { name: 'Xử lý vi phạm: mở hồ sơ MS23.01', tasks: '11 → MS23.01', task: 11, who: 'phd', pre: bgLeg(11, null, VP) },
+    { name: 'Thủ tục hủy', tasks: '12', task: 12, who: 'phd', pre: bgLeg(12, null, [FAIL, NOGO, [9], [10, 'Không hoàn thành']]) },
+    { name: 'Xin ý kiến Người có thẩm quyền', tasks: '13', task: 13, who: 'phd', pre: bgLeg(13, null, [FAIL, NOGO, [9], [10, 'Vướng mắc']]) },
+    { name: 'Chưa đủ hồ sơ — bổ sung, xác nhận lại', tasks: '14 → 15 → 14', task: 14, who: 'phd', pre: bgLeg(14) },
+    { name: 'AI kiểm tra căn cứ không đạt', tasks: '16 → 14', task: 14, who: 'phd', pre: bgLeg(14, { bgAiFail: true }) },
+    { name: 'AI kiểm tra HOC không đạt', tasks: '19 → 18', task: 18, who: 'phd', pre: bgLeg(18, { bgAiFail2: true }) },
+    { name: 'Trưởng phòng Hợp đồng không duyệt', tasks: '20 → 14', task: 20, who: 'tphd', pre: bgLeg(20) }] });
   D.demoSets.forEach((d) => { if (d.key !== 'MS01.01') d.branches.forEach((b) => { b.process = d.key; b.dxms = b.dxms || d.dxms || d.kdt || d.hd; }); });
 
   window.D = D;

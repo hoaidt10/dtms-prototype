@@ -167,7 +167,7 @@
         ${set.branches.length ? `<h4>Nhánh phụ (mở khi khách hỏi)</h4>
         <div class="scene-list">${set.branches.map((b, i) => `<button data-branch="${i}"><span class="n">↳</span>${esc(b.name)}<span class="tk">task ${b.tasks}</span></button>`).join('')}</div>` : ''}
         ${set.events ? `<h4>Sự kiện theo dõi hợp đồng</h4>
-        <div class="scene-list">${set.events.map((v, i) => `<button data-hd-event="${i}"><span class="n">↯</span>${esc(v.label)}<span class="tk">${v.tasks}</span></button>`).join('')}</div>` : ''}
+        <div class="scene-list">${set.events.map((v, i) => (v.hidden ? '' : `<button data-hd-event="${i}"><span class="n">↯</span>${esc(v.label)}<span class="tk">${v.tasks}</span></button>`)).join('')}</div>` : ''}
         <h4>Hồ sơ</h4>
         <div class="row"><button class="btn sm secondary" id="reset">Reset luồng</button><a class="btn sm secondary" href="#/ho-so">Chi tiết hồ sơ</a><a class="btn sm secondary" href="#/cho-chot">Điểm ❓ (${Object.keys(st.qNotes).length}/${Object.keys(D.openPoints).length})</a></div>
         <div class="row"><button class="btn sm secondary" id="reset-eform">Khôi phục dữ liệu mẫu</button></div>
@@ -256,7 +256,13 @@
     const kdt = Flow.state.kdt;
     /* Hồ sơ con của hợp đồng: kết thúc → Chi tiết hợp đồng. */
     if (Flow.state.parent) {
-      if (Flow.state.status !== 'running') { ok('Hợp đồng đã ký đầy đủ, chuyển sang theo dõi thực hiện.'); location.hash = '#/hop-dong/' + encodeURIComponent(Flow.state.parent); return; }
+      if (Flow.state.status !== 'running') {
+        const pr = D.hdProcesses[Flow.state.vars.process];
+        ok(Flow.state.vars.endText || pr.done);
+        if (pr.tab) window.HopDong.setTab(Flow.state.parent, pr.tab);
+        location.hash = '#/hop-dong/' + encodeURIComponent(Flow.state.parent);
+        return;
+      }
       ok(choice && choice.sign ? 'Đã gửi văn bản đi trình ký.' : 'Thực hiện hành động thành công.');
       location.hash = '#/viec-cua-toi';
       return;
@@ -351,10 +357,10 @@
       const s = Flow.jumpToScene(sc.dataset.scene, set.key);
       toast(`Cảnh ${s.n} · ${esc(s.name)} — vai ${esc(persona(Flow.state.persona).name)}`, 'info');
       demoOpen = false;
-      if (s.start === 'NEW') { openStart(set); return; }
+      if (s.start === 'NEW' || s.start === 'BASE') { openStart(set); return; }
       const pool = set.hd ? Flow.caseTokens(Flow.state.persona, set.hd) : Flow.tokensFor(Flow.state.persona);
       const mine = pool.find((k) => String(k.task) === String(s.start)) || pool[0];
-      if (set.tab) window.HopDong.setTab(set.hd, set.tab);
+      if (set.tab || s.tab) window.HopDong.setTab(set.hd, s.tab || set.tab);
       location.hash = mine ? `#/task/${mine.id}` : s.go ? '#/' + s.go : '#/ho-so';
       render(); return;
     }

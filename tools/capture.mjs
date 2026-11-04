@@ -434,6 +434,19 @@ add(P15, 'SCR-98', 'Cập nhật nhân sự — Thay người bước 17 (ảnh 
   ...vpick('um-drop', ['mai'], '.vmodal-h h3'), ...vpick('um-add', ['lan'], '.vmodal-h h3')], { overlay: true });
 add(P15, 'SCR-98-task', 'Cập nhật nhân sự — mở từ màn xử lý task 01', [...LG, `location.hash = '#/task/' + Flow.state.tokens.find((t) => String(t.task) === '1').id`, click('.task-acts [data-um-open]')], { overlay: true });
 
+// T25 — Hợp đồng chạy luồng: mọi cảnh của 7 bộ demo (đọc từ D.demoSets), hợp đồng / tab ở cảnh không có việc; chi tiết hồ sơ + BPMN mỗi quy trình; nhánh dừng của MS23.02.
+const P16 = 'Hợp đồng chạy luồng · T25';
+const hdSets = JSON.parse(await ev(`JSON.stringify(D.demoSets.filter((d) => d.hd).map((d) => ({ key: d.key, label: d.label, scenes: d.scenes.map((s) => ({ n: s.n, name: s.name, start: s.start, who: s.who, tab: s.tab || d.tab || 'tt' })) })))`));
+const hdTask = (who, n) => `location.hash = '#/task/' + Flow.caseTokens('${who}').filter((t) => String(t.task) === '${n}').pop().id`;
+hdSets.forEach((d) => d.scenes.forEach((s) => add(P16, `HD-${d.key}-${s.n}`, `${d.label} · ${s.name}`, [`Flow.jumpToScene('${s.n}', '${d.key}')`, J.persona(s.who), ...(s.start === 'BASE' || s.start === 'END' || s.start === 'NEW' ? [`HopDong.openTab('HĐ-2026-0052', '${s.tab}')`] : [hdTask(s.who, s.start)])])));
+[['MS22', 'H10', 'HSHD-2026-0052'], ['MS23', 'T6', 'HSTD-2026-0052'], ['MS24', 'P11', 'HSTT-2026-0052-01'], ['MS23.01', 'V10', 'HSVB-2026-0052-01'], ['MS23.02', 'G11', 'HSBG-2026-0052-01'], ['MS23.03', 'N10', 'HSNT-2026-0052'], ['MS23.03', 'L8', 'HSTL-2026-0052']].forEach(([key, n, code]) => {
+  add(P16, `HD-${key}-ho-so`, `Chi tiết hồ sơ ${code}`, [`Flow.jumpToScene('${n}', '${key}')`, J.persona('phd'), J.hash('#/ho-so-hd/' + code)]);
+  add(P16, `HD-${key}-bpmn`, `Chi tiết BPMN ${code}`, [`Flow.jumpToScene('${n}', '${key}')`, J.persona('phd'), J.hash('#/ho-so-hd/' + code + '/bpmn')]);
+});
+[['Xin ý kiến', 13, 'phd', 'cho-y-kien', 'chờ ý kiến chỉ đạo'], ['Xử lý vi phạm', 11, 'phd', 'cho-ms2301', 'chờ kết quả MS23.01'], ['Thủ tục hủy', 12, 'phd', 'huy', 'hủy'], ['Dịch vụ', 4, 'dvsd', 'dich-vu', 'dịch vụ chuyển nghiệm thu']].forEach(([re, n, who, id, name]) => {
+  add(P16, 'HD-MS23.02-' + id, 'MS23.02 · nhánh ' + name, [`(() => { const b = D.demoSets.find((d) => d.key === 'MS23.02').branches.find((x) => /${re}/.test(x.name)); Flow.jumpTo(b.task, b.who, b.vars, b.process, b.dxms, b.ui, b.settle, b.pre); })()`, J.persona(who), hdTask(who, n)]);
+});
+
 /* Tuỳ chọn tham số 2: chỉ chụp các màn của một trang Figma (vd. "Khoản đầu tư"). */
 const ONLY = process.argv[3] || null;
 if (ONLY && !S.some((x) => x.page === ONLY)) { console.error('Không có trang', ONLY); process.exit(1); }

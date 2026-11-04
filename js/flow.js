@@ -304,10 +304,33 @@
   /* Quy trình kế tiếp tự khởi tạo khi hồ sơ con kết thúc (MS22 ký xong → MS23): start trong kho, S vẫn là hồ sơ vừa xong. */
   function spawnNext() {
     const nx = S.parent && (D.hdProcesses[fam()] || {}).then;
-    if (!nx) return;
-    const cur = S, o = nx(S, Flow.dateOf(S.clock));
-    openNew(o.process, { code: D.hdCaseCode(S.parent, o.process), parent: S.parent, vars: o.vars });
+    if (nx) spawnCase(nx(S, Flow.dateOf(S.clock)));
+  }
+  /* Khởi tạo hồ sơ con từ một bước của hồ sơ đang nạp (G1 của MS23.03 → MS23.04); đã có thì thôi (quay lại bước 6). */
+  function spawnCase(o) {
+    if (!o) return;
+    const many = D.hdProcesses[o.process].many, n = many ? Flow.cases(S.parent).filter((c) => c.vars.process === o.process).length + 1 : undefined, code = D.hdCaseCode(S.parent, o.process, n);
+    if (CASES[code]) return;
+    const cur = S;
+    openNew(o.process, { code, parent: S.parent, at: o.at, vars: o.vars, ui: o.ui, clock: o.clock, name: o.name || (many && D.hdProcesses[o.process].start ? `${D.hdProcesses[o.process].start.name} ${String(n).padStart(2, '0')}` : null) });
     S = cur;
+  }
+  /* Tín hiệu giữa các hồ sơ con cùng hợp đồng (G2, G3; thật: message correlate theo mã hợp đồng). Ghi nhận vào vars.sig_<tên>, hồ sơ đang chờ thì đi tiếp. */
+  function sendSignal(process, name) {
+    const c = CASES[D.hdCaseCode(S.parent, process)];
+    if (!c) return;
+    const cur = S, src = S.ui || {};
+    S = c;
+    S.vars['sig_' + name] = true;
+    const to = D.hdSignals[process][name](S.vars, S.ui || {}, src, cur);
+    if (to != null) enter(to, {});
+    S = cur;
+  }
+  /* Tham số tạo hồ sơ có `start` trong D.hdProcesses (MS23.03, MS23.01): đồng hồ bắt đầu từ ngày start.date đọc ở hồ sơ theo dõi. Quy trình many: mã kế tiếp, không sớm hơn hồ sơ trước. */
+  function hdOpts(process, hd, more) {
+    const P = D.hdProcesses[process], p = P.start, prev = P.many ? Flow.cases(hd).filter((c) => c.vars.process === process) : [], n = prev.length + 1;
+    return Object.assign({ code: D.hdCaseCode(hd, process, n), parent: hd, name: P.many ? `${p.name} ${String(n).padStart(2, '0')}` : p.name, at: p.at,
+      clock: Math.max(Flow.clockOf(p.date(CASES[D.hdCaseCode(hd, 'MS23')].vars)), ...prev.map((c) => c.clock)), vars: Object.assign({}, p.vars) }, more);
   }
   /* Sự kiện vào hồ sơ đang nạp (MS23 Tổng quan): nhánh độc lập, không phải bước kế tiếp của nhánh khác. */
   function fireEvent(key, data) {
@@ -315,18 +338,35 @@
     enter(key, {});
   }
   /* Tua hồ sơ con của bộ demo Hợp đồng (D-48): tạo lại hồ sơ, đi theo nhánh chính tới bước `target`; 'NEW' = xoá hồ sơ, về trước bước Tạo hồ sơ. Luồng chính giữ nguyên.
-     set.base: bộ của quy trình đi sau (MS23 sau MS22) — chạy xong quy trình nền, nạp hồ sơ kế tiếp, phát các sự kiện của cảnh (evts) rồi mới tua. */
+     set.base: bộ của quy trình đi sau (MS23, MS24 sau MS22) — chạy xong quy trình nền ('BASE' = dừng ở đây); hồ sơ đã tự sinh thì nạp và phát các sự kiện của cảnh (evts), chưa có thì tạo; rồi mới tua. */
   function ffCase(target, set, ui, settle, pre, evts) {
     toMain();
     S.demoKey = set.key;
     Flow.cases(set.hd).forEach((c) => { delete CASES[c.code]; });
     if (target === 'NEW') { saveCases(); return; }
     if (set.base) {
-      openNew(set.base, { code: D.hdCaseCode(set.hd, set.base), parent: set.hd, clock: D.hdCaseClock, ui, vars: pre });
+      openNew(set.base, { code: D.hdCaseCode(set.hd, set.base), parent: set.hd, clock: D.hdCaseClock });
       advanceTo('END');
-      openCase(D.hdCaseCode(set.hd, set.key));
-      /* Sự kiện trước xử lý xong rồi mới tới sự kiện sau; việc của sự kiện cuối do tua bên dưới quyết định. */
-      (evts || []).forEach((e, i) => { if (i) advanceTo('END'); fireEvent(e.key, e.data); });
+      if (set.baseEvts) { openCase(D.hdCaseCode(set.hd, 'MS23')); set.baseEvts.forEach((e) => fireEvent(e.key, e.data)); }
+      if (target === 'BASE') return;
+      /* Lộ trình qua nhiều hồ sơ con (MS23.03 + .04): mỗi chặng [quy trình, bước đích, ui, biến lúc tạo]. */
+      if (pre && pre.legs) {
+        pre.legs.forEach(([p, to, u, vs, via]) => {
+          const code = D.hdCaseCode(set.hd, p);
+          if (!CASES[code]) { const o = hdOpts(p, set.hd, u ? { ui: u } : {}); Object.assign(o.vars, vs); openNew(p, o); } else { openCase(code); if (u) Object.assign(S.ui, u); }
+          /* via: nút không phải nhánh chính phải bấm trên đường tới đích [bước, đầu nhãn]; không có nhãn = next của bước. */
+          (via || []).forEach(([t, label]) => { advanceTo(t); const tok = S.tokens.find((x) => String(x.task) === String(t)); completeStep(tok.id, label ? choicesOf(t).find((c) => c.label.startsWith(label)) : null, 'Theo kết quả kiểm tra'); });
+          advanceTo(to);
+        });
+        return;
+      }
+      const code = D.hdCaseCode(set.hd, set.key);
+      if (!CASES[code]) openNew(set.key, { code, parent: set.hd, name: (D.hdPayPlan[set.hd][set.vars.dot] || {}).name, ui, vars: Object.assign({}, set.vars, pre) });
+      else {
+        openCase(code);
+        /* Sự kiện trước xử lý xong rồi mới tới sự kiện sau; việc của sự kiện cuối do tua bên dưới quyết định. */
+        (evts || []).forEach((e, i) => { if (i) advanceTo('END'); fireEvent(e.key, e.data); });
+      }
     } else openNew(set.key, { code: D.hdCaseCode(set.hd, set.key), parent: set.hd, clock: D.hdCaseClock, ui, vars: pre });
     advanceTo(target, settle);
   }
@@ -392,7 +432,7 @@
       S.status = key === 'END' ? 'approved' : 'stopped';
       const endKdt = (S.vars.tdKind && S.vars.tdKind !== 'CT' ? 'Kết thúc — hoàn tất phê duyệt cấp Tập đoàn: ' : 'Kết thúc — ')
         + (S.vars.branch === 'BM00' ? 'hồ sơ gộp BM-00 đã ký duyệt' : 'Quyết định phê duyệt KĐT');
-      log(key, { system: true, action: key === 'END' ? (S.parent ? (D.hdProcesses[fam()] || {}).end : S.kdt ? endKdt : 'Kết thúc — ĐXMS đã phê duyệt') : 'Kết thúc theo chỉ đạo khác' });
+      log(key, { system: true, action: key === 'END' ? (S.parent ? S.vars.endText || (D.hdProcesses[fam()] || {}).end : S.kdt ? endKdt : 'Kết thúc — ĐXMS đã phê duyệt') : 'Kết thúc theo chỉ đạo khác' });
       if (key === 'END') spawnNext();
       return;
     }
@@ -444,6 +484,14 @@
       return;
     }
 
+    /* Service task lỗi giả lập (MS24 bước 20, P-125): token dừng ở bước này cho người phụ trách, nút Gửi lại chạy lại bước — như VOffice P-94. */
+    if (f.retry && S.ui && S.ui[f.retry.flag]) {
+      S.ui[f.retry.flag] = false;
+      log(key, { system: true, action: f.retry.fail });
+      addToken(key, ctx, f.retry.who);
+      return;
+    }
+
     /* Task hệ thống chạy ngay; cổng (gw) chỉ chọn nhánh, không ghi nhật ký. */
     const isService = isTask(key) && T()[key].type === 'service';
     if (isService || f.gw) {
@@ -457,6 +505,8 @@
         return enter(k.to, ctx);
       }
       if (f.run) f.run(S.vars, S.ui || (S.ui = {}));
+      if (f.spawn) spawnCase(f.spawn(S.vars));
+      if (f.signal) sendSignal(...f.signal);
       /* Nhánh sự kiện kết thúc ở đây, hồ sơ vẫn chạy (MS23 Tổng quan không có sự kiện kết thúc chung — DG-MS23 §C.8). */
       if (f.stop) { if (isService) log(key, { system: true, action: T()[key].name, t: S.clock }); return; }
       if (isService) {
@@ -547,7 +597,9 @@
   }
 
   /* Hoàn thành token bằng lựa chọn `choice` (object trong F()[key].choices, hoặc null = next mặc định). */
-  function complete(tokenId, choice, reason, sign) {
+  function complete(tokenId, choice, reason, sign) { completeStep(tokenId, choice, reason, sign); emit(); }
+  /* Không emit: emit vẽ lại màn, route có thể nạp hồ sơ khác giữa lúc tua demo (ffCase via). */
+  function completeStep(tokenId, choice, reason, sign) {
     const tok = S.tokens.find((t) => t.id === tokenId);
     if (!tok) return;
     const f = F()[tok.task];
@@ -567,7 +619,6 @@
     }
     if (viaKy(choice)) kySign(tok, choice, sign && sign.mode, ctx);
     else enter(choice ? choice.to : f.next, ctx);
-    emit();
   }
 
   /* Hồ sơ đi nhánh < 160 tỷ (MS01.03): nhãn / văn bản ký / màn thay thế theo `small`, `scrSmall` của D.flow. */
@@ -585,7 +636,7 @@
 
   /* Bộ demo (D.demoSets): theo ĐXMS của hồ sơ đang chạy; chưa có hồ sơ thì theo bộ vừa chọn ở công cụ demo. */
   const setOf = (key) => D.demoSets.find((d) => d.key === key) || D.demoSets[0];
-  const demoSet = () => (S.parent && D.demoSets.find((d) => d.hd === S.parent && d.key === fam())) || (S.demoKey && setOf(S.demoKey).hd && setOf(S.demoKey))
+  const demoSet = () => (S.parent && MAIN && MAIN.demoKey && setOf(MAIN.demoKey).hd === S.parent && setOf(MAIN.demoKey)) || (S.parent && D.demoSets.find((d) => d.hd === S.parent && d.key === fam())) || (S.demoKey && setOf(S.demoKey).hd && setOf(S.demoKey))
     || (S.dxms && D.demoSets.find((d) => d.dxms === S.dxms || (d.also || []).includes(S.dxms)))
     || (S.kdt && D.demoSets.find((d) => d.kdt === S.kdt || (d.also || []).includes(S.kdt))) || setOf(S.demoKey);
 
@@ -658,6 +709,8 @@
       return Flow.cases(parent).flatMap((c) => c.tokens.filter((t) => D.allAccess(pid) || t.who === pid || (t.cands || []).includes(pid)).map((t) => Object.assign({}, t, { caseCode: c.code,
         name: window.BPMN_FLOWS[D.familyOf(c.vars.process)].tasks[t.task].name })));
     },
+    /* Tạo hồ sơ có tham số trong D.hdProcesses.start (MS23.03, MS23.01 từ Chi tiết hợp đồng). vars: biến thêm lúc tạo. Trả về mã hồ sơ. */
+    startHd(process, hd, vars) { const o = hdOpts(process, hd); Object.assign(o.vars, vars); return startCase(process, o); },
     /* Sự kiện của hồ sơ theo dõi hợp đồng (D-49): chạy trên hồ sơ MS23 rồi trả về hồ sơ đang nạp. Chưa có hồ sơ (hợp đồng chưa ký xong) thì trả về false. */
     hdEvent(hd, key, data) {
       const code = D.hdCaseCode(hd, 'MS23'), back = MAIN ? S.code : null;
@@ -920,8 +973,9 @@
       const own = (x) => String(stepOf(x)) === String(n);
       if (S.tokens.some(own)) return 'active';
       if (S.history.some(own)) return 'done';
-      /* Bước chỉ chạy khi có phát sinh (MS22 bước 6, 7). */
-      if ((F()[n] || {}).optional) return 'cond';
+      /* Bước chỉ chạy khi có phát sinh (MS22 bước 6, 7) hoặc theo điều kiện của hồ sơ (MS24 bước 5–10 khi không yêu cầu bảng tổng hợp). */
+      const opt = (F()[n] || {}).optional;
+      if (typeof opt === 'function' ? opt(S.vars, S.ui || {}) : opt) return 'cond';
       if ((S.kdt ? D.kdtNa(S.vars, isMat()) : D.naOf(S.vars)).includes(Number(n))) return 'na';
       /* Ký bản cứng 77–78 của hồ sơ không Mật: chỉ chạy khi người trình chọn Bản cứng ở 75. */
       if (S.kdt && !isMat() && ['77', '78'].includes(String(n))) return 'cond';
@@ -933,6 +987,13 @@
       const nums = S.tokens.map((t) => t.task).filter(isTask).map((k) => parseInt(k, 10));
       const n = nums.length ? Math.min(...nums) : 1;
       return window.D.stages.find((s) => n >= s.from && n <= s.to);
+    },
+    /* Ngược của dateOf: số ngày làm việc nhỏ nhất có ngày không trước `date` (dd/mm/yyyy). */
+    clockOf(date) {
+      const k = (s) => s.split('/').reverse().join('');
+      let n = 0;
+      while (n < 2000 && k(Flow.dateOf(n)) < k(date)) n += 1;
+      return n;
     },
     caseStatus() {
       if (S.status === 'new') return 'Chưa tạo';

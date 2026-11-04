@@ -142,5 +142,5 @@
   /* Mỗi quy trình của hợp đồng đăng ký một bộ ở EForms.hdBy; EForms.hd chọn theo quy trình của hồ sơ đang nạp. */
   window.EForms.hdBy = { MS22: { vars, reqDocs, files, outs, doc, version, docs: DOCS, check: () => null } };
   const by = () => window.EForms.hdBy[D.familyOf(Flow.state.vars.process)];
-  window.EForms.hd = { vars: (t) => by().vars(t), reqDocs: (t) => by().reqDocs(t), files: () => by().files(), outs: () => by().outs(), doc: (c) => by().doc(c), version: () => by().version(), get docs() { return by().docs; }, check: () => null };
+  window.EForms.hd = { vars: (t) => by().vars(t), reqDocs: (t) => by().reqDocs(t), files: () => by().files(), outs: () => by().outs(), doc: (c) => by().doc(c), version: () => by().version(), get docs() { return by().docs; }, check: (t, c, v) => by().check(t, c, v) };
 })();

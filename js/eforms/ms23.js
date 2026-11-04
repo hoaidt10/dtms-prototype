@@ -19,7 +19,7 @@
         sel('tdKenh', 'Kênh tiếp nhận', req({ values: KENH, layout: { columns: 8 } })),
         tf('tdDiaDiem', 'Địa điểm giao hàng', req()),
         ta('tdNoiDung', 'Nội dung thông báo')] }),
-      notes: () => ['Bước duy nhất người dùng xử lý của MS23 Tổng quan. Hoàn thành → service task 4: thông báo các bộ phận liên quan, chuyển hồ sơ giao hàng sang MS23.02 (dựng ở B6).',
+      notes: () => ['Bước duy nhất người dùng xử lý của MS23 Tổng quan. Hoàn thành → service task 4: thông báo các bộ phận liên quan, tự sinh hồ sơ MS23.02 của đợt (nhà thầu báo lại cùng đợt thì không sinh thêm).',
         '<b>Giả lập P-137</b>: Phòng Hợp đồng nhập tay, chọn kênh tiếp nhận. <b>Giả lập P-138</b>: bộ phận nhận thông báo tự đặt.'],
       write: (v) => pick(v, ['tdDot', 'tdNgayDuKien', 'tdKenh', 'tdDiaDiem', 'tdNoiDung']) },
   };

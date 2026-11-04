@@ -66,7 +66,7 @@ test('MS23: 5 nhánh sự kiện từ công cụ demo; bước 3 qua eForm, bắ
   await expect(main).toContainText('Luồng con cần khởi tạo');
   await expect(main).toContainText('Chờ khởi tạo');
   // Bước 5: mốc có ngày thực tế, tỷ lệ hoàn thành tăng
-  await event(page, 'biên bản bàn giao');
+  await page.evaluate(() => Flow.hdEvent('HĐ-2026-0052', 5, { loai: 'biên bản bàn giao', kind: 'GIAO' }));
   await expect(main).toContainText('61%');
   await expect(main).toContainText('AI cập nhật ngày thực tế');
   await page.locator('.dx-tabs [data-ttab="bg"]').click();

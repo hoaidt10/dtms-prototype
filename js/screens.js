@@ -976,7 +976,7 @@
   function hdVm() {
     const ci = Flow.ci(), S0 = Flow.state, p = D.hdProcesses[ci.flow], active = [...new Set(S0.tokens.map((t) => String(t.task)))];
     return { key: 'ho-so-hd/' + ci.code, isHd: true, code: ci.code, hd: ci.hd, title: ci.name, flow: ci.flow, st: { running: 'processing', approved: 'done' }[S0.status], unit: ci.unit, lead: ci.owner, total: ci.total, ncc: ci.ncc,
-      active, focus: active.length ? active : undefined, page: p.page, proc: `${ci.flow} — ${p.name}`, step: active.length ? [...new Set(S0.tokens.map((t) => TT()[t.task].name))].join(', ') : p.end,
+      active, focus: active.length ? active : undefined, page: p.page, proc: `${ci.flow} — ${p.name}`, step: active.length ? [...new Set(S0.tokens.map((t) => TT()[t.task].name))].join(', ') : S0.vars.hold || S0.vars.endText || p.end,
       steps: processSteps(), history: caseHistory(), files: caseFiles(), outs: outputDocs() };
   }
   const hdRef = (code) => `<a class="link-red" href="#/hop-dong/${encodeURIComponent(code)}">${esc(code)}</a>`;
@@ -1045,7 +1045,7 @@
     return keys.filter((k) => isUserTask(k) && !['na', 'cond'].includes(Flow.taskStatus(k)))
       .map((k) => {
         const st = Flow.taskStatus(k);
-        return { title: TT()[k].name, sub: Flow.state.kdt ? kdtActor(TT()[k].actor) : TT()[k].actor, state: st === 'active' ? 'active' : st === 'done' ? 'completed' : 'upcoming' };
+        return { title: TT()[k].name, sub: Flow.state.kdt ? kdtActor(TT()[k].actor) : TT()[k].actor.replace(/\s*\[[^\]]*\]/g, ''), state: st === 'active' ? 'active' : st === 'done' ? 'completed' : 'upcoming' };
       });
   }
 
