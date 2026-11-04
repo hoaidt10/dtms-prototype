@@ -36,8 +36,9 @@ for (const set of SETS) {
     await fresh(page);
     for (const task of set.tasks) {
       expect(await jump(page, set, task), `có việc ở task ${task}`).toBeTruthy();
-      // Khung chung: không còn card nội dung riêng giữa Quy trình và Danh sách tài liệu.
-      await expect(page.locator('.tmain > section > h3, .tmain > section > .vcard-h > h3')).toHaveText(['Thông tin chung', 'Quy trình', 'Danh sách tài liệu', 'Văn bản đầu ra']);
+      // Khung chung: không còn card nội dung riêng giữa Quy trình và Danh sách tài liệu. Ngoại lệ T29 S9: bước 19 / 20 MS01 có card thẩm định CQCM.
+      const td = set.proc !== 'MS02' && !set.kdt && ['19', '20'].includes(String(task));
+      await expect(page.locator('.tmain > section > h3, .tmain > section > .vcard-h > h3')).toHaveText(['Thông tin chung'].concat(td ? ['Thẩm định của cơ quan chuyên môn'] : [], ['Quy trình', 'Danh sách tài liệu', 'Văn bản đầu ra']));
       const f = await openForm(page);
       await expect(f.locator('.ef-body')).toHaveAttribute('data-ef-form', set.proc === 'MS02' ? /^dtms-ms02-/ : /^dtms-ms(01|13)-/);
       const txt = await f.innerText();

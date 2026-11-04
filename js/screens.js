@@ -1267,7 +1267,7 @@
     const side = rest.slice(0, 1), other = rest.slice(1);
     const actBtn = (x, cls) => `<button type="button" class="vbtn ${cls}" data-act="${tok.id}" data-choice="${x.idx}" ${x.c.lockWhen && x.c.lockWhen(Flow.state.vars) ? 'disabled' : ''}>${esc(x.c.label)}</button>`;
     /* f.wip: màn của task chưa dựng (KĐT B3/B4) — chưa có nút hành động. */
-    const acts = `${mine && !f.wip ? main.map((x) => actBtn(x, 'primary')).join('') + side.map((x) => actBtn(x, 'red')).join('') : ''}
+    const acts = `${window.ThamDinh.ghiLaiBtn(tok, mine && !f.wip)}${mine && !f.wip ? main.map((x) => actBtn(x, 'primary')).join('') + side.map((x) => actBtn(x, 'red')).join('') : ''}
       ${ci.isKdt || ci.isHd ? '' : window.Luong.taskBtn(tok, mine)}<button type="button" class="vbtn red" data-go="task/${tok.id}/bpmn">Xem BPMN</button>
       ${mine && !f.wip && other.length ? `<div class="more"><button type="button" class="vbtn secondary" data-more>Thao tác khác ${icon('chev')}</button>
         ${moreOpen ? `<div class="more-pop">${other.map((x) => actBtn(x, 'ghost')).join('')}</div>` : ''}</div>` : ''}`;
@@ -1306,7 +1306,7 @@
       notes: (mine ? (tok.who !== Flow.state.persona ? [`Việc này giao cho <b>${esc(owner.name)}</b> (${esc(owner.role)}); tài khoản toàn quyền xử lý thay.`] : []) : [`Việc này giao cho <b>${esc(owner.name)}</b> (${esc(owner.role)}); đang xem với tài khoản ${esc(persona(Flow.state.persona).name)} nên không có nút hành động. <button class="vbtn sm red" data-persona="${owner.id}" data-stay="1">Chuyển tài khoản</button>`])
         .concat(['Tiêu đề "Xem chi tiết hồ sơ" và bố cục lấy nguyên từ my-task-detail: nút hành động trên hàng tiêu đề, lưới 5 + 2 cột, Lịch sử hồ sơ bên phải.',
           'Quy trình: các bước người dùng của quy trình đã chọn (không gồm bước hệ thống, bước của quy trình khác); vht-steps tự gộp bước thành +N.',
-          '"Xem BPMN" mở màn Chi tiết hồ sơ + sơ đồ BPMN, tô bước của việc này (my-task-bpmn-detail).'], ba.notes,
+          '"Xem BPMN" mở màn Chi tiết hồ sơ + sơ đồ BPMN, tô bước của việc này (my-task-bpmn-detail).'], ba.notes, window.ThamDinh.applies(tok) ? window.ThamDinh.notes() : [],
         ci.isHd ? HD_NOTES().concat([esc(t.note), `Trang ${esc(ci.flow)}.`]) : ci.isKdt ? [esc(t.note), `Trang MS13, lane: ${esc(t.lane || '')}.`].concat(f.wip ? ['Nội dung xử lý của bước này dựng ở bước sau của plan KĐT — chưa có nút hành động.'] : [])
           : [esc(t.note), t.old ? `Số task ở bản 58 task cũ: ${esc(t.old)}` : /[ab]$/.test(String(tok.task)) ? 'Task mới — nhánh không khớp quy trình (N08, chốt 2026-09-28).' : 'Task mới ở v1.1.']),
       src: 'my-tasks/my-task-detail · /my-tasks/:taskId?profileId=',
@@ -1315,6 +1315,7 @@
       ${head({ title: 'Xem chi tiết hồ sơ', back: true, lg: true, info: infoSpec, right: `<div class="task-acts">${acts}</div>` })}
       <div class="tgrid"><div class="tmain">
         <section class="vcard pad24"><h3>Thông tin chung</h3><div class="ginfo">${info}</div></section>
+        ${window.ThamDinh.card(tok)}
         <section class="vcard pad24"><h3>Quy trình</h3>${UI.vSteps({ id: ci.code, steps: processSteps() })}</section>
         <section class="vcard pad24"><div class="vcard-h"><h3>Danh sách tài liệu</h3>${mine ? `<div class="row">
             <button type="button" class="vbtn secondary" data-tpl="${esc(tok.id)}">${icon('file')} Chọn mẫu tài liệu</button>

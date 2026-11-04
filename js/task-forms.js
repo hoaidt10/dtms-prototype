@@ -41,7 +41,7 @@
   const version = () => (Flow.state.parent ? window.EForms.hd.version() : Flow.state.kdt ? H().kdtVer() : H().version());
 
   /* Bấm nút hành động. Trả { reason } để chạy tiếp (lý do lấy từ form nếu có), null nếu huỷ / lưu nháp / bị trả lại. */
-  async function run(tok, choice) {
+  async function run(tok, choice, opt) {
     const e = raw(tok);
     if (!e) return {};
     if (choice && choice.reason && !e.reasonField && !e.reasonOf) {
@@ -51,12 +51,13 @@
     }
     const f = Flow.def()[tok.task] || {};
     const drafts = Flow.ui.efDraft || {};
-    const r = await window.EFormRun.open({ title: choice ? choice.label : f.actionLabel || 'Hoàn thành', schema: schemaOf(tok, e), vars: window.EVars.of(tok),
-      values: drafts[tok.id], check: (vals) => window.EVars.check(tok, choice, vals) });
+    /* T29 S9: Ghi lại (bước 19) — cùng eForm, chỉ Hủy / Ghi lại (performAction SAVE_DRAFT). */
+    const r = await window.EFormRun.open({ title: opt && opt.draftOnly ? e.draftLabel || 'Lưu nháp' : choice ? choice.label : f.actionLabel || 'Hoàn thành', schema: schemaOf(tok, e), vars: window.EVars.of(tok),
+      values: drafts[tok.id], check: (vals) => window.EVars.check(tok, choice, vals), draftOnly: !!(opt && opt.draftOnly), draftLabel: e.draftLabel });
     if (!r) return null;
     if (r.draft) {
       Flow.setUiMany({ efDraft: Object.assign({}, drafts, { [tok.id]: r.values }) });
-      toast('<b>Thành công</b><br>Đã lưu nháp biểu mẫu.');
+      toast(e.draftToast || '<b>Thành công</b><br>Đã lưu nháp biểu mẫu.');
       return null;
     }
     const out = e.write ? e.write(r.values, tok, H()) : {};

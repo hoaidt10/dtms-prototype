@@ -1138,6 +1138,7 @@
     'P-197': { q: 'YC-DXMS-PROTO §6 ghi Đồng ý chuyển sang "BM-05 hoặc BM-09", Yêu cầu sửa trả ĐV "giải trình (BM-02)" — khác BPMN bước 19–26 (BM-04, AI tóm tắt NOK sau khi đủ BM-04)', src: 'YC-DXMS-PROTO §6; BPMN-DTMS MS01 v1.1 bước 19–26; QT-10.2.1 (BM-05 = Báo cáo kết quả thẩm định)', def: 'Theo BPMN: Đồng ý / Yêu cầu sửa là kết luận BM-04 của từng CQCM; hồ sơ về ĐV sau bước 23–25', scr: 'SCR-11' },
     'P-198': { q: 'Loại dự án (chi tiết) ứng với từng Loại ngoài KHCN; Note có 6 Loại, TPL-DADT-IM chỉ 4; "Hỗ trợ KHCN" thuộc Loại nào', src: 'HT-DXMS-NOTE màn 1, 4; TPL-DADT-IM sheet List', def: 'GIẢ LẬP — KHCN: 7 giá trị theo Note; Hoạt động TX: Thường xuyên; SXKD: Dự án Kinh doanh, Dự án sản xuất, Chương trình nội bộ; Dự án đầu tư: Dự án đầu tư mua sắm tài sản, Dự án đầu tư xây dựng Kinh doanh thử nghiệm; Dự án đầu tư khác, Dự án kinh doanh khác: chưa có, hiện toàn bộ 14 giá trị; Hỗ trợ KHCN chưa xếp vào Loại nào', scr: 'SCR-103' },
     'P-199': { q: 'Ô Nhập tay của dòng dự toán khi không tick: Thuế GTGT tính thế nào (câu ghi chú bị bỏ dở)', src: 'HT-DXMS-NOTE màn 5', def: 'GIẢ LẬP — không tick: Thuế GTGT = Giá trị trước thuế × %VAT, ô Thuế khoá; tick: người dùng tự nhập Thuế GTGT. Giá trị sau thuế = trước thuế + Thuế GTGT', scr: 'SCR-104' },
+    'P-200': { q: 'Lịch sử ý kiến thẩm định ở màn thẩm định CQCM: YC-DXMS-PROTO §5 ghi hiện "toàn bộ cây góp ý của các CQCM khác", BR-DXMS-07-04 và comment #14 ghi CQCM không thấy nội dung BM-04 của cơ quan khác', src: 'YC-DXMS-PROTO §5; DTMS_CN_0159; BR-DXMS-07-04; comment Figma #14', def: 'GIẢ LẬP — cơ quan mình thấy đủ nội dung các lần; cơ quan khác chỉ thấy sự kiện, người, thời điểm và kết luận (Đồng ý / Yêu cầu sửa, số mục Không OK)', scr: 'SCR-11' },
     /* T25 B5 — MS23.01 Văn bản phát sinh, DG-MS23.01 §D. P-173 thêm khi dựng. */
     'P-161': { q: 'Danh mục loại văn bản, mẫu tương ứng, điều kiện được xem là sửa đổi hợp đồng', src: 'DG-MS23.01 §D 1', def: 'GIẢ LẬP — bốn loại Phụ lục hợp đồng, Biên bản làm việc, Biên bản phạt, Văn bản khác; chỉ Phụ lục hợp đồng là sửa đổi hợp đồng', scr: 'SCR-102' },
     'P-162': { q: 'Phạm vi được phép sửa đổi, điều kiện xin ý kiến Đơn vị sử dụng, cách ghi nhận đã thống nhất', src: 'DG-MS23.01 §D 2; QT-10.2.4 Bước 9.1, 9.2', def: 'GIẢ LẬP — chuyên viên xác nhận được phép sửa đổi, ghi nội dung đã thống nhất ở bước 2; Đơn vị sử dụng không có việc riêng', scr: 'SCR-102' },
@@ -1819,7 +1820,9 @@
       { name: 'TTMS trả lại danh sách CQCM', tasks: '17 → 16', task: 17, who: 'lan' },
       { name: 'Giải trình vòng 3/2 → cảnh báo, họp', tasks: '28 → 29–34', task: 28, who: 'minh', vars: { round: 2 } },
       { name: 'TTMS chọn Không báo cáo Tập đoàn', tasks: '48 → 57', task: 48, who: 'lan' },
-      { name: 'Thủ trưởng VHT yêu cầu hoàn chỉnh', tasks: '60 → 25 → 26', task: 60, who: 'tgd' }] },
+      { name: 'Thủ trưởng VHT yêu cầu hoàn chỉnh', tasks: '60 → 25 → 26', task: 60, who: 'tgd' },
+      /* T29 S9: thẩm định lần 02 — tua qua giải trình (28) rồi tới bước 19 của lần sau, Lịch sử ý kiến có hai lần. */
+      { name: 'Thẩm định lần 02 — lịch sử ý kiến nhiều lần', tasks: '28 → 13–19', task: 19, who: 'hoa', pre: { via: 28 } }] },
     { key: 'MS01.02', dxms: 'ĐXMS-2026-0124', label: 'ĐXMS-2026-0124 · MS01.02', scenes: [
       { n: '2-1', name: 'Chọn quy trình MS01.02, căn cứ đã được TĐ duyệt', start: 'NEW', tasks: '—, 01, 10', who: 'minh' },
       { n: '2-2', name: 'Không báo cáo Tập đoàn', start: 48, tasks: '48', who: 'lan' },

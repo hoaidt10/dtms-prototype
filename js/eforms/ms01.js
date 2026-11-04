@@ -180,7 +180,9 @@
       outputs: () => ['BM-03'],
       notes: () => ['Đúng, đủ → hệ thống trình ký BM-03 và gửi yêu cầu tới các CQCM (task 18). Chưa đúng/đủ → dialog nhận xét, trả ĐVĐX cập nhật (task 16).', 'Kết quả đối chiếu thành phần = biến của service task AI.'] },
 
-    19: { id: 'dtms-ms01-t19-bm04', q: ['P-22'],
+    /* T29 S9: nút Lưu nháp của bước 19 đổi nhãn Ghi lại (YC-DXMS-PROTO §6); kết luận Đồng ý / Yêu cầu sửa tính từ các mục (Q7). */
+    19: { id: 'dtms-ms01-t19-bm04', q: ['P-22', 'P-197', 'P-200'], draftLabel: 'Ghi lại',
+      draftToast: '<b>Thành công</b><br>Đã ghi lại phiếu BM-04. Hồ sơ vẫn ở trạng thái Đang thẩm định.',
       schema: () => ({ components: [
         txt('**{{cqcmTen}}** · Lần {{lan}} · Hồ sơ v{{phienBan}}\n*Phiếu riêng của {{cqcmTen}} — không hiển thị ý kiến của cơ quan khác.*'),
         B.dl('bm04Phieu', 'BM-04 Phiếu nhận xét theo mục BM-01', [
@@ -189,20 +191,26 @@
           ta('nhanXet', 'Nội dung nhận xét', req({ rows: 2, layout: { columns: 8 }, conditional: { hide: '=this.danhGia = "OK"' } })),
           txt('Gợi ý AI: *{{this.aiGoiY}}*', 8, '=this.danhGia = "OK" or this.aiGoiY = ""'),
           rad('quyetDinhAi', 'Gợi ý AI', { values: AI, layout: { columns: 8 }, conditional: { hide: '=this.danhGia = "OK" or this.aiGoiY = ""' } }),
-          ta('huongDan', 'Hướng dẫn sửa', { rows: 2, layout: { columns: 16 }, conditional: { hide: '=this.danhGia = "OK"' } })])] }),
+          ta('huongDan', 'Hướng dẫn sửa', { rows: 2, layout: { columns: 16 }, conditional: { hide: '=this.danhGia = "OK"' } })]),
+        txt('**Kết luận phiếu: Đồng ý** — mọi mục OK.', 16, '=count(bm04Phieu[item.danhGia = "Không OK"]) > 0'),
+        txt('**Kết luận phiếu: Yêu cầu sửa** — {{count(bm04Phieu[item.danhGia = "Không OK"])}} mục Không OK, bắt buộc nhập nội dung nhận xét.', 16, '=count(bm04Phieu[item.danhGia = "Không OK"]) = 0')] }),
       notes: (h) => ['Mỗi CQCM một phiếu: multi-instance theo CQCM, biến cục bộ của từng instance — hai cơ quan không thấy phiếu của nhau (comment #14, S7). BM-04 đã ký vẫn có thể chứa ý kiến Không OK (N03).',
         'Gợi ý AI nhận xét (G2): service task AI chạy trước task 19, gợi ý cho mục Không OK; CQCM Chấp nhận / Sửa / Bỏ. Hồ sơ đang thẩm định: ĐVĐX bị khoá sửa tới khi nhận đủ BM-04 (UR-COM-03).']
         .concat(window.Flow.state.vars.round > 0 ? [`Vòng BM-04 lần ${h.bm04Round()}: ĐVĐX đã gửi giải trình (phụ lục 1 BM-02); CQCM xem giải trình và lập lại phiếu.`] : []),
-      write: (v, tok) => {
+      write: (v, tok, h) => {
         const all = Object.assign({}, window.Flow.ui.bm04), o = {};
         (v.bm04Phieu || []).forEach((r) => { o[r.muc] = { ok: r.danhGia === 'OK', text: r.danhGia === 'OK' ? '' : r.nhanXet || 'Cần bổ sung, làm rõ.', guide: r.danhGia === 'OK' ? '' : r.huongDan || '' }; });
         all[tok.cqcm] = o;
-        return { bm04: all };
+        /* Bản ghi phiếu theo lần cho Lịch sử ý kiến thẩm định (T29 S9, DTMS_CN_0159). */
+        const rows = (v.bm04Phieu || []).map((r) => ({ muc: r.muc, ok: r.danhGia === 'OK', text: r.danhGia === 'OK' ? '' : r.nhanXet || 'Cần bổ sung, làm rõ.' }));
+        return { bm04: all, bm04Hist: (window.Flow.ui.bm04Hist || []).concat([{ cqcm: tok.cqcm, lan: h.bm04Round(), rows }]) };
       } },
 
-    20: { id: 'dtms-ms01-t20-ky-bm04',
+    20: { id: 'dtms-ms01-t20-ky-bm04', q: ['P-197', 'P-200'],
       schema: () => ({ components: [txt('**{{cqcmTen}}** · Lần {{lan}} · Hồ sơ v{{phienBan}}'),
-        tbl('BM-04 Phiếu nhận xét — chuyên viên đã lập', 'bm04KetQua', [['muc', 'Mục BM-01'], ['danhGia', 'Đánh giá'], ['nhanXet', 'Nội dung nhận xét'], ['huongDan', 'Hướng dẫn sửa']])] }),
+        tbl('BM-04 Phiếu nhận xét — chuyên viên đã lập', 'bm04KetQua', [['muc', 'Mục BM-01'], ['danhGia', 'Đánh giá'], ['nhanXet', 'Nội dung nhận xét'], ['huongDan', 'Hướng dẫn sửa']]),
+        txt('**Kết luận phiếu: Đồng ý** — mọi mục OK.', 16, '=count(bm04KetQua[item.danhGia = "Không OK"]) > 0'),
+        txt('**Kết luận phiếu: Yêu cầu sửa** — {{count(bm04KetQua[item.danhGia = "Không OK"])}} mục Không OK.', 16, '=count(bm04KetQua[item.danhGia = "Không OK"]) = 0')] }),
       notes: () => ['Comment #13, #15 (AI đồng bộ ý kiến hai cơ quan) không đặt ở task 20: theo #14 hai CQCM không được thấy ý kiến của nhau — khối AI đặt ở task 26 (ĐVĐX nhận kết quả).',
         'Form task 20 chỉ đọc kết quả task 19. Đồng ý → hệ thống trình ký BM-04 qua VOffice (task 22); Không đồng ý → dialog nhận xét, AI lọc nội dung cần sửa, trả chuyên viên (task 21).'] },
 

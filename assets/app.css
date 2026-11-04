@@ -1120,3 +1120,17 @@ a.rp-tile, button.rp-tile { cursor: pointer; } .rp-tile.on { border-color: #EE00
 .ss-table th:last-child, .ss-table td:last-child { border-right: 0; }
 .ss-table tbody tr:last-child td { border-bottom: 0; }
 .ss-table .nm { display: flex; align-items: center; gap: 12px; font-weight: 500; }
+
+/* T29 S9 — Thẩm định CQCM bốn khu (tham-dinh.js) */
+.td-zone + .td-zone { margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--border); }
+.td-zone > h4, .td-zone .vcard-h h4 { margin: 0 0 12px; font-size: 15px; font-weight: 600; }
+.td-zone .vcard-h { margin-bottom: 12px; }
+.td-zone .vcard-h h4 { margin: 0; }
+.td-view { max-height: 420px; }
+.td-lan + .td-lan { margin-top: 12px; }
+.td-lan-h { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600; margin-bottom: 10px; }
+.td-nok { margin: 6px 0 0; padding-left: 18px; font-size: 13px; color: #44494D; }
+.td-nok li { display: list-item; padding: 0; }
+.td-nok li::before { display: none; }
+.mb8 { margin-bottom: 8px; }
+.mt16 { margin-top: 16px; }

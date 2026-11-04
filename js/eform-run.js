@@ -221,7 +221,7 @@
   }
 
   /* ---------- Dialog (my-task-eform-dialog) ----------
-     o: { title, schema, vars, values (bản nháp đã lưu), readOnly, check(values) → lỗi BE hoặc null }.
+     o: { title, schema, vars, values (bản nháp đã lưu), readOnly, check(values) → lỗi BE hoặc null, draftLabel (nhãn nút Lưu nháp), draftOnly (chỉ Hủy / Lưu nháp) }.
      Trả Promise: { submit: true, values } khi Xác nhận hợp lệ; { draft: true, values } khi Lưu nháp; null khi Hủy. */
   function open(o) {
     return new Promise((resolve) => {
@@ -240,7 +240,7 @@
       let done = false;
       const finish = (r) => { if (done) return; done = true; resolve(r); };
       const acts = form.readOnly ? '<button class="vbtn secondary" data-close>Đóng</button>'
-        : '<button class="vbtn secondary" data-close>Hủy</button><button class="vbtn secondary" id="ef-draft">Lưu nháp</button><button class="vbtn primary" id="ok">Xác nhận</button>';
+        : `<button class="vbtn secondary" data-close>Hủy</button><button class="vbtn ${o.draftOnly ? 'primary' : 'secondary'}" id="ef-draft">${esc(o.draftLabel || 'Lưu nháp')}</button>${o.draftOnly ? '' : '<button class="vbtn primary" id="ok">Xác nhận</button>'}`;
       const m = vModal({ title: o.title, size: 'ef', body: `<div class="ef-scroll"><div class="ef-grid ef-body" data-ef-form="${esc(o.schema.id || '')}"></div></div>`, actions: acts });
       const body = m.el.querySelector('.ef-body'), scroller = m.el.querySelector('.ef-scroll');
       function draw() {

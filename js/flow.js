@@ -651,10 +651,12 @@
     if (ui) S.ui = JSON.parse(JSON.stringify(ui));
     if (target === 'NEW') { S.vars.process = null; D.useCase(dxms || D.dxmsCode0); return; }
     /* pre.adj (bộ Điều chỉnh MS02): giá trị / lý do sau điều chỉnh truyền vào startAdj như đã xác nhận ở bước 4. */
-    const p = pre ? JSON.parse(JSON.stringify(pre)) : null, adj = p && p.adj;
-    if (p) delete p.adj;
+    /* pre.via: tua qua bước này trước (vd. 28 → bước 19 của lần thẩm định sau). */
+    const p = pre ? JSON.parse(JSON.stringify(pre)) : null, adj = p && p.adj, via = p && p.via;
+    if (p) { delete p.adj; delete p.via; }
     start(Object.assign({ dxms }, adj || {}));
     if (p) Object.assign(S.vars, p);
+    if (via) advanceTo(via);
     advanceTo(target, settle);
   }
   function advanceTo(target, settle) {
