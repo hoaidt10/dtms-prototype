@@ -1,0 +1,181 @@
+{
+ "viec-cua-toi": {
+  "who": "minh",
+  "persona": "Nguyễn Văn Minh — Chuyên quản ĐVĐX",
+  "title": "Danh sách việc của tôi",
+  "acts": [],
+  "formTitle": ""
+ },
+ "cong-cu-demo": {
+  "who": "minh",
+  "persona": "Nguyễn Văn Minh — Chuyên quản ĐVĐX",
+  "title": "Danh sách việc của tôi",
+  "acts": [],
+  "formTitle": ""
+ },
+ "luong-danh-sach": {
+  "who": "minh",
+  "persona": "Nguyễn Văn Minh — Chuyên quản ĐVĐX",
+  "title": "Danh sách luồng mua sắm",
+  "acts": [],
+  "formTitle": ""
+ },
+ "luong-them-moi": {
+  "who": "minh",
+  "persona": "Nguyễn Văn Minh — Chuyên quản ĐVĐX",
+  "title": "Thêm mới luồng mua sắm",
+  "acts": [],
+  "formTitle": ""
+ },
+ "t01-can-cu": {
+  "who": "minh",
+  "persona": "Nguyễn Văn Minh — Chuyên quản ĐVĐX",
+  "title": "Xem chi tiết hồ sơ",
+  "acts": [
+   "Hoàn thành"
+  ],
+  "formTitle": "Hoàn thành"
+ },
+ "t05-boc-tach": {
+  "who": "minh",
+  "persona": "Nguyễn Văn Minh — Chuyên quản ĐVĐX",
+  "title": "Xem chi tiết hồ sơ",
+  "acts": [
+   "Gửi rà soát tồn kho",
+   "Thiếu thông tin căn cứ"
+  ],
+  "formTitle": "Gửi rà soát tồn kho"
+ },
+ "kho-ra-soat": {
+  "who": "qlts",
+  "persona": "Hà Văn Tiến — Chuyên viên Phòng Quản lý tài sản",
+  "title": "Rà soát tồn kho",
+  "acts": [],
+  "formTitle": ""
+ },
+ "t07-ton-kho": {
+  "who": "minh",
+  "persona": "Nguyễn Văn Minh — Chuyên quản ĐVĐX",
+  "title": "Xem chi tiết hồ sơ",
+  "acts": [
+   "Hoàn thành"
+  ],
+  "formTitle": "Hoàn thành"
+ },
+ "t08-ycbg": {
+  "who": "minh",
+  "persona": "Nguyễn Văn Minh — Chuyên quản ĐVĐX",
+  "title": "Xem chi tiết hồ sơ",
+  "acts": [
+   "Hoàn thành"
+  ],
+  "formTitle": "Hoàn thành"
+ },
+ "t10-bao-gia": {
+  "who": "minh",
+  "persona": "Nguyễn Văn Minh — Chuyên quản ĐVĐX",
+  "title": "Xem chi tiết hồ sơ",
+  "acts": [
+   "Báo giá đạt",
+   "Không đạt — gửi lại YCBG"
+  ],
+  "formTitle": ""
+ },
+ "t10-vuot-can-cu": {
+  "who": "minh",
+  "persona": "Nguyễn Văn Minh — Chuyên quản ĐVĐX",
+  "title": "Xem chi tiết hồ sơ",
+  "acts": [
+   "Báo giá đạt",
+   "Không đạt — gửi lại YCBG"
+  ],
+  "formTitle": ""
+ },
+ "t12-du-thao": {
+  "who": "minh",
+  "persona": "Nguyễn Văn Minh — Chuyên quản ĐVĐX",
+  "title": "Xem chi tiết hồ sơ",
+  "acts": [
+   "Gửi chỉ huy duyệt"
+  ],
+  "formTitle": ""
+ },
+ "t13-chi-huy": {
+  "who": "hai",
+  "persona": "Trần Đức Hải — Chỉ huy ĐVĐX",
+  "title": "Xem chi tiết hồ sơ",
+  "acts": [
+   "Đồng ý",
+   "Không đồng ý"
+  ],
+  "formTitle": ""
+ },
+ "t17-ttms-cqcm": {
+  "who": "lan",
+  "persona": "Phạm Thị Lan — Chuyên viên TTMS",
+  "title": "Xem chi tiết hồ sơ",
+  "acts": [
+   "Danh sách đúng, đủ — gửi yêu cầu thẩm định",
+   "Chưa đúng/đủ — trả lại"
+  ],
+  "formTitle": ""
+ },
+ "t19-tham-dinh": {
+  "who": "hoa",
+  "persona": "Lê Thanh Hòa — Chuyên viên CQCM",
+  "title": "Xem chi tiết hồ sơ",
+  "acts": [
+   "Hoàn thành phiếu, trình chỉ huy"
+  ],
+  "formTitle": ""
+ },
+ "t28-giai-trinh": {
+  "who": "minh",
+  "persona": "Nguyễn Văn Minh — Chuyên quản ĐVĐX",
+  "title": "Xem chi tiết hồ sơ",
+  "acts": [
+   "Gửi giải trình"
+  ],
+  "formTitle": "Gửi giải trình"
+ },
+ "t42-bm05": {
+  "who": "lan",
+  "persona": "Phạm Thị Lan — Chuyên viên TTMS",
+  "title": "Xem chi tiết hồ sơ",
+  "acts": [
+   "Hoàn tất rà soát BM-05",
+   "Hồ sơ chưa đạt — trả đơn vị"
+  ],
+  "formTitle": ""
+ },
+ "t60-phe-duyet": {
+  "who": "tgd",
+  "persona": "Ngô Đình Khôi — Tổng Giám đốc VHT",
+  "title": "Xem chi tiết hồ sơ",
+  "acts": [
+   "Phê duyệt",
+   "Yêu cầu hoàn chỉnh"
+  ],
+  "formTitle": ""
+ },
+ "bpmn": {
+  "who": "minh",
+  "persona": "Nguyễn Văn Minh — Chuyên quản ĐVĐX",
+  "title": "Xem chi tiết hồ sơ",
+  "acts": [
+   "Báo giá đạt",
+   "Không đạt — gửi lại YCBG"
+  ],
+  "formTitle": ""
+ },
+ "tour": {
+  "who": "minh",
+  "persona": "Nguyễn Văn Minh — Chuyên quản ĐVĐX",
+  "title": "Xem chi tiết hồ sơ",
+  "acts": [
+   "Báo giá đạt",
+   "Không đạt — gửi lại YCBG"
+  ],
+  "formTitle": ""
+ }
+}

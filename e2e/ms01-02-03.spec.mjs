@@ -10,10 +10,10 @@ async function startDemo(page, key) {
   await expect(page).toHaveURL(/#\/ho-so-dxms\/create\//);
   await expect(page.locator('[data-vsel="c-dxms"]')).toHaveClass(/dis/);
   await expect(page.locator('[data-vsel="c-kind"]')).toHaveText('Phê duyệt ĐXMS');
-  await page.locator('[data-vsel="c-proc"]').click();
-  await page.locator(`.vsel-panel [data-opt="${key}"]`).click();
+  await expect(page.locator('#c-proc')).toHaveValue(/^MS01 — /);
   await page.locator('#c-save').click();
   await expect(page).toHaveURL(/#\/task\//);
+  expect(await page.evaluate(() => Flow.state.vars.process), 'luồng con dự kiến theo giá trị / căn cứ của ĐXMS').toBe(key);
 }
 
 // Chạy luồng chính bằng nút chính, tự đổi vai; xử lý các điều kiện trước của kịch bản. Trả về danh sách task đã mở.
@@ -32,6 +32,8 @@ async function runMain(page, onTask) {
     await page.evaluate((id) => { location.hash = `#/task/${id}`; }, tok.id);
     await expect(page.locator('.task-acts [data-act]').first()).toBeVisible();
     seen.push(tok.task);
+    // T29 B3a: bước 7 chỉ xác nhận được khi Kho (Phòng QLTS) đã nhập lần 2 — mô phỏng Kho đã làm (luồng Kho kiểm ở t29-b3.spec).
+    if (tok.task === 7) await page.evaluate(() => RaSoatKho.has('p2') || RaSoatKho.fillSample());
     if (onTask) await onTask(tok);
     if ((tok.task === 11 || tok.task === 12) && !(await page.evaluate(() => !!Flow.ui.necessity))) {
       const f = await openForm(page);
@@ -48,23 +50,22 @@ async function runMain(page, onTask) {
   return seen;
 }
 
-test('MS01.02 (ĐXMS-2026-0124): chỉ căn cứ đã được TĐ duyệt; khớp ≥ 160 tỷ; task 48 khoá "Có báo cáo"; phê duyệt không qua 49–56', async ({ page }) => {
+test('MS01.02 (ĐXMS-2026-0124): chỉ căn cứ đã được TĐ duyệt; ≥ 160 tỷ + Căn cứ đã được phê duyệt → luồng con MS01.02; task 48 chọn sẵn "Không báo cáo" (D-77); phê duyệt không qua 49–56', async ({ page }) => {
   test.setTimeout(120_000);
   await fresh(page, '#/viec-cua-toi');
   await startDemo(page, 'MS01.02');
-  // Task 01 (eForm của quy trình MS01.02): không có loại Kế hoạch SXKD năm; văn bản chọn sẵn 1876/QĐ-TĐ (đã duyệt).
-  const f1 = await openForm(page);
-  await expect(f1.locator('[data-vsel="ef-basisDoc"]')).toContainText('1876/QĐ-TĐ');
-  await expect(f1.locator('.ef-table .vbadge', { hasText: 'Chưa duyệt' })).toHaveCount(0);
-  await f1.locator('[data-vsel="ef-basisType"]').click();
-  await expect(page.locator('.vsel-panel [data-opt="khsx"]')).toHaveCount(0);
-  await f1.locator('[data-vsel="ef-basisType"]').click();
-  await closeForm(page);
+  // Task 01 (D-81): căn cứ của hồ sơ MS01.02 — 1876/QĐ-TĐ (đã duyệt) ở khối chỉ xem Thông tin chung.
+  await expect(page.locator('[data-basis-avail] tbody').first()).toContainText('1876/QĐ-TĐ');
 
   const seen = await runMain(page, async (tok) => {
-    if (tok.task === 10) { const f = await openForm(page); await expect(f).toContainText('Khớp'); await closeForm(page); }
+    if (tok.task === 10) {
+      const f = await openForm(page);
+      await expect(f.locator('[data-vsel="ef-canCuDuyet"]')).toContainText('Đã phê duyệt');
+      await expect(f).toContainText('luồng MS01.02');
+      await closeForm(page);
+    }
     if (tok.task === 48) {
-      await expect(page.locator('.task-acts [data-act]', { hasText: 'Có báo cáo' })).toBeDisabled();
+      await expect(page.locator('.task-acts [data-act]', { hasText: 'Có báo cáo' })).toBeEnabled();
       await expect(page.locator('.task-acts [data-act].primary')).toHaveText('Không báo cáo TGĐ Tập đoàn');
     }
   });
@@ -80,9 +81,7 @@ test('MS01.03 (ĐXMS-2026-0098): BM-09 + Checklist 02, Ban Tài chính bắt bu�
   test.setTimeout(120_000);
   await fresh(page, '#/viec-cua-toi');
   await startDemo(page, 'MS01.03');
-  const f1 = await openForm(page);
-  await expect(f1.locator('[data-vsel="ef-basisDoc"]')).toContainText('0412/QĐ-VHT');
-  await closeForm(page);
+  await expect(page.locator('[data-basis-avail] tbody').first()).toContainText('0412/QĐ-VHT');
 
   const seen = await runMain(page, async (tok) => {
     if (tok.task === 7) {
@@ -92,7 +91,7 @@ test('MS01.03 (ĐXMS-2026-0098): BM-09 + Checklist 02, Ban Tài chính bắt bu�
     }
     if (tok.task === 11) {
       const f = await openForm(page);
-      await expect(f.locator('.ef-group > .ef-gh')).toContainText('Tờ trình BM-09');
+      await expect(f.locator('.ef-group > .ef-gh').first()).toContainText('Tờ trình BM-09');
       await expect(f.locator('.ef-table .ef-lbl', { hasText: 'Checklist 02' })).toHaveCount(1);
       await closeForm(page);
       await page.locator('[data-preview]', { hasText: 'BM-09' }).click();

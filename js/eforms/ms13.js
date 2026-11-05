@@ -8,7 +8,12 @@
   const { txt, banner, tbl, tf, ta, dt, sel, rad, chkl, tags, req, grp, dl, opts } = B;
   const pick = (vals, keys) => keys.reduce((o, k) => { if (vals[k] !== undefined) o[k] = vals[k]; return o; }, {});
   const SIGN_COLS = [['nguoiKy', 'Người ký'], ['tuCach', 'Tư cách'], ['trangThai', 'Trạng thái'], ['thoiDiem', 'Thời điểm']];
-  const KET_LUAN = opts(['Đồng ý', 'Cần sửa đổi, giải trình']);
+  /* T31 B4 (K5): kết luận theo SRS-KDT BR-KDT-08-04 / 05 — Đạt hoặc Cần sửa đổi, giải trình (không dùng Đồng ý / OK). */
+  const KET_LUAN = opts(['Đạt', 'Cần sửa đổi, giải trình']);
+  const NEED_FIX = 'Cần sửa đổi, giải trình';
+  /* Bản ghi kết quả theo vòng / lượt / đơn vị cho Lịch sử ý kiến thẩm định (thẻ bốn khu, js/tham-dinh.js). */
+  const hist = (tok, h, id, fix, rows) => ({ kdtTdHist: (window.Flow.ui.kdtTdHist || []).concat([{ td: h.tdKey(), luot: h.rvIdx(tok.task === 27), id, fix, rows }]) });
+  const GHI_LAI = { draftLabel: 'Ghi lại', draftToast: '<b>Thành công</b><br>Đã ghi lại kết quả thẩm định. Hồ sơ vẫn ở trạng thái Đang thẩm định.' };
   const PEND_COLS = [['donVi', 'Đơn vị'], ['muc', 'Mục'], ['yKien', 'Ý kiến'], ['traLoi', 'Đơn vị đề xuất trả lời']];
   const CL_ROW = [txt('**{{this.tt}}**', 1), txt('{{if this.header then "**" + this.muc + "**" else this.muc}}', 6),
     txt('{{this.so}}', 3, '=this.header'), txt('{{this.yeuCau}}', 2, '=this.header'), txt('**{{this.tinhTrang}}**', 2, '=this.header'),
@@ -17,7 +22,7 @@
   /* Ghi kết luận TTMS / CQCM của lượt thẩm định vào ý kiến theo lượt (op['td-lượt-đơn vị'] — đọc ở cổng "Cần sửa đổi hoặc giải trình?"). */
   const writeOp = (id) => (v, tok, h) => {
     const op = Object.assign({}, window.Flow.ui.op);
-    op[`${h.tdKey()}-${h.rvIdx(tok.task === 27)}-${id === 'cqcm' ? tok.cqcm : id}`] = v.ketLuanTd === 'Cần sửa đổi, giải trình';
+    op[`${h.tdKey()}-${h.rvIdx(tok.task === 27)}-${id === 'cqcm' ? tok.cqcm : id}`] = v.ketLuanTd === NEED_FIX;
     return { op };
   };
 
@@ -48,8 +53,10 @@
       schema: () => ({ components: [
         sel('basisType', 'Loại căn cứ', req({ values: window.D.kdtBasisTypes.map((b) => ({ label: b.name, value: b.id })), layout: { columns: 8 } })),
         sel('basisDoc', 'Văn bản căn cứ đã phê duyệt', req({ valuesExpression: '=basisDocOptions[item.type = basisType]', searchable: true, layout: { columns: 8 } })),
-        tbl('Văn bản căn cứ theo loại đã chọn', 'basisDocs[item.typeId = basisType]', [['so', 'Số'], ['ngay', 'Ngày'], ['loai', 'Loại'], ['trichYeu', 'Trích yếu'], ['giaTri', 'Giá trị (tỷ)'], ['conLai', 'Còn lại (tỷ)']])] }),
-      notes: () => ['Căn cứ KĐT theo 3 loại: Kế hoạch SXKD / PAKD / đề tài hàng năm · Hợp đồng / thoả thuận hợp tác · Chỉ đạo Ban TGĐ (plan KĐT §4.1, UR-KDT-01). Văn bản căn cứ là options đọc từ biến (E1).',
+        tbl('Văn bản căn cứ theo loại đã chọn', 'basisDocs[item.typeId = basisType]', [['so', 'Số'], ['ngay', 'Ngày'], ['loai', 'Loại'], ['trichYeu', 'Trích yếu'], ['giaTri', 'Giá trị (tỷ)'], ['conLai', 'Còn lại (tỷ)']]),
+        tbl('Dòng dự toán đề tài / dự án đã bóc tách khi tạo KĐT', 'duToanChon', [['loai', 'Loại chi phí'], ['khoanMuc', 'Khoản mục chi phí'], ['dvt', 'ĐVT'], ['sl', 'Số lượng đề xuất'], ['giaTri', 'Giá trị dự tính (tỷ)'], ['duToan', 'Giá trị dự toán (tỷ)'], ['goiThau', 'Hình thành gói thầu']], '=count(duToanChon) = 0')] }),
+      notes: () => ['T31 B3 (D-68): bảng "Dòng dự toán đề tài / dự án đã bóc tách khi tạo KĐT" là khối chỉ xem (loại 3) đọc biến <code>duToanChon</code> do BE ghi khi start từ các dòng bóc tách của KĐT (Thêm mới / Chỉnh sửa KĐT, SCR-55); ẩn khi không có dòng. Bước 05 hiện cùng bảng (form MS01).',
+        'Căn cứ KĐT theo 3 loại: Kế hoạch SXKD / PAKD / đề tài hàng năm · Hợp đồng / thoả thuận hợp tác · Chỉ đạo Ban TGĐ (plan KĐT §4.1, UR-KDT-01). Văn bản căn cứ là options đọc từ biến (E1).',
         'Không lọc căn cứ theo quy trình: nhóm KĐT (MS13 / MS14 / MS15) do hệ thống xác định sau khi Ban Tài chính và TTMS xác nhận (D-7). Hoàn thành → task 02 lấy dữ liệu, task 03 AI gợi ý thông tin cơ bản KĐT.'],
       write: (v) => pick(v, ['basisType', 'basisDoc']) },
 
@@ -140,26 +147,36 @@
 
     /* Khối chung 25–38 (D-32): cùng form cho mọi vòng, nội dung theo vòng (giaiDoan). */
     26: 'boSung', 59: 'boSung',
-    27: { id: 'dtms-ms13-b27-ttms-tham-dinh', q: ['P-54'],
+    27: Object.assign({ id: 'dtms-ms13-b27-ttms-tham-dinh', q: ['P-54'] }, GHI_LAI, {
       schema: () => ({ components: [
         banner('{{banner27}}', '=banner27 = "" or banner27 = null', 'moved'),
         txt('### Rà soát tính hợp lệ · {{giaiDoan.title}} · {{demVong}}\n{{raSoat}}'),
         txt('**Thẩm định nội dung hồ sơ** — lượt {{luot}}'),
-        dl('thamDinh', '', [txt('{{this.stt}}. {{this.noiDung}}', 10), rad('danhGia', 'Đánh giá', req({ values: opts(['Đạt', 'Không đạt']), layout: { columns: 6 } }))]),
-        ta('nhanXetTtms', 'Nhận xét của TTMS'),
-        rad('ketLuanTd', 'Kết luận', req({ values: KET_LUAN })),
+        dl('thamDinh', '', [txt('{{this.stt}}. {{this.noiDung}}', 10), rad('danhGia', 'Đánh giá', req({ values: opts(['Đạt', 'Không đạt']), layout: { columns: 6 } })),
+          ta('nhanXet', 'Nội dung nhận xét', req({ rows: 2, layout: { columns: 8 }, conditional: { hide: '=this.danhGia = "Đạt"' } })),
+          ta('huongDan', 'Hướng dẫn sửa', { rows: 2, layout: { columns: 8 }, conditional: { hide: '=this.danhGia = "Đạt"' } })]),
+        ta('nhanXetTtms', 'Nhận xét chung của TTMS'),
+        txt('**Kết luận: Đạt** — mọi nội dung thẩm định Đạt.', 16, '=count(thamDinh[item.danhGia = "Không đạt"]) > 0'),
+        txt('**Kết luận: Cần sửa đổi, giải trình** — {{count(thamDinh[item.danhGia = "Không đạt"])}} nội dung Không đạt, bắt buộc nhập nội dung nhận xét.', 16, '=count(thamDinh[item.danhGia = "Không đạt"]) = 0'),
         tbl('Ý kiến các lượt trước', 'yKienTruoc', [['luot', 'Lượt'], ['donVi', 'Đơn vị'], ['noiDung', 'Nội dung cần sửa'], ['traLoi', 'Đơn vị đề xuất trả lời']], '=count(yKienTruoc) = 0')] }),
       notes: (h) => ['Khối chung 25–38 dùng cho cả ba vòng (BM-00 / BM-01 / BM-03 — D-32): cổng "Hồ sơ đủ điều kiện thẩm định?" do hệ thống kiểm tra khi mở vòng (chưa đủ → AI gợi ý, ĐVĐX sửa ở bước 26 rồi chọn lại CQCM của vòng). Đủ → TTMS thẩm định; có CQCM phối hợp → hệ thống gửi hồ sơ (bước 28–29).',
-        'Danh sách CQCM đã được CQCM chủ trì xác nhận ở bước 23 / 42 / 53 — bước này không còn nút trả lại danh sách. Bộ đếm vòng check / lần họp do engine tăng (script task), đếm riêng cho từng vòng. Kết luận "Cần sửa đổi, giải trình" là biến cổng "Cần sửa đổi hoặc giải trình?".'],
-      write: (v, tok, h) => Object.assign(pick(v, ['thamDinh', 'nhanXetTtms']), writeOp('TTMS')(v, tok, h)) },
-    29: { id: 'dtms-ms13-b29-cqcm-y-kien',
+        'Danh sách CQCM đã được CQCM chủ trì xác nhận ở bước 23 / 42 / 53 — bước này không còn nút trả lại danh sách. Bộ đếm vòng check / lần họp do engine tăng (script task), đếm riêng cho từng vòng. Kết luận "Cần sửa đổi, giải trình" là biến cổng "Cần sửa đổi hoặc giải trình?".',
+        'T31 B4 (IA-DXMS dòng 19–22, BR-KDT-08-04): mỗi nội dung thẩm định Đạt / Không đạt; Không đạt bắt buộc Nội dung nhận xét, có Hướng dẫn sửa; Kết luận do hệ thống tính (Đạt khi mọi nội dung Đạt). Ghi lại = Lưu nháp, hồ sơ giữ Đang thẩm định.'],
+      write: (v, tok, h) => {
+        const bad = (v.thamDinh || []).filter((r) => r.danhGia === 'Không đạt'), w = Object.assign({}, v, { ketLuanTd: bad.length ? NEED_FIX : 'Đạt' });
+        return Object.assign(pick(v, ['thamDinh', 'nhanXetTtms']), writeOp('TTMS')(w, tok, h),
+          hist(tok, h, 'TTMS', !!bad.length, bad.map((r) => ({ muc: r.noiDung, text: r.nhanXet || '', guide: r.huongDan || '' }))));
+      } }),
+    29: Object.assign({ id: 'dtms-ms13-b29-cqcm-y-kien' }, GHI_LAI, {
       schema: (h) => ({ components: [txt('### AI gợi ý phản hồi\n{{aiPhanHoi}}'),
         txt('**{{cqcmTen}}** · Lượt {{luot}} · Hồ sơ v{{phienBan}}'),
         dl('phieuNhanXet', `Phiếu nhận xét (${h.stg().cq})`, [txt('**{{this.muc}}**', 3), ta('nhanXet', 'Nhận xét', { rows: 2, layout: { columns: 7 } }), ta('huongDan', 'Hướng dẫn sửa', { rows: 2, layout: { columns: 6 } })]),
         rad('ketLuanTd', 'Kết luận', req({ values: KET_LUAN }))] }),
       notes: (h) => [`CQCM phối hợp gửi ý kiến trực tiếp cho ĐVĐX và TTMS (không phát hành công văn đề nghị phối hợp riêng); phiếu nhận xét theo ${h.stg().cq}. Multi-instance theo CQCM.`,
-        'Một CQCM kết luận cần sửa → ĐVĐX bổ sung hoặc giải trình (bước 31).'],
-      write: (v, tok, h) => Object.assign(pick(v, ['phieuNhanXet']), writeOp('cqcm')(v, tok, h)) },
+        'Một CQCM kết luận cần sửa → ĐVĐX bổ sung hoặc giải trình (bước 31).',
+        'T31 B4 (IA-DXMS dòng 19–22, BR-KDT-08-05): Kết luận Đạt / Cần sửa đổi, giải trình; Ghi lại = Lưu nháp. Thẻ thẩm định trên màn việc: CQCM phối hợp chỉ thấy kết quả của cơ quan mình (BR-KDT-08-06).'],
+      write: (v, tok, h) => Object.assign(pick(v, ['phieuNhanXet']), writeOp('cqcm')(v, tok, h),
+        hist(tok, h, tok.cqcm, v.ketLuanTd === NEED_FIX, (v.phieuNhanXet || []).filter((r) => r.nhanXet).map((r) => ({ muc: r.muc, text: r.nhanXet, guide: r.huongDan || '' })))) }),
     31: { id: 'dtms-ms13-b31-giai-trinh', q: ['P-54'],
       schema: () => ({ components: [banner('{{chiDao}}', '=chiDao = ""', 'moved'),
         txt('### AI tổng hợp {{soNoiDung}} nội dung cần sửa đổi, giải trình · {{demVong}}\n{{aiTongHop}}'),
@@ -194,15 +211,16 @@
       schema: () => ({ components: [
         banner('Kiểm tra hồ sơ trước khi gửi: Không đạt — {{aiCheckK.lyDo}} Hồ sơ được trả về để hoàn thiện.', '=aiCheckK = null'),
         grp('Tờ trình chủ trương KĐT (BM-01) — nội dung các mục', [ta('mucTieuK', '4.1. Mục đích, mục tiêu', req()), B.aiTable('aiSuCanThietK', '4.2. Sự cần thiết (gợi ý AI)'),
-          ta('phuongPhapK', '5.2. Phương pháp tính toán'), ta('toChucK', 'II. Tổ chức thực hiện')]),
+          ta('phuongPhapK', '5.2. Phương pháp tính toán'), ta('hieuQuaK', '7. Đánh giá hiệu quả', { description: 'Nếu cần (BM-8.6.5).' }), ta('toChucK', 'II. Tổ chức thực hiện')]),
         tbl('Phụ lục danh mục', 'phuLucDanhMuc', [['n', 'STT'], ['hang', 'Hàng hoá / dịch vụ'], ['sl', 'SL mua'], ['donGia', 'Đơn giá (tỷ)'], ['thanhTien', 'Thành tiền (tỷ)'], ['loai', 'Loại chi phí']]),
         tbl('Checklist số 01', 'checklist01', [['tt', 'TT'], ['muc', 'Danh mục hồ sơ'], ['so', 'Số văn bản'], ['yeuCau', 'Yêu cầu'], ['tinhTrang', 'Tình trạng'], ['ghiChu', 'Ghi chú']]),
         txt('Tờ trình **BM-01** hoàn chỉnh (mẫu Word + dữ liệu form) xem ở **Văn bản đầu ra**; căn cứ, eBOM, kết quả tồn kho, báo giá ở Danh sách tài liệu.')] }),
       outputs: () => ['BM-01'],
       notes: () => ['Tờ trình chủ trương KĐT (ký trực tiếp) BM-01 theo bộ biểu mẫu KĐT (BM-8.6.5): TGĐ VHT ký ô PHÊ DUYỆT ngay trên tờ trình, cơ quan chủ trì thẩm định ký thẩm định trên cùng văn bản.',
         'Cổng "AI kiểm tra đạt?" (sau bước 44, BPMN 12/10 — trước là DX-01) Không đạt → hồ sơ về bước này, banner hiện lý do (biến <code>aiCheckK</code>, P-62). TGĐ VHT không ký chủ trương, chỉ đạo xử lý tiếp → hồ sơ cũng quay về đây (qua cổng gộp).',
-        'G4: tab của bản cũ tách thành nội dung từng mục (trường form), Phụ lục và Checklist 01 (khối chỉ xem), văn bản hoàn chỉnh ở Văn bản đầu ra, tệp ở Danh sách tài liệu.'],
-      write: (v) => Object.assign(pick(v, ['mucTieuK', 'aiSuCanThietK', 'phuongPhapK', 'toChucK']), { kNeed: !!window.EVars.h.aiFinal((v.aiSuCanThietK || [])[0]) }) },
+        'G4: tab của bản cũ tách thành nội dung từng mục (trường form), Phụ lục và Checklist 01 (khối chỉ xem), văn bản hoàn chỉnh ở Văn bản đầu ra, tệp ở Danh sách tài liệu.',
+        'T31 B3 (K4b, IA-DXMS dòng 16): thêm mục <b>7. Đánh giá hiệu quả</b> của BM-01 (BM-8.6.5 — "nếu cần") thành trường sửa được; mặc định theo dữ liệu hồ sơ.'],
+      write: (v) => Object.assign(pick(v, ['mucTieuK', 'aiSuCanThietK', 'phuongPhapK', 'hieuQuaK', 'toChucK']), { kNeed: !!window.EVars.h.aiFinal((v.aiSuCanThietK || [])[0]) }) },
     40: { id: 'dtms-ms13-b40-kiem-tra-cl01',
       schema: () => ({ components: [txt('**Đại diện đơn vị kiểm tra:** Phòng Kế hoạch – Tổng hợp, Trung tâm Vô tuyến · **Đại diện đơn vị lập hồ sơ:** Nguyễn Văn Minh'),
         checklistKdt('checklist01', 'Checklist số 01 — Kiểm tra hồ sơ trình phê duyệt chủ trương KĐT đơn giản'), ta('ketLuanCl', 'Kết luận', req())] }),
@@ -227,13 +245,20 @@
     50: { id: 'dtms-ms13-b50-ho-so-kdt',
       schema: () => ({ components: [banner('{{traLai57}}', '=traLai57 = ""', 'moved'),
         tbl('AI gợi ý từ chủ trương đã phê duyệt', 'keThua', [['noiDung', 'Nội dung'], ['tu', 'Kế thừa từ'], ['trangThai', 'Trạng thái']]), txt('*{{chuTruong}}*'),
-        grp('Tờ trình BM-03 và Phụ lục thuyết minh — nội dung sửa được', [tf('diaDiem', 'Địa điểm đầu tư', { layout: { columns: 8 } }), ta('hienTrang', 'Đánh giá hiện trạng'), ta('ruiRo', 'Rủi ro')]),
+        grp('1. Mục đích / mục tiêu, sự cần thiết (Phụ lục thuyết minh mục 1)', [ta('hienTrang', 'Đánh giá hiện trạng'), ta('phanTichNhuCau', 'Phân tích nhu cầu'),
+          ta('ketLuanCanThiet', 'Kết luận về sự cần thiết')]),
+        tbl('Kết quả rà soát tồn kho (chỉ xem)', 'ruaSoatKho', [['name', 'Hàng hoá'], ['prop', 'SL đề xuất'], ['avail', 'Tồn kho khả dụng'], ['fromStock', 'Lấy từ kho']]),
+        grp('2. Phương án thiết kế công nghệ, giải pháp triển khai', [ta('quanDiem', 'Quan điểm, định hướng'), ta('phuongAnTk', 'Phương án thiết kế'),
+          tf('diaDiem', 'Địa điểm đầu tư', { layout: { columns: 8 } }), ta('giaiPhap', 'Giải pháp triển khai'), ta('ruiRo', 'Rủi ro')]),
+        grp('3. Tổng mức vốn, quy mô, hiệu quả', [ta('phuongPhapTinh', 'Phương pháp tính, cơ sở đơn giá'), ta('danhGiaHieuQua', 'Đánh giá hiệu quả', { description: 'Nếu cần (BM-8.6.5).' })]),
+        grp('4. Tổ chức thực hiện', [ta('toChucTh', 'Tổ chức thực hiện'), ta('cacMoc', 'Các mốc thời gian chính', { description: 'Mỗi dòng một mốc: phê duyệt KĐT, KHLCNT, nghiệm thu.' })]),
         tbl('Checklist số 02', 'checklist02', [['tt', 'TT'], ['muc', 'Danh mục hồ sơ'], ['so', 'Số văn bản'], ['yeuCau', 'Yêu cầu'], ['tinhTrang', 'Tình trạng'], ['ghiChu', 'Ghi chú']]),
         txt('Tờ trình **BM-03** và **Phụ lục thuyết minh** (mẫu Word + dữ liệu form) xem ở **Văn bản đầu ra**.')] }),
       outputs: () => ['BM-03', 'PL-TM'],
       notes: () => ['AI tổng hợp, gợi ý từ chủ trương đã được TGĐ VHT ký duyệt (bước 48, AI ở bước 49) để lập Tờ trình thẩm định, phê duyệt KĐT BM-03 và Checklist 02; ĐVĐX rà soát, bổ sung hồ sơ.',
-        'Quay lại bước này khi: báo cáo thẩm định chưa được thông qua (57 → 58 → 59), hoặc TGĐ VHT không ký Quyết định BM-18 (bước 60).', 'G4: tab của bản cũ tách thành trường form + khối chỉ xem + Văn bản đầu ra + Danh sách tài liệu.'],
-      write: (v) => pick(v, ['diaDiem', 'hienTrang', 'ruiRo']) },
+        'Quay lại bước này khi: báo cáo thẩm định chưa được thông qua (57 → 58 → 59), hoặc TGĐ VHT không ký Quyết định BM-18 (bước 60).', 'G4: tab của bản cũ tách thành trường form + khối chỉ xem + Văn bản đầu ra + Danh sách tài liệu.',
+        'T31 B3 (K4b, D-67): mục của Tờ trình BM-03 và Phụ lục thuyết minh theo <b>BM-8.6.5</b>, xếp theo 5 nhóm của IA-DXMS dòng 14–18 — (14) Lý do cần thiết: Đánh giá hiện trạng, <b>Phân tích nhu cầu</b>, <b>Kết luận về sự cần thiết</b> + khối chỉ xem Kết quả rà soát tồn kho (bước 07; "Đánh giá tồn kho" của IA không phải mục BM); (15) Quan điểm: <b>Quan điểm, định hướng</b>, <b>Phương án thiết kế</b>, Địa điểm, <b>Giải pháp triển khai</b>; (16) Nội dung đề xuất: hạng mục, tổng mức vốn từ bước 05–10, <b>Phương pháp tính, cơ sở đơn giá</b>, <b>Đánh giá hiệu quả</b>; (17) Biện pháp, kế hoạch: <b>Tổ chức thực hiện</b>, <b>Các mốc thời gian chính</b>; (18) Hồ sơ kèm theo: Checklist 02 + phụ lục tải lên theo <b>Loại tài liệu</b> ở Danh sách tài liệu (không bắt buộc, như F7 của ĐXMS; không cố định 6 ô Có / Không). "Rủi ro" không có trong BM-03 — giữ theo prototype cũ. Mặc định của các trường lấy từ chủ trương đã duyệt và dữ liệu hồ sơ (GIẢ LẬP).'],
+      write: (v) => pick(v, ['diaDiem', 'hienTrang', 'ruiRo', 'phanTichNhuCau', 'ketLuanCanThiet', 'quanDiem', 'phuongAnTk', 'giaiPhap', 'phuongPhapTinh', 'danhGiaHieuQua', 'toChucTh', 'cacMoc']) },
     51: { id: 'dtms-ms13-b51-kiem-tra-cl02',
       schema: () => ({ components: [txt('**Đại diện đơn vị kiểm tra:** Phòng Kế hoạch – Tổng hợp, Trung tâm Vô tuyến · **Đại diện đơn vị lập hồ sơ:** Nguyễn Văn Minh'),
         checklistKdt('checklist02', 'Checklist số 02 — Kiểm tra hồ sơ trình thẩm định, phê duyệt KĐT đơn giản'), ta('ketLuanCl', 'Kết luận', req())] }),
@@ -347,7 +372,7 @@
     schema: () => ({ components: [tbl('Nội dung điều chỉnh đã thống nhất sau họp', 'dieuChinh', [['noiDung', 'Nội dung'], ['truoc', 'Trước họp'], ['sau', 'Sau họp (đã thống nhất)']]),
       txt('*{{ketLuanHop}}* · Họp {{soLanHop}}/2'), tbl('Xác nhận sau họp', 'xacNhanSauHop', [['nguoi', 'Người xác nhận'], ['vaiTro', 'Vai trò'], ['trangThai', 'Trạng thái']])] }),
     notes: () => ['Sau họp: Chuyên quản ĐVĐX xác nhận nội dung điều chỉnh (bước 34), sau đó Chỉ huy ĐVĐX xác nhận lại (bước 35). Chỉ khi đủ hai xác nhận, ĐVĐX mới được cập nhật hồ sơ (bước 36).'] };
-  const HOAN_CHINH = { id: 'dtms-ms13-b46-55-tham-dinh-hoan-chinh', q: ['P-90'],
+  const HOAN_CHINH = { id: 'dtms-ms13-b46-55-tham-dinh-hoan-chinh', q: ['P-90'], draftLabel: GHI_LAI.draftLabel, draftToast: GHI_LAI.draftToast,
     schema: (h, tok) => ({ components: [txt('### Kết quả thẩm định {{giaiDoan.title}}\n{{ketQuaTd}}'),
       tbl('Ý kiến thẩm định đã xử lý trong vòng', 'yKienVong', [['luot', 'Lượt'], ['donVi', 'Đơn vị'], ['noiDung', 'Nội dung'], ['traLoi', 'Đơn vị đề xuất tiếp thu, giải trình']], '=count(yKienVong) = 0'),
       txt('*Không có ý kiến cần sửa đổi, giải trình trong vòng này.*', 16, '=count(yKienVong) > 0'),

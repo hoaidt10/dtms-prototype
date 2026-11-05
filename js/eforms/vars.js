@@ -180,9 +180,13 @@
   const lastIdx = (k) => Flow.state.history.map((x) => String(x.task)).lastIndexOf(String(k));
 
   /* Checklist 01/02 của ĐXMS (§5.6): tình trạng tự điền từ tài liệu đã có trên hồ sơ. */
+  /* T29 B17 (P-212): phụ lục của Tờ trình chọn Có / Không — chọn khi tạo luồng (vars.phuLuc), sửa ở bước lập dự thảo (pl_<khoá>);
+     vals = giá trị form đang nộp (chưa ghi vào U). */
+  const plOn = (key, vals) => ((vals && vals['pl_' + key]) || U()['pl_' + key] || (Flow.state.vars.phuLuc || {})[key] || 'Không') === 'Có';
   const checklistRows = () => D.checklist.map((c) => {
-    /* T29 F7: phụ lục "nếu có" — Đủ khi đơn vị đã tải lên ở Danh sách tài liệu. */
-    if (c.up) return { nhom: c.g, muc: c.name, so: U()[c.up] ? 'Đã tải lên' : c.no, yeuCau: c.req, tinhTrang: U()[c.up] ? 'Đủ' : 'Không có' };
+    /* T29 F7, B17: phụ lục chọn Có — bắt buộc, Đủ khi đã tải lên; chọn Không — Không áp dụng. */
+    if (c.up) return plOn(c.up) ? { nhom: c.g, muc: c.name, so: U()[c.up] ? 'Đã tải lên' : c.no, yeuCau: 'Bắt buộc', tinhTrang: U()[c.up] ? 'Đủ' : 'Thiếu' }
+      : { nhom: c.g, muc: c.name, so: '—', yeuCau: 'Không', tinhTrang: 'Không áp dụng' };
     const ok = c.by == null ? null : Flow.taskStatus(c.by) !== 'todo' || c.by === draftTask();
     return { nhom: c.g, muc: c.name, so: c.no, yeuCau: c.req, tinhTrang: ok == null ? 'Không có' : ok ? 'Đủ' : 'Thiếu' };
   });
@@ -300,6 +304,16 @@
     v.basisDocOptions = bs.list.map((d) => ({ value: d.id, label: `${d.no} — ${d.title}`, type: d.type }));
     v.basisDocs = bs.list.map((d) => ({ typeId: d.type, so: d.no, ngay: d.date, loai: ((kdt() ? D.kdtBasisTypes : D.basisTypes).find((b) => b.id === d.type) || {}).name || d.type,
       trichYeu: d.title, giaTri: d.value ? ty(d.value) : '-', conLai: d.value ? ty(d.remain) : '-', tdDuyet: d.group ? 'Đã duyệt' : 'Chưa duyệt' }));
+    /* T29 B3c (S4, DTMS_CN_0140, BR-DXMS-02-04): văn bản căn cứ bổ sung — chọn nhiều; bảng đã chọn có Đã dùng ở ĐXMS khác / ĐXMS này đang giữ / Còn có thể sử dụng.
+       GIẢ LẬP: hạng mục của hồ sơ liên kết văn bản căn cứ chính (dòng căn cứ theo hạng mục làm khi có dự toán chi tiết — DTMS_Q_0401). */
+    v.basisMore = (u.basisMore || []).filter((id) => id !== v.basisDoc);
+    v.basisMoreOptions = bs.list.map((d) => ({ value: d.id, label: `${d.no} — ${d.title}` }));
+    const hold0 = Math.round(buyItems().reduce((s, i) => s + (i.amount || 0), 0) * 100) / 100;
+    v.basisAll = bs.list.map((d) => {
+      const main = d.id === v.basisDoc, hold = main ? hold0 : 0, rem = d.value ? Math.round((d.remain - hold) * 100) / 100 : null;
+      return { id: d.id, so: d.no, loai: ((kdt() ? D.kdtBasisTypes : D.basisTypes).find((b) => b.id === d.type) || {}).name || d.type, vaiTro: main ? 'Chính' : 'Bổ sung',
+        giaTri: d.value ? ty(d.value) : '-', daDung: d.value ? ty(d.value - d.remain) : '-', dangGiu: ty(hold), conLai: rem == null ? '-' : ty(rem) };
+    });
 
     /* 04 */
     v.aiEstimateOff = !kdt() && !Flow.inRange(proc(), D.aiEstimate);
@@ -315,7 +329,8 @@
 
     /* T29 S8 (D-60) — dòng dự toán đề tài / dự án đã bóc tách khi tạo luồng: BE ghi biến khi start từ hạng mục của ĐXMS (bảng giữ chỗ căn cứ).
        Chỉ xem ở bước 01, 05; danh mục hàng hoá để rà soát, báo giá vẫn là bocTach (nối vào ở B3 — S4). */
-    const xDt = !kdt() && Flow.findDxms(Flow.state.dxms);
+    /* T31 B3 (D-68): hồ sơ KĐT đọc các dòng bóc tách của KĐT (SCR-55). */
+    const xDt = kdt() ? Flow.findKdt(Flow.state.kdt) : Flow.findDxms(Flow.state.dxms);
     const ctName = (t) => (D.costTypes.find(([k]) => k === t) || [t, t])[1];
     v.duToanChon = ((xDt && xDt.cost) || []).map((r) => ({ loai: ctName(r.type), khoanMuc: r.item, dvt: r.uom || '-', sl: r.qty == null ? '-' : r.qty,
       giaTri: ty(r.value), duToan: ty(r.budget), goiThau: r.pkg || '-' }));
@@ -323,16 +338,36 @@
     /* 05 */
     v.basisTreeText = D.tree.map((x) => (x.children ? `- **${x.name}**: ${x.children.map((c) => `${c.name} (${c.lines.length} dòng)`).join('; ')}` : `- **${x.name}** (${x.lines.length} dòng)`)).join('\n');
     v.bocTachNguon = R().src;
-    v.bocTach = D.items.map((i) => ({ n: i.n, name: i.name, uom: i.uom, bom: i.bom == null ? '-' : i.bom, used: i.used == null ? '-' : i.used,
+    /* T29 B12 (Huylx4 #20): bảng bóc tách đọc bộ hạng mục mẫu (D.itemsBase) — dòng đã bỏ đánh dấu bo; hạng mục thêm từ dự toán ở hangMucThem. */
+    const ed5 = u.bocTachEdit || { drop: [] };
+    v.hangMucThem = u.hangMucThem || [];
+    v.duToanLineOptions = ((xDt && !kdt() && xDt.nv) ? D.duToanOf(xDt.nv) : []).filter((l) => l.buy && l.status !== 'Hoàn thành')
+      .map((l) => ({ value: l.id, label: `${ctName(l.type)} · ${l.item} · ${l.fund || '-'} · ĐVT ${l.uom || '-'} · dự toán ${l.qty == null ? '' : `${l.qty} ${l.uom || ''}, `}${ty(l.value)} tỷ` }));
+    v.bocTach = D.itemsBase().map((i) => ({ n: i.n, name: i.name, uom: i.uom, bom: i.bom == null ? '-' : i.bom, used: i.used == null ? '-' : i.used, bo: (ed5.drop || []).includes(i.n),
       usedIn: D.usedIn[i.n] || '', remain: lineRemain(i), remainText: lineRemain(i) == null ? '-' : lineRemain(i), prop: propOf(i), nhom: i.group ? 'Nhóm ' + i.group : '-', warn: i.warn || '' }));
+
+    /* T29 B16 — DX-10: dữ liệu chỉ xem của bốn bước chỉ huy duyệt (5.1, 7.1, 10.1, 16.1). */
+    v.tenHoSo = ci.name || ci.title || '';
+    v.bocTachXem = D.items.map((i) => ({ n: i.n, hang: i.name, dvt: i.uom, sl: propOf(i) }));
+    v.tongBaoGia = (() => { try { return window.BaoGia && !kdt() ? ty(window.BaoGia.total()) : '-'; } catch (e) { return '-'; } })();
+    v.cqcmXem = (Flow.cqcmSel ? Flow.cqcmSel() : []).map((id) => { const c = D.cqcm.find((x) => x.id === id) || {}; return { donVi: c.unit || id, nguoi: c.doer ? persona(c.doer).name : '-' }; });
 
     /* 07 — kết quả tích hợp hệ thống kho (task 06, service task) */
     v.stock = { trangThai: 'Đã có kết quả', ma: R().rstk, gui: Flow.dateOf(Math.max(0, Flow.state.clock - 1)) };
     const fs = u.ruaSoatKho || [];
+    /* T29 B3a + B5 (D-82): MS01 / MS02 đọc kết quả Kho nhập một lần ở SCR-105 (Flow.ui.rstk.kq, cột BM-RSTK); chưa có thì chưa có Tồn khả dụng. KĐT giữ số mẫu. */
+    const kho = !kdt() && window.RaSoatKho ? window.RaSoatKho : null, kr = kho ? kho.rows() : null;
+    if (kho) v.stock = kho.done() ? { trangThai: 'Đã có kết quả', ma: R().rstk, gui: Flow.dateOf((kho.data().kq || {}).t || 0) }
+      : { trangThai: 'Chờ Phòng Quản lý tài sản rà soát', ma: R().rstk, gui: Flow.dateOf(Math.max(0, Flow.state.clock - 1)) };
+    v.khoXong = kho ? kho.done() : true;
     v.ruaSoatKho = D.items.map((i) => {
-      const avail = i.stock == null ? null : i.stock, max = Math.min(avail || 0, propOf(i)), sv = fs.find((x) => x.n === i.n);
-      return { n: i.n, name: i.name, prop: propOf(i), book: i.book != null ? i.book : avail == null ? '-' : avail, held: i.held ? `${i.held} (${i.heldFor})` : avail == null ? '-' : 0,
-        avail: avail == null ? '-' : avail, coKho: !!avail, max, fromStock: sv && sv.fromStock != null ? sv.fromStock : avail ? max : 0 };
+      const k = kr && kr.find((x) => x.n === i.n);
+      const avail = k ? (k.managed ? k.avail : null) : i.stock == null ? null : i.stock, max = Math.min(avail || 0, propOf(i)), sv = fs.find((x) => x.n === i.n);
+      const book = k ? (k.managed ? k.book : null) : i.book != null ? i.book : avail;
+      return { n: i.n, name: i.name, prop: propOf(i), book: book == null ? '-' : book, held: i.held ? `${i.held} (${i.heldFor})` : avail == null && !(k && k.managed) ? '-' : 0,
+        actual: k && k.managed && k.actual != null ? k.actual : '-', avail: avail == null ? '-' : avail, coKho: !!avail, max,
+        khoOut: k && k.managed && k.out != null ? k.out : '-',
+        fromStock: sv && sv.fromStock != null ? sv.fromStock : k && k.managed && k.out != null ? Math.min(k.out, max) : avail ? max : 0 };
     });
     /* MS02: kết quả rà soát của hồ sơ cũ (snapshot lúc hồ sơ cũ hoàn thành, chỉ xem — không dùng lại, GIẢ LẬP P-100). */
     if (a) {
@@ -347,11 +382,35 @@
     const banned = (r) => !!(r.ban && r.ban.until);
     const grp = (g) => buyItems().filter((i) => i.group === g).map((i) => ({ n: i.n, hang: i.name, sl: `${i.buy} ${i.uom}`, nganh: goodsName(i.goods) }));
     v.ycbgNhom1 = grp(1); v.ycbgNhom2 = grp(2); v.group2Note = R().group2Note || '';
+    /* T29 B12 (Huylx4 #26): hộp thoại bước 8 theo màn Thêm mới YCBG của hệ thống cũ — Thông tin chung, hàng hoá có Model / Yêu cầu kỹ thuật, tài liệu kỹ thuật. */
+    const lan8 = Flow.state.history.filter((h) => String(h.task) === '8' && h.who).length + 1;
+    v.maYcbg = `YCBG-${String(Flow.state.dxms || '').replace(/^ĐXMS-/, '')}-${lan8}`;
+    v.tenYcbg = u.tenYcbg || `Yêu cầu báo giá — ${ci.title}`;
+    const nv8 = D.nvOf((Flow.findDxms(Flow.state.dxms) || {}).nv);
+    v.duAnYcbg = nv8 ? `${nv8.code} — ${nv8.name}` : '';
+    /* T29 B18: bảng Thông tin dự án / đề tài như màn cũ (Mã, Tên, Nguồn vốn) — từ Đề tài / dự án của luồng (SCR-104). */
+    v.duAnRows = nv8 ? [{ ma: nv8.code, ten: nv8.name, loai: nv8.loaiCt || nv8.loai || nv8.kind || '', nguonVon: D.fundNames[nv8.fund] || '' }] : [];
+    v.ngayYcbg = u.ngayYcbg || Flow.dateOf(Flow.state.clock);
+    v.ycbgHang = u.ycbgHang || buyItems().map((i) => ({ n: i.n, hang: i.name, nhom: i.group === 2 ? 'Nhóm 2 — sản xuất theo yêu cầu' : 'Nhóm 1 — mua sẵn', nganh: goodsName(i.goods),
+      uom: i.uom, sl: i.buy, model: '', spec: '' }));
+    v.tepKyThuat = u.tepKyThuat || ''; v.tepBanVe = u.tepBanVe || ''; v.tepKhac = u.tepKhac || '';
     v.nccOptions = list.filter((r) => !banned(r)).map((r) => ({ value: r.code, label: `${r.code} — ${r.name}` }));
     v.nccList = list.map((r) => ({ ma: r.code, ten: r.name, email: r.email, nganh: r.goods.filter((x) => want.includes(x)).map(goodsName).join(', '),
       tinhTrang: !r.ban ? 'Bình thường' : r.ban.until ? 'Cấm đến ' + r.ban.until : 'Hạn chế' }));
     v.nccSel = u.nccSel || nccDefault().filter((c) => v.nccOptions.some((o) => o.value === c));
     v.hanTraLoi = u.hanTraLoi || Flow.dateOf(Flow.state.clock + 3);
+    /* T29 B4 P2: điều khoản phiếu YCBG — giá trị đã nhập, không thì mẫu của hồ sơ demo (D.ycbgTerms0); đầu mối mặc định người xử lý bước. */
+    const yt0 = D.ycbgTerms0 || {};
+    v.dkThanhToan = u.dkThanhToan != null ? u.dkThanhToan : yt0.payment || '';
+    v.diaDiemGiao = u.diaDiemGiao != null ? u.diaDiemGiao : yt0.place || '';
+    v.yeuCauKhac = u.yeuCauKhac != null ? u.yeuCauKhac : yt0.other || '';
+    v.dauMoiBgOptions = D.ycbgContacts(tok).map((id) => ({ value: id, label: `${pname(id)} — ${persona(id).role}` }));
+    /* T29 B18 (màn cũ: chọn nhiều người → bảng Họ tên, Đơn vị): đầu mối là danh sách; bản nháp cũ một người vẫn đọc được. */
+    v.dauMoiBg = Array.isArray(u.dauMoiBg) ? u.dauMoiBg : [u.dauMoiBg || tok.who || Flow.state.persona];
+    v.dauMoiList = D.ycbgContacts(tok).map((id) => Object.assign({ id }, D.contactParts(id)));
+    /* P-214 GIẢ LẬP: BM-YCKT bắt buộc nêu thời gian bảo hành và năm sản xuất — tạm hai trường chung cho phiếu (mẫu: ≥ 12 tháng, từ năm trước). */
+    v.baoHanh = u.baoHanh != null ? u.baoHanh : 12;
+    v.namSx = u.namSx != null ? u.namSx : Number(Flow.dateOf(Flow.state.clock).split('/')[2]) - 1;
     v.nganhOptions = window.Catalog.rows('loai-hang-hoa').filter((r) => r.active !== false).map((r) => ({ value: r.code, label: r.name }));
     v.nccMoi = u.nccMoi || [];
     /* Comment #4 — kết quả service task đối soát (biến doiSoat). */
@@ -384,14 +443,13 @@
       v.quoteAfter = `${D.quotes.length} báo giá nhận sau ngày tạo hồ sơ điều chỉnh (${Flow.dateOf(0)}) — đạt yêu cầu ít nhất 1 báo giá mới.`;
     }
     const mc = Flow.matchCheck();
-    v.matchCheck = { tong: ty(mc.total), ketQua: mc.ok ? 'Khớp' : 'Không khớp', quyTrinh: mc.process, dieuKien: condOf(mc.process), goiY: mc.suggest,
-      nhanh: mc.ok ? (mc.process === 'MS01.03' ? 'dự thảo Tờ trình BM-09' : 'dự thảo Tờ trình BM-01') : 'ĐVĐX xử lý hồ sơ không khớp' };
+    /* T29 B1 (D-54): cổng sau task 10 đặt luồng con (không còn "khớp / không khớp"); D-77 Căn cứ đã được phê duyệt chọn sẵn theo luồng. */
+    v.canCuDuyet = u.canCuDuyet || (Flow.state.vars.basisTD ? 'Đã phê duyệt' : 'Chưa phê duyệt');
+    v.matchCheck = { tong: ty(mc.total), quyTrinh: D.mainProc.code, dieuKien: condOf(mc.suggest), goiY: mc.suggest,
+      nhanh: mc.suggest === 'MS01.03' ? 'dự thảo Tờ trình BM-09' : 'dự thảo Tờ trình BM-01' };
     v.tongMucVon = ty(D.caseInfo.total);
 
-    /* 10a */
     v.checks = Flow.state.vars.checks.map((c, i) => ({ lan: i + 1, ngay: Flow.dateOf(c.t), giaTri: ty(c.total), quyTrinh: c.process || c.group || '', ketQua: c.ok ? 'Khớp' : 'Không khớp' }));
-    v.hoSoMoi = D.caseCodes[1];
-    v.saoChep = ['Căn cứ và phạm vi', 'Thông tin cơ bản', 'Danh mục hàng hoá sau trừ lùi', `Kết quả rà soát tồn kho ${R().rstk}`, 'Yêu cầu báo giá và 3 báo giá'].map((x) => '- ' + x).join('\n');
 
     /* 11 / 12 — tờ trình: nội dung từng mục (L1), "Sự cần thiết" theo gợi ý AI (G2), kết quả AI kiểm tra (DX-01) */
     const d = R().doc || {};
@@ -407,6 +465,7 @@
     v.aiSuCanThiet = aiRows('aiSuCanThiet', [{ key: 'suCanThiet', muc: 'Sự cần thiết', goiY: d.necessity || '', nguon: `Căn cứ ${(basisDoc() || {}).no || ''}, thông tin cơ bản của hồ sơ` }], null);
     v.aiCheck = u.aiCheck || null;
     v.phuLucChiPhi = D.items.map((i) => ({ n: i.n, hang: i.name, sl: i.buy, donGia: ty(i.price), thanhTien: ty(i.amount), coSo: i.buy ? `Báo giá ${nccName('NCC-000001')}` : 'Dùng tồn kho', loai: i.cost || '' }));
+    D.phuLuc.forEach(([k]) => { v['pl_' + k] = plOn(k) ? 'Có' : 'Không'; });
     v.checklist = checklistRows();
     const rej = Flow.lastOf(13);
     v.traLai13 = rej && rej.action === 'Không đồng ý' && Flow.doneCount(draftTask()) === Flow.doneCount(13) ? { lyDo: rej.reason || '', loc: 'Mục “Kế hoạch tổ chức thực hiện” chưa có mốc giao hàng từng lô.' } : null;
@@ -453,7 +512,7 @@
       v.cqcmTen = cqcmUnit(c);
       v.bm04Phieu = D.bm04Sections.map((s) => {
         const r = rows.find((x) => x.sec === s) || { sec: s, ok: true };
-        return { muc: s, danhGia: r.ok ? 'OK' : 'Không OK', nhanXet: r.text || '', huongDan: r.guide || '',
+        return { muc: s, danhGia: r.ok ? 'OK' : 'Không OK', nhanXet: r.text || (r.ok ? 'Đạt yêu cầu.' : ''), huongDan: r.guide || '',
           aiGoiY: r.ok ? '' : 'Đối chiếu QT 10.2.1 mục 5.3 — nhận xét phù hợp; đề nghị nêu rõ tài liệu cần bổ sung.', quyetDinhAi: r.ok ? null : 'Chấp nhận' };
       });
       v.bm04KetQua = v.bm04Phieu.map((r) => ({ muc: r.muc, danhGia: r.danhGia, nhanXet: r.nhanXet || '-', huongDan: r.huongDan || '-' }));
@@ -584,6 +643,7 @@
     v.suCanThietK = u.suCanThietK != null ? u.suCanThietK : dd.necessity || '';
     v.toChucK = u.toChucK != null ? u.toChucK : dd.org || '';
     v.phuongPhapK = u.phuongPhapK != null ? u.phuongPhapK : dd.method || '';
+    v.hieuQuaK = u.hieuQuaK != null ? u.hieuQuaK : dd.effect || '';
     v.yKienChiHuy = u.yKienChiHuy != null ? u.yKienChiHuy : R().lead || '';
     v.nguoiChoYKien = `${pname('hai')} — Chỉ huy đơn vị đề xuất`;
     /* 36 / 39 — "Sự cần thiết" của BM-01 theo gợi ý AI (DX-01: thiếu thì AI kiểm tra trả lại ở bước 39) */
@@ -631,9 +691,13 @@
         31: `Đơn vị đề xuất đã bổ sung hồ sơ theo ý kiến lượt ${pad2(i)} (phiên bản v${kdtVer()}).` }[String(lastIn.task)];
       v.raSoat = `**${stg().doc}:** phiên bản v${kdtVer()}${stg().cl ? ` · ${stg().cl} đủ` : ''} · **Đơn vị chủ trì:** ${hostOf() || '-'}\n**CQCM phối hợp:** ${cs.map(cqcmUnit).join('; ') || 'Không chọn'}\n`
         + [['TC', 'Có danh mục hình thành TSCĐ → cần Ban Tài chính'], ['PC', 'Áp dụng Quy chế LCNT → cần Ban Pháp chế']].map(([id, t]) => `- ${t}: **${cs.includes(id) ? 'có' : 'chưa có'}**`).join('\n');
-      v.thamDinh = stg().crit.map((c, j) => ({ stt: j + 1, noiDung: c, danhGia: 'Đạt' }));
-      v.nhanXetTtms = (rvOf(i, 'TTMS').items || []).map((x) => `${x[0]}: ${x[1]}`).join(' ');
-      v.ketLuanTd = fixOf(i, 'TTMS') ? 'Cần sửa đổi, giải trình' : 'Đồng ý';
+      /* T31 B4 (BR-KDT-08-04): ý kiến mẫu cần sửa của TTMS → nội dung tương ứng Không đạt kèm nhận xét, hướng dẫn; còn lại Đạt. */
+      const tf = fixOf(i, 'TTMS'), ti = rvOf(i, 'TTMS').items || [];
+      v.thamDinh = stg().crit.map((c, j) => { const x = tf && ti.find((y) => c.startsWith(y[0]));
+        return { stt: j + 1, noiDung: c, danhGia: x ? 'Không đạt' : 'Đạt', nhanXet: x ? x[1] : '', huongDan: x ? x[2] || '' : '' }; });
+      if (tf && ti.length && !v.thamDinh.some((r) => r.danhGia === 'Không đạt')) Object.assign(v.thamDinh[0], { danhGia: 'Không đạt', nhanXet: ti[0][1], huongDan: ti[0][2] || '' });
+      v.nhanXetTtms = ti.filter((x) => !tf || !stg().crit.some((c) => c.startsWith(x[0]))).map((x) => `${x[0]}: ${x[1]}`).join(' ');
+      v.ketLuanTd = v.thamDinh.some((r) => r.danhGia === 'Không đạt') ? 'Cần sửa đổi, giải trình' : 'Đạt';
       v.yKienTruoc = Array.from({ length: i }, (_, j) => fixItems(j).map((x) => ({ luot: pad2(j + 1), donVi: unitOf(x.id), noiDung: x.text, traLoi: (R().reply || [])[j] || '' }))).flat();
     }
     if (n === 29 && tok.cqcm) {
@@ -641,7 +705,7 @@
       v.cqcmTen = cqcmUnit(c);
       v.aiPhanHoi = `- Đối chiếu ${stg().doc} v${kdtVer()} với chức năng ${cqcmUnit(c)}: ${CQ_FN[c] || ''}.` + (i > 0 ? `\n- Lượt trước: ${fixOf(i - 1, c) ? 'có ý kiến cần sửa — kiểm tra nội dung đơn vị đã bổ sung / giải trình.' : 'không có ý kiến.'}` : '');
       v.phieuNhanXet = (rvOf(i, c).items || []).map((x) => ({ muc: x[0], nhanXet: x[1], huongDan: x[2] || '' }));
-      v.ketLuanTd = fixOf(i, c) ? 'Cần sửa đổi, giải trình' : 'Đồng ý';
+      v.ketLuanTd = fixOf(i, c) ? 'Cần sửa đổi, giải trình' : 'Đạt';
     }
     /* 26 / 31 / 32 / 34–38 / 59 */
     const ip = rvIdx(false), chk = Flow.tdCount('chk'), meet = Flow.tdCount('meet'), pend = fixItems(ip);
@@ -673,6 +737,17 @@
     v.hienTrang = u.hienTrang != null ? u.hienTrang : b3().state || '';
     v.ruiRo = u.ruiRo != null ? u.ruiRo : b3().risk || '';
     v.diaDiem = u.diaDiem != null ? u.diaDiem : b3().place || '';
+    /* T31 B3 (K4b): mục BM-8.6.5 bổ sung ở bước 50 — mặc định từ chủ trương đã duyệt / dữ liệu hồ sơ (GIẢ LẬP). */
+    const dflt = (k, d) => (u[k] != null ? u[k] : d || '');
+    v.phanTichNhuCau = dflt('phanTichNhuCau', dd.need || aiText('scope'));
+    v.ketLuanCanThiet = dflt('ketLuanCanThiet', dd.necessity);
+    v.quanDiem = dflt('quanDiem', dd.view);
+    v.phuongAnTk = dflt('phuongAnTk', dd.tech);
+    v.giaiPhap = dflt('giaiPhap', dd.deploy);
+    v.phuongPhapTinh = dflt('phuongPhapTinh', dd.method);
+    v.danhGiaHieuQua = dflt('danhGiaHieuQua', dd.effect);
+    v.toChucTh = dflt('toChucTh', dd.org);
+    v.cacMoc = dflt('cacMoc', (b3().milestones || []).map(([a, b]) => `${a}: ${b}`).join('\n'));
     /* 46 / 55 — ý kiến đã xử lý trong vòng (chỉ xem) */
     v.yKienVong = Array.from({ length: Flow.tdRound() }, (_, j) => fixItems(j).map((x) => ({ luot: pad2(j + 1), donVi: unitOf(x.id), noiDung: x.text, traLoi: (R().reply || [])[j] || '' }))).flat();
     v.hoanChinhTd = u.hoanChinhTd != null ? u.hoanChinhTd : '';
@@ -728,6 +803,44 @@
   const moneyText = (t) => `<p>${vnd(t)} đồng (${ty(t)} tỷ đồng), đã bao gồm VAT.</p>`;
   const missing = '<p class="missing">Chưa có nội dung.</p>';
 
+  /* T29 B17: phụ lục chọn Có (P-212) — in ở mục Danh mục hồ sơ kèm theo của Tờ trình. */
+  const plList = () => D.phuLuc.filter(([k]) => plOn(k)).map(([, n]) => n);
+
+  /* T29 B17 (A6) — Xuất file Word Tờ trình theo mẫu tờ trình của hệ thống cũ (HT-DXMS-TT): đầu văn bản, Kính gửi, căn cứ,
+     I. Thông tin chung 5 mục, II. Danh mục hồ sơ kèm theo, câu kết. Dữ liệu = Thông tin chung của luồng + eForm bước lập dự thảo.
+     Thật: BE trộn mẫu .docx (TTMS tải lên ở Quản lý biểu mẫu) với biến eForm — cùng cơ chế xem trước / tải xuống (ProfileTaskFormService).
+     Prototype: HTML lưu đuôi .doc (Word mở được). Mục không có trường tương ứng trên eForm để "…" cho người soạn điền tiếp trên Word. */
+  function wordTt() {
+    const v = of({ task: draftTask() }), ci = Flow.ci(), x = Flow.findDxms(Flow.state.dxms) || {}, nv = D.nvOf(x.nv) || {};
+    const t = (s) => esc(s || '…').replace(/\n/g, '<br>');
+    const dot = x.dot ? ` (đợt ${x.dot})` : '';
+    const sub = nv.code ? `${esc(ci.title)} thuộc ${esc((nv.kind || 'đề tài / dự án').toLowerCase())} mã số ${esc(nv.code)}${dot}` : `${esc(ci.title)}${dot}`;
+    const legal = (x.legal || D.legalDefault.join('\n')).split('\n').filter((s) => s.trim());
+    const h = (s) => `<p class="h">${s}</p>`, p = (s) => `<p>${s}</p>`;
+    const pl = plList();
+    const body = `<table class="hd"><tr><td>TCT CÔNG NGHIỆP CÔNG NGHỆ CAO VIETTEL<br><b>${esc((ci.unit || '').toUpperCase())}</b><br>Số: ……/TTr-……</td>
+        <td><b>CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM</b><br><b><u>Độc lập - Tự do - Hạnh phúc</u></b><br><i>Hà Nội, ngày … tháng … năm 20…</i></td></tr></table>
+      <p class="c"><b>TỜ TRÌNH</b></p><p class="c"><b>Đề xuất mua sắm <i>${sub}</i></b></p>
+      <p class="kg">Kính gửi: Tổng Giám đốc.</p>
+      ${legal.map((s) => p(esc(s))).join('')}
+      ${p(`Trên cơ sở ${esc((nv.kind || 'đề tài / dự án').toLowerCase())} đã được phê duyệt, ${esc(ci.unit || '')} kính trình Tổng Giám đốc tổ chức thẩm định, phê duyệt Đề xuất mua sắm ${sub} với các nội dung chính sau:`)}
+      ${h('I. THÔNG TIN CHUNG VỀ ĐỀ XUẤT MUA SẮM')}
+      ${h('1. Mục tiêu đề xuất mua sắm')}${p(t(v.mucDich))}
+      ${h('2. Lý do, sự cần thiết phải mua sắm')}${h('2.1. Hiện trạng')}${p('…')}${h('2.2. Nhu cầu')}${p('…')}
+      ${h('2.3. Đánh giá hiện trạng tồn kho hàng hóa')}${p(t(v.cauTonKho))}${h('2.4. Giải trình, đánh giá sự cần thiết phải mua sắm')}${p(t(U().necessity))}
+      ${h('3. Quan điểm thực hiện')}${h('3.1. Quan điểm chung')}${p('…')}${h('3.2. Phương án kỹ thuật – công nghệ, giải pháp triển khai')}${p(t(v.phuongAn))}
+      ${h('4. Nội dung đề xuất mua sắm')}${h('4.1. Hạng mục và kinh phí đề xuất')}
+      ${p(`- Quy mô đề xuất mua sắm: ${t(v.phamVi)}`)}${p(`- Phương pháp tính toán: ${t(v.phuongPhap)}`)}${p(`- Tổng kinh phí đề xuất: <b>${t(v.tongKinhPhi)}</b>`)}
+      ${h('4.2. Nguồn vốn thực hiện')}${p(`- Nguồn vốn: ${t(v.nguonVonTt)}`)}${h('4.3. Hiệu quả hoặc lợi ích, giá trị mang lại của đề xuất mua sắm')}${p('…')}
+      ${h('5. Biện pháp và kế hoạch tổ chức thực hiện')}${h('5.1. Kế hoạch triển khai')}${p(t(v.keHoach))}${h('5.2. Thời gian thực hiện dự kiến')}${p(t(ci.period))}
+      ${h('5.3. Tổ chức thực hiện')}${p(t(v.bienPhap))}
+      ${h('II. DANH MỤC HỒ SƠ KÈM THEO')}${pl.length ? pl.map((n, i) => p(`${i + 1}. ${esc(n)}`)).join('') : p('Không có phụ lục kèm theo.')}
+      ${p(`${esc(ci.unit || '')} kính trình Tổng Giám đốc xem xét, tổ chức thẩm định và phê duyệt đề xuất mua sắm làm cơ sở để các đơn vị thực hiện các thủ tục tiếp theo theo đúng quy định của pháp luật và Tập đoàn./.`)}`;
+    const css = 'body{font-family:"Times New Roman";font-size:13pt}p{margin:0 0 6pt;text-align:justify}.c{text-align:center}.h{font-weight:bold}.kg{text-align:center}table.hd{width:100%}table.hd td{text-align:center;vertical-align:top;width:50%}';
+    return { name: `${tt()}_To-trinh_${Flow.state.code || 'du-thao'}.doc`,
+      html: `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word"><head><meta charset="utf-8"><title>Tờ trình</title><style>${css}</style></head><body>${body}</body></html>` };
+  }
+
   /* Tờ trình BM-01 (≥ 160 tỷ) hoặc BM-09 (< 160 tỷ, P-19): 10 mục lấy từ eForm task 11/12. */
   function docTt() {
     const v = of({ task: draftTask() }), s = small() ? bm09Signs() : null, nec = U().necessity;
@@ -737,6 +850,7 @@
       ${docSec(1, 'Sự cần thiết', nec ? P(nec) : missing, true)}${docSec(2, 'Mục đích', P(v.mucDich))}${docSec(3, 'Phạm vi, quy mô', P(v.phamVi))}
       ${docSec(4, 'Tổng kinh phí (gồm VAT)', P(v.tongKinhPhi))}${docSec(5, 'Phương pháp tính, cơ sở đơn giá', P(v.phuongPhap))}${docSec(6, 'Phương án kỹ thuật – công nghệ', P(v.phuongAn))}
       ${docSec(7, 'Nguồn vốn', P(v.nguonVonTt))}${docSec(8, 'Sử dụng hàng tồn kho', P(`“${v.cauTonKho}”`))}${docSec(9, 'Biện pháp thực hiện', P(v.bienPhap))}${docSec(10, 'Kế hoạch tổ chức thực hiện', P(v.keHoach))}
+      ${adj() ? '' : `<div class="doc-sec" data-doc-pl><h4>Danh mục hồ sơ kèm theo</h4>${plList().length ? `<ul class="plain">${plList().map((n) => `<li>${esc(n)}</li>`).join('')}</ul>` : '<p>Không có phụ lục kèm theo.</p>'}</div>`}
       ${s ? `<div class="doc-sec"><h4>Thẩm định</h4><p>CQCM về ĐTXD (TTMS): ${esc(pname('lan'))} · ${esc(s.ttms.st)}</p><p>Phó Tổng Giám đốc: ${esc(pname('binh'))} · ${esc(s.ptgd.st)}</p></div>` : ''}</div>`;
   }
   function docBm03() {
@@ -778,7 +892,7 @@
       ${docSec('4.1', 'Mục đích, mục tiêu', P(u.mucTieuK || aiText('purposeText')))}${docSec('4.2', 'Sự cần thiết', kNeed() ? P(aiOf('aiSuCanThietK', 'suCanThiet') || d.necessity) : missing, true)}
       ${docSec('5.1', 'Tổng mức vốn dự kiến (gồm VAT)', `<p>${vnd(total)} đồng (${ty(total)} tỷ đồng)</p>`)}
       ${docSec('5.2', 'Phương pháp tính toán', `${P(u.phuongPhapK || d.method)}${P('Phương án kỹ thuật – công nghệ: ' + (d.tech || ''))}${buyList()}${cost}`)}
-      ${docSec(6, 'Nguồn vốn và thời gian thực hiện', `${P((d.fund || '') + '.')}${P(d.period)}`)}${docSec(7, 'Đánh giá hiệu quả', P(d.effect))}
+      ${docSec(6, 'Nguồn vốn và thời gian thực hiện', `${P((d.fund || '') + '.')}${P(d.period)}`)}${docSec(7, 'Đánh giá hiệu quả', P(u.hieuQuaK != null ? u.hieuQuaK : d.effect))}
       <div class="doc-sec"><h4>II. TỔ CHỨC THỰC HIỆN</h4>${P(u.toChucK || d.org)}${host ? P('Đơn vị chủ trì: ' + host + '.') : ''}</div></div>`;
   }
   function docBm00() {
@@ -806,12 +920,13 @@
   }
   function docAnnex() {
     const d = R().doc || {}, x = b3(), costs = (R().bm18 || {}).costs || [], u = U();
+    const f = (k, dv) => (u[k] != null && u[k] !== '' ? u[k] : dv || '');
     return `<div class="doc paper"><p class="c"><b>PHỤ LỤC THUYẾT MINH KHOẢN ĐẦU TƯ</b></p>
-      ${docSec(1, 'Mục đích / mục tiêu, sự cần thiết', `${P(aiText('purposeText'))}<p><b>Đánh giá hiện trạng:</b> ${esc(u.hienTrang || x.state || '')}</p><p><b>Kết luận về sự cần thiết:</b> ${esc(d.necessity || '')}</p>`)}
-      ${docSec(2, 'Phương án thiết kế công nghệ, giải pháp triển khai', `${P(d.tech)}${P('Địa điểm: ' + (u.diaDiem || x.place || '') + '.')}${P('Rủi ro: ' + (u.ruiRo || x.risk || ''))}`)}
-      ${docSec(3, 'Tổng mức vốn', `${moneyText(D.caseInfo.total)}${costs.length ? `<ul class="plain">${costs.map(([a, val]) => `<li>${esc(a)}: ${ty(val)} tỷ đồng</li>`).join('')}</ul>` : ''}${P('Phương pháp tính toán: ' + (d.method || ''))}`)}
-      ${docSec(4, 'Tổ chức thực hiện', `${P(d.org)}<ul class="plain">${(x.milestones || []).map(([a, b]) => `<li>${esc(a)}: ${esc(b)}</li>`).join('')}</ul>`)}
-      ${docSec(5, 'Đánh giá hiệu quả', P(d.effect))}</div>`;
+      ${docSec(1, 'Mục đích / mục tiêu, sự cần thiết', `${P(aiText('purposeText'))}<p><b>Đánh giá hiện trạng:</b> ${esc(f('hienTrang', x.state))}</p><p><b>Phân tích nhu cầu:</b> ${esc(f('phanTichNhuCau', d.need || aiText('scope')))}</p><p><b>Kết luận về sự cần thiết:</b> ${esc(f('ketLuanCanThiet', d.necessity))}</p>`)}
+      ${docSec(2, 'Phương án thiết kế công nghệ, giải pháp triển khai', `${f('quanDiem', d.view) ? P('Quan điểm, định hướng: ' + f('quanDiem', d.view)) : ''}${P(f('phuongAnTk', d.tech))}${P('Địa điểm: ' + f('diaDiem', x.place) + '.')}${f('giaiPhap', d.deploy) ? P('Giải pháp triển khai: ' + f('giaiPhap', d.deploy)) : ''}${P('Rủi ro: ' + f('ruiRo', x.risk))}`)}
+      ${docSec(3, 'Tổng mức vốn', `${moneyText(D.caseInfo.total)}${costs.length ? `<ul class="plain">${costs.map(([a, val]) => `<li>${esc(a)}: ${ty(val)} tỷ đồng</li>`).join('')}</ul>` : ''}${P('Phương pháp tính toán, cơ sở đơn giá: ' + f('phuongPhapTinh', d.method))}`)}
+      ${docSec(4, 'Tổ chức thực hiện', `${P(f('toChucTh', d.org))}<ul class="plain">${(u.cacMoc != null ? u.cacMoc.split('\n').filter((l) => l.trim()).map((l) => [l]) : (x.milestones || [])).map(([a, b]) => `<li>${esc(a)}${b ? ': ' + esc(b) : ''}</li>`).join('')}</ul>`)}
+      ${docSec(5, 'Đánh giá hiệu quả', P(f('danhGiaHieuQua', d.effect)))}</div>`;
   }
   function docBm14() {
     const k = kd(), cs = Flow.cqcmSel(), x = R().bm14 || {}, nr = Math.max(1, Flow.tdRound());
@@ -885,27 +1000,36 @@
   const kyScanKey = () => { const ky = Flow.state.vars.ky || {}; return `kyScan_${ky.task}_${(Flow.state.vars.kyLog || []).length}`; };
   /* Comment #5: báo giá của từng NCC nhận YCBG — bắt buộc với nút "Báo giá đạt". Comment #22: phiếu nhận xét Tập đoàn — tuỳ chọn. */
   const quoteKey = (code) => 'quote_' + code;
-  function reqDocs(tok) {
+  function reqDocs(tok, vals) {
     if (Flow.state.parent) return window.EForms.hd.reqDocs(tok);
     const list = ((REQ_DOCS[kdt() ? 'MS13' : 'MS01'][tok.task]) || []).map(([key, name]) => ({ key, name, have: !!U()[key] }));
     if (!kdt() && String(tok.task) === '10') (U().nccSel || nccDefault()).forEach((c) => list.push({ key: quoteKey(c), name: `Báo giá — ${nccName(c)}`, have: !!U()[quoteKey(c)], only: /^Báo giá đạt/ }));
     if (kdt() && String(tok.task) === '78') list.push({ key: kyScanKey(), name: `Bản scan ${(Flow.state.vars.ky || {}).doc || 'văn bản'} đã ký`, have: !!U()[kyScanKey()] });
-    /* T29 F7 (HT-DXMS-NOTE màn 8): phụ lục của Tờ trình tải lên ở bước lập dự thảo, không bắt buộc. */
-    if (!kdt() && !adj() && String(tok.task) === String(draftTask())) D.phuLuc.forEach(([key, name]) => list.push({ key, name, opt: true, have: !!U()[key] }));
+    /* T29 F7, B17 (HT-DXMS-NOTE màn 8, P-212): phụ lục của Tờ trình chọn Có thì bắt buộc tải lên ở bước lập dự thảo; chọn Không thì không hiện. */
+    if (!kdt() && !adj() && String(tok.task) === String(draftTask())) D.phuLuc.filter(([key]) => plOn(key, vals)).forEach(([key, name]) => list.push({ key, name, have: !!U()[key] }));
+    /* T31 B3 (K4b, IA-DXMS dòng 18): hồ sơ kèm theo Tờ trình BM-03 — phụ lục theo Loại tài liệu, không bắt buộc. */
+    if (kdt() && String(tok.task) === '50') D.phuLuc.forEach(([key, name]) => list.push({ key: 'k' + key, name, opt: true, have: !!U()['k' + key] }));
     if (!kdt() && tok.task === 60 && !small() && Flow.state.vars.reportTD) list.push({ key: 'tdReviewFile', name: 'Phiếu nhận xét của Tập đoàn', have: !!U().tdReviewFile, opt: true });
     return list;
   }
   function check(tok, choice, vals) {
     const n = tok.task, lbl = choice ? choice.label : '';
-    const miss = reqDocs(tok).find((x) => !x.have && !x.opt && (!x.only || x.only.test(lbl)));
+    const miss = reqDocs(tok, vals).find((x) => !x.have && !x.opt && (!x.only || x.only.test(lbl)));
     if (miss && !(kdt() && n === 32 && /^Chưa/.test(lbl))) return `Bạn cần tải lên ${miss.name} ở Danh sách tài liệu.`;
     if (Flow.state.parent) return window.EForms.hd.check(tok, choice, vals);
     if (!vals) return null;
-    if (n === 1 && (of(tok).basisDocOptions.find((o) => o.value === vals.basisDoc) || {}).type !== vals.basisType) return 'Văn bản căn cứ không thuộc loại căn cứ đã chọn.';
-    if (n === 5 && (lbl.startsWith('Xác nhận') || lbl === 'Gửi rà soát tồn kho') && (vals.bocTach || []).some((r) => r.remain != null && r.prop > r.remain)) return 'Có dòng vượt số lượng còn lại sau trừ lùi.';
+    if (n === 1 && vals.basisDoc !== undefined && (of(tok).basisDocOptions.find((o) => o.value === vals.basisDoc) || {}).type !== vals.basisType) return 'Văn bản căn cứ không thuộc loại căn cứ đã chọn.';
+    if (n === 1 && (vals.basisMore || []).includes(vals.basisDoc)) return 'Văn bản căn cứ bổ sung trùng văn bản căn cứ chính.';
+    if (n === 5 && (lbl.startsWith('Xác nhận') || lbl === 'Gửi rà soát tồn kho') && (vals.bocTach || []).some((r) => !r.bo && r.remain != null && r.prop > r.remain)) return 'Có dòng vượt số lượng còn lại sau trừ lùi.';
+    if (n === 5 && !kdt() && (vals.bocTach || []).every((r) => r.bo) && !(vals.hangMucThem || []).some((r) => r.line)) return 'ĐXMS cần ít nhất một hạng mục.';
     if (!kdt() && n === 16 && small() && !(vals.cqcmSel || []).includes('TC')) return 'Hồ sơ dưới 160 tỷ: CQCM Tài chính bắt buộc (QT B8.2).';
     if (kdt() && n === 12 && lbl === 'Xác nhận OK' && (vals.yeuTo || []).some((r) => !r.dung)) return 'Có yếu tố chưa đúng — chọn “Không OK” và nhập lý do.';
+    /* T29 B3b (BR-DXMS-04-11): Báo giá đạt — đủ trường báo giá, mỗi hạng mục có báo giá còn hiệu lực, chọn khác giá thấp nhất có lý do. */
+    if (n === 10 && /^Báo giá đạt/.test(lbl) && window.BaoGia && window.BaoGia.applies(tok)) { const pb = window.BaoGia.problems(); if (pb.length) return pb[0]; }
+    if (n === 7 && !kdt() && window.RaSoatKho && !window.RaSoatKho.done()) return 'Chưa có kết quả rà soát tồn kho của Phòng Quản lý tài sản — chưa xác nhận được bước 7.';
     if (n === 7 && (vals.ruaSoatKho || []).some((r) => r.coKho && r.fromStock > r.max)) return 'Số dùng từ kho vượt số khả dụng hoặc số đề xuất.';
+    /* BR-DXMS-03-06: mọi hạng mục dùng hết từ kho → không còn nhu cầu mua. */
+    if (n === 7 && !kdt() && (vals.ruaSoatKho || []).length && (vals.ruaSoatKho || []).every((r) => (r.prop || 0) - (r.coKho ? r.fromStock || 0 : 0) <= 0)) return 'Mọi hạng mục đều dùng từ kho, không còn phần phải mua. Giảm Dùng từ kho hoặc Hủy hồ sơ.';
     /* Comment #8: chỉ duyệt tổng thể khi mọi phần Đạt; Không đồng ý cần ít nhất một phần Không đạt. */
     if (!kdt() && n === 13 && vals.duyetPhan) {
       const bad = vals.duyetPhan.filter((r) => r.ketQua === 'Không đạt').length;
@@ -917,6 +1041,8 @@
 
   window.EVars = {
     of, doc, check, reqDocs,
+    /* T29 B17: Xuất file Word Tờ trình (BM-01 / BM-09) theo mẫu HT-DXMS-TT; null nếu không phải Tờ trình ĐXMS. */
+    word: (code) => (!Flow.state.parent && !kdt() && !adj() && (code === 'BM-01' || code === 'BM-09') ? wordTt() : null),
     h: { tdk, kdt, small, tt, clName, draftTask, proc, procOf, condOf, version, kdtVer, basisDoc, basisSel, quoteFail, quoteAttempt, nok, respOf, selCqcm, stg, tdKey,
       needHost, hostOf, kNeed, kd, catName, signOf, returnedFrom, aiFinal, aiOf, buyItems, rvIdx, fixOf, HOSTS, pname, lineRemain, propOf, bm04Round,
       adj, adjTh, adjBranch, adjLan, adjCross, adjRows, reviewRows, opinionsOf },

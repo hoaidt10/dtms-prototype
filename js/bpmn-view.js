@@ -2,6 +2,8 @@
    kéo để di chuyển, cuộn chuột để phóng to/thu nhỏ; bước đang xử lý tô theo ACTIVE_STEP_PAINT. Tuỳ chọn (Chi tiết quy trình):
    toolbar Phóng to/Thu nhỏ, bấm chọn phần tử (viền SELECTED_MARKER) → phát sự kiện 'bpmn-element' trên document. */
 (function () {
+  /* Nhãn cạnh lấy từ drawio còn thực thể HTML (&lt;160 tỷ) — giải mã trước khi escape, tránh hiện "&lt;" (T33 B1). */
+  const unent = (t) => String(t == null ? '' : t).replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&');
   const DEF_PAGE = 'MS01 v1.1';
   const diagram = (page) => window.BPMN_DIAGRAMS[page || DEF_PAGE];
   let G = diagram();
@@ -51,7 +53,7 @@
     const edges = G.edges.map((e) => {
       const c = e.c || '#455F73';
       const d = 'M' + e.p.map((p) => p.join(' ')).join(' L');
-      const lab = (e.l || []).map(([x, y, t]) => `<text x="${x}" y="${y}" dy="0.35em" text-anchor="middle" class="bp-el" fill="${c}">${esc(t)}</text>`).join('');
+      const lab = (e.l || []).map(([x, y, t]) => `<text x="${x}" y="${y}" dy="0.35em" text-anchor="middle" class="bp-el" fill="${c}">${esc(unent(t))}</text>`).join('');
       return `<path d="${d}" fill="none" stroke="${c}" stroke-width="${e.sw || 1.7}"${e.d ? ' stroke-dasharray="6 4"' : ''}${e.na ? '' : ` marker-end="url(#${mid(c)})"`}/>${lab}`;
     }).join('');
     const html = `<svg class="bp-svg" xmlns="http://www.w3.org/2000/svg"><defs>${defs}</defs><g class="bp-root">${back.map((n) => node(n, false)).join('')}${edges}${front.map((n) => node(n, on.has(String(n.t)), !!(o.selected && n.el && n.el.id === o.selected), o.select)).join('')}</g></svg>`;
@@ -117,7 +119,7 @@
         const pt = (d) => `${x2 - L * Math.cos(ang + d)},${y2 - L * Math.sin(ang + d)}`;
         parts.push(`<polygon points="${x2},${y2} ${pt(0.45)} ${pt(-0.45)}" fill="${c}"/>`);
       }
-      (e.l || []).forEach(([x, y, t]) => parts.push(`<text x="${x}" y="${y + 4}" font-family="Arial" font-size="12" fill="${c}" text-anchor="middle">${esc(t)}</text>`));
+      (e.l || []).forEach(([x, y, t]) => parts.push(`<text x="${x}" y="${y + 4}" font-family="Arial" font-size="12" fill="${c}" text-anchor="middle">${esc(unent(t))}</text>`));
     }
     return `<svg class="bp-svg" xmlns="http://www.w3.org/2000/svg" viewBox="${vx} ${vy} ${vw} ${vh}" preserveAspectRatio="xMidYMid slice">${parts.join('')}</svg>`;
   }

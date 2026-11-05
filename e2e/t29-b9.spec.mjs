@@ -48,15 +48,11 @@ test('SCR-96 S8: bóc tách từ dự toán vào ĐXMS → bước 01 có dòng 
   await page.locator('[data-lf-cadd]').click();
   await expect(page.locator('[data-lf-cost] tbody tr')).toHaveCount(2);
   await page.locator('[data-lf-cqty]').nth(0).fill('9');
-  await page.locator('[data-lf-cval]').nth(0).fill('0,3');
+  await page.locator('[data-lf-cval]').nth(0).fill('300.000.000');
   await page.locator('[data-lf-cqty]').nth(1).fill('2');
-  await page.locator('[data-lf-cval]').nth(1).fill('50');
-
-  // D-62: người thẩm định theo vai trò.
-  await pick(page, 'lf-rev', 'PC');
-  await page.locator('[data-lf-radd]').click();
-  await pick(page, 'lf-rvm-PC', 'vaitro');
-  await expect(page.locator('[data-lf-rev] tbody')).toContainText('mọi người của vai trò');
+  await page.locator('[data-lf-cval]').nth(1).fill('50000000000');
+  // D-75: không còn Danh sách người thẩm định.
+  await expect(page.locator('[data-lf-rev]')).toHaveCount(0);
 
   // Cảnh báo vượt phần còn lại hiện sau khi vẽ lại, không chặn Lưu.
   await expect(page.locator('[data-lf-cwarn]')).toHaveText('Vượt khối lượng còn lại (8).');
@@ -64,20 +60,17 @@ test('SCR-96 S8: bóc tách từ dự toán vào ĐXMS → bước 01 có dòng 
   await up(['QD-1482-VHT.pdf', 'KH-mua-sam-2026.pdf']);
   await pick(page, 'lf-type-1', 'QD_NV');
   await pick(page, 'lf-type-2', 'KH_NAM');
-  await pick(page, 'lf-proc', 'MS01.03');
   // Lưu đổi hash sang màn việc; không chờ điều hướng của trình duyệt (Playwright chờ mãi sau click ở kịch bản có cảnh báo).
   await page.locator('#lf-save').click({ noWaitAfter: true });
   await expect(page).toHaveURL(/#\/task\/k\d+$/);
-  const st = await page.evaluate(() => { const x = Flow.findDxms(Flow.state.dxms); return { code: x.code, cost: x.cost, mode: x.reviewerMode }; });
+  const st = await page.evaluate(() => { const x = Flow.findDxms(Flow.state.dxms); return { code: x.code, cost: x.cost }; });
   expect(st.cost.map((r) => [r.line, r.qty, r.value])).toEqual([[`${DT}-6`, 9, 0.3], [`${DT}-1`, 2, 50]]);
-  expect(st.mode).toEqual({ PC: 'vaitro' });
 
-  // Bước 01: bảng chỉ xem dòng dự toán đã bóc tách.
-  const f = await openForm(page);
-  await expect(f).toContainText('Dòng dự toán đề tài / dự án đã bóc tách khi tạo luồng');
-  await expect(f).toContainText('Máy tính xách tay cấu hình cao');
-  await expect(f).toContainText('Thiết bị, máy đo chuyên dụng');
-  await f.locator('[data-close]').first().click();
+  // Bước 01 (D-81): bảng chỉ xem dòng dự toán đã bóc tách ở Thông tin chung.
+  const av = page.locator('[data-basis-avail]');
+  await expect(av).toContainText('Dòng dự toán đề tài / dự án đã bóc tách khi tạo luồng');
+  await expect(av).toContainText('Máy tính xách tay cấu hình cao');
+  await expect(av).toContainText('Thiết bị, máy đo chuyên dụng');
 
   // SCR-104: khoản mục 6 có đợt của ĐXMS vừa tạo (đang phê duyệt = đang giữ).
   await go(page, '#/de-tai/' + encodeURIComponent(DT));

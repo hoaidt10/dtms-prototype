@@ -40,8 +40,8 @@ test('A2: nút (i) mở ghi chú BA của màn, có điểm ❓ bấm được',
   await page.locator('.pg-title .info-i').click();
   await expect(page.locator('.info-pop')).toContainText('SCR-25');
   await expect(page.locator('.info-pop')).toContainText('profile-form');
-  await page.locator('.info-pop [data-q="P-26"]').click();
-  await expect(page.locator('.overlay')).toContainText('P-26');
+  await page.locator('.info-pop [data-q="P-34"]').click();
+  await expect(page.locator('.overlay')).toContainText('P-34');
 });
 
 test('C4: ?capture=1 ẩn nút (i) và nút công cụ demo', async ({ page }) => {
@@ -163,7 +163,8 @@ test('B5: Danh sách ĐXMS theo task-management — cột, chỉ ô tìm kiếm,
 
 test('B5: Việc của tôi theo my-tasks — không tab, cột, lọc Trạng thái, mọi dòng mở được', async ({ page }) => {
   await fresh(page, '#/viec-cua-toi');
-  await page.evaluate(() => { Flow.jumpTo(10, 'minh'); location.hash = '#/viec-cua-toi'; });
+  // DX-10 (T29 B16): bước 8–10 là việc của Thầu TTMS — dùng bước 5 của Chuyên quản ĐVĐX (có nhiều việc mẫu).
+  await page.evaluate(() => { Flow.jumpTo(5, 'minh'); location.hash = '#/viec-cua-toi'; });
   await expect(page.locator('.pg-title')).toHaveText('Danh sách việc của tôi');
   await expect(page.locator('main .tab')).toHaveCount(0);
   await expect(page.locator('main [data-create]')).toHaveCount(0);
@@ -172,7 +173,7 @@ test('B5: Việc của tôi theo my-tasks — không tab, cột, lọc Trạng t
   await expect(page.locator('#my-kw')).toHaveAttribute('placeholder', /Tìm kiếm theo tên công việc/);
   const first = page.locator('.vtable tbody tr').first();
   await expect(first.locator('.vbadge')).toHaveText(/Chưa xử lý|Quá hạn/);
-  await expect(first).toContainText('Tổng hợp và kiểm tra báo giá');
+  await expect(first).toContainText(await page.evaluate(() => BPMN_TASKS['5'].name));
 
   await page.locator('[data-m="adv"]').click();
   await expect(page.locator('#my-kw')).toHaveCount(0);
@@ -196,22 +197,6 @@ test('B5: Việc của tôi theo my-tasks — không tab, cột, lọc Trạng t
     await expect(page.locator('main')).not.toContainText('không còn tồn tại');
   }
   expect(page.errors).toEqual([]);
-});
-
-test('B5: sau Chuyển quy trình, việc đầu tiên của hồ sơ thay thế (cùng ĐXMS) nằm trong Việc của tôi', async ({ page }) => {
-  await fresh(page, '#/viec-cua-toi');
-  await page.evaluate(() => {
-    Flow.jumpTo('10a', 'minh', {}, 'MS01.03');
-    const t = Flow.state.tokens.find((k) => k.task === '10a');
-    Flow.complete(t.id, D.flow['10a'].choices.find((c) => c.label.startsWith('Chuyển')), 'x');
-    location.hash = '#/viec-cua-toi';
-  });
-  const row = page.locator('tr[data-code="HS-2026-0125"]');
-  await expect(row).toContainText('Chưa xử lý');
-  await expect(row).toContainText('ĐXMS-2026-0117');
-  await row.locator('.link').click();
-  await expect(page).toHaveURL(/#\/task\//);
-  expect(await page.evaluate(() => [Flow.ci().code, Flow.ci().dxms])).toEqual(['HS-2026-0125', 'ĐXMS-2026-0117']);
 });
 
 // Màn xử lý task theo my-task-detail (B7): nút trên hàng tiêu đề, lưới 5 + 2, card theo thứ tự source, không chữ BA (C3).
@@ -253,7 +238,7 @@ test('B7: màn xử lý task theo my-task-detail — hàng tiêu đề, lưới 
 test('B7: Lịch sử hồ sơ — Xem nhận xét mở hộp thoại nội dung nhận xét', async ({ page }) => {
   await fresh(page, '#/viec-cua-toi');
   await page.locator('#demo').click();
-  await page.locator('[data-branch="1"]').click();
+  await page.locator('[data-branch="0"]').click();
   await primary(page, 'Không đồng ý');
   await page.evaluate(() => { location.hash = '#/task/' + Flow.state.tokens[0].id; });
   await page.locator('.trail [data-note]').first().click();
@@ -312,7 +297,7 @@ test('B2: Xem BPMN — Chi tiết BPMN tô bước đang xử lý trên sơ đ�
   await expect(page.locator('.ginfo.c3')).toBeVisible();
   await expect(page.locator('.bp-h h2')).toHaveText('Bước hiện tại: Rà soát BM-04 và xác định nội dung cần cập nhật ĐXMS');
   await expect(page.locator('.bp-vp')).toHaveCSS('height', '520px');
-  await expect(page.locator('.bp-svg [data-task]')).toHaveCount(63);
+  await expect(page.locator('.bp-svg [data-task]')).toHaveCount(61); // T29 B1: sơ đồ bản 12/10, không có 10a / 10b
   await expect(page.locator('.bp-svg [data-task="26"] rect')).toHaveAttribute('stroke', '#5fe495');
   // Canh giữa bước đang xử lý: task 26 nằm trong khung nhìn.
   const inView = await page.evaluate(() => {
@@ -349,12 +334,12 @@ test('C4: ?capture=1 — sơ đồ BPMN vẽ gọn (không foreignObject) để 
   await expect(page.locator('.bp-svg')).toContainText('Rà soát BM-04');
 });
 
-for (const st of ['approved', 'moved']) {
+// T29 B1 (D-54): không còn Chuyển quy trình (10a / 10b) — chỉ kiểm hồ sơ đã phê duyệt.
+for (const st of ['approved']) {
   test(`C3: Chi tiết hồ sơ và BPMN khi hồ sơ ${st === 'approved' ? 'đã phê duyệt' : 'đã chuyển quy trình'} không có chữ BA`, async ({ page }) => {
     await fresh(page, '#/viec-cua-toi');
     await page.evaluate((st) => {
       if (st === 'approved') Flow.jumpToScene(9);
-      else { Flow.jumpTo('10a', 'minh', {}, 'MS01.03'); const t = Flow.state.tokens.find((k) => k.task === '10a'); Flow.complete(t.id, D.flow['10a'].choices.find((c) => c.label.startsWith('Chuyển')), 'x'); }
       location.hash = '#/ho-so';
     }, st);
     await expect(page.locator('.pg-title')).toHaveText('Chi tiết hồ sơ');
@@ -396,7 +381,7 @@ for (const r of WF_ROUTES) {
 test('C3: SCR-42 — panel của mọi phần tử trên 5 sơ đồ không có chữ BA', async ({ page }) => {
   await asQt(page, '#/quy-trinh');
   const keys = await page.evaluate(() => QuyTrinh.WORKFLOWS.flatMap((w) => w.versions.map((v) => [v.key, v.page])));
-  expect(keys.length).toBe(7);
+  expect(keys.length).toBe(5); // T29 B1: MS01 (2 phiên bản), MS02, MS13, MS14
   for (const [key, pg] of keys) {
     await go(page, '#/quy-trinh/' + key);
     await expect(page.locator('.bp-vp')).toBeVisible();
@@ -420,12 +405,12 @@ test('C3: SCR-42 — panel của mọi phần tử trên 5 sơ đồ không có 
 
 test('C3: SCR-41 — mọi dòng phiên bản mở được Chi tiết quy trình', async ({ page }) => {
   await asQt(page, '#/quy-trinh');
-  for (const k of ['DTMS_MS01_01', 'DTMS_MS01_02', 'DTMS_MS01_03', 'DTMS_MS02', 'DTMS_MS13', 'DTMS_MS14']) {
+  for (const k of ['DTMS_MS01', 'DTMS_MS02', 'DTMS_MS13', 'DTMS_MS14']) {
     const tg = page.locator(`[data-vtt-key="${k}"]`);
     if (await tg.count()) await tg.click();
   }
   const hrefs = await page.locator('.vtt tbody a.link').evaluateAll((as) => as.map((a) => a.getAttribute('href')));
-  expect(hrefs.length).toBe(7);
+  expect(hrefs.length).toBe(5);
   for (const h of hrefs) {
     await go(page, h);
     await expect(page.locator('.pg-title')).toHaveText('Chi tiết quy trình');

@@ -22,6 +22,8 @@ const KDT = (c) => '#/kdt/' + encodeURIComponent(c);
 test('Menu: KĐT và Quản lý thầu mở màn thật; route cũ #/ph/… chuyển hướng', async ({ page }) => {
   await as(page, 'minh', '#/ph/ho-so-kdt');
   await expect(page).toHaveURL(/#\/ho-so-kdt$/);
+  // D-76: menu Thầu ẩn ở bản demo ĐXMS — bật cờ để kiểm mục menu.
+  await page.evaluate(() => { D.show.menuThau = true; });
   for (const [h, t] of [['#/ph/ycbg-kdt', 'Danh sách yêu cầu báo giá'], ['#/ph/khlcnt', 'Danh sách kế hoạch lựa chọn nhà thầu'], ['#/ph/goi-thau', 'Danh sách gói thầu'], ['#/ph/ds-cam', 'Nhà thầu & kiểm soát rủi ro']]) {
     await go(page, h);
     await expect(page.locator('.pg-title')).toHaveText(t);

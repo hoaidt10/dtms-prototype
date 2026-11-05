@@ -98,10 +98,6 @@ add(P3, 'SCR-20-b', 'Chi tiết BPMN (đã phê duyệt)', [J.scene(9), J.hash('
 add(P3, 'SCR-20-c', 'Chi tiết hồ sơ (đang xử lý · T26)', [J.jump(26, 'minh'), J.hash('#/ho-so')], { link: 'SCR-20-d', linkLabel: 'Xem BPMN' });
 add(P3, 'SCR-20-d', 'Chi tiết BPMN (đang xử lý · T26)', [J.jump(26, 'minh'), J.hash('#/ho-so/bpmn')], { link: 'SCR-20-c', linkLabel: 'Xem quy trình' });
 
-add(P4, 'B-3e-a', 'Chọn nhầm MS01.03 · T04 cảnh báo mềm', [J.jump(4, 'minh', {}, 'MS01.03'), J.task(4)], { link: 'B-3e-b' });
-add(P4, 'B-3e-b', 'Không khớp quy trình · T10a (SCR-26)', [J.jump('10a', 'minh', {}, 'MS01.03'), J.task('10a')], { link: 'B-3e-c', linkLabel: 'Chuyển quy trình' });
-add(P4, 'B-3e-c', 'Đã chuyển quy trình · hồ sơ cũ (T10b → End)', [J.jump('10a', 'minh', {}, 'MS01.03'), J.choose("'10a'", 'Chuyển'), J.hash('#/ho-so')], { link: 'B-3e-d', linkSel: '[data-open-new]' });
-add(P4, 'B-3e-d', 'Hồ sơ mới HS-2026-0125 (cùng ĐXMS) · T01 · dữ liệu sao chép', [J.jump('10a', 'minh', {}, 'MS01.03'), J.choose("'10a'", 'Chuyển'), `Flow.openReplacement()`, J.task(1)]);
 add(P4, 'B-09', 'Chỉ huy không đồng ý · T13 → AI lọc (T14) → T12', [J.jump(13, 'hai'), J.choose(13, 'Không đồng ý'), J.persona('minh'), J.need(), J.task(12)]);
 add(P4, 'B-22', 'TTMS trả lại danh sách CQCM · T17 → T16', [J.jump(17, 'lan'), J.choose(17, 'Chưa'), J.persona('minh'), J.ui('bm03File', true), J.task(16)]);
 add(P4, 'B-14-a', 'Giải trình vòng 3/2 · T28', [J.jump(28, 'minh', { round: 2 }), J.task(28)], { link: 'B-14-b' });
@@ -213,6 +209,8 @@ add(P8, 'SCR-60-42', 'CQCM chủ trì xác nhận danh sách CQCM · T42', kt(42
 add(P8, 'SCR-60-43', 'Trình hồ sơ chủ trương · T43', kt(43, 'minh'), { link: 'SCR-61-27' });
 add(P8, 'SCR-61-27', 'TTMS thẩm định (khối chung, vòng BM-01) · T27', kt(27, 'lan'), { link: 'SCR-61-29' });
 add(P8, 'SCR-61-29', 'CQCM gửi ý kiến thẩm định · T29', kt(29, 'hoa'), { link: 'SCR-62-31' });
+// T31 B4 (K5): thẩm định bốn khu — lượt 02 của vòng BM-01, lịch sử hai lượt (TTMS thấy toàn bộ).
+add(P8, 'SCR-61-27-l2', 'TTMS thẩm định lượt 02 — lịch sử ý kiến hai lượt · T27', [kj(27, 'lan'), kc(27), kc(29), kc(29), kc(31, 'Bổ sung'), J.task(27)]);
 add(P8, 'SCR-62-31', 'ĐVĐX bổ sung, giải trình · T31', kt(31, 'minh'), { link: 'SCR-62-32' });
 add(P8, 'SCR-62-32', 'Họp thống nhất lần 1/2 · T32', kt(32, 'lan'), { link: 'SCR-62-34' });
 add(P8, 'SCR-62-34', 'Chuyên quản xác nhận sau họp · T34', kt(34, 'minh'), { link: 'SCR-62-35' });
@@ -272,12 +270,12 @@ const P9 = 'MS01.02 · ĐXMS-2026-0124 (≥ 160 tỷ, căn cứ TĐ đã duyệt
 const X2 = 'ĐXMS-2026-0124', X3 = 'ĐXMS-2026-0098';
 const mj = (task, who, proc, dxms, vars) => `Flow.jumpTo(${JSON.stringify(task)}, '${who}', ${JSON.stringify(vars || {})}, '${proc}', '${dxms}')`;
 const mt = (task, who, proc, dxms, cqcm) => [mj(task, who, proc, dxms), J.task(task, cqcm)];
-const create = (key, dxms) => [`Flow.pickDemo('${key}')`, J.hash('#/ho-so-dxms/create/' + encodeURIComponent(dxms)),
-  `document.querySelector('[data-vsel="c-proc"]').click()`, `document.querySelector('.vsel-panel [data-opt="${key}"]').click()`];
+// T29 B1 (D-54): Quy trình chỉ đọc (MS01) — luồng con dự kiến theo giá trị / căn cứ của ĐXMS.
+const create = (key, dxms) => [`Flow.pickDemo('${key}')`, J.hash('#/ho-so-dxms/create/' + encodeURIComponent(dxms))];
 
-add(P9, 'SCR-25-0124', 'Thêm mới hồ sơ — ĐXMS khoá, chọn quy trình MS01.02', create('MS01.02', X2), { link: 'SCR-03-0124', linkSel: '#c-save' });
+add(P9, 'SCR-25-0124', 'Thêm mới hồ sơ — ĐXMS khoá, quy trình MS01 (luồng con dự kiến .02)', create('MS01.02', X2), { link: 'SCR-03-0124', linkSel: '#c-save' });
 add(P9, 'SCR-03-0124', 'Chọn căn cứ · T01 · chỉ căn cứ TĐ đã duyệt', mt(1, 'minh', 'MS01.02', X2), { link: 'SCR-07-0124' });
-add(P9, 'SCR-07-0124', 'Báo giá · T10 · khớp quy trình ≥ 160 tỷ', mt(10, 'minh', 'MS01.02', X2), { link: 'SCR-16-0124' });
+add(P9, 'SCR-07-0124', 'Báo giá · T10 · ≥ 160 tỷ, căn cứ đã được phê duyệt → luồng con MS01.02', mt(10, 'minh', 'MS01.02', X2), { link: 'SCR-16-0124' });
 add(P9, 'SCR-16-0124', 'TTMS xác định báo cáo Tập đoàn · T48 · khoá "Có báo cáo"', mt(48, 'lan', 'MS01.02', X2), { link: 'SCR-19-0124-a' });
 add(P9, 'SCR-19-0124-a', 'Rà soát dự thảo BM-08 · T58 · không kèm BM-06/07', mt(58, 'lan', 'MS01.02', X2), { link: 'SCR-19-0124-b' });
 add(P9, 'SCR-19-0124-b', 'Thủ trưởng VHT phê duyệt · T60', mt(60, 'tgd', 'MS01.02', X2), { link: 'SCR-20-0124' });
@@ -418,9 +416,9 @@ const vpick = (id, vals, close) => [`document.querySelector('[data-vsel="${id}"]
   ...vals.map((v) => `document.querySelector('.vsel-panel [data-opt="${v}"]').click()`), ...(close ? [click(close)] : [])];
 add(P15, 'SCR-95', 'Danh sách luồng mua sắm', [...LG13, J.hash('#/luong')], { link: 'SCR-97-info', linkSel: 'main .vtable tbody tr.click a.link' });
 add(P15, 'SCR-96', 'Thêm mới luồng mua sắm', [J.jump(1, 'minh'), GOP, J.hash('#/luong/create')], { link: 'SCR-96-nhap', linkSel: '[data-lf-add]' });
-add(P15, 'SCR-96-nhap', 'Thêm mới luồng mua sắm — đã nhập: tệp căn cứ, quy trình, nhân sự bước 17', [J.jump(1, 'minh'), GOP, J.hash('#/luong/create'),
+add(P15, 'SCR-96-nhap', 'Thêm mới luồng mua sắm — đã nhập: tệp căn cứ, nhân sự bước 17', [J.jump(1, 'minh'), GOP, J.hash('#/luong/create'),
   `(() => { const e = document.querySelector('#lf-title'); e.value = ${JSON.stringify(LT)}; e.dispatchEvent(new Event('input', { bubbles: true })); })()`,
-  ...vpick('lf-nv', ['NV-KHCN-2026-014']), ...vpick('lf-proc', ['MS01.01']),
+  ...vpick('lf-nv', ['NV-KHCN-2026-014']),
   `(() => { const i = document.querySelector('#lf-file'), dt = new DataTransfer(); ['QD-1482-VHT.pdf', 'KH-mua-sam-2026.pdf'].forEach((n) => dt.items.add(new File([new Uint8Array(16)], n, { type: 'application/pdf' }))); i.files = dt.files; i.dispatchEvent(new Event('change', { bubbles: true })); })()`,
   ...vpick('lf-type-1', ['QD_NV']), ...vpick('lf-type-2', ['KH_NAM']), click('[data-lf-add]'),
   `(() => { const id = [...document.querySelectorAll('[data-lf-members] tbody tr [data-row-step]')].pop().dataset.rowStep; document.querySelector('[data-vsel="lf-step-' + id + '"]').click(); document.querySelector('.vsel-panel [data-opt="17"]').click();

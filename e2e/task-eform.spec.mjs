@@ -9,7 +9,8 @@ const BA = /SCR-\d|UC-\d|task \d|bước \d|Prototype|minh hoạ|giả lập|WBS
 const BAD = /\{\{|\bnull\b|\bundefined\b|\bNaN\b|\[object/;
 
 const SETS = [
-  { proc: 'MS01.01', tasks: [1, 4, 5, 7, 8, 10, 12, 13, 16, 17, 19, 20, 26, 27, 28, 35, 36, 42, 43, 46, 47, 48, 50, 51, 53, 54, 55, 56, 58, 59, 60] },
+  // T29 B16: thêm bốn bước chỉ huy duyệt của DX-10 (5.1, 7.1, 10.1, 16.1).
+  { proc: 'MS01.01', tasks: [1, 4, 5, '5.1', 7, '7.1', 8, 10, '10.1', 12, 13, 16, '16.1', 17, 19, 20, 26, 27, 28, 35, 36, 42, 43, 46, 47, 48, 50, 51, 53, 54, 55, 56, 58, 59, 60] },
   { proc: 'MS01.03', dxms: 'ĐXMS-2026-0098', tasks: [11, 16, 38, 39, 60] },
   { proc: 'MS13', kdt: true, tasks: [1, 4, 5, 7, 8, 10, 11, 12, 15, 17, 39, 40, 41, 42, 43, 27, 29, 31, 32, 34, 35, 36, 46, 47, 48, 50, 51, 52, 53, 55, 56, 57, 60] },
   { proc: 'MS13', kdt: 'KĐT-2026-0031', tasks: [19, 20, 21, 22, 23, 24, 61, 62] },
@@ -36,9 +37,14 @@ for (const set of SETS) {
     await fresh(page);
     for (const task of set.tasks) {
       expect(await jump(page, set, task), `có việc ở task ${task}`).toBeTruthy();
-      // Khung chung: không còn card nội dung riêng giữa Quy trình và Danh sách tài liệu. Ngoại lệ T29 S9: bước 19 / 20 MS01 có card thẩm định CQCM.
-      const td = set.proc !== 'MS02' && !set.kdt && ['19', '20'].includes(String(task));
-      await expect(page.locator('.tmain > section > h3, .tmain > section > .vcard-h > h3')).toHaveText(['Thông tin chung'].concat(td ? ['Thẩm định của cơ quan chuyên môn'] : [], ['Quy trình', 'Danh sách tài liệu', 'Văn bản đầu ra']));
+      // Khung chung: không còn card nội dung riêng giữa Quy trình và Danh sách tài liệu. Ngoại lệ T29 S9: bước 19 / 20 MS01 có card thẩm định CQCM;
+      // T31 B4: bước 27 / 29 / 46 / 55 MS13 (KĐT).
+      const td = set.proc !== 'MS02' && (set.kdt ? ['27', '29', '46', '55'] : ['19', '20']).includes(String(task));
+      // T29 B3b: bước 10 MS01 có card Đánh giá báo giá và cơ sở giá.
+      // T29 B16 (DX-10): 10.1 xem card báo giá; 7 / 7.1 (Kho trên sơ đồ) có card Kết quả rà soát tồn kho.
+      const bg = set.proc !== 'MS02' && !set.kdt && ['10', '10.1'].includes(String(task));
+      const rk = set.proc !== 'MS02' && !set.kdt && ['7', '7.1'].includes(String(task));
+      await expect(page.locator('.tmain > section > h3, .tmain > section > .vcard-h > h3')).toHaveText(['Thông tin chung'].concat(td ? ['Thẩm định của cơ quan chuyên môn'] : [], bg ? ['Đánh giá báo giá và cơ sở giá'] : [], rk ? ['Kết quả rà soát tồn kho'] : [], ['Quy trình', 'Danh sách tài liệu', 'Văn bản đầu ra']));
       const f = await openForm(page);
       await expect(f.locator('.ef-body')).toHaveAttribute('data-ef-form', set.proc === 'MS02' ? /^dtms-ms02-/ : /^dtms-ms(01|13)-/);
       const txt = await f.innerText();
@@ -125,7 +131,7 @@ test('nút (i): tên form, loại nút, Xem schema JSON Camunda Form', async ({ 
 test('MS01 họp thống nhất (task 31–34): form mở được từ nhánh giải trình vượt vòng', async ({ page }) => {
   await fresh(page, '#/viec-cua-toi');
   await page.locator('#demo').click();
-  await page.locator('[data-branch="3"]').click();
+  await page.locator('[data-branch="2"]').click();
   expect(await primary(page, 'Gửi giải trình')).toBe(true);
   const go = async (task) => page.evaluate((t) => { const k = Flow.state.tokens.find((x) => x.task === t); Flow.setPersona(k.who); location.hash = '#/task/' + k.id; }, task);
   await go(31);

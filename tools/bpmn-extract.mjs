@@ -1,12 +1,12 @@
-// Sinh js/bpmn-tasks.js từ BPMN chuẩn: project-knowledge/03. Thiết kế (Tài liệu BA)/BPMN/ĐTMS.drawio, trang "MS01 v1.1".
+// Sinh js/bpmn-tasks.js từ BPMN chuẩn: project-knowledge/03. Thiết kế (Tài liệu BA)/BPMN/ĐTMS-121026.drawio, trang "MS01 v1.1".
 // Mỗi nhãn task có dạng "NN. Tên Tác nhân: … Thực hiện: … Biểu mẫu[/Hồ sơ]: …". Chạy: node tools/bpmn-extract.mjs
 import { readFileSync, writeFileSync } from 'node:fs';
 
-const SRC = new URL('../../../project-knowledge/03. Thiết kế (Tài liệu BA)/BPMN/ĐTMS.drawio', import.meta.url);
+const SRC = new URL('../../../project-knowledge/03. Thiết kế (Tài liệu BA)/BPMN/ĐTMS-121026.drawio', import.meta.url);
 const PAGE = 'MS01 v1.1';
 const OUT = new URL('../js/bpmn-tasks.js', import.meta.url);
 
-/* 10a, 10b: nhánh không khớp quy trình (chốt 2026-09-28, N08), đánh số phụ để không đánh số lại 61 task. */
+/* T29 B1 (D-54): MS01 một quy trình — bỏ 10a, 10b (nhánh không khớp quy trình); đọc bản 12/10 (không có 10a / 10b, C7). */
 /* Số task tương ứng trong bản 58 task cũ (MS01_01_TO_BE_VHT), đối chiếu theo tên. Trống = task mới. */
 const OLD = { 1: '1', 2: '2', 3: '3', 4: '4', 5: '5', 6: '6', 7: '7', 8: '8', 9: '9', 10: '10', 11: '', 12: '11', 13: '12', 14: '13',
   15: '15', 16: '14', 17: '', 18: '15', 19: '16', 20: '17', 21: '18', 22: '19', 23: '20', 24: '', 25: '21', 26: '22', 27: '23', 28: '24',
@@ -35,11 +35,11 @@ for (const m of body.matchAll(/(?:value|label)="([^"]+)"/g)) {
   if (tasks[n]) throw new Error(`Task ${n} trùng`);
   tasks[n] = { name: t[2].trim(), actor: t[3].trim(), type: /Hệ thống/.test(t[3]) ? 'service' : 'user', form, old: OLD[n] || '', note: doing.trim() };
 }
-for (const n of [...Array.from({ length: 61 }, (_, k) => String(k + 1)), '10a', '10b']) if (!tasks[n]) throw new Error(`Thiếu task ${n}`);
+for (const n of Array.from({ length: 61 }, (_, k) => String(k + 1))) if (!tasks[n]) throw new Error(`Thiếu task ${n}`);
 
-writeFileSync(OUT, `/* SINH TỰ ĐỘNG từ project-knowledge/03. Thiết kế (Tài liệu BA)/BPMN/ĐTMS.drawio, trang "${PAGE}" (61 task + 10a, 10b).
+writeFileSync(OUT, `/* SINH TỰ ĐỘNG từ project-knowledge/03. Thiết kế (Tài liệu BA)/BPMN/ĐTMS-121026.drawio, trang "${PAGE}" (61 task).
    Không sửa tay — chạy lại: node tools/bpmn-extract.mjs. \`old\` = số task ở bản 58 task cũ (MS01_01_TO_BE_VHT), trống = task mới. */
-window.BPMN_SOURCE = ${JSON.stringify({ file: 'ĐTMS.drawio', page: PAGE, count: 61, extra: ['10a', '10b'] })};
+window.BPMN_SOURCE = ${JSON.stringify({ file: 'ĐTMS-121026.drawio', page: PAGE, count: 61 })};
 window.BPMN_TASKS = ${JSON.stringify(tasks, null, 1)};
 `);
 console.log(Object.entries(tasks).map(([n, t]) => `${n.padStart(2)} ${t.type.padEnd(7)} ${t.actor.slice(0, 26).padEnd(26)} ${t.name.slice(0, 60)}`).join('\n'));

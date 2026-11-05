@@ -13,6 +13,8 @@ const open = async (page) => {
   await page.evaluate(() => { location.hash = '#/ph/cong-khai-thau'; });
   await expect(page).toHaveURL(/#\/cong-khai-thau$/);
   await expect(page.locator('.pg-title')).toHaveText('Công khai & tích hợp đấu thầu');
+  // D-76: menu Thầu ẩn ở bản demo ĐXMS — bật cờ để kiểm mục menu.
+  await page.evaluate(() => { D.show.menuThau = true; App.render(); });
 };
 const row = (page, id) => page.locator('main .vtable tbody tr', { has: page.locator(`[data-ck-pub="${id}"]`) });
 

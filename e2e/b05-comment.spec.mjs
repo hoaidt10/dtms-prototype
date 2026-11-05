@@ -41,18 +41,19 @@ test('#1, #12 SCR-28: Nhiệm vụ / Đề tài bắt buộc; Mật → AI kiể
 
 test('#24: Chọn mẫu tài liệu theo bước + quy trình; Văn bản đầu ra có Trạng thái', async ({ page }) => {
   await fresh(page);
+  // T29 B15 (review Huylx4 #5): bước không có biểu mẫu của bước (bước 1) thì không hiện nút.
   await jump(page, 1);
-  await docs(page).locator('[data-tpl]').click();
+  await expect(docs(page).locator('[data-tpl]')).toHaveCount(0);
   const dlg = page.locator('.vmodal', { hasText: 'Danh sách tài liệu mẫu' });
-  await expect(dlg.locator('#tpl-here')).not.toBeChecked();
-  await expect(dlg.locator('tbody')).not.toContainText('BM-09');
-  await expect(dlg.locator('tbody')).toContainText('BM-01');
-  await dlg.locator('[data-close]').first().click();
   await jump(page, 16);
   await docs(page).locator('[data-tpl]').click();
   await expect(dlg.locator('#tpl-here')).toBeChecked();
   await expect(dlg.locator('tbody tr')).toHaveCount(1);
   await expect(dlg.locator('tbody')).toContainText('BM-03');
+  // Bỏ "Chỉ mẫu của bước này": mẫu của cả quy trình theo luồng (≥ 160 tỷ: BM-01, không BM-09).
+  await dlg.locator('#tpl-here').uncheck();
+  await expect(dlg.locator('tbody')).not.toContainText('BM-09');
+  await expect(dlg.locator('tbody')).toContainText('BM-01');
   await dlg.locator('[data-close]').first().click();
   // Task 12: dự thảo AI soạn → "AI đã gợi ý"; Lưu nháp → "Đang làm"; văn bản bước trước → "Hoàn thành".
   await jump(page, 12);
@@ -179,6 +180,7 @@ test('#11: ký cứng bắt buộc lý do, ghi lại để thống kê', async (
   await fresh(page);
   await jump(page, 17);
   await page.locator('.task-acts [data-act].primary').click();
+  await page.locator('.vmodal.ef [data-ef-field="nhanXetDs"] textarea').fill('Danh sách đúng, đủ.'); // T29 B15 #32
   await page.locator('.vmodal.ef #ok').click();
   await page.locator('.overlay [data-mode="hard"]').click();
   await page.locator('#go').click();

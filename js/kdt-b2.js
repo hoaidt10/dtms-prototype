@@ -15,29 +15,54 @@
 
   /* ---------- SCR-75 Danh sách hồ sơ KĐT (khuôn profile-list, như SCR-02) ---------- */
   const CASE_ST = { processing: ['Đang xử lý', 'info'], done: ['Hoàn thành', 'success'], moved: ['Đã chuyển luồng', 'warning'], stopped: ['Dừng theo chỉ đạo', 'default'] };
-  const emptyF = () => ({ code: '', kdt: '', title: '', unit: null, group: [], branch: [], st: [] });
+  const emptyF = () => ({ code: '', kdt: '', title: '', nv: null, block: null, unit: null, creator: null, secret: null, group: [], branch: [], st: [], from: '', to: '',
+    cqcm: [], rvSt: [], rvFrom: '', rvTo: '', ttFrom: '', ttTo: '' });
   const L = { kw: '', adv: false, f: emptyF(), d: emptyF(), page: 1, size: 10, psOpen: false };
   function rows() {
-    return Flow.kdtCases().map((c) => { const x = Flow.findKdt(c.kdt) || {}; return Object.assign({}, c, { title: c.title || x.title || '', unit: x.unit || '', step: window.Kdt.stepName(c) }); })
+    return Flow.kdtCases().map((c) => { const x = Flow.findKdt(c.kdt) || {}; return Object.assign({}, c, { title: c.title || x.title || '', nv: x.nv || null, unit: x.unit || '', secret: !!x.secret, step: window.Kdt.stepName(c) }); })
       .sort((a, b) => b.code.localeCompare(a.code));
+  }
+  /* T31 K1 (IA dòng 19–20): CQCM, tình trạng, ngày thẩm định cùng thỏa trên một CQCM; ngày tờ trình (GIẢ LẬP P-191, P-192). */
+  function advReview(c, f) {
+    const K = window.Kdt;
+    if (f.cqcm.length || f.rvSt.length || f.rvFrom || f.rvTo) {
+      if (!K.reviewOf(c).some((r) => (!f.cqcm.length || f.cqcm.includes(r.id)) && (!f.rvSt.length || f.rvSt.includes(r.st)) && (!(f.rvFrom || f.rvTo) || K.inDate(r.at, f.rvFrom, f.rvTo)))) return false;
+    }
+    if (f.ttFrom || f.ttTo) { const t = K.ttOf(c); if (!t || !K.inDate(t.at, f.ttFrom, f.ttTo)) return false; }
+    return true;
   }
   function filtered() {
     const f = L.f, n = norm;
     return rows().filter((c) => (!L.adv ? !L.kw || n(`${c.code} ${c.kdt} ${c.title}`).includes(n(L.kw))
-      : (!f.code || n(c.code).includes(n(f.code))) && (!f.kdt || n(c.kdt).includes(n(f.kdt))) && (!f.title || n(c.title).includes(n(f.title))) && (!f.unit || c.unit === f.unit)
-        && (!f.group.length || f.group.includes(c.flow || 'NONE')) && (!f.branch.length || f.branch.includes(c.branch || 'NONE')) && (!f.st.length || f.st.includes(c.st))));
+      : (!f.code || n(c.code).includes(n(f.code))) && (!f.kdt || n(c.kdt).includes(n(f.kdt))) && (!f.title || n(c.title).includes(n(f.title))) && (!f.unit || c.unit === f.unit) && (!f.nv || c.nv === f.nv)
+        && (!f.group.length || f.group.includes(c.flow || 'NONE')) && (!f.branch.length || f.branch.includes(c.branch || 'NONE')) && (!f.st.length || f.st.includes(c.st))
+        && (!f.block || D.blockOf(c.unit) === f.block) && (!f.creator || c.creator === f.creator) && (!f.secret || (f.secret === 'Có') === c.secret)
+        && window.Kdt.inDate(c.created, f.from, f.to) && advReview(c, f)));
   }
+  const RV_ST = ['Chưa xem', 'Đang xem', 'Đã đồng ý', 'Yêu cầu sửa'];
   function advPanel() {
-    const d = L.d;
+    const d = L.d, K = window.Kdt;
     const txt = (k, label) => `<div class="vfield"><div class="lr"><label>${label}</label></div><input class="vctl" data-hkf="${k}" maxlength="255" placeholder="Nhập ${label.toLowerCase()}" value="${esc(d[k])}"></div>`;
+    const date = (k, label) => `<div class="vfield"><div class="lr"><label>${label}</label></div><input class="vctl" data-hkf="${k}" maxlength="10" placeholder="DD/MM/YYYY" value="${esc(d[k])}"></div>`;
     const sel = (k, label, o) => `<div class="vfield"><div class="lr"><label>${label}</label></div>${vSelect(Object.assign({ id: 'hkf-' + k, value: d[k], clear: true, searchable: true,
       placeholder: 'Chọn ' + label.toLowerCase(), onChange: (v) => { d[k] = v; rerender(); } }, o))}</div>`;
+    const units = [...new Set(rows().map((c) => c.unit))].filter((u) => !d.block || D.blockOf(u) === d.block);
     return `<form class="adv" data-hk-adv><div class="grid3">
         ${txt('code', 'Mã hồ sơ')}${txt('kdt', 'Mã KĐT')}${txt('title', 'Tên hồ sơ')}
-        ${sel('unit', 'Đơn vị đề xuất', { options: [...new Set(rows().map((c) => c.unit))].map((u) => ({ value: u, label: u })) })}
+        ${sel('nv', 'Đề tài / dự án', { options: D.nhiemVu.map((n) => ({ value: n.code, label: `${n.code} — ${n.name}` })) })}
+        ${sel('block', 'Khối đơn vị', { searchable: false, options: D.blocks.map((b) => ({ value: b, label: b })),
+    onChange: (v) => { d.block = v; if (d.unit && D.blockOf(d.unit) !== v) d.unit = null; rerender(); } })}
+        ${sel('unit', 'Đơn vị đề xuất', { options: units.map((u) => ({ value: u, label: u })) })}
+        ${sel('creator', 'Người tạo', { options: K.creatorsOf(rows()).map((u) => ({ value: u, label: u })) })}
         ${sel('group', 'Nhóm KĐT', { multi: true, searchable: false, options: [{ value: 'NONE', label: 'Chưa xác định' }].concat(Object.entries(D.kdtGroups).map(([value, label]) => ({ value, label }))) })}
         ${sel('branch', 'Nhánh hồ sơ', { multi: true, searchable: false, options: [{ value: 'NONE', label: 'Chưa xác định' }].concat(Object.entries(D.kdtBranches).map(([value, label]) => ({ value, label }))) })}
-        ${sel('st', 'Trạng thái', { multi: true, searchable: false, options: Object.entries(CASE_ST).map(([value, [label]]) => ({ value, label })) })}</div>
+        ${sel('st', 'Trạng thái', { multi: true, searchable: false, options: Object.entries(CASE_ST).map(([value, [label]]) => ({ value, label })) })}
+        ${sel('secret', 'Mật', { searchable: false, placeholder: 'Tất cả', options: ['Có', 'Không'].map((p) => ({ value: p, label: p })) })}
+        ${sel('cqcm', 'Người thẩm định (CQCM)', { multi: true, placeholder: 'Chọn CQCM', options: D.cqcm.map((c) => ({ value: c.id, label: `${c.unit} — ${persona(c.doer).name}` })) })}
+        ${sel('rvSt', 'Trạng thái với người thẩm định', { multi: true, searchable: false, placeholder: 'Tất cả', options: RV_ST.map((v) => ({ value: v, label: v })) })}
+        ${date('from', 'Ngày tạo từ')}${date('to', 'Ngày tạo đến')}
+        ${date('rvFrom', 'Ngày thẩm định từ')}${date('rvTo', 'Ngày thẩm định đến')}
+        ${date('ttFrom', 'Ngày tờ trình từ')}${date('ttTo', 'Ngày tờ trình đến')}</div>
       <div class="acts"><button type="button" class="vbtn secondary" data-hk="reset">Làm mới</button><button type="submit" class="vbtn primary">Tìm kiếm</button></div></form>`;
   }
   function caseList() {
@@ -46,25 +71,31 @@
     const pages = Math.max(1, Math.ceil(all.length / L.size));
     if (L.page > pages) L.page = pages;
     const from = (L.page - 1) * L.size;
-    const cols = [['Trạng thái', 180, 'c'], ['Mã hồ sơ', 150], ['Mã KĐT', 160], ['Tên hồ sơ', 320], ['Loại hồ sơ', 150], ['Đơn vị đề xuất', 200],
-      ['Nhóm KĐT', 200], ['Nhánh hồ sơ', 220], ['Tổng mức vốn (tỷ đồng)', 170, 'r'], ['Bước hiện tại', 240], ['Ngày cập nhật', 140]];
+    const cols = [['Trạng thái', 180, 'c'], ['Mã hồ sơ', 150], ['Mã KĐT', 160], ['Tên hồ sơ', 320], ['Đề tài / dự án', 260], ['Loại hồ sơ', 150], ['Đơn vị đề xuất', 200],
+      ['Nhóm KĐT', 200], ['Nhánh hồ sơ', 220], ['Tổng mức vốn (tỷ đồng)', 170, 'r'], ['Bước hiện tại', 240],
+      ['Số tờ trình', 150], ['Ngày tờ trình', 130], ['Ngày gửi thẩm định', 160], ['Người tạo', 170], ['Ngày tạo', 130], ['Ngày cập nhật', 140]];
     const body = all.slice(from, from + L.size).map((c, i) => {
+      const tt = window.Kdt.ttOf(c);
       return `<tr class="click" data-go="${caseHref(c)}" data-code="${esc(c.code)}"><td class="ord">${from + i + 1}</td>
         <td class="c">${badge(...CASE_ST[c.st])}</td><td><a class="link" data-go="${caseHref(c)}">${esc(c.code)}</a></td><td><a class="link" data-go="kdt/${encodeURIComponent(c.kdt)}">${esc(c.kdt)}</a></td>
-        <td>${clamp(c.title)}</td><td>${c.kind === 'DC' ? 'Điều chỉnh KĐT' : 'Phê duyệt KĐT'}</td><td>${clamp(c.unit)}</td><td>${c.flow ? esc(D.kdtGroups[c.flow]) : '<span class="faint">Chưa xác định</span>'}</td>
-        <td>${c.branch ? esc(D.kdtBranches[c.branch]) : dash}</td><td class="r num">${c.total != null ? ty(c.total) : dash}</td><td>${clamp(c.step)}</td><td class="num">${esc(c.updated)}</td></tr>`;
+        <td>${clamp(c.title)}</td><td>${c.nv ? `<span class="clamp">${window.Kdt.nvLink(c.nv)}</span>` : dash}</td><td>${c.kind === 'DC' ? 'Điều chỉnh KĐT' : 'Phê duyệt KĐT'}</td><td>${clamp(c.unit)}</td><td>${c.flow ? esc(D.kdtGroups[c.flow]) : '<span class="faint">Chưa xác định</span>'}</td>
+        <td>${c.branch ? esc(D.kdtBranches[c.branch]) : dash}</td><td class="r num">${c.total != null ? ty(c.total) : dash}</td><td>${clamp(c.step)}</td>
+        <td>${tt ? esc(tt.no) : dash}</td><td class="num">${tt ? esc(tt.at) : dash}</td><td class="num">${tt ? esc(tt.at) : dash}</td><td>${clamp(c.creator)}</td><td class="num">${esc(c.created || '')}</td><td class="num">${esc(c.updated)}</td></tr>`;
     }).join('');
     const info = {
-      scr: 'SCR-75', name: 'Danh sách hồ sơ khoản đầu tư', uc: 'UC-05-01 · Backlog W1_T10 › Hồ sơ KĐT (dòng 307–309)',
+      scr: 'SCR-75', name: 'Danh sách hồ sơ khoản đầu tư', uc: 'UC-05-01 · Backlog W1_T10 › Hồ sơ KĐT (dòng 307–309) · IA-DXMS dòng 19–21 (plan T31 K1, K2, K3; D-67, D-69)',
       notes: [
         'T16 B2: khuôn profile-list như Danh sách hồ sơ ĐXMS (SCR-02); cột Mã nhiệm vụ của source thay bằng <b>Mã KĐT</b>, thêm Nhóm KĐT, Nhánh hồ sơ (gộp BM-00 / hai giai đoạn), Tổng mức vốn thực tế.',
         'Hồ sơ là đối tượng con của KĐT (D-12): không có nút Thêm mới ở đây — hồ sơ tạo ở Chỉnh sửa KĐT › Tạo hồ sơ (Lưu = khởi tạo MS13). Mã hồ sơ mở Chi tiết hồ sơ KĐT; Mã KĐT mở Chi tiết KĐT.',
         'Nhóm KĐT do hệ thống xác định sau bước 12 (trước đó "Chưa xác định"). Không có cột Thao tác (D-43, team BA 30/10/2026); xử lý việc mở từ Việc của tôi.',
+        '<b>T31 — theo IA-DXMS</b> (màn Thẩm định TTr, dòng 19–21; D-67): Tìm kiếm nâng cao thêm Khối đơn vị (Đơn vị đề xuất hiện theo khối), Người tạo, Mật, Ngày tạo, <b>Người thẩm định (CQCM)</b>, <b>Trạng thái với người thẩm định</b> (Chưa xem / Đang xem / Đã đồng ý / Yêu cầu sửa), Ngày thẩm định, Ngày tờ trình — điều kiện CQCM, tình trạng, ngày thẩm định cùng thỏa trên một CQCM; cột Số / Ngày tờ trình, Ngày gửi thẩm định, Người tạo, Ngày tạo; <b>Xuất Excel</b>.',
+        '<b>T31 B2</b> (D-69; IA dòng 19, 21 có "Dự án / đề tài"): thêm cột và bộ lọc <b>Đề tài / dự án</b> của KĐT, mã mở Chi tiết đề tài / dự án (SCR-104).',
+        'Giả lập: hồ sơ được tính là đã gửi thẩm định khi qua bước 24 (nhánh gộp, ký phiếu yêu cầu thẩm định BM-00) hoặc bước 45 (hai giai đoạn, mở vòng chủ trương BM-01); Số tờ trình cấp lúc đó (P-192); tình trạng hai CQCM mặc định (P-191). Thật: tình trạng suy từ việc Camunda của bước 27 / 29 / 46 / 55, Số tờ trình lấy từ văn bản đầu ra đã ký.',
       ],
-      src: 'profile-management/profile-list · /khcn-profile-management',
+      q: ['P-190', 'P-191', 'P-192', 'P-201'], src: 'profile-management/profile-list · /khcn-profile-management',
     };
     return `<div class="pg">
-      ${S.head({ title: 'Danh sách hồ sơ khoản đầu tư', info })}
+      ${S.head({ title: 'Danh sách hồ sơ khoản đầu tư', info, right: `<button type="button" class="vbtn secondary" data-hk="export">${icon('excel')} Xuất Excel</button>` })}
       <div class="vcard">
         <div class="pg-head"><span></span><div class="r">
           ${L.adv ? '' : `<label class="vsearch" style="width:264px">${icon('search')}<input id="hk-kw" maxlength="255" placeholder="Tìm kiếm theo mã hồ sơ, mã KĐT, tên hồ sơ" value="${esc(L.kw)}"></label>`}
@@ -90,6 +121,15 @@
     if (!h) return;
     if (h.dataset.hk === 'adv') { L.adv = !L.adv; L.d = JSON.parse(JSON.stringify(L.f)); L.page = 1; }
     if (h.dataset.hk === 'reset') { L.d = emptyF(); L.f = emptyF(); L.page = 1; }
+    if (h.dataset.hk === 'export') {
+      const K = window.Kdt;
+      const head = ['STT', 'Trạng thái', 'Mã hồ sơ', 'Mã KĐT', 'Tên hồ sơ', 'Đề tài / dự án', 'Loại hồ sơ', 'Đơn vị đề xuất', 'Nhóm KĐT', 'Nhánh hồ sơ', 'Tổng mức vốn (tỷ đồng)', 'Bước hiện tại',
+        'Số tờ trình', 'Ngày tờ trình', 'Ngày gửi thẩm định', 'Người tạo', 'Ngày tạo', 'Ngày cập nhật'];
+      K.csv('danh-sach-ho-so-khoan-dau-tu.csv', [head].concat(filtered().map((c, i) => { const tt = K.ttOf(c); return [i + 1, CASE_ST[c.st][0], c.code, c.kdt, c.title, K.nvText(c.nv),
+        c.kind === 'DC' ? 'Điều chỉnh KĐT' : 'Phê duyệt KĐT', c.unit, c.flow ? D.kdtGroups[c.flow] : 'Chưa xác định', c.branch ? D.kdtBranches[c.branch] : '', c.total != null ? ty(c.total) : '',
+        c.step || '', tt ? tt.no : '', tt ? tt.at : '', tt ? tt.at : '', c.creator || '', c.created || '', c.updated || '']; })));
+      return;
+    }
     rerender();
   });
   document.addEventListener('submit', (e) => { if (e.target.matches('[data-hk-adv]')) { e.preventDefault(); L.f = JSON.parse(JSON.stringify(L.d)); L.page = 1; rerender(); } });

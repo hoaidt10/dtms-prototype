@@ -92,7 +92,8 @@
      KĐT gộp MS13 và MS14 làm một nhóm để kiểm tra chồng khoảng giữa hai quy trình. "Tất cả" (*) giao với mọi giá trị. */
   const FLOW_GROUP = [{ value: 'DXMS', label: 'Đề xuất mua sắm (MS01)' }, { value: 'KDT', label: 'Khoản đầu tư (MS13, MS14)' }];
   const FLOW_PROC = {
-    DXMS: Object.keys(D.processes).map((k) => [k, D.processes[k].name]),
+    /* T29 B1 (D-54): MS01 một quy trình — MS01.01 / .02 / .03 là luồng con, ngưỡng là biến cổng "Giá trị?" sau bước 10. */
+    DXMS: Object.keys(D.processes).map((k) => [k, `Luồng con của MS01 — ${D.processes[k].name}`]),
     /* MS13 là một quy trình (plan KĐT §6 #1): nhánh gộp BM-00 / hai giai đoạn do cổng trong BPMN chọn, không do ngưỡng. */
     KDT: [['MS13', 'Phê duyệt khoản đầu tư đơn giản'], ['MS14', 'Phê duyệt khoản đầu tư thông thường']],
   };
@@ -546,11 +547,11 @@
         'Khoản đầu tư gộp MS13 và MS14 làm một nhóm để kiểm tra chồng khoảng giữa hai quy trình (tài liệu chuẩn bị ghi 2 nhóm).',
         'Bảng không có Mã: bấm Nhóm quy trình mở hộp thoại Xem chi tiết (chỉ xem, nút Đóng / Chỉnh sửa).',
         'Hiệu lực từ ngày (P-34): hồ sơ đã tạo giữ ngưỡng tại thời điểm tạo; ngưỡng mới chỉ áp dụng cho hồ sơ tạo từ ngày hiệu lực. Đổi điều kiện hoặc quy trình thì ngày hiệu lực không được trước ngày hiện tại. Ngày hiệu lực ở tương lai hiện nhãn "Chưa hiệu lực"; prototype chưa giữ bản cũ cho giai đoạn chờ.',
-        'Đề xuất mua sắm: dưới 160 tỷ → MS01.03; từ 160 tỷ → MS01.01 hoặc MS01.02, chọn theo căn cứ chứ không theo ngưỡng. Loại khoản đầu tư có Cấp xử lý "Luôn cấp Tập đoàn" (Kinh doanh, Bất động sản) được ưu tiên hơn bảng ngưỡng (P-29).',
+        'Đề xuất mua sắm (T29 B1, D-54): MS01 một quy trình; dòng ngưỡng trỏ tới luồng con — dưới 160 tỷ → MS01.03; từ 160 tỷ → MS01.01 hoặc MS01.02, chọn theo "Căn cứ đã được phê duyệt" và lựa chọn ở bước 48 chứ không theo ngưỡng. Loại khoản đầu tư có Cấp xử lý "Luôn cấp Tập đoàn" (Kinh doanh, Bất động sản) được ưu tiên hơn bảng ngưỡng (P-29).',
         'Ngưỡng MS13/MS14 theo QT-8.6.5 (trường hợp 1, 2): Viễn thông - CNTT dưới 160 tỷ / 160 – dưới 1.000 tỷ; lĩnh vực khác (trừ KĐT bất động sản) dưới 90 tỷ / 90 – dưới 500 tỷ. Khớp BB-2409; BB-1509 ghi ngược (P-28). Trên mức đó và KĐT bất động sản là KĐT phức tạp (MS15, Pha 2) — chưa có dòng ngưỡng. Lĩnh vực Quốc phòng thuộc "lĩnh vực khác" nhưng chưa có dòng ngưỡng riêng (P-67).',
         'Khoản đầu tư: MS13 là <b>một</b> quy trình (trang MS13), áp cho mọi tính chất tài sản. Nhánh gộp BM-00 (Nguyên chiếc + Trang bị nội bộ) hay hai giai đoạn BM-01 → BM-03 do cổng trong BPMN chọn sau khi TTMS xác nhận 04 yếu tố, không do bảng ngưỡng. Hệ thống xác định nhóm KĐT theo ngưỡng này sau bước 12 (D-7).',
         'Ngưỡng của Đề xuất mua sắm đang được hồ sơ dùng: không xoá được, chỉ Dừng hoạt động (P-33). Dữ liệu mẫu; thay đổi được lưu trên trình duyệt.',
-        'Dùng ở: nhãn điều kiện của từng quy trình khi Thêm mới hồ sơ Phê duyệt ĐXMS, cảnh báo mềm ở task 04, cổng "Giá trị khớp quy trình đã chọn?" sau task 10 và gợi ý quy trình ở task 10a. Hồ sơ giữ ngưỡng tại lúc tạo; tên quy trình (vd "Phê duyệt ĐXMS ≥ 160 tỷ") là tên trong BPMN, không đổi theo ngưỡng.',
+        'Dùng ở: luồng con dự kiến khi Thêm mới luồng / hồ sơ (theo Giá trị dự kiến), cảnh báo mềm ở task 04, cổng "Giá trị?" sau task 10 (đặt luồng con theo Tổng giá trị). Hồ sơ giữ ngưỡng tại lúc tạo (P-34); tên luồng con (vd "Phê duyệt ĐXMS ≥ 160 tỷ") không đổi theo ngưỡng.',
       ],
       q: ['P-28', 'P-67', 'P-34', 'P-29', 'P-33', 'P-27'], src: 'ecat common-catalog/base/catalog-list · khcn sys_config.TASK_LEVEL',
     };

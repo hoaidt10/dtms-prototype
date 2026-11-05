@@ -1,0 +1,80 @@
+// T31 B1 — K1 tìm kiếm nâng cao, K2 cột / Xuất Excel cho Danh sách KĐT (SCR-54) và Danh sách hồ sơ KĐT (SCR-75),
+// theo IA-DXMS dòng 10–12, 19–21 (plan docs/dtms/prototype-T31-kdt-ia-chuan-bi.md §3; D-67). Giả lập P-190, P-191, P-192.
+import { test, expect } from '@playwright/test';
+import { fresh } from './helpers.mjs';
+
+const pick = async (page, id, value) => {
+  await page.locator(`[data-vsel="${id}"]`).evaluate((e) => e.scrollIntoView({ block: 'center' }));
+  await page.locator(`[data-vsel="${id}"]`).click();
+  await page.locator(`.vsel-panel [data-opt="${value}"]`).click();
+};
+const rowCodes = (page) => page.locator('main .vtable tbody tr').evaluateAll((rs) => rs.map((r) => r.dataset.code).filter(Boolean));
+const submit = (page) => page.locator('.adv button[type="submit"]').click({ force: true });
+const dk = (s) => s.split('/').reverse().join('');
+
+test('K1, K2: Danh sách KĐT — Khối → Đơn vị, Nhóm trạng thái, Ngày tạo; cột mới; Xuất Excel', async ({ page }) => {
+  await fresh(page, '#/kdt');
+  const ths = await page.locator('main .vtable thead th').allTextContents();
+  expect(ths).toEqual(expect.arrayContaining(['Ngày gửi thẩm định', 'Người tạo', 'Ngày tạo']));
+
+  const dl = page.waitForEvent('download');
+  await page.locator('[data-kl="export"]').click();
+  const file = await dl;
+  expect(file.suggestedFilename()).toBe('danh-sach-khoan-dau-tu.csv');
+
+  await page.locator('[data-kl="adv"]').click();
+  await pick(page, 'kf-block', 'Khối 3');
+  await page.locator('[data-vsel="kf-unit"]').click();
+  await expect(page.locator('.vsel-panel [data-opt]')).toHaveText(['Nhà máy sản xuất thử nghiệm']);
+  await page.keyboard.press('Escape');
+  await submit(page);
+  const k3 = await rowCodes(page);
+  expect(k3).toContain('KĐT-2026-0033');
+  const units = await page.evaluate((cs) => cs.map((c) => D.blockOf(Flow.findKdt(c).unit)), k3);
+  expect(new Set(units)).toEqual(new Set(['Khối 3']));
+
+  await page.locator('[data-kl="reset"]').click();
+  await pick(page, 'kf-stGroup', 'idle');
+  await submit(page);
+  const idle = await rowCodes(page);
+  expect(idle.length).toBeGreaterThan(0);
+  const stages = await page.evaluate((cs) => cs.map((c) => Kdt.meta(Flow.findKdt(c)).stage), idle);
+  for (const s of stages) expect(['NEW', 'OK', 'STOP']).toContain(s);
+
+  await page.locator('[data-kl="reset"]').click();
+  await page.locator('[data-kf="from"]').fill('15/09/2026');
+  await submit(page);
+  const late = await rowCodes(page);
+  expect(late).toContain('KĐT-2026-0030');
+  expect(late).not.toContain('KĐT-2026-0029');
+  const created = await page.evaluate((cs) => cs.map((c) => Flow.findKdt(c).created), late);
+  for (const c of created) expect(dk(c) >= '20260915').toBe(true);
+  expect(page.errors).toEqual([]);
+});
+
+test('K1, K2: Danh sách hồ sơ KĐT — Số / Ngày tờ trình, lọc CQCM / Trạng thái với người thẩm định; Xuất Excel', async ({ page }) => {
+  await fresh(page, '#/ho-so-kdt');
+  await expect(page.locator('tr[data-code="HS-2026-0027"] td').nth(12)).toHaveText(/^027\/TTr-/);
+  await expect(page.locator('tr[data-code="HS-2026-0030"] td').nth(12)).toHaveText('-');
+
+  await page.locator('[data-hk="adv"]').click();
+  await pick(page, 'hkf-rvSt', 'Đang xem');
+  await submit(page);
+  const open = await rowCodes(page);
+  expect(open).toEqual(expect.arrayContaining(['HS-2026-0027', 'HS-2026-0024']));
+  const st = await page.evaluate((cs) => cs.map((c) => Kdt.reviewOf(Flow.kdtCases().find((x) => x.code === c)).some((r) => r.st === 'Đang xem')), open);
+  expect(st.every(Boolean)).toBe(true);
+
+  await page.locator('[data-hk="reset"]').click();
+  await pick(page, 'hkf-cqcm', 'PC');
+  await page.keyboard.press('Escape');
+  await submit(page);
+  const pc = await rowCodes(page);
+  expect(pc).not.toContain('HS-2026-0030');
+  expect(pc).toContain('HS-2026-0015');
+
+  const dl = page.waitForEvent('download');
+  await page.locator('[data-hk="export"]').click();
+  expect((await dl).suggestedFilename()).toBe('danh-sach-ho-so-khoan-dau-tu.csv');
+  expect(page.errors).toEqual([]);
+});

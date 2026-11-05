@@ -43,51 +43,47 @@ test('SCR-41: bố cục theo workflow-management — nút đồng bộ, lọc, 
   await expect(page.locator('[data-vsel="wf-st"]')).toContainText('Trạng thái');
   await expect(page.locator('#wf-kw')).toHaveAttribute('placeholder', 'Tìm kiếm theo mã, tên quy trình');
   await expect(page.locator('.vtt th')).toHaveText(['STT', 'Mã quy trình', 'Mã Camunda', 'Tên quy trình', 'Trạng thái', 'Phiên bản', 'SL hồ sơ đang xử lý']);
-  // P-37 đã chốt: MS01.01 / .02 / .03 là ba quy trình riêng.
-  await expect(rows(page)).toHaveCount(6);
-  await expect(rows(page).locator('td:nth-child(3)')).toHaveText(['DTMS_MS01_01', 'DTMS_MS01_02', 'DTMS_MS01_03', 'DTMS_MS02', 'DTMS_MS13', 'DTMS_MS14']);
-  await expect(rows(page).nth(2).locator('td:nth-child(4)')).toHaveText('Phê duyệt ĐXMS < 160 tỷ');
+  // T29 B1 (D-54, thay P-37): MS01 một quy trình.
+  await expect(rows(page)).toHaveCount(4);
+  await expect(rows(page).locator('td:nth-child(3)')).toHaveText(['DTMS_MS01', 'DTMS_MS02', 'DTMS_MS13', 'DTMS_MS14']);
+  await expect(rows(page).first().locator('td:nth-child(4)')).toHaveText('Phê duyệt đề xuất mua sắm');
   // Dòng cha: Mã quy trình "-", không badge, không liên kết.
   await expect(rows(page).first().locator('td:nth-child(2) .vtt-c')).toHaveText('-');
   await expect(page.locator('.vtt tbody .vbadge, .vtt tbody a.link')).toHaveCount(0);
-  await page.locator('[data-vtt-key="DTMS_MS01_01"]').click();
-  await expect(rows(page)).toHaveCount(8);
-  await expect(rows(page).locator('td.ord')).toHaveText(['1', '1.1', '1.2', '2', '3', '4', '5', '6']);
+  await page.locator('[data-vtt-key="DTMS_MS01"]').click();
+  await expect(rows(page)).toHaveCount(6);
+  await expect(rows(page).locator('td.ord')).toHaveText(['1', '1.1', '1.2', '2', '3', '4']);
   const kids = page.locator('.vtt tbody tr.child');
   await expect(kids.locator('.vbadge')).toHaveText(['Hoạt động', 'Dừng hoạt động']);
-  await expect(kids.locator('a.link')).toHaveText(['MS01.01', 'MS01.01']);
+  await expect(kids.locator('a.link')).toHaveText(['MS01', 'MS01']);
   await expect(kids.locator('td:nth-child(6)')).toHaveText(['2', '1']);
-  // SL hồ sơ đang xử lý khớp Giám sát tiến trình (Đang chạy + Quá hạn, MS01.01 phiên bản 2).
-  const n = await page.evaluate(() => QuyTrinh.monitorRows().filter((r) => r.proc === 'MS01.01' && r.version === 2 && ['Đang chạy', 'Quá hạn'].includes(r.status)).length);
+  // SL hồ sơ đang xử lý khớp Giám sát tiến trình (Đang chạy + Quá hạn, MS01 phiên bản 2 — hồ sơ của mọi luồng con).
+  const n = await page.evaluate(() => QuyTrinh.monitorRows().filter((r) => r.proc === 'MS01' && r.version === 2 && ['Đang chạy', 'Quá hạn'].includes(r.status)).length);
   expect(n).toBeGreaterThan(0);
   await expect(kids.first().locator('td:nth-child(7)')).toHaveText(String(n));
-  await page.locator('[data-vtt-key="DTMS_MS01_01"]').click();
-  await expect(rows(page)).toHaveCount(6);
-  // MS01.03 đếm riêng hồ sơ của quy trình này.
-  const n3 = await page.evaluate(() => QuyTrinh.monitorRows().filter((r) => r.proc === 'MS01.03' && ['Đang chạy', 'Quá hạn'].includes(r.status)).length);
-  expect(n3).toBeGreaterThan(0);
-  await expect(rows(page).nth(2).locator('td:nth-child(7)')).toHaveText(String(n3));
+  await page.locator('[data-vtt-key="DTMS_MS01"]').click();
+  await expect(rows(page)).toHaveCount(4);
   expect(await mainText(page)).not.toMatch(BA);
   expect(page.errors).toEqual([]);
 });
 
 test('SCR-41: tìm theo mã/tên khi Enter, lọc Trạng thái, cả hai thu gọn các dòng đã mở; đồng bộ báo thành công', async ({ page }) => {
   await as(page, 'qt', '#/quy-trinh');
-  await page.locator('[data-vtt-key="DTMS_MS01_01"]').click();
+  await page.locator('[data-vtt-key="DTMS_MS01"]').click();
   await page.locator('#wf-kw').fill('khoản đầu tư');
   await page.locator('#wf-kw').press('Enter');
   await expect(rows(page)).toHaveCount(1);
   await expect(rows(page)).toContainText('Chủ trương khoản đầu tư');
   await page.locator('#wf-kw').fill('ms01');
   await page.locator('#wf-kw').press('Enter');
-  await expect(rows(page)).toHaveCount(3); // đã thu gọn
+  await expect(rows(page)).toHaveCount(1); // đã thu gọn; T29 B1: một quy trình MS01
   await page.locator('#wf-kw').fill('');
   await page.locator('#wf-kw').press('Enter');
   await page.locator('[data-vsel="wf-st"]').click();
   await expect(page.locator('.vsel-opt')).toHaveText(['Hoạt động', 'Dừng hoạt động']);
   await page.locator('.vsel-opt', { hasText: 'Dừng hoạt động' }).click();
   await expect(rows(page)).toHaveCount(1);
-  await page.locator('[data-vtt-key="DTMS_MS01_01"]').click();
+  await page.locator('[data-vtt-key="DTMS_MS01"]').click();
   await expect(page.locator('.vtt tbody tr.child .vbadge')).toHaveText(['Dừng hoạt động']);
 
   const sync = page.locator('[data-wf="sync"]');
@@ -109,7 +105,7 @@ test('P-41: Quy trình BPMN chỉ Quản trị hệ thống; vai khác thấy th
 
 test('SCR-42: chi tiết theo workflow-detail — Thông tin quy trình, sơ đồ có toolbar, Lịch sử phiên bản; quay lại', async ({ page }) => {
   await as(page, 'qt', '#/quy-trinh');
-  await page.locator('[data-vtt-key="DTMS_MS01_01"]').click();
+  await page.locator('[data-vtt-key="DTMS_MS01"]').click();
   await page.locator('.vtt tbody tr.child a.link').first().click();
   await expect(page).toHaveURL(new RegExp(`#/quy-trinh/${V2}$`));
   await expect(page.locator('.sb-nav [data-go="quy-trinh"]')).toHaveClass(/active/);

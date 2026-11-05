@@ -272,6 +272,9 @@
     document.body.appendChild(el);
     const fill = () => { el.querySelector('.vsel-list').innerHTML = list(); };
     fill();
+    /* Thiếu chỗ phía dưới mà phía trên rộng hơn → mở lên trên (như p-select tự lật). */
+    const h = el.offsetHeight;
+    if (r.bottom + 4 + h > window.innerHeight && r.top - 4 - h >= 0) el.style.top = (r.top - 4 - h) + 'px';
     const inp = el.querySelector('input');
     if (inp) { inp.oninput = fill; inp.focus(); }
     el.onclick = (e) => {
@@ -335,24 +338,31 @@
   function vTreeTable(o) {
     TT.set(o.id, o);
     const cols = o.columns;
+    /* Ghim cột (góp ý 05/11, Dự toán chi phí): cột có pin: true (liền sau STT) đứng yên khi cuộn ngang; STT ghim theo. */
+    const pinOn = cols.some((c) => c.pin), lastPin = cols.map((c) => !!c.pin).lastIndexOf(true);
+    let acc = 56;
+    const pinAt = cols.map((c) => { if (!c.pin) return null; const l = acc; acc += c.w || 0; return l; });
+    const pinCls = (i) => (pinAt[i] == null ? '' : ` pin${i === lastPin ? ' pin-last' : ''}`);
+    const pinSty = (i) => (pinAt[i] == null ? '' : `;left:${pinAt[i]}px`);
+    const ordCls = pinOn ? 'ord pin' : 'ord', ordSty = pinOn ? ' style="left:0"' : '';
     const row = (r, stt, level) => {
       const open = o.expanded.has(r.key);
       const canOpen = r.hasChildren || (r.children && r.children.length);
-      const tds = cols.map((c) => {
+      const tds = cols.map((c, ci) => {
         let v = c.cell(r);
         if (c.toggler) {
           const tg = canOpen ? `<button type="button" class="vtt-tg" data-vtt="${esc(o.id)}" data-vtt-key="${esc(r.key)}" aria-expanded="${open}" aria-label="${open ? 'Thu gọn' : 'Mở rộng'}">${CHEV(open)}</button>`
             : '<span class="vtt-tg ghost"></span>';
           v = `<span class="vtt-inl" style="margin-left:${level * 16}px">${tg}<span class="vtt-c">${v}</span></span>`;
         }
-        return `<td class="${c.align || ''}" style="width:${c.w ? c.w + 'px' : 'auto'}">${v}</td>`;
+        return `<td class="${c.align || ''}${pinCls(ci)}" style="width:${c.w ? c.w + 'px' : 'auto'}${pinSty(ci)}">${v}</td>`;
       }).join('');
-      const self = `<tr class="${o.click ? 'click' : ''} ${level ? 'child' : ''}" data-vtt-row="${esc(r.key)}"><td class="ord">${stt}</td>${tds}</tr>`;
+      const self = `<tr class="${o.click ? 'click' : ''} ${level ? 'child' : ''}" data-vtt-row="${esc(r.key)}"><td class="${ordCls}"${ordSty}>${stt}</td>${tds}</tr>`;
       return self + (open && r.children ? r.children.map((k, i) => row(k, `${stt}.${i + 1}`, level + 1)).join('') : '');
     };
     const body = o.rows.map((r, i) => row(r, (o.from || 0) + i + 1, 0)).join('');
     return `<div class="vtable-vp vtt" data-vtt-table="${esc(o.id)}"${o.maxH ? ` style="max-height:${o.maxH}"` : ''}><table class="vtable" style="table-layout:fixed">
-      <thead><tr><th class="ord">STT</th>${cols.map((c) => `<th class="${c.align || ''}" style="width:${c.w ? c.w + 'px' : 'auto'}${c.min ? `;min-width:${c.min}px` : ''}">${esc(c.h)}</th>`).join('')}</tr></thead>
+      <thead><tr><th class="${ordCls}"${ordSty}>STT</th>${cols.map((c, ci) => `<th class="${c.align || ''}${pinCls(ci)}" style="width:${c.w ? c.w + 'px' : 'auto'}${c.min ? `;min-width:${c.min}px` : ''}${pinSty(ci)}">${esc(c.h)}</th>`).join('')}</tr></thead>
       <tbody>${body || `<tr><td class="vtable-empty" colspan="${cols.length + 1}"><img src="assets/empty-table.svg" alt="">${esc(o.empty || 'Chưa có dữ liệu')}</td></tr>`}</tbody></table></div>`;
   }
   document.addEventListener('click', (e) => {

@@ -593,17 +593,13 @@ const setDxms150 = async (page) => {
   }
 };
 
-test('B5 §5.4: Thêm mới hồ sơ lấy điều kiện từ Ngưỡng phân luồng; hồ sơ đã tạo giữ ngưỡng lúc tạo (P-34)', async ({ page }) => {
+test('B5 §5.4: ngưỡng phân luồng là biến cổng của MS01 (T29 B1); hồ sơ đã tạo giữ ngưỡng lúc tạo (P-34)', async ({ page }) => {
   await asAdmin(page, '#/viec-cua-toi');
-  // ĐXMS-2026-0119 chưa có hồ sơ → loại Phê duyệt chọn sẵn, Quy trình liệt kê MS01.01 / .02 / .03.
+  // ĐXMS-2026-0119 chưa có hồ sơ → loại Phê duyệt chọn sẵn, Quy trình MS01 chỉ đọc (D-54).
   await page.evaluate(() => { Flow.setPersona('minh'); location.hash = '#/ho-so-dxms/create/%C4%90XMS-2026-0119'; });
-  expect(await optLabels(page, 'c-proc')).toEqual([
-    'MS01.01 · ≥ 160 tỷ · căn cứ chưa được CT/TGĐ TĐ duyệt',
-    'MS01.02 · ≥ 160 tỷ · căn cứ đã được CT/TGĐ TĐ duyệt (không gồm Kế hoạch SXKD năm)',
-    'MS01.03 · < 160 tỷ · mọi loại căn cứ']);
+  await expect(page.locator('#c-proc')).toHaveValue('MS01 — Phê duyệt đề xuất mua sắm');
   // Hồ sơ tạo trước khi đổi ngưỡng.
   await page.locator('#c-name').fill('Hồ sơ tạo trước khi đổi ngưỡng');
-  await pick(page, 'c-proc', 'MS01.03');
   await page.locator('#c-save').click();
   await expect(page).toHaveURL(/#\/task\//);
   await page.evaluate(() => Flow.setPersona('qt'));
@@ -611,12 +607,7 @@ test('B5 §5.4: Thêm mới hồ sơ lấy điều kiện từ Ngưỡng phân l
   expect(await page.evaluate(() => Flow.condOf('MS01.03'))).toBe('< 160 tỷ · mọi loại căn cứ');
   // Hồ sơ mới thấy nhãn đổi theo ngưỡng.
   await page.evaluate(() => { Flow.setPersona('minh'); const c = Flow.createDxms({ title: 'ĐXMS thử ngưỡng' }); location.hash = '#/ho-so-dxms/create/' + encodeURIComponent(c); });
-  expect(await optLabels(page, 'c-proc')).toEqual([
-    'MS01.01 · ≥ 150 tỷ · căn cứ chưa được CT/TGĐ TĐ duyệt',
-    'MS01.02 · ≥ 150 tỷ · căn cứ đã được CT/TGĐ TĐ duyệt (không gồm Kế hoạch SXKD năm)',
-    'MS01.03 · < 150 tỷ · mọi loại căn cứ']);
   await page.locator('#c-name').fill('Hồ sơ tạo sau khi đổi ngưỡng');
-  await pick(page, 'c-proc', 'MS01.01');
   await page.locator('#c-save').click();
   await expect(page).toHaveURL(/#\/task\//);
   expect(await page.evaluate(() => [Flow.condOf('MS01.01'), Flow.inRange('MS01.01', 155)])).toEqual(['≥ 150 tỷ · căn cứ chưa được CT/TGĐ TĐ duyệt', true]);
@@ -666,25 +657,26 @@ test('B5 §6: task 08 chọn nhà cung cấp nhận YCBG từ danh mục — l�
   await asAdmin(page, '#/viec-cua-toi');
   await openTask(page, 8, 'minh');
   const f = await openForm(page);
-  // Bảng tình trạng (chỉ xem): NCC theo ngành hàng của hạng mục (Viễn thông - CNTT, Nghiên cứu sản xuất, Dịch vụ phi tư vấn) → 8; Mu (dừng hoạt động) không có.
-  const tb = f.locator('.ef-table', { hasText: 'Tình trạng nhà cung cấp' });
-  await expect(tb.locator('tbody tr')).toHaveCount(8);
-  await expect(tb.locator('tbody')).not.toContainText('Mu Network');
-  await expect(tb.locator('thead th')).toHaveText(['Mã nhà cung cấp', 'Tên nhà cung cấp', 'Email nhận YCBG', 'Ngành hàng', 'Tình trạng']);
-  await expect(tb.locator('tbody tr', { hasText: 'NCC-000007' })).toContainText('Cấm đến 31/12/2026');
+  // T29 B18 (màn YCBG cũ): ô chọn đối tác (options = nccOptions do BE lọc theo ngành hàng của hạng mục) → bảng đối tác đã chọn có Email.
+  const tb = f.locator('.ef-table', { hasText: 'Danh sách đối tác nhận yêu cầu báo giá' });
+  await expect(tb.locator('thead th')).toHaveText(['Mã đối tác', 'Tên đối tác', 'Email đối tác', 'Ngành hàng', 'Tình trạng']);
+  await expect(tb.locator('tbody tr')).toHaveCount(3);
   await expect(tb.locator('tbody tr', { hasText: 'NCC-000003' })).toContainText('quotation@gammatech.sg');
-  // Ô chọn (checklist, options = nccOptions do BE lọc): NCC bị cấm không có trong lựa chọn; mặc định 3 NCC của kịch bản.
-  const opt = (c) => f.locator(`[data-ef-list="nccSel"][data-v='"${c}"']`);
-  await expect(f.locator('[data-ef-list="nccSel"]')).toHaveCount(7);
-  await expect(opt('NCC-000007')).toHaveCount(0);
-  for (const c of ['NCC-000001', 'NCC-000002', 'NCC-000003']) await expect(opt(c)).toBeChecked();
   await expect(f).toContainText('Đã chọn 3 nhà cung cấp');
-  await opt('NCC-000004').check();
+  // Lựa chọn: 7 NCC đúng ngành hàng; bị cấm (NCC-000007) và dừng hoạt động (Mu Network) không có.
+  await f.locator('[data-vsel="ef-nccSel"]').click();
+  const panel = page.locator('.vsel-panel');
+  await expect(panel.locator('.vsel-opt')).toHaveCount(7);
+  await expect(panel.locator('[data-opt="NCC-000007"]')).toHaveCount(0);
+  await expect(panel).not.toContainText('Mu Network');
+  await panel.locator('[data-opt="NCC-000004"]').click();
+  await expect(tb.locator('tbody tr')).toHaveCount(4);
   await expect(f).toContainText('Đã chọn 4 nhà cung cấp');
-  for (const c of ['NCC-000001', 'NCC-000002', 'NCC-000003', 'NCC-000004']) await opt(c).uncheck();
+  for (const c of ['NCC-000001', 'NCC-000002', 'NCC-000003', 'NCC-000004']) await page.locator(`.vsel-panel [data-opt="${c}"]`).click();
+  await f.locator('.ef-text h4').first().click();
   await expect(f).toContainText('Đã chọn 0 nhà cung cấp');
   await f.locator('#ok').click();
-  await expect(f.locator('.vfield.invalid .msg')).toHaveText('Bạn cần chọn nhà cung cấp nhận ycbg');
+  await expect(f.locator('.vfield.invalid .msg')).toHaveText('Bạn cần chọn đối tác nhận ycbg');
   expect(page.errors).toEqual([]);
 });
 

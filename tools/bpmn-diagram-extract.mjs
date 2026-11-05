@@ -3,12 +3,12 @@
 // cho panel phần tử (như GET .../elements/{id} của source). Chạy: node tools/bpmn-diagram-extract.mjs [trang…] (mặc định: tất cả).
 import { readFileSync, writeFileSync } from 'node:fs';
 
-/* D-31 (T18): nguồn theo trang — MS13 / MS14 đọc bản 12/10 (ĐTMS-121026.drawio); MS01 vẫn ĐTMS.drawio (giữ 10a/10b, C7); MS02 đọc bản 12/10 từ T21 (D-38). */
+/* D-31 (T18): nguồn theo trang — MS13 / MS14 đọc bản 12/10 (ĐTMS-121026.drawio); MS01 v1.1 đọc bản 12/10 từ T29 B1 (D-54: một quy trình, không có 10a/10b); MS02 đọc bản 12/10 từ T21 (D-38). */
 const BPMN = '../../../project-knowledge/03. Thiết kế (Tài liệu BA)/BPMN/';
 const OLD = 'ĐTMS.drawio', NEW = 'ĐTMS-121026.drawio';
 /* Trang → file. MS01 v1.1 giữ tên cũ bpmn-diagram.js (màn Xem BPMN của hồ sơ dùng BPMN_DIAGRAM). */
 const PAGES = {
-  'MS01 v1.1': { src: OLD, out: 'bpmn-diagram.js', tasks: [...Array.from({ length: 61 }, (_, k) => String(k + 1)), '10a', '10b'] },
+  'MS01 v1.1': { src: NEW, out: 'bpmn-diagram.js', tasks: Array.from({ length: 61 }, (_, k) => String(k + 1)) },
   MS01: { src: OLD, out: 'bpmn-diagram-ms01-v1.js' },
   /* D-38 (T21): MS02 đọc bản 12/10 — trang không đổi so với 28/09. */
   'MS02 ver1.1': { src: NEW, out: 'bpmn-diagram-ms02.js' },

@@ -1,0 +1,322 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hướng dẫn prototype ĐTMS</title>
+<!-- T33 B1 — tài liệu hướng dẫn đi kèm gói prototype gửi khách (plan docs/dtms/T33-goi-prototype-khach-ke-hoach.md §3.2).
+     Ảnh trong huong-dan/ sinh bằng tools/guide-shots.mjs; nội dung luồng theo DG-MS01. Mở offline, không tải gì từ mạng. -->
+<style>
+  @font-face { font-family: 'Roboto'; src: url('assets/fonts/Roboto-Regular.ttf'); font-weight: 400; }
+  @font-face { font-family: 'Roboto'; src: url('assets/fonts/Roboto-Medium.ttf'); font-weight: 500; }
+  @font-face { font-family: 'Roboto'; src: url('assets/fonts/Roboto-Bold.ttf'); font-weight: 700; }
+  :root { --ink: #1f2933; --muted: #5b6875; --line: #e3e7ec; --bg: #f5f6f8; --card: #fff; --red: #e30613; --red-soft: #fdecee;
+    --amber: #a15c00; --amber-soft: #fff4e0; --violet: #6b3fa0; --violet-soft: #f1ebf8; --green: #1b7f4b; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 15px/1.6 Roboto, 'Segoe UI', Arial, sans-serif; color: var(--ink); background: var(--bg); }
+  header.top { background: #1d1d1f; color: #fff; padding: 20px 16px; }
+  header.top .in, main { max-width: 980px; margin: 0 auto; }
+  header.top h1 { margin: 0; font-size: 22px; font-weight: 700; }
+  header.top p { margin: 4px 0 0; color: #c9cdd2; font-size: 14px; }
+  main { padding: 24px 16px 64px; }
+  nav.toc { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 16px 20px; }
+  nav.toc ol { margin: 6px 0 0; padding-left: 22px; }
+  nav.toc a { color: var(--ink); }
+  section.part { margin-top: 36px; }
+  h2 { font-size: 20px; margin: 0 0 12px; padding-bottom: 6px; border-bottom: 2px solid var(--red); }
+  h3 { font-size: 17px; margin: 24px 0 8px; }
+  a { color: var(--red); }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 16px 20px; margin: 12px 0; }
+  .task { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 20px; margin: 20px 0; }
+  .task h3 { margin-top: 0; display: flex; align-items: center; gap: 10px; }
+  .num { display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; border-radius: 50%; background: var(--red); color: #fff; font-size: 15px; flex: none; }
+  dl.meta { display: grid; grid-template-columns: 150px 1fr; gap: 4px 12px; margin: 8px 0 12px; }
+  dl.meta dt { color: var(--muted); }
+  dl.meta dd { margin: 0; }
+  .btn { display: inline-block; padding: 0 8px; border-radius: 6px; background: var(--red-soft); color: #9b0f18; font-weight: 500; white-space: nowrap; }
+  .gl { background: var(--amber-soft); border-left: 4px solid #e8a33d; padding: 8px 12px; border-radius: 6px; margin: 10px 0; }
+  .gl b { color: var(--amber); }
+  .q { background: var(--violet-soft); border-left: 4px solid var(--violet); padding: 8px 12px; border-radius: 6px; margin: 10px 0; }
+  .q b { color: var(--violet); }
+  figure { margin: 12px 0; }
+  figure img { display: block; max-width: 100%; height: auto; border: 1px solid var(--line); border-radius: 8px; }
+  figcaption { color: var(--muted); font-size: 13px; margin-top: 4px; }
+  ol.steps { padding-left: 22px; } ol.steps li { margin: 4px 0; }
+  table { border-collapse: collapse; width: 100%; background: var(--card); font-size: 14px; }
+  th, td { border: 1px solid var(--line); padding: 6px 10px; text-align: left; vertical-align: top; }
+  th { background: #eef1f4; font-weight: 500; }
+  .wrap { overflow-x: auto; }
+  svg text { font-family: Roboto, 'Segoe UI', Arial, sans-serif; }
+  .muted { color: var(--muted); }
+  a.tour { display: inline-block; margin: 4px 0 8px; padding: 6px 14px; border-radius: 8px; background: var(--red); color: #fff; text-decoration: none; font-weight: 500; }
+  a.tour:hover { background: #b8050f; }
+  @media (max-width: 640px) { dl.meta { grid-template-columns: 1fr; } dl.meta dt { margin-top: 6px; } }
+  @media print { body { background: #fff; } header.top { background: #fff; color: #000; border-bottom: 2px solid #000; } header.top p { color: #333; }
+    .task, .card { break-inside: avoid; } figure { break-inside: avoid; } }
+</style>
+</head>
+<body>
+<header class="top"><div class="in">
+  <h1>Hướng dẫn sử dụng prototype ĐTMS</h1>
+  <p>Hệ thống Đầu tư mua sắm — luồng Đề xuất mua sắm (ĐXMS). Bản mô phỏng giao diện, dữ liệu mẫu, không kết nối hệ thống thật.</p>
+</div></header>
+<main>
+  <nav class="toc"><b>Nội dung</b>
+    <ol>
+      <li><a href="#mo">Mở prototype</a></li>
+      <li><a href="#lam-quen">Làm quen giao diện, công cụ demo, tour hướng dẫn</a></li>
+      <li><a href="#tong-quan">Luồng ĐXMS qua 7 tác vụ</a></li>
+      <li><a href="#tac-vu">Đi từng tác vụ</a></li>
+      <li><a href="#gia-lap">Những chỗ còn giả lập, câu hỏi còn mở</a></li>
+    </ol>
+  </nav>
+
+  <section class="part" id="mo">
+    <h2>1. Mở prototype</h2>
+    <ol class="steps">
+      <li>Giải nén toàn bộ tệp <b>.zip</b> ra một thư mục (chuột phải &gt; <i>Extract All</i> / <i>Giải nén tất cả</i>). Không mở trực tiếp bên trong tệp .zip.</li>
+      <li>Trong thư mục vừa giải nén, nháy đúp <b>index.html</b>. Nên dùng Google Chrome hoặc Microsoft Edge bản mới. Không cần cài đặt, mạng Internet hay tài khoản.</li>
+      <li>Giữ nguyên cấu trúc thư mục (<code>index.html</code>, <code>assets</code>, <code>js</code>, <code>huong-dan</code>) khi chép sang máy khác.</li>
+    </ol>
+    <div class="card">
+      <b>Thao tác được lưu trên chính máy đang mở</b> (trong trình duyệt), mở lại không mất.
+      Muốn làm lại từ đầu: <b>Công cụ demo &gt; Reset luồng</b> và <b>Khôi phục dữ liệu mẫu</b>.
+      Máy đã từng mở bản prototype trước: mở bản này rồi làm hai thao tác trên một lần để nạp dữ liệu mẫu mới.
+    </div>
+    <div class="card">
+      <b>Máy chặn chạy tệp HTML tải về</b> (chính sách bảo mật của đơn vị): chuột phải tệp .zip &gt; <i>Properties</i> &gt; tích <i>Unblock</i> &gt; OK, rồi giải nén lại.
+    </div>
+  </section>
+
+  <section class="part" id="lam-quen">
+    <h2>2. Làm quen giao diện, công cụ demo, tour hướng dẫn</h2>
+    <h3>Đổi vai người dùng</h3>
+    <p>Prototype có sẵn các vai của luồng ĐXMS. Bấm <b>ảnh đại diện</b> ở góc trên bên phải &gt; <b>Chuyển tài khoản</b> để đổi vai.
+      Việc được giao cho vai nào sẽ hiện ở mục <b>Việc của tôi</b> của vai đó.</p>
+    <div class="wrap"><table>
+      <tr><th>Vai trong tài liệu</th><th>Người dùng mẫu</th></tr>
+      <tr><td>Chuyên quản đơn vị đề xuất (ĐVĐX)</td><td>Nguyễn Văn Minh — Trung tâm Vô tuyến</td></tr>
+      <tr><td>Chỉ huy ĐVĐX</td><td>Trần Đức Hải — Giám đốc Trung tâm Vô tuyến</td></tr>
+      <tr><td>Phòng Quản lý tài sản / Thủ kho</td><td>Hà Văn Tiến — Chuyên viên Phòng Quản lý tài sản</td></tr>
+      <tr><td>Chuyên viên Trung tâm Mua sắm (TTMS)</td><td>Phạm Thị Lan</td></tr>
+      <tr><td>Cơ quan chuyên môn thẩm định (CQCM)</td><td>Lê Thanh Hòa (Ban Pháp chế), Vũ Hoài Thu (Ban Tài chính), Bùi Minh Quang (Phòng Chất lượng); Trưởng ban Đỗ Mạnh Tùng</td></tr>
+      <tr><td>Tổng Giám đốc VHT</td><td>Ngô Đình Khôi</td></tr>
+    </table></div>
+    <figure><img src="huong-dan/viec-cua-toi.jpg" alt="Màn Việc của tôi" loading="lazy"><figcaption>Việc của tôi — danh sách việc của vai đang chọn; bấm mã hồ sơ để mở việc.</figcaption></figure>
+
+    <h3>Xử lý một việc</h3>
+    <p>Mở việc &gt; các nút hành động nằm ở góc trên bên phải (ví dụ <span class="btn">Hoàn thành</span>, <span class="btn">Báo giá đạt</span>) &gt; biểu mẫu mở ra &gt; nhập rồi bấm <span class="btn">Xác nhận</span>.
+      Việc chuyển sang người kế tiếp theo quy trình. Nút <span class="btn">Xem BPMN</span> mở sơ đồ quy trình, tô bước đang xử lý.</p>
+
+    <h3>Công cụ demo</h3>
+    <p>Nút tròn màu đỏ ở góc dưới bên phải. Công cụ này <b>không thuộc giao diện hệ thống</b>, chỉ để xem nhanh:</p>
+    <ul>
+      <li><b>Hồ sơ demo</b>: chọn bộ <b>ĐXMS-2026-0117 · MS01.01</b> (hồ sơ dùng trong tài liệu này).</li>
+      <li><b>Cảnh</b>: đưa hồ sơ tới đúng bước và đổi sang vai xử lý bước đó, không phải bấm qua các bước trước.</li>
+      <li><b>Nhánh phụ</b>: các tình huống ngoài luồng chính (trả lại, không đồng ý, vượt căn cứ…).</li>
+      <li><b>Reset luồng</b>, <b>Khôi phục dữ liệu mẫu</b>: làm lại từ đầu.</li>
+    </ul>
+    <figure><img src="huong-dan/cong-cu-demo.jpg" alt="Công cụ demo" loading="lazy"><figcaption>Công cụ demo đang mở (khung bên phải). Kéo xuống để thấy danh sách cảnh và nhánh phụ.</figcaption></figure>
+
+    <h3>Tour hướng dẫn</h3>
+    <p>Nút <b>Hướng dẫn</b> trên thanh trên cùng mở danh sách 7 tour, mỗi tour ứng một tác vụ ở mục 4. Tour đưa hồ sơ demo tới đúng bước, đổi sang vai xử lý,
+      khoanh chỗ cần bấm và giải thích. Bấm <b>Tiếp</b> để đi tiếp; bước cần thao tác thì tự bấm theo hướng dẫn, hoặc bấm <b>Làm hộ</b>. Mỗi lần mở prototype, danh sách tour tự hiện;
+      không muốn thì bỏ chọn <b>Tự hiện danh sách tour mỗi lần mở prototype</b> ở cuối danh sách (nút Hướng dẫn vẫn còn để mở khi cần). Nút "Mở tour tác vụ này" trong tài liệu mở thẳng tour tương ứng.</p>
+    <p class="muted">Bắt đầu tour sẽ thay hồ sơ demo đang chạy dở trên máy (prototype hỏi xác nhận trước). Tour là công cụ của prototype, không có trong hệ thống thật.</p>
+    <figure><img src="huong-dan/tour.jpg" alt="Tour hướng dẫn" loading="lazy"><figcaption>Tour 3 — khoanh đỏ chỗ cần xem, khung giải thích có Quay lại / Tiếp / Thoát.</figcaption></figure>
+
+    <h3>Các ký hiệu khác</h3>
+    <ul>
+      <li><b>Nút (i)</b> cạnh tiêu đề màn: giải thích cách màn hình vận hành, nguồn nghiệp vụ, chỗ giả lập.</li>
+      <li><b>Nhãn tím "❓ P-xx"</b>: điểm nghiệp vụ còn chờ chốt. Bấm vào để ghi ý kiến; <i>Công cụ demo &gt; Điểm ❓</i> tổng hợp và xuất ý kiến.</li>
+      <li><b>Góp ý trên màn</b>: nút tròn màu tím (hoặc phím C) &gt; bấm vào chỗ cần góp ý &gt; nhập &gt; Lưu. Xong thì <i>nút tím &gt; Xuất JSON gửi nhóm dự án</i>.</li>
+    </ul>
+  </section>
+
+  <section class="part" id="tong-quan">
+    <h2>3. Luồng ĐXMS qua 7 tác vụ</h2>
+    <p>Một <b>luồng mua sắm</b> (mã ĐXMS) có một hoặc nhiều <b>hồ sơ</b>. Hồ sơ Phê duyệt chạy quy trình <b>MS01 — Phê duyệt đề xuất mua sắm</b> (61 bước).
+      Tài liệu chia quy trình thành 7 tác vụ theo thứ tự xảy ra trên hồ sơ:</p>
+    <div class="wrap">
+    <svg viewBox="0 0 940 250" width="100%" role="img" aria-label="Bảy tác vụ trên luồng MS01">
+      <defs><marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#8a96a3"/></marker></defs>
+      <g font-size="13">
+        <g transform="translate(10,20)"><rect width="200" height="80" rx="10" fill="#fdecee" stroke="#e30613"/><circle cx="22" cy="22" r="13" fill="#e30613"/><text x="22" y="27" fill="#fff" text-anchor="middle" font-weight="700">1</text>
+          <text x="44" y="27" font-weight="700">Khởi tạo</text><text x="14" y="52" fill="#5b6875">Tạo luồng, căn cứ, bóc tách</text><text x="14" y="70" fill="#5b6875">Bước 1–5 · ĐVĐX</text></g>
+        <g transform="translate(250,20)"><rect width="200" height="80" rx="10" fill="#fdecee" stroke="#e30613"/><circle cx="22" cy="22" r="13" fill="#e30613"/><text x="22" y="27" fill="#fff" text-anchor="middle" font-weight="700">2</text>
+          <text x="44" y="27" font-weight="700">Rà soát tồn kho</text><text x="14" y="52" fill="#5b6875">Thủ kho nhập 2 lần</text><text x="14" y="70" fill="#5b6875">Việc của Kho · bước 7 ĐVĐX</text></g>
+        <g transform="translate(490,20)"><rect width="200" height="80" rx="10" fill="#fdecee" stroke="#e30613"/><circle cx="22" cy="22" r="13" fill="#e30613"/><text x="22" y="27" fill="#fff" text-anchor="middle" font-weight="700">3</text>
+          <text x="44" y="27" font-weight="700">Tổng hợp YCBG</text><text x="14" y="52" fill="#5b6875">Yêu cầu, đánh giá báo giá</text><text x="14" y="70" fill="#5b6875">Bước 8–10 · ĐVĐX</text></g>
+        <g transform="translate(730,20)"><rect width="200" height="80" rx="10" fill="#fdecee" stroke="#e30613"/><circle cx="22" cy="22" r="13" fill="#e30613"/><text x="22" y="27" fill="#fff" text-anchor="middle" font-weight="700">4</text>
+          <text x="44" y="27" font-weight="700">Soạn thảo</text><text x="14" y="52" fill="#5b6875">Dự thảo, chỉ huy duyệt</text><text x="14" y="70" fill="#5b6875">Bước 11/12–16 · ĐVĐX</text></g>
+        <g transform="translate(730,150)"><rect width="200" height="80" rx="10" fill="#fdecee" stroke="#e30613"/><circle cx="22" cy="22" r="13" fill="#e30613"/><text x="22" y="27" fill="#fff" text-anchor="middle" font-weight="700">5</text>
+          <text x="44" y="27" font-weight="700">TTMS rà soát</text><text x="14" y="52" fill="#5b6875">Danh sách CQCM; BM-05</text><text x="14" y="70" fill="#5b6875">Bước 17, 42–43 · TTMS</text></g>
+        <g transform="translate(450,150)"><rect width="230" height="80" rx="10" fill="#fdecee" stroke="#e30613"/><circle cx="22" cy="22" r="13" fill="#e30613"/><text x="22" y="27" fill="#fff" text-anchor="middle" font-weight="700">6</text>
+          <text x="44" y="27" font-weight="700">Thẩm định / giải trình</text><text x="14" y="52" fill="#5b6875">CQCM ↔ ĐVĐX, nhiều vòng</text><text x="14" y="70" fill="#5b6875">Bước 19–37</text></g>
+        <g transform="translate(190,150)"><rect width="210" height="80" rx="10" fill="#fdecee" stroke="#e30613"/><circle cx="22" cy="22" r="13" fill="#e30613"/><text x="22" y="27" fill="#fff" text-anchor="middle" font-weight="700">7</text>
+          <text x="44" y="27" font-weight="700">Trình ký</text><text x="14" y="52" fill="#5b6875">Ký BM-05, Quyết định</text><text x="14" y="70" fill="#5b6875">Bước 43–61 · TTMS, TGĐ</text></g>
+        <g fill="none" stroke="#8a96a3" stroke-width="1.6" marker-end="url(#ar)">
+          <path d="M210,60 H246"/><path d="M450,60 H486"/><path d="M690,60 H726"/><path d="M830,100 V146"/><path d="M730,190 H684"/><path d="M450,190 H404"/>
+        </g>
+        <text x="20" y="196" fill="#5b6875">Kết thúc: ĐXMS</text><text x="20" y="214" fill="#5b6875">được phê duyệt</text><path d="M190,190 H128" fill="none" stroke="#8a96a3" stroke-width="1.6" marker-end="url(#ar)"/>
+      </g>
+    </svg></div>
+    <p class="muted">Tác vụ 5 xảy ra hai lần: trước thẩm định (bước 17) và sau thẩm định (bước 42–43). Sau bước 10 hệ thống tự rẽ theo tổng giá trị báo giá: dưới 160 tỷ sang bước 11, từ 160 tỷ sang bước 12.
+      Các bước còn lại do hệ thống tự chạy (lấy dữ liệu, AI gợi ý, gửi email, trình ký VOffice).</p>
+    <figure><img src="huong-dan/bpmn.jpg" alt="Chi tiết BPMN của hồ sơ" loading="lazy"><figcaption>Xem BPMN — sơ đồ MS01, bước đang xử lý (Tổng hợp và kiểm tra báo giá) tô màu.</figcaption></figure>
+  </section>
+
+  <section class="part" id="tac-vu">
+    <h2>4. Đi từng tác vụ</h2>
+    <p>Mỗi tác vụ ghi: ai làm, bước nào, vào bằng cảnh nào của Công cụ demo (bộ <b>ĐXMS-2026-0117 · MS01.01</b>), thao tác chính, kết quả.
+      Khung <span class="gl" style="display:inline;padding:0 6px">màu cam</span> là chỗ prototype giả lập; khung <span class="q" style="display:inline;padding:0 6px">màu tím</span> là câu hỏi còn mở.</p>
+
+    <article class="task" id="tv1">
+      <h3><span class="num">1</span>Khởi tạo luồng và hồ sơ</h3>
+      <dl class="meta"><dt>Ai làm</dt><dd>Chuyên quản ĐVĐX (Nguyễn Văn Minh)</dd><dt>Bước quy trình</dt><dd>Tạo luồng mua sắm; bước 1 Chọn căn cứ và nội dung mua sắm, 4 Rà soát và xác nhận thông tin cơ bản, 5 Chọn/bóc tách căn cứ mua sắm (bước 2, 3 hệ thống chạy)</dd>
+        <dt>Vào bằng</dt><dd>Cảnh 1 "Tạo luồng / ĐXMS, tạo hồ sơ, bóc tách", hoặc menu <b>Quản lý đề xuất mua sắm &gt; Luồng mua sắm</b></dd></dl>
+      <a class="tour" href="index.html?tour=1">Mở tour tác vụ này trong prototype</a>
+      <ol class="steps">
+        <li><b>Luồng mua sắm &gt; Thêm mới</b>: nhập Tên luồng mua sắm, chọn Đề tài / dự án, Căn cứ đã được phê duyệt, Đơn vị đề xuất, Mức ưu tiên, Mật; phần dưới chọn khoản mục bóc tách từ dự toán của đề tài / dự án, nhân sự thực hiện, tài liệu đính kèm. Bấm <span class="btn">Lưu</span>.</li>
+        <li>Hệ thống tạo luồng (mã ĐXMS tự sinh) và hồ sơ Phê duyệt, khởi động quy trình, mở ngay việc <b>bước 1</b>.</li>
+        <li>Bước 1: chọn Loại căn cứ, Văn bản căn cứ đã phê duyệt; thêm văn bản căn cứ bổ sung nếu có. Bảng "Văn bản căn cứ đã chọn" hiện Giá trị, Đã dùng, Còn lại. Bấm <span class="btn">Hoàn thành</span>.</li>
+        <li>Bước 4: kiểm tra thông tin cơ bản AI gợi ý (mục đích, nguồn vốn, mức ưu tiên…), sửa nếu cần.</li>
+        <li>Bước 5: lập hạng mục mua sắm, liên kết dòng căn cứ; số lượng đề xuất vượt phần còn lại thì không xác nhận được. Bấm <span class="btn">Gửi rà soát tồn kho</span> (hoặc <span class="btn">Thiếu thông tin căn cứ</span> để trả về bước 4).</li>
+      </ol>
+      <p><b>Kết quả:</b> hồ sơ có căn cứ và danh mục hạng mục; Phòng Quản lý tài sản nhận việc Rà soát tồn kho (tác vụ 2).</p>
+      <figure><img src="huong-dan/luong-them-moi.jpg" alt="Thêm mới luồng mua sắm" loading="lazy"><figcaption>Thêm mới luồng mua sắm.</figcaption></figure>
+      <figure><img src="huong-dan/t01-can-cu.jpg" alt="Bước 1 chọn căn cứ" loading="lazy"><figcaption>Bước 1 — biểu mẫu chọn căn cứ.</figcaption></figure>
+      <figure><img src="huong-dan/t05-boc-tach.jpg" alt="Bước 5 bóc tách" loading="lazy"><figcaption>Bước 5 — bóc tách hạng mục theo căn cứ.</figcaption></figure>
+      <div class="gl"><b>Giả lập:</b> danh sách đề tài / dự án và dự toán là dữ liệu mẫu nhập tại ĐTMS (chưa liên thông phân hệ KHCN); văn bản căn cứ lấy từ danh sách mẫu; AI gợi ý thông tin cơ bản là kết quả dựng sẵn.</div>
+    </article>
+
+    <article class="task" id="tv2">
+      <h3><span class="num">2</span>Thủ kho rà soát tồn kho</h3>
+      <dl class="meta"><dt>Ai làm</dt><dd>Phòng Quản lý tài sản / Thủ kho (Hà Văn Tiến); sau đó Chuyên quản ĐVĐX xác nhận</dd><dt>Bước quy trình</dt><dd>Việc <b>Rà soát tồn kho</b> (giao cho Kho, không phải một bước trên sơ đồ); bước 7 Nhận thông tin rà soát tồn kho khả dụng</dd>
+        <dt>Vào bằng</dt><dd>Cảnh 1b "Kho rà soát tồn kho (Phòng QLTS)" — mở thẳng màn Rà soát tồn kho với vai Tiến; hoặc Việc của tôi của vai Tiến</dd></dl>
+      <a class="tour" href="index.html?tour=2">Mở tour tác vụ này trong prototype</a>
+      <ol class="steps">
+        <li>Màn <b>Rà soát tồn kho</b> liệt kê hạng mục ĐVĐX đã bóc tách ở bước 5. Bấm <span class="btn">Cập nhật kết quả rà soát</span>.</li>
+        <li><b>Lần 1 — Sổ sách</b>: nhập Mã hàng trong kho, Tồn sổ sách; tải lên Tệp kết quả (bắt buộc). Lưu.</li>
+        <li><b>Lần 2 — Thực tế</b>: nhập Số đủ điều kiện xuất kho (không lớn hơn tồn sổ sách), chất lượng. Lưu: việc của Kho hoàn thành.</li>
+        <li>ĐVĐX mở <b>bước 7</b>: thấy tồn khả dụng = số đủ điều kiện − hàng đang giữ cho ĐXMS khác; chọn số Dùng từ kho cho từng hạng mục; bấm <span class="btn">Hoàn thành</span>.</li>
+      </ol>
+      <p><b>Kết quả:</b> có "Còn phải mua" cho từng hạng mục — đầu vào của yêu cầu báo giá. Bước 7 không xác nhận được khi Kho chưa nhập lần 2, hoặc khi mọi hạng mục đều lấy hết từ kho.</p>
+      <figure><img src="huong-dan/kho-ra-soat.jpg" alt="Màn Rà soát tồn kho của Kho" loading="lazy"><figcaption>Rà soát tồn kho — việc của Phòng Quản lý tài sản.</figcaption></figure>
+      <figure><img src="huong-dan/t07-ton-kho.jpg" alt="Bước 7" loading="lazy"><figcaption>Bước 7 — ĐVĐX xác nhận số dùng từ kho.</figcaption></figure>
+      <div class="gl"><b>Giả lập:</b> Kho nhập tay kết quả, chưa liên thông phần mềm quản lý kho. Biên bản kết quả rà soát tồn kho (theo mẫu biên bản thật) chưa có trên bản này.</div>
+    </article>
+
+    <article class="task" id="tv3">
+      <h3><span class="num">3</span>Tổng hợp yêu cầu báo giá</h3>
+      <dl class="meta"><dt>Ai làm</dt><dd>Chuyên quản ĐVĐX (Nguyễn Văn Minh)</dd><dt>Bước quy trình</dt><dd>8 Khởi tạo yêu cầu báo giá; 9 Gửi yêu cầu báo giá thay TTMS (hệ thống); 10 Tổng hợp và kiểm tra báo giá</dd>
+        <dt>Vào bằng</dt><dd>Cảnh 2 "Báo giá"; nhánh phụ "Báo giá vượt phần căn cứ — chặn Báo giá đạt"</dd></dl>
+      <a class="tour" href="index.html?tour=3">Mở tour tác vụ này trong prototype</a>
+      <ol class="steps">
+        <li><b>Bước 8</b> — bấm <span class="btn">Hoàn thành</span>: biểu mẫu chia hạng mục còn phải mua theo nhóm, chọn <b>Nhà cung cấp nhận YCBG</b> (lọc theo ngành hàng; nhà cung cấp bị cấm không hiện), thêm nhà cung cấp mới, <b>Hạn trả lời</b>,
+          và <b>Điều khoản trên phiếu</b>: Điều kiện thanh toán, Địa điểm giao hàng, Đầu mối tiếp nhận báo giá, Các yêu cầu khác. Bảng Đối soát so số đề xuất với căn cứ. Xác nhận.</li>
+        <li><b>Bước 9</b> — hệ thống gửi email yêu cầu báo giá kèm phiếu cho từng nhà cung cấp, tạo yêu cầu <b>YCBG-…</b> (xem ở menu <i>Yêu cầu báo giá ĐXMS</i>).</li>
+        <li><b>Bước 10</b> — tải tệp báo giá của từng nhà cung cấp ở <i>Danh sách tài liệu</i>. Trong khung <b>Đánh giá báo giá và cơ sở giá</b>: đánh dấu nhà cung cấp Không phản hồi; nhập Ngày báo giá, Hiệu lực đến, Loại tiền, Tỷ giá; đơn giá từng hạng mục.
+          Hệ thống chọn sẵn <b>cơ sở giá</b> là giá thấp nhất còn hiệu lực; chọn nhà cung cấp khác thì bắt buộc lý do. Tổng giá trị theo cơ sở giá là giá trị của hồ sơ.</li>
+        <li>Bảng <b>Đối chiếu phần căn cứ</b>: mỗi văn bản căn cứ còn lại bao nhiêu sau khi trừ Thành tiền các hạng mục liên kết. Âm thì hiện chữ đỏ và <b>không bấm được Báo giá đạt</b> — chọn lại cơ sở giá hoặc <span class="btn">Không đạt — gửi lại YCBG</span>.</li>
+        <li>Bấm <span class="btn">Báo giá đạt</span>. Hệ thống rẽ theo tổng giá trị: dưới 160 tỷ sang bước 11, từ 160 tỷ sang bước 12.</li>
+      </ol>
+      <p><b>Kết quả:</b> hồ sơ có giá trị theo báo giá; yêu cầu báo giá ở trạng thái Báo giá đạt.
+        <span class="muted">Trên hồ sơ mẫu, lần gửi đầu có một nhà cung cấp gửi báo giá hết hiệu lực nên AI kiểm tra kết luận không đạt và hồ sơ quay lại gửi YCBG lần 2.</span></p>
+      <figure><img src="huong-dan/t08-ycbg.jpg" alt="Bước 8 điều khoản phiếu" loading="lazy"><figcaption>Bước 8 — nhóm Điều khoản trên phiếu yêu cầu báo giá.</figcaption></figure>
+      <figure><img src="huong-dan/t10-bao-gia.jpg" alt="Bước 10 đánh giá báo giá" loading="lazy"><figcaption>Bước 10 — đánh giá báo giá, cơ sở giá theo hạng mục, đối chiếu phần căn cứ.</figcaption></figure>
+      <figure><img src="huong-dan/t10-vuot-can-cu.jpg" alt="Vượt phần căn cứ" loading="lazy"><figcaption>Nhánh "Báo giá vượt phần căn cứ": chọn báo giá đắt hơn làm văn bản căn cứ bị âm — câu đỏ, không xác nhận được Báo giá đạt.</figcaption></figure>
+      <div class="gl"><b>Giả lập:</b> không gửi email thật; AI đọc tệp báo giá và kiểm tra là kết quả dựng sẵn; số điện thoại, email của đầu mối tiếp nhận là dữ liệu mẫu.</div>
+      <div class="q"><b>Câu hỏi còn mở:</b> "Thầu tổng hợp YCBG" là bộ phận nào? Bản này để ĐVĐX tổng hợp như quy trình hiện có. Phiếu yêu cầu báo giá mẫu đề nghị báo đơn giá chưa thuế, còn prototype nhập đơn giá gồm thuế GTGT — cần thống nhất.</div>
+    </article>
+
+    <article class="task" id="tv4">
+      <h3><span class="num">4</span>Soạn thảo hồ sơ ĐXMS</h3>
+      <dl class="meta"><dt>Ai làm</dt><dd>Chuyên quản ĐVĐX (soạn); Chỉ huy ĐVĐX — Trần Đức Hải (duyệt)</dd><dt>Bước quy trình</dt><dd>12 Hoàn thiện dự thảo ĐXMS (từ 160 tỷ) hoặc 11 (dưới 160 tỷ); 13 Thẩm định cấp đơn vị; 16 Lập phiếu yêu cầu thẩm định và chọn CQCM</dd>
+        <dt>Vào bằng</dt><dd>Cảnh 3 "Dự thảo, chọn CQCM"; nhánh phụ "Chỉ huy ĐVĐX không đồng ý"</dd></dl>
+      <a class="tour" href="index.html?tour=4">Mở tour tác vụ này trong prototype</a>
+      <ol class="steps">
+        <li><b>Bước 12</b>: hoàn thiện tờ trình và phụ lục theo mẫu (hệ thống điền sẵn dữ liệu từ các bước trước; AI gợi ý một số mục), tải tài liệu bắt buộc. Bấm <span class="btn">Gửi chỉ huy duyệt</span>.</li>
+        <li><b>Bước 13</b> (vai Hải): xem kết quả AI kiểm tra hồ sơ, duyệt từng phần. Mọi phần Đạt thì <span class="btn">Đồng ý</span>; có phần Không đạt thì <span class="btn">Không đồng ý</span> kèm lý do — hồ sơ về bước 12, AI lọc nội dung chưa đạt và hướng dẫn sửa.</li>
+        <li><b>Bước 16</b>: lập phiếu yêu cầu thẩm định, chọn các CQCM thẩm định, hạn góp ý, đầu mối tiếp nhận.</li>
+      </ol>
+      <p><b>Kết quả:</b> dự thảo đã được chỉ huy đơn vị duyệt, phiếu yêu cầu thẩm định chuyển TTMS (tác vụ 5).</p>
+      <figure><img src="huong-dan/t12-du-thao.jpg" alt="Bước 12" loading="lazy"><figcaption>Bước 12 — hoàn thiện dự thảo; bên phải là Lịch sử hồ sơ.</figcaption></figure>
+      <figure><img src="huong-dan/t13-chi-huy.jpg" alt="Bước 13" loading="lazy"><figcaption>Bước 13 — Chỉ huy ĐVĐX duyệt.</figcaption></figure>
+      <div class="gl"><b>Giả lập:</b> dự thảo sinh từ mẫu Word và dữ liệu biểu mẫu; kết quả AI kiểm tra, AI tóm tắt là nội dung dựng sẵn.</div>
+    </article>
+
+    <article class="task" id="tv5">
+      <h3><span class="num">5</span>TTMS rà soát</h3>
+      <dl class="meta"><dt>Ai làm</dt><dd>Chuyên viên TTMS (Phạm Thị Lan)</dd><dt>Bước quy trình</dt><dd>17 Xác nhận danh sách CQCM thẩm định; 42 Rà soát, cập nhật BM-05 (Báo cáo kết quả thẩm định); 43 Xác nhận hồ sơ đủ điều kiện giao ký BM-05</dd>
+        <dt>Vào bằng</dt><dd>Cảnh 3 (bước 17), cảnh 6 "BM-05" (bước 42); nhánh phụ "TTMS trả lại danh sách CQCM"</dd></dl>
+      <a class="tour" href="index.html?tour=5">Mở tour tác vụ này trong prototype</a>
+      <ol class="steps">
+        <li><b>Bước 17</b>: kiểm tra danh sách CQCM ĐVĐX đã chọn. Đúng, đủ thì <span class="btn">Danh sách đúng, đủ — gửi yêu cầu thẩm định</span> (hệ thống gửi phiếu, trình ký, thông báo cho CQCM); sai thì <span class="btn">Chưa đúng/đủ — trả lại</span> về bước 16.</li>
+        <li><b>Bước 42</b> (sau thẩm định): rà soát Báo cáo kết quả thẩm định BM-05 do AI soạn từ ý kiến các CQCM. Bấm <span class="btn">Hoàn tất rà soát BM-05</span>, hoặc <span class="btn">Hồ sơ chưa đạt — trả đơn vị</span>.</li>
+        <li><b>Bước 43</b>: <span class="btn">Xác nhận đủ điều kiện &amp; ký BM-05 (TTMS)</span> — sang trình ký (tác vụ 7).</li>
+      </ol>
+      <figure><img src="huong-dan/t17-ttms-cqcm.jpg" alt="Bước 17" loading="lazy"><figcaption>Bước 17 — TTMS xác nhận danh sách CQCM.</figcaption></figure>
+      <figure><img src="huong-dan/t42-bm05.jpg" alt="Bước 42" loading="lazy"><figcaption>Bước 42 — TTMS rà soát BM-05.</figcaption></figure>
+      <div class="gl"><b>Giả lập:</b> BM-05 do AI soạn là nội dung dựng sẵn.</div>
+    </article>
+
+    <article class="task" id="tv6">
+      <h3><span class="num">6</span>Thẩm định và giải trình (CQCM ↔ ĐVĐX)</h3>
+      <dl class="meta"><dt>Ai làm</dt><dd>Chuyên viên CQCM (Hòa — Pháp chế, Thu — Tài chính, Quang — Chất lượng), Trưởng ban CQCM (Tùng); Chuyên quản ĐVĐX</dd>
+        <dt>Bước quy trình</dt><dd>19 Rà soát, hoàn thiện BM-04; 20 Xác nhận trình ký BM-04; 26 Rà soát BM-04 và xác định nội dung cần cập nhật; 27 Hoàn chỉnh hồ sơ; 28 Lập nội dung giải trình; 35 Kiểm tra lại hồ sơ đã hoàn chỉnh; 36 Xác nhận ký BM-04 và Checklist</dd>
+        <dt>Vào bằng</dt><dd>Cảnh 4 "Góp ý BM-04" (vai Hòa), cảnh 5 "Giải trình, hoàn chỉnh, ký lại"; nhánh phụ "Thẩm định lần 02 — lịch sử ý kiến nhiều lần", "Giải trình vòng 3/2 → cảnh báo, họp"</dd></dl>
+      <a class="tour" href="index.html?tour=6">Mở tour tác vụ này trong prototype</a>
+      <ol class="steps">
+        <li><b>Bước 19</b> — mỗi CQCM có việc riêng. Khung <b>Thẩm định của cơ quan chuyên môn</b>: xem hồ sơ thẩm định (Tờ trình, Checklist, Bảng bóc tách, Kết quả rà soát tồn kho), ghi ý kiến theo từng mục, xem lịch sử ý kiến các lần trước.
+          Bấm <span class="btn">Ghi lại</span> để lưu dở, <span class="btn">Hoàn thành phiếu, trình chỉ huy</span> khi xong.</li>
+        <li><b>Bước 20</b> (Trưởng ban): <span class="btn">Đồng ý &amp; trình ký BM-04</span> hoặc <span class="btn">Không đồng ý</span>. Hệ thống tổng hợp phiếu của các CQCM, AI kiểm tra xung đột và tóm tắt nội dung chưa đạt gửi ĐVĐX.</li>
+        <li><b>Bước 26–28</b> (ĐVĐX): xem nội dung cần sửa, hoàn chỉnh hồ sơ, lập giải trình theo từng ý kiến (Tiếp thu / Giải trình), bấm <span class="btn">Gửi giải trình</span>. Quá số vòng cho phép thì hệ thống cảnh báo và yêu cầu họp thống nhất.</li>
+        <li><b>Bước 35–36</b> (CQCM): kiểm tra hồ sơ đã hoàn chỉnh — <span class="btn">Đạt</span> / <span class="btn">Chưa đạt</span>; rồi <span class="btn">Xác nhận ký BM-04 &amp; Checklist 01</span>.</li>
+      </ol>
+      <p><b>Kết quả:</b> các CQCM ký phiếu thẩm định; hồ sơ sang TTMS lập Báo cáo kết quả thẩm định (tác vụ 5, bước 42).</p>
+      <figure><img src="huong-dan/t19-tham-dinh.jpg" alt="Bước 19" loading="lazy"><figcaption>Bước 19 — CQCM thẩm định; khung Thẩm định của cơ quan chuyên môn ở dưới Thông tin chung.</figcaption></figure>
+      <figure><img src="huong-dan/t28-giai-trinh.jpg" alt="Bước 28" loading="lazy"><figcaption>Bước 28 — ĐVĐX lập nội dung giải trình.</figcaption></figure>
+      <div class="gl"><b>Giả lập:</b> AI lọc nội dung cần sửa, kiểm tra xung đột, tóm tắt là nội dung dựng sẵn; ký qua VOffice là mô phỏng.</div>
+    </article>
+
+    <article class="task" id="tv7">
+      <h3><span class="num">7</span>Trình ký và phê duyệt</h3>
+      <dl class="meta"><dt>Ai làm</dt><dd>Chuyên viên TTMS (Lan), CQCM, Tổng Giám đốc VHT (Ngô Đình Khôi)</dd>
+        <dt>Bước quy trình</dt><dd>43–47 trình ký và ký BM-05; 48 Xác định có cần báo cáo TGĐ Tập đoàn; 57–61 dự thảo, trình và phê duyệt Quyết định phê duyệt ĐXMS, ký VOffice</dd>
+        <dt>Vào bằng</dt><dd>Cảnh 6 "BM-05", cảnh 7 "Nhánh Tập đoàn", cảnh 8 "Phê duyệt"; nhánh phụ "TTMS chọn Không báo cáo Tập đoàn", "Thủ trưởng VHT yêu cầu hoàn chỉnh"</dd></dl>
+      <a class="tour" href="index.html?tour=7">Mở tour tác vụ này trong prototype</a>
+      <ol class="steps">
+        <li><b>Ký BM-05</b>: TTMS ký ở bước 43; các CQCM được giao ký ở bước 46–47 (<span class="btn">Ký BM-05</span> / <span class="btn">Không đồng ý</span>).</li>
+        <li><b>Bước 48</b> (TTMS): <span class="btn">Có báo cáo TGĐ Tập đoàn</span> (sang nhánh Tập đoàn, bước 49–56) hoặc <span class="btn">Không báo cáo TGĐ Tập đoàn</span>. Lựa chọn chọn sẵn theo "Căn cứ đã được phê duyệt" của luồng.</li>
+        <li><b>Bước 58–59</b> (TTMS): rà soát dự thảo Quyết định phê duyệt do hệ thống sinh, bấm <span class="btn">Trình phê duyệt</span>.</li>
+        <li><b>Bước 60</b> (Tổng Giám đốc): <span class="btn">Phê duyệt</span>, hoặc <span class="btn">Yêu cầu hoàn chỉnh</span> (hồ sơ về ĐVĐX hoàn chỉnh). Bước 61 hệ thống gửi ký duyệt trên VOffice.</li>
+      </ol>
+      <p><b>Kết quả:</b> hồ sơ Hoàn thành, ĐXMS được phê duyệt; xem lại toàn bộ ở cảnh 9 "Tổng kết" và màn chi tiết luồng mua sắm.</p>
+      <figure><img src="huong-dan/t60-phe-duyet.jpg" alt="Bước 60" loading="lazy"><figcaption>Bước 60 — Tổng Giám đốc VHT phê duyệt.</figcaption></figure>
+      <div class="gl"><b>Giả lập:</b> ký số và VOffice là mô phỏng; các bước của Tập đoàn (Ban ĐTXD, TGĐ Tập đoàn) do một vai giả lập.</div>
+    </article>
+  </section>
+
+  <section class="part" id="gia-lap">
+    <h2>5. Những chỗ còn giả lập, câu hỏi còn mở</h2>
+    <h3>Giả lập trên bản này</h3>
+    <ul>
+      <li>Không kết nối hệ thống thật: phân hệ KHCN, phần mềm quản lý kho, email, VOffice, ký số, Tập đoàn đều mô phỏng.</li>
+      <li>Kết quả AI (gợi ý, kiểm tra, lọc, tóm tắt, đọc báo giá) là nội dung dựng sẵn để minh hoạ.</li>
+      <li>Dữ liệu (đề tài / dự án, dự toán, căn cứ, nhà cung cấp, người dùng) là dữ liệu mẫu.</li>
+      <li>Chi tiết từng chỗ: nút (i) trên mỗi màn, các dòng ghi "GIẢ LẬP".</li>
+    </ul>
+    <h3>Câu hỏi còn mở liên quan 7 tác vụ</h3>
+    <ul>
+      <li>"Thầu tổng hợp YCBG" là bộ phận nào (tác vụ 3).</li>
+      <li>Phiếu yêu cầu báo giá: nhà cung cấp báo đơn giá chưa thuế hay gồm thuế GTGT (tác vụ 3).</li>
+      <li>Biên bản kết quả rà soát tồn kho: ai lập, ai ký (tác vụ 2).</li>
+      <li>Các điểm khác: nhãn tím ❓ trên màn và <i>Công cụ demo &gt; Điểm ❓</i>.</li>
+    </ul>
+    <h3>Ngoài phạm vi bản này</h3>
+    <p>Menu Quản lý thầu, Quản lý hợp đồng, Quản lý khoản đầu tư vẫn hiện nhưng không thuộc nội dung hướng dẫn này. Các góp ý review ngày 05/11 chưa làm (form Luồng mua sắm, Điều chỉnh ở mức luồng, Việc của tôi) sẽ có ở bản sau.</p>
+  </section>
+</main>
+</body>
+</html>

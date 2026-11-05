@@ -19,8 +19,10 @@
   const MODE_KEY = 'dtms-proto-menu';
   let mode = 'tach';
   /* Đọc lại mỗi lần: storage có thể đổi mà trang không tải lại (chỉ đổi hash). */
+  /* T33: bản gửi khách chèn <meta name="proto-menu" content="gop"> (khách đã chọn phương án Gộp) — mặc định khi người xem chưa tự chọn. */
+  const DEF_MODE = ((document.querySelector('meta[name="proto-menu"]') || {}).content === 'gop') ? 'gop' : 'tach';
   function isGop() {
-    try { mode = localStorage.getItem(MODE_KEY) === 'gop' ? 'gop' : 'tach'; } catch (e) { /* bỏ qua */ }
+    try { const v = localStorage.getItem(MODE_KEY); mode = v === 'gop' || v === 'tach' ? v : DEF_MODE; } catch (e) { mode = DEF_MODE; }
     return mode === 'gop';
   }
   function setMode(m) {
@@ -31,7 +33,8 @@
   function menu() {
     if (!isGop()) return D.menu;
     return D.menu.map((g) => ((g.children || []).some((k) => k.path === 'dxms')
-      ? Object.assign({}, g, { children: [{ label: 'Luồng mua sắm', path: 'luong', scr: 'SCR-95' }].concat(g.children.filter((k) => k.path !== 'dxms' && k.path !== 'ho-so-dxms')) })
+      ? Object.assign({}, g, { children: g.children.filter((k) => k.path === 'de-tai').concat([{ label: 'Luồng mua sắm', path: 'luong', scr: 'SCR-95' }],
+        g.children.filter((k) => k.path === 'quan-ly-ho-so'), g.children.filter((k) => !['de-tai', 'dxms', 'ho-so-dxms', 'quan-ly-ho-so'].includes(k.path))) })
       : g));
   }
 
@@ -76,10 +79,12 @@
 
   /* ---------- SCR-95 Danh sách luồng ---------- */
   /* Tìm kiếm nâng cao (SRS DTMS_CN_0135 #3–#9 + T29 F1, F2 theo HT-DXMS-NOTE màn 6): f = đã áp, d = đang nhập; hai kiểu tìm độc lập như profile-list. */
-  const emptyF = () => ({ code: '', title: '', nv: null, block: null, unit: null, creator: null, st: [], priority: null, secret: null, from: '', to: '' });
+  const emptyF = () => ({ code: '', title: '', nv: null, block: null, unit: null, creator: null, st: [], priority: null, secret: null, created: '' });
   const L = { kw: '', adv: false, f: emptyF(), d: emptyF(), page: 1, size: 10, psOpen: false };
   const href = (code) => 'luong/' + encodeURIComponent(code);
-  const dk = (s) => { const [d, m, y] = String(s || '').split('/'); return y ? `${y}${m}${d}` : ''; };
+  const dk = (s) => { const [d, m, y] = String(s || '').split('/'); return y ? `${y}${m.padStart(2, '0')}${d.padStart(2, '0')}` : ''; };
+  /* T29 B12 (RV-PROTO-0511 #2): Ngày tạo một trường "từ – đến"; một ngày thì lọc từ ngày đó. */
+  const rangeOf = (s) => { const m = String(s || '').match(/\d{1,2}\/\d{1,2}\/\d{4}/g) || []; return [m[0] || '', m[1] || '']; };
   const S5 = () => window.Screens.s5;
   function rows() {
     const cases = window.Screens.allCases(), f = L.f;
@@ -90,10 +95,10 @@
       const who = live ? [...new Set(Flow.state.tokens.flatMap((t) => t.cands || [t.who]))].map((id) => persona(id).name).join(', ') : '';
       return Object.assign({}, x, { state: m.state, run, who });
     }).filter((x) => (!L.adv ? !L.kw || norm(`${x.code} ${x.title}`).includes(norm(L.kw))
-      : (!f.code || norm(x.code).includes(norm(f.code))) && (!f.title || norm(x.title).includes(norm(f.title))) && (!f.nv || x.nv === f.nv)
+      : ((fr, to) => (!fr || dk(x.created) >= dk(fr)) && (!to || dk(x.created) <= dk(to)))(...rangeOf(f.created))
+        && (!f.code || norm(x.code).includes(norm(f.code))) && (!f.title || norm(x.title).includes(norm(f.title))) && (!f.nv || x.nv === f.nv)
         && (!f.block || D.blockOf(x.unit) === f.block) && (!f.unit || x.unit === f.unit) && (!f.creator || x.creator === f.creator)
-        && (!f.st.length || f.st.includes(x.state)) && (!f.priority || x.priority === f.priority) && (!f.secret || (f.secret === 'Có') === !!x.secret)
-        && (!f.from || dk(x.created) >= dk(f.from)) && (!f.to || dk(x.created) <= dk(f.to))));
+        && (!f.st.length || f.st.includes(x.state)) && (!f.priority || x.priority === f.priority) && (!f.secret || (f.secret === 'Có') === !!x.secret)));
   }
   function advPanel() {
     const d = L.d, S = window.Screens.DXMS_STATUS;
@@ -109,7 +114,7 @@
         ${sel('st', 'Trạng thái', { multi: true, searchable: false, placeholder: 'Tất cả trạng thái', options: Object.entries(S).map(([value, [label]]) => ({ value, label })) })}
         ${sel('priority', 'Mức ưu tiên', { searchable: false, placeholder: 'Chọn mức ưu tiên', options: PRIORITIES.map((p) => ({ value: p, label: p })) })}
         ${sel('secret', 'Mật', { searchable: false, placeholder: 'Tất cả', options: ['Có', 'Không'].map((p) => ({ value: p, label: p })) })}
-        ${txt('from', 'Ngày tạo từ', 'DD/MM/YYYY')}${txt('to', 'Ngày tạo đến', 'DD/MM/YYYY')}</div>
+        ${txt('created', 'Ngày tạo', 'DD/MM/YYYY – DD/MM/YYYY')}</div>
       <div class="acts"><button type="button" class="vbtn secondary" data-lg="reset">Làm mới</button><button type="submit" class="vbtn primary">Tìm kiếm</button></div></form>`;
   }
   function list() {
@@ -124,7 +129,7 @@
         <td class="ord">${from + i + 1}</td><td class="c"><div class="acts">${iconBtn('edit', 'Sửa', `data-go="dxms/${encodeURIComponent(x.code)}/edit"`)}</div></td>
         <td class="c">${badge(S[x.state][0], S[x.state][1])}</td><td><a class="link" data-go="${href(x.code)}">${esc(x.code)}</a></td><td>${clamp(x.title)}</td>
         <td>${clamp(S5().nvText(x.nv))}</td><td class="c">${S5().dotOf(x) || dash}</td>
-        <td>${x.run ? `<a class="link" data-go="${window.Screens.caseHref(x.run)}">${esc(x.run.code)}</a>` : dash}</td><td>${clamp(x.run && x.run.flow)}</td>
+        <td>${x.run ? `<a class="link" data-go="${window.Screens.caseHref(x.run)}">${esc(x.run.code)}</a>` : dash}</td><td>${clamp(x.run && (x.run.flowLabel || x.run.flow))}</td>
         <td>${clamp(x.run && x.run.step)}</td><td>${clamp(x.who)}</td><td>${clamp(x.unit)}</td><td>${clamp(x.creator)}</td><td class="num">${esc(x.updated)}</td></tr>`).join('');
     const info = {
       scr: 'SCR-95', name: 'Danh sách luồng mua sắm', uc: 'UC-07-01, UC-07-12 · UR-DX-01, UR-DX-20',
@@ -157,8 +162,9 @@
   const LF = { v: {}, err: {}, files: [], rows: [], seq: 0, rseq: 0 };
   function resetForm() {
     const u = persona(Flow.state.persona).unit;
-    Object.assign(LF, { err: {}, files: [], rows: [], seq: 0, rseq: 0, dotTouched: false, cost: [], pick: { type: null, line: null }, reviewers: [], revMode: {}, revPick: null });
-    LF.v = { title: '', nv: null, unit: UNITS.includes(u) ? u : null, priority: 'Thường', est: '', period: '', secret: 'Không', purpose: '', proc: null, dot: '', legal: '' };
+    Object.assign(LF, { err: {}, files: [], rows: [], seq: 0, rseq: 0, dotTouched: false, cost: [], pick: { type: null, line: null }, pl: {}, plFiles: {} });
+    /* T29 B17 (A3): căn cứ pháp lý điền sẵn như hệ thống cũ (GIẢ LẬP P-211). */
+    LF.v = { title: '', nv: null, unit: UNITS.includes(u) ? u : null, priority: 'Thường', priReason: '', est: '', period: '', secret: 'Không', sign: 'VOffice', basisTD: 'Chưa phê duyệt', dot: '', legal: D.legalDefault.join('\n') };
   }
   /* ---------- T29 cách 1 — trường của màn Thêm mới TTr cũ (HT-DXMS-NOTE màn 8; "TTr" = ĐXMS) ----------
      Không trái Locked decisions: Loại biểu mẫu, Cấp phê duyệt, Hình thức trình ký chỉ đọc, hệ thống suy (luồng con vẫn xác định ở cổng
@@ -166,20 +172,24 @@
      dự kiến điền sẵn bước 16 (DX-08). */
   const TH = () => D.dxmsRules()[0].to;
   const estNum = (s) => (String(s || '').trim() === '' ? null : Number(String(s).trim().replace(/\./g, '').replace(',', '.')));
+  /* T29 B1 (D-54, D-77): không chọn Quy trình — một quy trình MS01; luồng con dự kiến theo Giá trị dự kiến và "Căn cứ đã được phê duyệt",
+     hệ thống đặt lại ở cổng sau bước 10 theo Tổng giá trị, bước 48 chốt .01 / .02. */
+  /* T29 B12 (RV-PROTO-0511 #8): số tiền trên màn này nhập số thường (đồng), không quy ra tỷ. Dữ liệu prototype vẫn lưu tỷ đồng như các màn khác
+     (đổi khi nhập / hiện); đổi đơn vị ở các màn khác chờ BA xác nhận (P-208). */
+  const dongIn = (s) => { const n = estNum(s); return n == null || Number.isNaN(n) ? n : n / 1e9; };
+  const dong = (t) => (t == null ? '' : Math.round(t * 1e9).toLocaleString('vi-VN'));
+  const curProc = (v) => D.subFlow(dongIn((v || LF.v).est), (v || LF.v).basisTD === 'Đã phê duyệt', D.dxmsRules());
+  /* T29 B12 (RV-PROTO-0511 #6): Loại biểu mẫu, Cấp phê duyệt chưa có thì để trống; có Giá trị dự kiến thì điền đúng nhãn của hệ thống cũ
+     (HT-DXMS-NOTE màn 8). Hệ thống đặt lại theo Tổng giá trị báo giá ở cổng sau bước 10; Cấp phê duyệt nhóm B trở lên TTMS chốt ở bước 48. */
   function derived(v) {
-    /* Đã chọn quy trình (prototype còn ba quy trình MS01.0x tới khi làm S1) thì theo quy trình; chưa chọn thì theo Giá trị dự kiến. */
-    if (v.proc) {
-      const small = v.proc === 'MS01.03';
-      return { form: small ? `ĐXMS có giá trị dưới nhóm B (dưới ${TH()} tỷ đồng)` : `ĐXMS có giá trị nhóm B trở lên (từ ${TH()} tỷ đồng)`,
-        level: v.proc === 'MS01.01' ? 'Tập đoàn' : 'Tổng công ty', sign: v.secret === 'Có' ? 'Bản cứng (hồ sơ Mật)' : 'VOffice — đổi được khi trình ký' };
-    }
-    const e = estNum(v.est), big = e != null && !Number.isNaN(e) && e >= TH();
-    return {
-      form: e == null || Number.isNaN(e) ? 'Theo giá trị báo giá (bước 10)' : big ? `ĐXMS có giá trị nhóm B trở lên (từ ${TH()} tỷ đồng) — dự kiến` : `ĐXMS có giá trị dưới nhóm B (dưới ${TH()} tỷ đồng) — dự kiến`,
-      level: e == null || Number.isNaN(e) ? 'Theo giá trị báo giá (bước 10)' : big ? 'Tổng công ty hoặc Tập đoàn — chọn ở bước 48' : 'Tổng công ty — dự kiến',
-      sign: v.secret === 'Có' ? 'Bản cứng (hồ sơ Mật)' : 'VOffice — đổi được khi trình ký',
-    };
+    const e = dongIn(v.est), known = e != null && !Number.isNaN(e), big = known && e >= TH(), ok = v.basisTD === 'Đã phê duyệt';
+    return { form: !known ? '' : big ? 'ĐXMS có giá trị nhóm B trở lên' : 'ĐXMS có giá trị dưới nhóm B', level: !known ? '' : big && !ok ? 'Tập đoàn' : 'Tổng công ty' };
   }
+  /* D-74 (RV-PROTO-0511 #5): Hình thức trình ký chọn được; mặc định Bản cứng khi Mật — lệch BR-DXMS-C-25. */
+  const defSign = (secret) => (secret === 'Có' ? 'Bản cứng' : 'VOffice');
+  const SIGNS = ['VOffice', 'Bản cứng'];
+  /* Hình thành gói thầu (RV-PROTO-0511 #14): dropdown — GIẢ LẬP P-206. */
+  const PKGS = ['Hình thành gói thầu', 'Không hình thành gói thầu'];
   const costLine = (id) => (LF.v.nv ? D.duToanOf(LF.v.nv) : []).find((l) => l.id === id) || null;
   const typeName = (t) => (D.costTypes.find(([k]) => k === t) || [t, t])[1];
   /* T29 S8 (B9): phần còn lại khả dụng của dòng dự toán = dự toán − ĐXMS đã phê duyệt − ĐXMS đang giữ (cùng hàm với SCR-104, D.duToanStats). */
@@ -187,14 +197,26 @@
     const s = D.duToanStats(l, (window.DeTai.usesOf(l.code)[l.id]) || []);
     return { value: s.remain, qty: l.qty == null ? null : l.qty - s.qty };
   };
+  /* Vượt phần còn lại: cảnh báo, không chặn khi tạo (BR-DXMS-02-04); chặn ở bước 10 (P1, BR-DXMS-04-11). */
+  function costWarn(r) {
+    const l = costLine(r.line) || {}, a = availOf(l), q = estNum(r.qty), n = dongIn(r.value);
+    return [q != null && !Number.isNaN(q) && a.qty != null && q > a.qty ? `Vượt khối lượng còn lại (${a.qty}).` : '',
+      n != null && !Number.isNaN(n) && n > a.value && n <= l.value ? `Vượt giá trị còn lại khả dụng (${dong(a.value)} đồng).` : ''].filter(Boolean).join(' ');
+  }
   function costCard() {
     const nv = LF.v.nv, all = nv ? D.duToanOf(nv) : [], p = LF.pick, err = LF.err.cost || {}, ent = D.nvOf(nv) || {};
-    const head = `<div class="vcard-h"><h3>Thông tin dự án / đề tài</h3>${nv && ent.loai !== 'KHCN' ? `<span class="cap">Dự toán tham khảo — căn cứ của loại ${esc(ent.loai)} là tài liệu căn cứ đính kèm</span>` : ''}</div>`;
+    /* T29 B12 (RV-PROTO-0511 #11, Huylx4 #2, #10): Đề tài / dự án là trường đầu tiên của màn, khối bóc tách chi phí ngay sau, trước Thông tin chung. */
+    const nvSel = `<div class="grid3">${field('Đề tài / dự án', vSelect({ id: 'lf-nv', value: nv, searchable: true, placeholder: 'Chọn đề tài / dự án', invalid: !!LF.err.nv,
+      options: D.nhiemVu.map((n) => ({ value: n.code, label: `${n.code} — ${n.name} (${n.kind})` })),
+      onChange: upd((x) => { LF.v.nv = x; delete LF.err.nv; if (!LF.dotTouched) LF.v.dot = S5().nextDot(x); LF.cost = []; LF.pick = { type: null, line: null }; delete LF.err.cost; }) }),
+    { req: true, err: LF.err.nv, cls: 'span3' })}</div>`;
+    const head = `<div class="vcard-h"><h3>Thông tin dự án / đề tài</h3>${nv && ent.loai !== 'KHCN' ? `<span class="cap">Dự toán tham khảo — căn cứ của loại ${esc(ent.loai)} là tài liệu căn cứ đính kèm</span>` : ''}</div>${nvSel}`;
     if (!nv) return `<section class="vcard" data-lf-cost>${head}<div class="lf-empty">Chọn Đề tài / dự án để bóc tách chi phí từ dự toán.</div></section>`;
     /* YC-DXMS-PROTO §3.1: chỉ khoản mục TTMS đã tích Chi mua sắm và còn khả dụng. */
-    const lines = all.filter((l) => l.buy && availOf(l).value > 0);
+    /* Góp ý 05/11: khoản mục TTMS đặt Hoàn thành không bóc tách thêm (GIẢ LẬP P-203). */
+    const lines = all.filter((l) => l.buy && l.status !== 'Hoàn thành' && availOf(l).value > 0);
     const types = [...new Set(lines.map((l) => l.type))];
-    const avTxt = (l) => { const a = availOf(l); return `${a.qty == null ? '' : `${a.qty} ${l.uom || ''} · `}${ty(a.value)} tỷ đồng`; };
+    const avTxt = (l) => { const a = availOf(l); return `${a.qty == null ? '' : `${a.qty} ${l.uom || ''} · `}${dong(a.value)} đồng`; };
     return `<section class="vcard" data-lf-cost>${head}
       <div class="grid3">
         ${field('Loại chi phí', vSelect({ id: 'lf-ctype', value: p.type, placeholder: 'Chọn loại chi phí', options: types.map((t) => ({ value: t, label: typeName(t) })),
@@ -204,58 +226,33 @@
         <div class="vfield"><div class="lr"><label>&nbsp;</label></div><div class="row"><button type="button" class="vbtn secondary" data-lf-cadd ${p.line ? '' : 'disabled'}>${icon('add')} Thêm vào ĐXMS</button></div></div>
       </div>
       ${table([['Thao tác', 80, 'c'], ['Nguồn vốn', 170], ['Loại chi phí', 200], ['Khoản mục chi phí', 220], ['ĐVT', 80], ['Còn lại khả dụng', 180, 'r'],
-    ['Số lượng đề xuất', 140], ['Giá trị dự tính (tỷ đồng)', 170], ['Hình thành gói thầu', 220]], LF.cost, (r) => {
-    const l = costLine(r.line) || {}, e = err[r.id] || {}, a = availOf(l), q = estNum(r.qty), n = estNum(r.value);
-    /* Vượt phần còn lại: cảnh báo, không chặn khi tạo (BR-DXMS-02-04); chặn ở bước 10 (P1, BR-DXMS-04-11). */
-    const warn = [q != null && !Number.isNaN(q) && a.qty != null && q > a.qty ? `Vượt khối lượng còn lại (${a.qty}).` : '',
-      n != null && !Number.isNaN(n) && n > a.value && n <= l.value ? `Vượt giá trị còn lại khả dụng (${ty(a.value)} tỷ đồng).` : ''].filter(Boolean).join(' ');
+    ['Số lượng đề xuất', 140], ['Giá trị dự tính (đồng)', 190], ['Hình thành gói thầu', 220]], LF.cost, (r) => {
+    const l = costLine(r.line) || {}, e = err[r.id] || {}, warn = costWarn(r);
     const inp = (k, ph, max) => `<div class="vfield ${e[k] ? 'invalid' : ''}"><input class="vctl" data-lf-c${k}="${r.id}" maxlength="${max}" placeholder="${ph}" value="${esc(k === 'val' ? r.value : r[k])}" ${e[k] ? 'aria-invalid="true"' : ''}>${e[k] ? `<p class="msg" role="alert">${esc(e[k])}</p>` : ''}</div>`;
     return `<td class="c">${iconBtn('del', 'Xóa dòng', `data-lf-cdel="${r.id}"`)}</td><td>${clamp(l.fund)}</td>
-        <td>${clamp(typeName(l.type))}</td><td>${clamp(l.item)}${warn ? `<div class="t-err" data-lf-cwarn>${esc(warn)}</div>` : ''}</td><td>${esc(l.uom || '')}</td><td class="r num">${avTxt(l)}</td>
-        <td>${inp('qty', 'Nhập số lượng', 10)}</td><td>${inp('val', 'Nhập giá trị', 15)}</td>
-        <td><input class="vctl" data-lf-cpkg="${r.id}" maxlength="500" placeholder="Nhập tên gói thầu dự kiến" value="${esc(r.pkg)}"></td>`;
+        <td>${clamp(typeName(l.type))}</td><td data-lf-citem="${r.id}">${clamp(l.item)}${warn ? `<div class="t-err" data-lf-cwarn>${esc(warn)}</div>` : ''}</td><td>${esc(l.uom || '')}</td><td class="r num">${avTxt(l)}</td>
+        <td>${inp('qty', 'Nhập số lượng', 10)}</td><td>${inp('val', 'Nhập giá trị (đồng)', 20)}</td>
+        <td>${vSelect({ id: 'lf-cpkg-' + r.id, value: r.pkg || null, clear: true, placeholder: 'Chọn hình thành gói thầu', options: PKGS.map((p) => ({ value: p, label: p })), onChange: upd((x) => { r.pkg = x || ''; }) })}</td>`;
   }, 'Chưa bóc tách chi phí — chọn Loại chi phí, Khoản mục chi phí rồi Thêm vào ĐXMS')}</section>`;
   }
-  /* Danh sách người thẩm định (dự kiến) — điền sẵn bước 16 (DX-08, GIẢ LẬP P-194). */
-  function reviewersCard() {
-    const opts = D.cqcm.filter((c) => !LF.reviewers.includes(c.id));
-    return `<section class="vcard" data-lf-rev><div class="vcard-h"><h3>Danh sách người thẩm định</h3>
-        <div class="row"><div style="width:320px">${vSelect({ id: 'lf-rev', value: LF.revPick, searchable: true, placeholder: 'Chọn người thẩm định',
-    options: opts.map((c) => ({ value: c.id, label: `${persona(c.doer).name} — ${c.unit}` })), onChange: upd((x) => { LF.revPick = x; }) })}</div>
-        <button type="button" class="vbtn secondary" data-lf-radd ${LF.revPick ? '' : 'disabled'}>${icon('add')} Thêm mới</button></div></div>
-      ${table([['Thao tác', 80, 'c'], ['Cách chọn', 180], ['Họ và tên / Vai trò', 280], ['Đơn vị', 260]], LF.reviewers.map((id) => D.cqcm.find((c) => c.id === id)), (c) => {
-    /* D-62 (YC-DXMS-PROTO §4.2): chọn đích danh hoặc theo vai trò của phòng ban — Vai trò thì bước 19 giao cho nhóm vai trò của đơn vị (candidateGroups). */
-    const m = LF.revMode[c.id] || 'nguoi';
-    return `<td class="c">${iconBtn('del', 'Xóa', `data-lf-rvdel="${c.id}"`)}</td>
-      <td>${vSelect({ id: 'lf-rvm-' + c.id, value: m, options: [{ value: 'nguoi', label: 'Đích danh' }, { value: 'vaitro', label: 'Theo vai trò' }], onChange: upd((x) => { LF.revMode[c.id] = x; }) })}</td>
-      <td>${esc(m === 'vaitro' ? `${persona(c.doer).role} (mọi người của vai trò)` : persona(c.doer).name)}</td><td>${esc(c.unit)}</td>`;
-  }, 'Chưa chọn người thẩm định — chọn ở bước lập phiếu yêu cầu thẩm định')}</section>`;
-  }
+  /* D-75 (RV-PROTO-0511 #14, câu hỏi 4; Huylx4 #3): bỏ Danh sách người thẩm định — CQCM chọn ở bước 16, DX-08 rút. */
   function readCost() {
     LF.cost.forEach((r) => {
-      const a = document.querySelector(`[data-lf-cval="${r.id}"]`), b = document.querySelector(`[data-lf-cpkg="${r.id}"]`), c = document.querySelector(`[data-lf-cqty="${r.id}"]`);
+      const a = document.querySelector(`[data-lf-cval="${r.id}"]`), c = document.querySelector(`[data-lf-cqty="${r.id}"]`);
       if (a) r.value = a.value;
       if (c) r.qty = c.value;
-      if (b) r.pkg = b.value;
-    });
-  }
-  /* Đổi quy trình: bỏ dòng chỉ định của bước không còn trong quy trình mới; bước còn mà đổi vai trò thì bỏ người đã chọn. */
-  function syncRows(process) {
-    const ts = tasksOf(process);
-    LF.rows = LF.rows.filter((r) => !r.task || ts.some((t) => t.key === r.task)).map((r) => {
-      const t = r.task && ts.find((x) => x.key === r.task);
-      return t && r.role !== t.role ? Object.assign(r, { role: t.role, people: [] }) : r;
     });
   }
   function readInputs() {
-    ['title', 'est', 'period', 'purpose', 'dot', 'legal'].forEach((k) => { const el = document.getElementById('lf-' + k); if (el) LF.v[k] = el.value; });
+    ['title', 'est', 'period', 'priReason', 'dot', 'legal'].forEach((k) => { const el = document.getElementById('lf-' + k); if (el) LF.v[k] = el.value; });
     readCost();
   }
   const upd = (fn) => (val) => { readInputs(); fn(val); rerender(); };
 
   function basisCard() {
     const types = basisTypes(), err = LF.err;
-    return `<section class="vcard" data-lf-basis><div class="vcard-h"><h3>Căn cứ đầu vào</h3>
+    /* T29 B12 (Huylx4 #11): "Căn cứ đầu vào" → "Căn cứ pháp lý" như hệ thống cũ (HT-DXMS-NOTE màn 8: đính file + nhập text). */
+    return `<section class="vcard ${err.basis ? 'invalid' : ''}" data-lf-basis><div class="vcard-h"><h3>Căn cứ pháp lý</h3>
         <div class="row"><button type="button" class="vbtn red" data-lf-up>${icon('upload')} Tải file lên</button><input type="file" id="lf-file" multiple hidden></div></div>
       ${err.basis ? `<p class="msg lf-err" role="alert">${esc(err.basis)}</p>` : ''}
       ${table([['Thao tác', 80, 'c'], ['Tên tài liệu', 240], ['Loại tài liệu căn cứ', 320], ['Gắn vào', 180], ['Ngày tạo', 120]], LF.files, (f) => {
@@ -270,80 +267,111 @@
       <div class="lf-legal">${field('Nội dung căn cứ pháp lý', `<textarea class="vctl ta" id="lf-legal" maxlength="4000" placeholder="Nhập căn cứ pháp lý (số, ngày, trích yếu văn bản)">${esc(LF.v.legal)}</textarea>`)}</div></section>`;
   }
 
-  /* Nhân sự thực hiện: mỗi dòng một bước của quy trình; chỉ thêm dòng cho bước cần chỉ định đích danh (D-27).
-     Theo: task-create "Nhân sự khởi tạo / thẩm định" (bảng có Thêm / Xóa dòng). */
+  /* T29 B17 — Phụ lục kèm theo Tờ trình (HT-DXMS-IMG Soạn thảo TTr: 6 cờ Có / Không, mặc định Không; HT-DXMS-NOTE màn 8 "đính file";
+     IA-DXMS dòng 18, 95–100). Có → tải tệp được ngay (không bắt buộc khi tạo); bước lập dự thảo sửa được lựa chọn, phụ lục Có
+     bắt buộc có tệp mới gửi được. Tờ trình in danh sách ở mục Danh mục hồ sơ kèm theo (GIẢ LẬP P-212). */
+  function phuLucCard() {
+    const radio = window.UI.vRadio;
+    return `<section class="vcard" data-lf-plcard><div class="vcard-h"><h3>Phụ lục kèm theo Tờ trình</h3><span class="cap">Chọn Có thì tải tệp phụ lục; tệp bắt buộc khi gửi dự thảo Tờ trình</span></div>
+      ${table([['Phụ lục', 360], ['Có / Không', 200], ['Tệp phụ lục', 360]], D.phuLuc.map(([key, name]) => ({ key, name })), (r) => {
+    const on = LF.pl[r.key] === 'Có', f = LF.plFiles[r.key];
+    return `<td>${esc(r.name)}</td><td><div class="vradio h">${radio('Có', on, `data-lf-pl="${r.key}|Có"`)}${radio('Không', !on, `data-lf-pl="${r.key}|Không"`)}</div></td>
+        <td data-lf-plf="${r.key}">${!on ? '<span class="cap">Không áp dụng</span>' : f ? `<div class="row"><span class="clamp">${esc(f)}</span>${iconBtn('del', 'Xóa tệp', `data-lf-pldel="${r.key}"`)}</div>`
+      : `<button type="button" class="vbtn secondary" data-lf-plup="${r.key}">${icon('upload')} Tải tệp</button>`}</td>`;
+  })}<input type="file" id="lf-plfile" hidden></section>`;
+  }
+
+  /* Nhân sự thực hiện — D-75 (RV-PROTO-0511 #14; Huylx4 #12–14, người dùng bổ sung 05/11): mỗi dòng một Vai trò thực hiện + một Người thực hiện.
+     Vai trò = mọi vai trò có bước người dùng trong các luồng (MS01 .01 / .02 / .03, MS02); thật: danh mục Vai trò thực hiện (execution_role) ĐTMS
+     quản lý, đồng bộ từ Candidate Users của BPMN đã deploy trên Camunda. Người được chọn nhận mọi task của vai trò trong luồng ĐXMS
+     (BE đổi roleCode → username như TaskService.syncCreatedProcessCandidateUsers). Vai trò không có dòng: giao theo vai trò như quy trình. */
+  const ROLE_PROCS = ['MS01.01', 'MS01.02', 'MS01.03', 'MS02'];
+  function allRoles() {
+    const out = new Map();
+    ROLE_PROCS.forEach((p) => rolesOf(p).forEach((r) => { if (!out.has(r.code)) out.set(r.code, { code: r.code, name: r.name }); }));
+    return [...out.values()];
+  }
+  /* Bước MS01 (mọi luồng con — luồng con chốt sau bước 10 / 48) của vai trò → nhân sự chỉ định theo bước của Flow (S.members). */
+  function membersByRole(rows) {
+    const out = {};
+    ['MS01.01', 'MS01.02', 'MS01.03'].forEach((p) => tasksOf(p).forEach((t) => {
+      const r = rows.find((x) => x.role === t.role);
+      if (r && r.person) out[t.key] = [r.person];
+    }));
+    return out;
+  }
   function membersCard() {
-    const proc = LF.v.proc, ts = tasksOf(proc), err = LF.err.rows || {};
-    const add = `<button type="button" class="vbtn secondary" data-lf-add ${proc ? '' : 'disabled'}>${icon('add')} Thêm dòng</button>`;
-    const headH = `<div class="vcard-h"><h3>Nhân sự thực hiện</h3><div class="row">${add}</div></div>`;
-    if (!proc) return `<section class="vcard" data-lf-members>${headH}<div class="lf-empty">Chọn Quy trình để chỉ định nhân sự cho các bước của quy trình.</div></section>`;
-    return `<section class="vcard" data-lf-members>${headH}
-      ${table([['Thao tác', 80, 'c'], ['Bước', 140], ['Tên công việc', 280], ['Vai trò thực hiện', 170], ['Nhân sự thực hiện', 320]], LF.rows, (r) => {
-    const t = r.task && ts.find((x) => x.key === r.task), e = err[r.id] || {};
-    const used = LF.rows.filter((x) => x !== r && x.task).map((x) => x.task);
+    const roles = allRoles(), err = LF.err.rows || {};
+    const add = `<button type="button" class="vbtn secondary" data-lf-add>${icon('add')} Thêm dòng</button>`;
+    return `<section class="vcard" data-lf-members><div class="vcard-h"><h3>Nhân sự thực hiện</h3><div class="row">${add}</div></div>
+      ${table([['Thao tác', 80, 'c'], ['Vai trò thực hiện', 340], ['Người thực hiện', 380]], LF.rows, (r) => {
+    const e = err[r.id] || {}, used = LF.rows.filter((x) => x !== r && x.role).map((x) => x.role);
     return `<td class="c">${iconBtn('del', 'Xóa dòng', `data-lf-rdel="${r.id}"`)}</td>
-        <td><div class="vfield ${e.task ? 'invalid' : ''}" data-row-step="${r.id}">${vSelect({ id: 'lf-step-' + r.id, value: r.task, searchable: true, placeholder: 'Chọn bước', invalid: !!e.task, panelWidth: 460,
-          options: ts.filter((x) => !used.includes(x.key)).map((x) => ({ value: x.key, short: stepNo(x.key), label: `${stepNo(x.key)} · ${x.name}` })),
-          onChange: upd((k) => { const n = ts.find((x) => x.key === k); if (r.role !== n.role) r.people = []; Object.assign(r, { task: k, role: n.role }); if (err[r.id]) delete err[r.id].task; }) })}
-          ${e.task ? `<p class="msg" role="alert">${esc(e.task)}</p>` : ''}</div></td>
-        <td>${t ? `<span class="clamp">${esc(t.name)}</span>` : dash}</td><td>${t ? esc(t.roleName) : dash}</td>
-        <td><div class="vfield ${e.people ? 'invalid' : ''}" data-row-people="${r.id}">${vSelect({ id: 'lf-m-' + r.id, multi: true, value: r.people, disabled: !t, invalid: !!e.people,
-          placeholder: t ? 'Chọn nhân sự' : 'Chọn bước trước',
-          options: t ? D.usersOfRole(t.role).map((p) => ({ value: p.id, label: `${p.name} — ${p.unit}` })) : [],
-          onChange: upd((v) => { r.people = v; if (err[r.id]) delete err[r.id].people; }) })}
-          ${e.people ? `<p class="msg" role="alert">${esc(e.people)}</p>` : ''}</div></td>`;
-  }, 'Chưa chỉ định nhân sự cho bước nào — các bước giao theo vai trò như quy trình')}</section>`;
+        <td><div class="vfield ${e.role ? 'invalid' : ''}" data-row-role="${r.id}">${vSelect({ id: 'lf-role-' + r.id, value: r.role, searchable: true, placeholder: 'Chọn vai trò thực hiện', invalid: !!e.role,
+          options: roles.filter((x) => !used.includes(x.code)).map((x) => ({ value: x.code, label: x.name })),
+          onChange: upd((k) => { if (r.role !== k) r.person = null; r.role = k; if (err[r.id]) delete err[r.id].role; }) })}
+          ${e.role ? `<p class="msg" role="alert">${esc(e.role)}</p>` : ''}</div></td>
+        <td><div class="vfield ${e.person ? 'invalid' : ''}" data-row-people="${r.id}">${vSelect({ id: 'lf-m-' + r.id, value: r.person, searchable: true, disabled: !r.role, invalid: !!e.person,
+          placeholder: r.role ? 'Chọn người thực hiện' : 'Chọn vai trò trước',
+          options: r.role ? D.usersOfRole(r.role).map((p) => ({ value: p.id, label: `${p.name} — ${p.unit}` })) : [],
+          onChange: upd((v) => { r.person = v; if (err[r.id]) delete err[r.id].person; }) })}
+          ${e.person ? `<p class="msg" role="alert">${esc(e.person)}</p>` : ''}</div></td>`;
+  }, 'Chưa chỉ định — task của mọi vai trò giao theo vai trò như quy trình')}</section>`;
   }
 
   function form() {
     // Theo: fe/repo-khcn-bpmn-fe/src/app/features/task-management/components/task-create/task-create.component.html (mode create)
     const v = LF.v, err = LF.err;
     const txt = (k, ph, max) => `<input class="vctl" id="lf-${k}" maxlength="${max || 255}" placeholder="${ph}" value="${esc(v[k])}" ${err[k] ? 'aria-invalid="true"' : ''}>`;
-    const procOpts = D.kinds.PD.procs.map((k) => ({ value: k, disabled: !!(D.processes[k] || {}).pending, label: `${k} · ${D.procCond(k, D.dxmsRules())}` }));
     const info = {
       scr: 'SCR-96', name: 'Thêm mới luồng mua sắm', uc: 'UC-07-01, UC-07-12 · UR-DX-01, 02, UR-DX-20', bpmn: 'Ngoài BPMN — trước task 01',
       notes: [
         '<b>Một lần Lưu = tạo ĐXMS + hồ sơ Phê duyệt + khởi tạo quy trình</b> (T17 D-26). Thật: BE gọi lần lượt API tạo ĐXMS (wf_tasks) và tạo hồ sơ (profile-form, Lưu = start). Tên hồ sơ = tên luồng. Hồ sơ Điều chỉnh (MS02) tạo sau trong luồng.',
-        '<b>Căn cứ đầu vào = tệp đính kèm</b> (D-30): mỗi tệp chọn Loại tài liệu căn cứ (Danh mục dùng chung › Loại tài liệu căn cứ, SCR-99). Loại có Áp dụng cho ĐXMS và hồ sơ thì chọn Gắn vào; tệp gắn ĐXMS nằm ở Tài liệu đính kèm của luồng, tệp gắn hồ sơ nằm ở Danh sách tài liệu của hồ sơ. Thiếu tệp của loại <b>Bắt buộc</b> thì không Lưu được.',
-        '<b>Nhân sự thực hiện</b> (D-27): mỗi dòng một bước của quy trình đã chọn — Bước, Tên công việc (User Task: elementId, name), Vai trò thực hiện do BPMN quy định (roleCode ở Candidate Users). Nhân sự lấy theo vai trò của bước (IAM), chọn 1 hoặc nhiều người — nhiều người thì task giao cho tất cả, một người nhận xử lý. <b>Thêm dòng / Xóa dòng</b>: chỉ thêm cho bước cần chỉ định đích danh; bước không có dòng giao theo vai trò như quy trình. Mỗi bước chỉ một dòng; đổi quy trình thì bỏ dòng của bước không còn áp dụng.',
+        '<b>Căn cứ pháp lý = tệp đính kèm</b> (D-30; T29 B12 đổi nhãn "Căn cứ đầu vào" theo Huylx4 #11): mỗi tệp chọn Loại tài liệu căn cứ (Danh mục dùng chung › Loại tài liệu căn cứ, SCR-99). Loại có Áp dụng cho ĐXMS và hồ sơ thì chọn Gắn vào; tệp gắn ĐXMS nằm ở Tài liệu đính kèm của luồng, tệp gắn hồ sơ nằm ở Danh sách tài liệu của hồ sơ. Thiếu tệp của loại <b>Bắt buộc</b> thì không Lưu được.',
+        '<b>Nhân sự thực hiện</b> (<b>D-75</b>, RV-PROTO-0511 #14, Huylx4 #12–14 — thay "mỗi dòng một bước" của D-27): bảng chỉ có <b>Vai trò thực hiện</b> + <b>Người thực hiện</b>. Vai trò = mọi vai trò có bước người dùng trong các luồng (MS01 .01 / .02 / .03, MS02); ĐTMS quản lý danh mục Vai trò thực hiện, <b>đồng bộ từ quy trình Camunda</b> (roleCode ở Candidate Users của User Task). Chọn vai trò rồi chọn <b>một</b> người: người đó nhận mọi task của vai trò trong luồng ĐXMS. Mỗi vai trò một dòng; vai trò không có dòng giao theo vai trò như quy trình. Tab Nhân sự thực hiện của Chi tiết luồng (SCR-97) vẫn hiện theo bước để Cập nhật nhân sự từng bước (D-28).',
         'Cơ chế như nhiệm vụ KHCN: task-create có hai bảng Nhân sự khởi tạo / thẩm định theo Vai trò thực hiện (category execution-roles); BE TaskService.syncCreatedProcessCandidateUsers đổi roleCode → username khi task được tạo.',
         'CQCM không nằm trong bảng: đơn vị CQCM chọn ở task 16 theo quy trình. Ban ĐTXD / TGĐ Tập đoàn là bên ngoài (giả lập), không gán.',
-        'Trường Thông tin chung như Thêm mới ĐXMS (SCR-28), thêm <b>Quy trình</b> như Thêm mới hồ sơ (SCR-25). Mã ĐXMS và mã hồ sơ do hệ thống sinh.',
+        'Trường Thông tin chung như Thêm mới ĐXMS (SCR-28). Mã ĐXMS và mã hồ sơ do hệ thống sinh.',
+        '<b>T29 B1 (D-54, RV-PROTO-0511 mục 4):</b> không có trường Quy trình — hồ sơ chạy một quy trình <b>MS01 Phê duyệt đề xuất mua sắm</b>. Luồng con MS01.01 / .02 / .03 là biến của hồ sơ: dự kiến theo Giá trị dự kiến và Căn cứ đã được phê duyệt, hệ thống đặt lại ở cổng sau bước 10 theo Tổng giá trị báo giá và ngưỡng hồ sơ giữ (P-34); bước 48 TTMS chọn có / không báo cáo TGĐ Tập đoàn → .01 / .02. Cột Quy trình hiện "MS01" trước cổng, ".0x (dự kiến)" tới bước 48.',
+        '<b>Căn cứ đã được phê duyệt</b> (D-77, RV-PROTO-0511 mục 18): căn cứ đã được CT/TGĐ Tập đoàn phê duyệt hay chưa; ĐVĐX sửa được tới bước 10 khi có báo giá cuối cùng; là lựa chọn mặc định của bước 48 (Đã phê duyệt → Không báo cáo Tập đoàn), TTMS vẫn xác nhận.',
         '<b>T29 — Đợt mua sắm</b> (HT-DXMS-NOTE màn 8 "V/v đề xuất mua sắm; Đợt số"; "TTr" = ĐXMS): gợi ý số ĐXMS đã có của nhiệm vụ / đề tài, dự án + 1, đơn vị sửa được (GIẢ LẬP P-192). SRS-DXMS chưa có (D-59). Các trường khác của màn Thêm mới TTr cũ đã có cách làm khác: Loại biểu mẫu → Quy trình; Cấp phê duyệt → bước 48; đơn vị phê duyệt, chân ký → quy tắc ký; Hình thức trình ký → theo Mật; Căn cứ pháp lý → Căn cứ đầu vào; người thẩm định → chọn CQCM ở bước 16.',
-        '<b>T29 cách 1 (người dùng chọn 04/11)</b> — đưa các trường của màn Thêm mới TTr cũ lên màn này mà không trái Locked decisions: <b>Loại biểu mẫu, Cấp phê duyệt, Hình thức trình ký chỉ đọc</b>, hệ thống suy từ Quy trình (hoặc Giá trị dự kiến khi chưa chọn) và Mật — luồng con vẫn xác định ở cổng sau bước 10 / bước 48, hình thức ký chọn khi trình ký. <b>AI kiểm tra quy tắc bảo mật</b> khi Mật = Có (như Thêm mới ĐXMS, BR-DXMS-01-07). <b>Nội dung căn cứ pháp lý</b> nhập text kèm tệp căn cứ.',
+        '<b>T29 cách 1 (người dùng chọn 04/11)</b> — đưa các trường của màn Thêm mới TTr cũ lên màn này: <b>Loại biểu mẫu, Cấp phê duyệt chỉ đọc</b>, hệ thống suy — <b>T29 B12 (RV-PROTO-0511 #6)</b>: chưa có Giá trị dự kiến thì để trống, có thì điền đúng nhãn hệ thống cũ (ĐXMS có giá trị dưới nhóm B / nhóm B trở lên; Tổng công ty / Tập đoàn); hệ thống đặt lại theo Tổng giá trị báo giá ở cổng sau bước 10, Cấp phê duyệt nhóm B trở lên TTMS chốt ở bước 48. <b>AI kiểm tra quy tắc bảo mật</b> khi Mật = Có (như Thêm mới ĐXMS, BR-DXMS-01-07). <b>Nội dung căn cứ pháp lý</b> nhập text kèm tệp căn cứ.',
+        '<b>T29 B12 (RV-PROTO-0511 bản 2)</b>: <b>Hình thức trình ký</b> chọn VOffice / Bản cứng, mặc định Bản cứng khi Mật = Có (<b>D-74</b> — lệch BR-DXMS-C-25 "hồ sơ Mật ký bản giấy", đã ghi câu hỏi cho BA). <b>Mức ưu tiên Khẩn / Thượng khẩn</b> bắt buộc nhập <b>Lý do ưu tiên</b> (#1 — review ghi ở dòng "Tìm kiếm", prototype đặt ở Thêm mới vì tìm kiếm không nhập lý do; GIẢ LẬP P-207). <b>Bỏ Mục đích</b> (#7) — Mục đích của tờ trình soạn ở bước dự thảo BM-01 / BM-09. <b>Giá trị dự kiến, Giá trị dự tính nhập số thường (đồng)</b> (#8; màn khác vẫn hiện tỷ đồng — P-208). <b>Hình thành gói thầu</b> là dropdown (#14; GIẢ LẬP P-206). <b>Đề tài / dự án</b> lên đầu, khối bóc tách chi phí ngay sau, trước Mã ĐXMS / Tên luồng (#11, Huylx4 #2, #10).',
         '<b>Thông tin dự án / đề tài</b> (T29 S8, YC-DXMS-PROTO §4.1): chọn Loại chi phí → Khoản mục chi phí (2 dropdown liên hoàn) → <b>+ Thêm vào ĐXMS</b>, nhập Số lượng đề xuất và Giá trị dự tính. Danh sách lấy từ <b>bảng dự toán của đề tài / dự án</b> (SCR-104, D-65), chỉ khoản mục TTMS đã tích <b>Chi mua sắm</b> và còn khả dụng (dự toán − ĐXMS đã phê duyệt − ĐXMS đang giữ, cùng hàm với SCR-104). Chọn nhiều lần, nhiều loại chi phí (BG-0411). Vượt khối lượng / giá trị còn lại: cảnh báo đỏ, không chặn (BR-DXMS-02-04); chặn ở bước 10 (P1, BR-DXMS-04-11 — B4). Vượt giá trị dự toán của dòng: chặn Lưu.',
         '<b>D-60</b>: đề tài / dự án Loại KHCN — dòng thêm vào là hạng mục căn cứ của ĐXMS, BE ghi bảng giữ chỗ dòng dự toán ↔ ĐXMS khi Lưu và biến <code>duToanChon</code> cho bước 01, 05 (bảng chỉ xem). Loại khác — dự toán tham khảo, căn cứ là tài liệu đính kèm (D-30). Danh mục hàng hoá để rà soát tồn kho, báo giá (bocTach) chưa nối với dòng dự toán — làm ở B3 (S4). <b>Cần dev riêng</b>: bảng giữ chỗ, dropdown phụ thuộc trong eForm. Dữ liệu dự toán GIẢ LẬP P-193 (= DTMS_Q_0070).',
-        '<b>Danh sách người thẩm định</b> (dự kiến): chọn + Thêm mới; Cách chọn <b>Đích danh</b> hoặc <b>Theo vai trò</b> của phòng ban (D-62, YC-DXMS-PROTO §4.2 — vai trò thì bước 19 giao cho nhóm vai trò của đơn vị, candidateGroups); danh sách điền sẵn vào bước 16 (chọn CQCM), vẫn sửa được ở bước 16, 17 — <b>DX-08</b> chờ BA duyệt, GIẢ LẬP P-194.',
+        '<b>T29 B17 — Căn cứ pháp lý điền sẵn</b> hai căn cứ như màn Soạn thảo TTr và mẫu tờ trình cũ (HT-DXMS-IMG, HT-DXMS-TT): QĐ 12868/QĐ-CNVTQĐ và QT.CNVTQĐ.ĐTXD.8.6.3.23; người tạo sửa được. Thật: tham số hệ thống TTMS cập nhật (GIẢ LẬP P-211 — QT 8.6.3.23 chưa có trong bộ chuẩn).',
+        '<b>T29 B17 — Phụ lục kèm theo Tờ trình</b> (HT-DXMS-IMG: 6 cờ Có / Không, mặc định Không; HT-DXMS-NOTE màn 8 "đính file"): chọn <b>Có</b> thì tải tệp được ngay, không bắt buộc khi tạo. Ở bước lập dự thảo Tờ trình sửa được lựa chọn; phụ lục Có bắt buộc có tệp mới gửi được; Checklist ghi Bắt buộc / Không áp dụng; Tờ trình in mục Danh mục hồ sơ kèm theo (GIẢ LẬP P-212). Danh sách 6 loại là danh mục Loại tài liệu (cấu hình).',
+        '<b>Bỏ Danh sách người thẩm định</b> (D-75, RV-PROTO-0511 #14 và câu hỏi 4, Huylx4 #3): trùng Nhân sự thực hiện; CQCM thẩm định chọn ở bước 16 (D-27 giữ phần này), DX-08 / D-62 rút.',
       ],
-      q: ['P-84', 'P-26', 'P-34', 'P-192', 'P-193', 'P-194'], src: 'task-management/components/task-create (mode create) + profile-management/profile-form · /task-management/create',
+      q: ['P-84', 'P-34', 'P-192', 'P-193', 'P-206', 'P-207', 'P-208', 'P-211', 'P-212'], src: 'task-management/components/task-create (mode create) + profile-management/profile-form · /task-management/create',
     };
-    const dv = derived(v);
+    const dv = derived(v), urgent = v.priority && v.priority !== 'Thường';
+    const ro = (id, val, ph) => `<input class="vctl" id="${id}" value="${esc(val)}" placeholder="${ph}" disabled>`;
     return `<form class="pg" data-luong-form>
       ${head({ title: 'Thêm mới luồng mua sắm', back: 'luong', lg: true, info, right: `<button type="button" class="vbtn secondary grey" data-go="luong">Huỷ</button><button type="submit" class="vbtn primary" id="lf-save">Lưu</button>` })}
+      ${costCard()}
       <section class="vcard"><h3>Thông tin chung</h3>
         <div class="grid3">
           ${field('Mã ĐXMS', '<input class="vctl" placeholder="Hệ thống tự sinh" disabled>')}
           ${field('Tên luồng mua sắm', txt('title', 'Ví dụ: Luồng mua sắm cho dự án A', 500), { req: true, err: err.title, cls: 'span2' })}
-          ${field('Đề tài / dự án', vSelect({ id: 'lf-nv', value: v.nv, searchable: true, placeholder: 'Chọn đề tài / dự án', invalid: !!err.nv,
-    options: D.nhiemVu.map((n) => ({ value: n.code, label: `${n.code} — ${n.name} (${n.kind})` })), onChange: upd((x) => { v.nv = x; delete err.nv; if (!LF.dotTouched) v.dot = S5().nextDot(x); LF.cost = []; LF.pick = { type: null, line: null }; delete err.cost; }) }), { req: true, err: err.nv, cls: 'span2' })}
-          ${field('Quy trình', vSelect({ id: 'lf-proc', value: v.proc, searchable: true, placeholder: 'Chọn quy trình', invalid: !!err.proc, options: procOpts,
-    onChange: upd((x) => { v.proc = x; delete err.proc; syncRows(x); }) }), { req: true, err: err.proc })}
           ${field('Đơn vị đề xuất', vSelect({ id: 'lf-unit', value: v.unit, searchable: true, placeholder: 'Chọn đơn vị đề xuất', invalid: !!err.unit,
     options: UNITS.map((u) => ({ value: u, label: u })), onChange: upd((x) => { v.unit = x; delete err.unit; }) }), { req: true, err: err.unit })}
+          ${field('Căn cứ đã được phê duyệt', vSelect({ id: 'lf-basis-td', value: v.basisTD, options: ['Chưa phê duyệt', 'Đã phê duyệt'].map((p) => ({ value: p, label: p })),
+    onChange: upd((x) => { v.basisTD = x; }) }), { req: true })}
+          ${field('Giá trị dự kiến (đồng)', txt('est', 'Nhập giá trị dự kiến', 20), { err: err.est })}
           ${field('Mức ưu tiên', vSelect({ id: 'lf-pri', value: v.priority, placeholder: 'Chọn mức ưu tiên', options: PRIORITIES.map((p) => ({ value: p, label: p })),
-    onChange: upd((x) => { v.priority = x; }) }), { req: true })}
-          ${field('Mật', vSelect({ id: 'lf-sec', value: v.secret, options: ['Không', 'Có'].map((p) => ({ value: p, label: p })), onChange: upd((x) => { v.secret = x; }) }))}
-          ${field('Hình thức trình ký', `<input class="vctl" id="lf-d-sign" value="${esc(dv.sign)}" disabled>`)}
-          ${field('Giá trị dự kiến (tỷ đồng)', txt('est', 'Nhập giá trị dự kiến'), { err: err.est })}
-          ${field('Thời gian thực hiện', txt('period', 'Ví dụ: 01/2027 – 09/2027'))}
+    onChange: upd((x) => { v.priority = x; if (x === 'Thường') delete err.priReason; }) }), { req: true })}
+          ${urgent ? field('Lý do ưu tiên', `<textarea class="vctl ta" id="lf-priReason" rows="1" maxlength="1000" placeholder="Nhập lý do chọn mức ${esc(v.priority)}" ${err.priReason ? 'aria-invalid="true"' : ''}>${esc(v.priReason)}</textarea>`, { req: true, err: err.priReason, cls: 'span2' }) : ''}
+          ${field('Mật', vSelect({ id: 'lf-sec', value: v.secret, options: ['Không', 'Có'].map((p) => ({ value: p, label: p })), onChange: upd((x) => { v.secret = x; v.sign = defSign(x); }) }))}
+          ${field('Hình thức trình ký', vSelect({ id: 'lf-sign', value: v.sign, searchable: false, options: SIGNS.map((p) => ({ value: p, label: p })), onChange: upd((x) => { v.sign = x; }) }), { req: true })}
           ${field('Đợt mua sắm', txt('dot', 'Nhập số đợt', 3), { err: err.dot })}
-          ${field('Loại biểu mẫu', `<input class="vctl" id="lf-d-form" value="${esc(dv.form)}" disabled>`)}
-          ${field('Cấp phê duyệt', `<input class="vctl" id="lf-d-level" value="${esc(dv.level)}" disabled>`)}
+          ${field('Thời gian thực hiện', txt('period', 'Ví dụ: 01/2027 – 09/2027'))}
+          ${field('Loại biểu mẫu', ro('lf-d-form', dv.form, 'Xác định theo giá trị báo giá (bước 10)'))}
+          ${field('Cấp phê duyệt', ro('lf-d-level', dv.level, 'Xác định theo giá trị báo giá (bước 10)'))}
           ${field('Người tạo', `<input class="vctl" value="${esc(persona(Flow.state.persona).name)}" disabled>`)}
-          ${field('Mục đích', `<textarea class="vctl ta" id="lf-purpose" maxlength="2000" placeholder="Nhập mục đích">${esc(v.purpose)}</textarea>`, { cls: 'span3' })}
         </div></section>
-      ${v.secret === 'Có' ? S5().secCheckCard({ title: v.title, purpose: v.purpose, unit: v.unit }, 'lf') : ''}
-      ${costCard()}${basisCard()}${membersCard()}${reviewersCard()}</form>`;
+      ${v.secret === 'Có' ? S5().secCheckCard({ title: v.title, unit: v.unit }, 'lf', { skip: ['purpose'] }) : ''}
+      ${basisCard()}${phuLucCard()}${membersCard()}</form>`;
   }
 
   function save() {
@@ -351,19 +379,19 @@
     const v = LF.v, err = LF.err = {};
     if (!v.title.trim()) err.title = 'Bạn cần nhập Tên luồng mua sắm.';
     if (!v.nv) err.nv = 'Bạn cần chọn Đề tài / dự án.';
-    if (!v.proc) err.proc = 'Bạn cần chọn Quy trình.';
     if (!v.unit) err.unit = 'Bạn cần chọn Đơn vị đề xuất.';
-    const est = v.est.trim() === '' ? null : Number(v.est.trim().replace(/\./g, '').replace(',', '.'));
+    const est = dongIn(v.est);
     if (est != null && (Number.isNaN(est) || est < 0)) err.est = 'Giá trị dự kiến không đúng định dạng.';
+    if (v.priority !== 'Thường' && !v.priReason.trim()) err.priReason = 'Bạn cần nhập Lý do ưu tiên.';
     if (v.dot.trim() !== '' && !/^[1-9]\d{0,2}$/.test(v.dot.trim())) err.dot = 'Đợt mua sắm là số nguyên dương.';
     const ce = {};
     LF.cost.forEach((r) => {
-      const n = estNum(r.value), q = estNum(r.qty), l = costLine(r.line), e = {};
+      const n = dongIn(r.value), q = estNum(r.qty), l = costLine(r.line), e = {};
       if (q == null) e.qty = 'Bạn cần nhập Số lượng đề xuất.';
       else if (Number.isNaN(q) || q <= 0) e.qty = 'Số lượng đề xuất không đúng định dạng.';
       if (n == null) e.val = 'Bạn cần nhập Giá trị dự tính.';
       else if (Number.isNaN(n) || n <= 0) e.val = 'Giá trị dự tính không đúng định dạng.';
-      else if (l && n > l.value) e.val = `Vượt giá trị dự toán (${ty(l.value)} tỷ đồng).`;
+      else if (l && n > l.value) e.val = `Vượt giá trị dự toán (${dong(l.value)} đồng).`;
       if (Object.keys(e).length) ce[r.id] = e;
     });
     if (Object.keys(ce).length) err.cost = ce;
@@ -373,23 +401,31 @@
     const re = {};
     LF.rows.forEach((r) => {
       const e = {};
-      if (!r.task) e.task = 'Bạn cần chọn Bước.';
-      else if (!r.people.length) e.people = 'Bạn cần chọn ít nhất một người.';
+      if (!r.role) e.role = 'Bạn cần chọn Vai trò thực hiện.';
+      else if (!r.person) e.person = 'Bạn cần chọn Người thực hiện.';
       if (Object.keys(e).length) re[r.id] = e;
     });
     if (Object.keys(re).length) err.rows = re;
-    if (Object.keys(err).length) { rerender(); return; }
-    const members = {};
-    LF.rows.forEach((r) => { members[r.task] = r.people.slice(); });
+    /* Lỗi có thể nằm ngoài màn hình (vd card Căn cứ ở cuối) → cuộn tới lỗi đầu tiên + toast, tránh cảm giác bấm Lưu không có tác dụng. */
+    if (Object.keys(err).length) {
+      rerender();
+      const first = document.querySelector('[data-luong-form] .vfield.invalid, [data-luong-form] [aria-invalid="true"], [data-luong-form] .msg, [data-luong-form] .lf-err');
+      if (first) first.scrollIntoView({ block: 'center' });
+      toast('Chưa lưu được. Kiểm tra các trường báo lỗi.', 'warn');
+      return;
+    }
+    const members = membersByRole(LF.rows), roleMembers = LF.rows.map((r) => ({ role: r.role, person: r.person }));
     const now = Flow.dateOf(Flow.state.clock);
     const basis = LF.files.filter((f) => f.target === 'DXMS').map((f) => ({ name: f.name, type: f.type, at: now }));
     const caseFiles = LF.files.filter((f) => f.target === 'PD').map((f) => ({ name: f.name, type: f.type }));
-    const code = Flow.createLuong({ title: v.title.trim(), nv: v.nv, unit: v.unit, priority: v.priority, est, period: v.period.trim(), secret: v.secret === 'Có',
-      purpose: v.purpose.trim(), members, basis, dot: v.dot.trim() ? Number(v.dot.trim()) : null, legal: v.legal.trim(),
-      cost: LF.cost.map((r) => Object.assign({}, costLine(r.line), { line: r.line, qty: estNum(r.qty), value: estNum(r.value), budget: costLine(r.line).value, pkg: r.pkg.trim() })), reviewers: LF.reviewers.slice(), reviewerMode: Object.assign({}, LF.revMode) },
-    { process: v.proc, name: v.title.trim(), caseFiles });
-    /* DX-08: người thẩm định dự kiến điền sẵn danh sách CQCM của bước 16. */
-    if (LF.reviewers.length) Flow.setUi('cqcmSel', LF.reviewers.slice());
+    const code = Flow.createLuong({ title: v.title.trim(), nv: v.nv, unit: v.unit, priority: v.priority, priReason: v.priority !== 'Thường' ? v.priReason.trim() : '', est, period: v.period.trim(),
+      secret: v.secret === 'Có', sign: v.sign, basisTD: v.basisTD === 'Đã phê duyệt', members, roleMembers, basis, dot: v.dot.trim() ? Number(v.dot.trim()) : null, legal: v.legal.trim(),
+      cost: LF.cost.map((r) => Object.assign({}, costLine(r.line), { line: r.line, qty: estNum(r.qty), value: dongIn(r.value), budget: costLine(r.line).value, pkg: r.pkg || '' })) },
+    /* DX-10 (b): người tạo là Chỉ huy ĐVĐX → bỏ qua bước 5.1 Chỉ huy ĐVĐX xác nhận khởi tạo. */
+    { process: curProc(), name: v.title.trim(), caseFiles, vars: { basisTD: v.basisTD === 'Đã phê duyệt', creatorCh: (persona(Flow.state.persona) || {}).urd === 'R-DVDX-CH',
+      phuLuc: D.phuLuc.reduce((o, [k]) => Object.assign(o, { [k]: LF.pl[k] === 'Có' ? 'Có' : 'Không' }), {}) } });
+    /* Tệp phụ lục tải khi tạo → Danh sách tài liệu của hồ sơ (cùng khoá với bước lập dự thảo). */
+    D.phuLuc.forEach(([k]) => { if (LF.pl[k] === 'Có' && LF.plFiles[k]) Flow.setUi(k, LF.plFiles[k]); });
     const tok = Flow.tokensFor(Flow.state.persona).find((t) => String(t.task) === '1');
     toast(`<b>Thành công</b><br>Đã tạo luồng ${esc(code)} và khởi tạo hồ sơ ${esc(Flow.state.code)}.`);
     location.hash = tok ? `#/task/${tok.id}` : '#/luong';
@@ -407,7 +443,6 @@
   function stepState(code, k) {
     if (!isLive(code)) return null;
     const s = Flow.taskStatus(k);
-    /* cond: 10a chỉ chạy khi giá trị không khớp quy trình. */
     return s === 'active' || s === 'done' || s === 'cond' ? s : 'todo';
   }
   function procOf(x) {
@@ -452,14 +487,15 @@
       ${kv('Đề tài / dự án', D.nvOf(x.nv) ? `<a class="link" data-go="${window.DeTai.href(x.nv)}">${esc(`${x.nv} — ${D.nvOf(x.nv).name}`)}</a>` : null, 'span2')}${kv('Quy trình', esc(procOf(x) || ''))}
       ${kv('Đợt mua sắm', S5().dotOf(x) ? String(S5().dotOf(x)) : null)}${kv('Đơn vị đề xuất', esc(x.unit))}${kv('Khối đơn vị', esc(D.blockOf(x.unit) || ''))}
       ${kv('Người tạo', esc(x.creator))}${kv('Mức ưu tiên', esc(x.priority))}${kv('Người được xem', esc(S5().viewersText(x)))}
-      ${kv('Giá trị hiệu lực (gồm VAT)', m.value != null ? ty(m.value) + ' tỷ đồng' : null)}${kv('Giá trị dự kiến', x.est != null ? ty(x.est) + ' tỷ đồng' : null)}${kv('Thời gian thực hiện', esc(x.period))}
-      ${kv('Trạng thái', badge(window.Screens.DXMS_STATUS[m.state][0], window.Screens.DXMS_STATUS[m.state][1]))}${kv('Mật', x.secret ? 'Có' : 'Không')}${kv('Ngày cập nhật', esc(x.updated))}
-      ${kv('Mục đích', esc(x.purpose), 'span3')}</div></section>`;
+      ${x.priReason ? kv('Lý do ưu tiên', esc(x.priReason), 'span3') : ''}
+      ${kv('Giá trị hiệu lực (gồm VAT)', m.value != null ? ty(m.value) + ' tỷ đồng' : null)}${kv('Giá trị dự kiến', x.est != null ? (x.luong ? dong(x.est) + ' đồng' : ty(x.est) + ' tỷ đồng') : null)}${kv('Thời gian thực hiện', esc(x.period))}
+      ${kv('Trạng thái', badge(window.Screens.DXMS_STATUS[m.state][0], window.Screens.DXMS_STATUS[m.state][1]))}${kv('Mật', x.secret ? 'Có' : 'Không')}${kv('Hình thức trình ký', esc(x.sign || (x.secret ? 'Bản cứng' : 'VOffice')))}
+      ${kv('Ngày cập nhật', esc(x.updated))}</div></section>`;
   }
   function tabProgress(x, m) {
     const who = (c) => (c.live && Flow.state.status === 'running' ? names([...new Set(Flow.state.tokens.flatMap((t) => t.cands || [t.who]))]) : '');
     const t = table([['Mã hồ sơ', 130], ['Loại hồ sơ', 130], ['Quy trình', 90], ['Bước hiện tại', 220], ['Người đang xử lý', 200], ['Ngày tạo', 110], ['Trạng thái', 150, 'c']], m.hs, (c) =>
-      `<td><a class="link" data-go="${window.Screens.caseHref(c)}">${esc(c.code)}</a></td><td>${esc((D.kinds[c.kind] || D.kinds.PD).label)}</td><td>${esc(c.flow)}</td>
+      `<td><a class="link" data-go="${window.Screens.caseHref(c)}">${esc(c.code)}</a></td><td>${esc((D.kinds[c.kind] || D.kinds.PD).label)}</td><td>${esc(c.flowLabel || c.flow)}</td>
         <td>${clamp(c.step)}</td><td>${clamp(who(c))}</td><td class="num">${esc(c.created)}</td><td class="c">${badge(CASE_ST[c.st][0], CASE_ST[c.st][1])}</td>`, 'Luồng chưa có hồ sơ');
     const steps = isLive(x.code) ? `<section class="vcard pad24"><h3>Quy trình hồ sơ ${esc(Flow.state.code)}</h3>${window.UI.vSteps({ id: 'lg-' + Flow.state.code, steps: window.Screens.processSteps() })}</section>` : '';
     return card('Hồ sơ của luồng', t) + steps;
@@ -467,14 +503,14 @@
   function tabBasis(x) {
     const rows = (x.basis || []).map((f) => ({ name: f.name, type: f.type, to: 'ĐXMS', at: f.at }))
       .concat(isLive(x.code) ? (Flow.ui.uploads || []).filter((f) => f.type).map((f) => ({ name: f.name, type: f.type, to: `Hồ sơ ${Flow.state.code}`, at: f.at })) : []);
-    return card('Căn cứ đầu vào', table([['Thao tác', 80, 'c'], ['Tên tài liệu', 280], ['Loại tài liệu căn cứ', 300], ['Gắn vào', 200], ['Ngày tạo', 120]], rows, (r) =>
+    return card('Căn cứ pháp lý', table([['Thao tác', 80, 'c'], ['Tên tài liệu', 280], ['Loại tài liệu căn cứ', 300], ['Gắn vào', 200], ['Ngày tạo', 120]], rows, (r) =>
       `<td class="c">${iconBtn('download', 'Tải xuống', `data-dl="${esc(r.name)}"`)}</td><td><span class="clamp">${esc(r.name)}</span></td>
         <td>${clamp((typeOf(r.type) || {}).name)}</td><td>${esc(r.to)}</td><td class="num">${esc(r.at)}</td>`, 'Chưa có tài liệu căn cứ')
       + (x.legal ? `<div class="lf-legal"><div class="k">Nội dung căn cứ pháp lý</div><div class="v">${esc(x.legal)}</div></div>` : ''))
       + card('Thông tin dự án / đề tài', table([['Mã dự án / đề tài', 150], ['Tên dự án / đề tài', 220], ['Nguồn vốn', 170], ['Loại chi phí', 200], ['Khoản mục chi phí', 220], ['ĐVT', 80],
-        ['Số lượng đề xuất', 130, 'r'], ['Giá trị dự toán (tỷ đồng)', 150, 'r'], ['Giá trị dự tính (tỷ đồng)', 150, 'r'], ['Hình thành gói thầu', 200]], x.cost || [], (r) =>
+        ['Số lượng đề xuất', 130, 'r'], ['Giá trị dự toán (đồng)', 170, 'r'], ['Giá trị dự tính (đồng)', 170, 'r'], ['Hình thành gói thầu', 200]], x.cost || [], (r) =>
         `<td><a class="link" data-go="${window.DeTai.href(r.code)}">${esc(r.code)}</a></td><td>${clamp(r.name)}</td><td>${clamp(r.fund)}</td><td>${clamp(typeName(r.type))}</td><td>${clamp(r.item)}</td>
-        <td>${esc(r.uom || '')}</td><td class="r num">${r.qty == null ? '-' : esc(String(r.qty))}</td><td class="r num">${ty(r.budget)}</td><td class="r num">${ty(r.value)}</td><td>${clamp(r.pkg)}</td>`, 'Chưa bóc tách chi phí từ dự toán'));
+        <td>${esc(r.uom || '')}</td><td class="r num">${r.qty == null ? '-' : esc(String(r.qty))}</td><td class="r num">${dong(r.budget)}</td><td class="r num">${dong(r.value)}</td><td>${clamp(r.pkg)}</td>`, 'Chưa bóc tách chi phí từ dự toán'));
   }
   function tabMembers(x) {
     const proc = procOf(x), run = isRunning(x.code);
@@ -610,16 +646,27 @@
   });
   /* Giá trị dự kiến, Tên, Mục đích đổi → cập nhật Loại biểu mẫu / Cấp phê duyệt dự kiến và khối AI kiểm tra bảo mật. */
   /* Cập nhật tại chỗ, không vẽ lại cả màn (giữ ô đang nhập). */
+  /* Rời ô Số lượng / Giá trị dự tính → cập nhật cảnh báo vượt phần còn lại tại chỗ (không vẽ lại cả màn, giữ ô đang nhập). */
   document.addEventListener('change', (e) => {
-    if (!['lf-est', 'lf-title', 'lf-purpose'].includes(e.target.id) || !document.querySelector('[data-luong-form]')) return;
+    const id = e.target.matches && (e.target.dataset.lfCqty || e.target.dataset.lfCval);
+    const r = id && LF.cost.find((x) => x.id === id), cell = r && document.querySelector(`[data-lf-citem="${id}"]`);
+    if (!cell) return;
+    readInputs();
+    const w = costWarn(r), old = cell.querySelector('[data-lf-cwarn]');
+    if (old) old.remove();
+    if (w) cell.insertAdjacentHTML('beforeend', `<div class="t-err" data-lf-cwarn>${esc(w)}</div>`);
+  });
+  document.addEventListener('change', (e) => {
+    if (!['lf-est', 'lf-title'].includes(e.target.id) || !document.querySelector('[data-luong-form]')) return;
     readInputs();
     const dv = derived(LF.v), set = (id, val) => { const el = document.getElementById(id); if (el) el.value = val; };
-    set('lf-d-form', dv.form); set('lf-d-level', dv.level); set('lf-d-sign', dv.sign);
+    set('lf-d-form', dv.form); set('lf-d-level', dv.level);
     const sc = document.querySelector('[data-sec-check]');
-    if (sc) sc.outerHTML = S5().secCheckCard({ title: LF.v.title, purpose: LF.v.purpose, unit: LF.v.unit }, 'lf');
+    if (sc) sc.outerHTML = S5().secCheckCard({ title: LF.v.title, unit: LF.v.unit }, 'lf', { skip: ['purpose'] });
   });
   document.addEventListener('input', (e) => { if (e.target.id === 'luong-kw') { L.kw = e.target.value; L.page = 1; rerender(); const el = document.getElementById('luong-kw'); if (el) { el.focus(); el.setSelectionRange(el.value.length, el.value.length); } } });
   document.addEventListener('change', (e) => {
+    if (e.target.id === 'lf-plfile' && e.target.files.length && LF.plUp) { readInputs(); LF.plFiles[LF.plUp] = e.target.files[0].name; e.target.value = ''; rerender(); return; }
     if (e.target.id !== 'lf-file') return;
     readInputs();
     const now = Flow.dateOf(Flow.state.clock);
@@ -640,15 +687,18 @@
     const uo = t.closest('[data-um-open]');
     if (uo && !uo.disabled) { membersDialog(uo.dataset.umCode || DT.code, uo.dataset.umOpen || null); return; }
     if (t.closest('[data-lf-up]')) { document.getElementById('lf-file').click(); return; }
+    const plr = t.closest('[data-lf-pl]');
+    if (plr) { readInputs(); const [k, val] = plr.dataset.lfPl.split('|'); LF.pl[k] = val; if (val === 'Không') delete LF.plFiles[k]; rerender(); return; }
+    const plu = t.closest('[data-lf-plup]');
+    if (plu) { LF.plUp = plu.dataset.lfPlup; document.getElementById('lf-plfile').click(); return; }
+    const pld = t.closest('[data-lf-pldel]');
+    if (pld) { readInputs(); delete LF.plFiles[pld.dataset.lfPldel]; rerender(); return; }
     if (t.closest('[data-lf-cadd]') && LF.pick.line) {
       readInputs(); LF.rseq += 1; LF.cost.push({ id: 'c' + LF.rseq, line: LF.pick.line, qty: '', value: '', pkg: '' }); LF.pick.line = null; rerender(); return;
     }
     const cdel = t.closest('[data-lf-cdel]');
     if (cdel) { readInputs(); LF.cost = LF.cost.filter((r) => r.id !== cdel.dataset.lfCdel); if (LF.err.cost) delete LF.err.cost[cdel.dataset.lfCdel]; rerender(); return; }
-    if (t.closest('[data-lf-radd]') && LF.revPick) { readInputs(); LF.reviewers.push(LF.revPick); LF.revPick = null; rerender(); return; }
-    const rvdel = t.closest('[data-lf-rvdel]');
-    if (rvdel) { readInputs(); LF.reviewers = LF.reviewers.filter((id) => id !== rvdel.dataset.lfRvdel); rerender(); return; }
-    if (t.closest('[data-lf-add]')) { readInputs(); LF.rseq += 1; LF.rows.push({ id: LF.rseq, task: null, role: null, people: [] }); rerender(); return; }
+    if (t.closest('[data-lf-add]')) { readInputs(); LF.rseq += 1; LF.rows.push({ id: LF.rseq, role: null, person: null }); rerender(); return; }
     const rdel = t.closest('[data-lf-rdel]');
     if (rdel) { readInputs(); LF.rows = LF.rows.filter((r) => String(r.id) !== rdel.dataset.lfRdel); if (LF.err.rows) delete LF.err.rows[rdel.dataset.lfRdel]; rerender(); return; }
     const del = t.closest('[data-lf-del]');

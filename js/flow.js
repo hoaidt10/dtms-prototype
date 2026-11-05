@@ -1,5 +1,5 @@
 /*
- * Bộ máy luồng cho prototype: chạy 61 task BPMN MS01 v1.1 (+ 10a, 10b) theo D.flow, có token song song (mỗi CQCM một token),
+ * Bộ máy luồng cho prototype: chạy 61 task BPMN MS01 v1.1 theo D.flow, có token song song (mỗi CQCM một token),
  * điểm hợp nhất (join), cổng theo biến (gw), cổng kiểm tra khớp quy trình và bộ đếm vòng giải trình.
  * Hồ sơ chỉ có instance khi người dùng Lưu ở SCR-25 (chọn quy trình, start ngay — chốt 2026-09-28). Hồ sơ thuộc một ĐXMS (D-10):
  * ĐXMS tạo riêng ở SCR-28 (không start quy trình); prototype chạy luồng cho một hồ sơ Phê duyệt tại một thời điểm.
@@ -32,7 +32,7 @@
     return {
       persona: 'minh', tokens: [], clock: 0, seq: 0, code: null, dxms: null, kdt: null, creator: null, name: null, replaces: null, movedTo: null, archived: [],
       dxmsUser: [], dxmsEdit: {}, dxmsDel: [], adj: [], kdtUser: [], kdtEdit: {}, kdtDel: [], kdtCases: [],
-      vars: { round: 0, reportTD: null, process: process || null, big: process !== 'MS01.03', basisOk: true, checks: [],
+      vars: { round: 0, reportTD: null, process: process || null, big: process !== 'MS01.03', basisOk: true, checks: [], basisTD: process === 'MS01.02',
         th: process ? (D.familyOf(process) === 'MS13' ? D.kdtRules() : D.dxmsRules()) : null },
       history: [], status: 'new', kpiStart: null, kpiEnd: null, qNotes: {}, lastScene: 1, ui: {},
       /* T17 (D-27): nhân sự chỉ định theo bước của luồng — { bước: [persona] }, lấy từ ĐXMS lúc start; bước không có / null = giao theo vai mặc định như cũ. */
@@ -43,11 +43,12 @@
   }
 
   /* Dữ liệu không thuộc riêng hồ sơ chạy luồng — giữ qua các lần tạo hồ sơ mới (ĐXMS, KĐT, hồ sơ Điều chỉnh / KĐT đã tạo, ý kiến ❓). */
-  const CARRY = ['qNotes', 'dxmsUser', 'dxmsEdit', 'dxmsDel', 'adj', 'kdtUser', 'kdtEdit', 'kdtDel', 'kdtCases'];
+  const CARRY = ['qNotes', 'ycbgUser', 'dxmsUser', 'dxmsEdit', 'dxmsDel', 'adj', 'kdtUser', 'kdtEdit', 'kdtDel', 'kdtCases'];
   const carry = (from, to) => { CARRY.forEach((k) => { if (from && from[k] != null) to[k] = from[k]; }); return to; };
 
   /* ĐXMS của luồng demo khi nhảy cảnh (dữ liệu hồ sơ mẫu §2.3). */
-  const demoDxms = () => ({ code: D.dxmsCode0, title: D.caseInfo.title, unit: D.caseInfo.unit, priority: D.caseInfo.priority, est: D.aiEstimate,
+  /* nv: ĐXMS demo thuộc nhiệm vụ gNodeB thế hệ 2 (căn cứ qd1, D.nhiemVu) — T29 B12 cần cho bước 5 thêm hạng mục từ dự toán (Huylx4 #20). */
+  const demoDxms = () => ({ code: D.dxmsCode0, nv: 'NV-KHCN-2026-014', title: D.caseInfo.title, unit: D.caseInfo.unit, priority: D.caseInfo.priority, est: D.aiEstimate,
     period: D.caseInfo.period, secret: false, purpose: 'Trang bị thiết bị đo kiểm RF và OTA phục vụ phát triển trạm gNodeB thế hệ 2.',
     creator: 'Nguyễn Văn Minh', created: '01/10/2026', updated: '01/10/2026' });
 
@@ -89,7 +90,9 @@
     S.persona = 'minh';
     const own = Flow.findDxms(S.dxms);
     S.members = own && own.members ? JSON.parse(JSON.stringify(own.members)) : null;
-    log('START', { system: true, action: `Khởi tạo ${S.code} theo quy trình ${S.vars.process}` });
+    /* D-77: "Căn cứ đã được phê duyệt" của luồng → giá trị mặc định cho bước 48. */
+    if (own && own.basisTD != null) S.vars.basisTD = !!own.basisTD;
+    log('START', { system: true, action: `Khởi tạo ${S.code} theo quy trình ${D.mainProc.code} — ${D.mainProc.name} (luồng con dự kiến ${S.vars.process})` });
     enter(1, {});
   }
 
@@ -377,7 +380,7 @@
     try { localStorage.removeItem(CASES_KEY); } catch (e) { /* bỏ qua */ }
   }
 
-  /* Task BPMN của quy trình (MS01: 1–61, 10a, 10b); các khoá khác trong định nghĩa luồng là cổng / điểm nối của prototype. */
+  /* Task BPMN của quy trình (MS01: 1–61); các khoá khác trong định nghĩa luồng là cổng / điểm nối của prototype. */
   const isTask = (k) => Object.prototype.hasOwnProperty.call(T(), String(k));
   const taskName = (k) => (isTask(k) ? T()[k].name : k);
   /* Bản 12/10 bỏ quy trình con 41 / 49 (D-32): khối 25–38 là khối chung theo vòng, token mang đúng số bước. */
@@ -389,22 +392,21 @@
   /* Số lượt CQCM chủ trì đã thẩm định (bước 27) trong vòng hiện tại — chỉ số lượt của ý kiến mẫu (D.kdtReview). */
   const tdRound = () => S.history.filter((h) => String(h.task) === '27' && h.who && (h.td || 'GOP') === tdOf()).length;
 
-  /* Cổng "Giá trị khớp quy trình đã chọn?" sau task 10. Mặc định P-26: tổng giá trị gồm VAT, sau khi trừ tồn kho.
+  /* Cổng "Giá trị?" sau task 10 (T29 B1, D-54: một quy trình MS01 — hệ thống đặt luồng con, không còn nhánh không khớp 10a / 10b).
+     Mặc định P-26: tổng giá trị gồm VAT, sau khi trừ tồn kho.
      Ngưỡng = bản chụp Ngưỡng phân luồng lúc tạo hồ sơ (P-34); trạng thái lưu từ bản cũ chưa có bản chụp thì đọc bảng hiện tại. */
   const rules = () => S.vars.th || D.dxmsRules();
   function matchCheck() {
-    const total = D.caseInfo.total;
+    /* T29 B3b: Tổng giá trị theo cơ sở giá (task 10) nếu đã xác lập, không thì tổng của hồ sơ mẫu. */
+    const total = S.vars.totalQ != null ? S.vars.totalQ : D.caseInfo.total;
     return { total, ok: D.inRange(S.vars.process, total, rules()), process: S.vars.process, suggest: suggestProcess(total), cond: D.procCond(S.vars.process, rules()) };
   }
-  /* Quy trình đúng theo ngưỡng chứa giá trị; ngưỡng áp cho cả MS01.01 và MS01.02 thì chọn theo cờ "căn cứ đã được CT/TGĐ TĐ duyệt"
-     của căn cứ đang chọn ở task 1. Không ngưỡng nào chứa giá trị → giữ quy trình đang chọn. */
+  /* Luồng con theo ngưỡng chứa giá trị; ngưỡng áp cho cả MS01.01 và MS01.02 thì theo "Căn cứ đã được phê duyệt" của luồng (vars.basisTD, D-77 —
+     ĐVĐX sửa được ở bước 10). Không ngưỡng nào chứa giá trị → giữ luồng con đang có. */
   function suggestProcess(total) {
     const r = rules().find((x) => total >= x.from && (x.to == null || total < x.to));
     if (!r) return S.vars.process;
-    if (r.procs.length === 1) return r.procs[0];
-    const doc = D.basisDocs.find((d) => d.id === ((S.ui || {}).basisDoc || D.caseRef.basisDoc));
-    const want = doc && doc.group ? 'MS01.02' : 'MS01.01';
-    return r.procs.includes(want) ? want : r.procs[0];
+    return D.subFlow(total, !!S.vars.basisTD, rules());
   }
   /* Điều kiện của quy trình theo ngưỡng hồ sơ đang giữ. */
   const condOf = (process) => D.procCond(process, rules());
@@ -545,8 +547,9 @@
       if (f.matchGate) {
         const r = matchCheck();
         S.vars.checks.push({ t: ctx.t != null ? ctx.t : S.clock, total: r.total, process: r.process, ok: r.ok, suggest: r.suggest });
-        if (!r.ok) return enter(f.matchGate.miss, {});
-        return enter(r.process === 'MS01.03' ? f.matchGate.small : f.matchGate.big, {});
+        S.vars.process = r.suggest;
+        S.vars.big = r.suggest !== 'MS01.03';
+        return enter(S.vars.big ? f.matchGate.big : f.matchGate.small, {});
       }
       if (f.round) S.vars.round += 1;
       if (f.roundGate) return enter(S.vars.round > 2 ? f.roundGate.over : f.roundGate.under, {});
@@ -671,6 +674,8 @@
       const f = F()[tok.task];
       if (f.wip) break;
       const c = mainChoice(tok.task);
+      /* T29 B3a: tua qua bước 7 của MS01 / MS02 mà Kho chưa nhập → điền kết quả rà soát mẫu (hai lần) như Kho đã làm. */
+      if (String(tok.task) === '7' && !S.kdt && !S.parent && !((S.ui || {}).rstk || {}).kq) (S.ui || (S.ui = {})).rstk = D.rstkSample(D.items, S.clock);
       const fin = advanceClock(tok, f);
       S.tokens = S.tokens.filter((t) => t.id !== tok.id);
       log(tok.task, { who: tok.who, action: c ? c.label : (f.actionLabel || 'Hoàn thành'), cqcm: tok.cqcm, ff: true });
@@ -725,7 +730,8 @@
     /* Số việc đang chờ của `pid` trên luồng chính và mọi hồ sơ con (chuông, menu Việc của tôi, chuyển tài khoản). */
     pendingCount(pid) {
       const m = MAIN || S;
-      return m.tokens.filter((t) => D.allAccess(pid) || t.who === pid || (t.cands || []).includes(pid)).length + Flow.caseTokens(pid).length;
+      return m.tokens.filter((t) => D.allAccess(pid) || t.who === pid || (t.cands || []).includes(pid)).length + Flow.caseTokens(pid).length
+        + (window.RaSoatKho ? window.RaSoatKho.pendingFor(pid) : 0);
     },
     /* SCR-25 Lưu (loại Phê duyệt): start instance theo quy trình người dùng chọn; sau đó không đổi được quy trình.
        opts: { dxms, name }. Prototype chạy một hồ sơ: hồ sơ đang chạy trước đó (nếu có) được thay. */
@@ -745,6 +751,7 @@
       const creator = S.persona, code = nextDxmsCode(), now = Flow.dateOf(S.clock);
       S.dxmsUser.unshift(Object.assign({ creator: window.D.personas.find((p) => p.id === creator).name, created: now }, data, { code, updated: now, luong: true }));
       S = carry(S, fresh(opts.process));
+      if (opts.vars) Object.assign(S.vars, opts.vars);
       start({ dxms: code, name: opts.name });
       S.ui.uploads = (opts.caseFiles || []).map((f) => Object.assign({ at: now }, f));
       const t1 = S.tokens.find((t) => String(t.task) === '1');
@@ -944,7 +951,7 @@
       const x = (S.dxms && Flow.findDxms(S.dxms)) || {};
       const title = x.title || D.caseInfo.title;
       const a = S.vars.adj;
-      return Object.assign({}, D.caseInfo, { code: S.code || '—', dxms: S.dxms || '—', kind: a ? 'DC' : 'PD', title, name: S.name || title, flow: S.vars.process || '—',
+      return Object.assign({}, D.caseInfo, { code: S.code || '—', dxms: S.dxms || '—', kind: a ? 'DC' : 'PD', title, name: S.name || title, flow: S.vars.process || '—', total: !a && S.vars.totalQ != null ? S.vars.totalQ : D.caseInfo.total, flowLabel: (a ? S.vars.process : D.flowLabel(S.vars)) || '—',
         before: a ? a.before : null, reason: a ? a.reason : null, from: a ? a.from : null, branch: a ? D.adjBranch(S.vars) : null,
         unit: x.unit || D.caseInfo.unit, priority: x.priority || D.caseInfo.priority, secret: !!x.secret, period: x.period || D.caseInfo.period });
     },
@@ -970,7 +977,7 @@
     setNote(pid, text) { if (text) S.qNotes[pid] = text; else delete S.qNotes[pid]; emit(); },
     taskName,
     /* Trạng thái từng task cho timeline: done | active | todo | na (nhánh của quy trình khác, hồ sơ không đi qua)
-       | cond (10a/10b — chỉ chạy khi giá trị không khớp quy trình). */
+       | cond (bước chỉ chạy khi có phát sinh / theo điều kiện). */
     taskStatus(n) {
       const own = (x) => String(stepOf(x)) === String(n);
       if (S.tokens.some(own)) return 'active';
@@ -981,7 +988,6 @@
       if ((S.kdt ? D.kdtNa(S.vars, isMat()) : D.naOf(S.vars)).includes(Number(n))) return 'na';
       /* Ký bản cứng 77–78 của hồ sơ không Mật: chỉ chạy khi người trình chọn Bản cứng ở 75. */
       if (S.kdt && !isMat() && ['77', '78'].includes(String(n))) return 'cond';
-      if (!S.kdt && ['10a', '10b'].includes(String(n))) return 'cond';
       return 'todo';
     },
     currentStage() {

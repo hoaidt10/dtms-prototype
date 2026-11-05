@@ -76,7 +76,7 @@
   }
 
   /* ---------- Yêu cầu báo giá: một YCBG mỗi lần chạy task 08 (gửi ở service task 09, nhận và kiểm tra ở task 10) ---------- */
-  const YST = { WAIT: ['Đang chờ báo giá', 'info'], GOT: ['Đã nhận báo giá', 'warning'], OK: ['Báo giá đạt', 'success'], FAIL: ['Báo giá không đạt', 'error'], CANCEL: ['Đã huỷ', 'default'] };
+  const YST = { DRAFT: ['Nháp', 'default'], WAIT: ['Đang chờ báo giá', 'info'], GOT: ['Đã nhận báo giá', 'warning'], OK: ['Báo giá đạt', 'success'], FAIL: ['Báo giá không đạt', 'error'], CANCEL: ['Đã huỷ', 'default'] };
   function ycbgOf(code) {
     const g = dataOf(code);
     if (!g || !g.pd || !g.did(8)) return [];
@@ -89,6 +89,12 @@
     const checks = live ? Flow.state.history.filter((h) => String(h.task) === '10' && h.who) : [];
     const sent = live ? Math.max(1, sends.length) : failFirst && g.did(10) ? 2 : 1;
     const checked = live ? checks.length : g.did(10) ? sent : 0;
+    /* T29 B4 P2: điều khoản trên phiếu (bước 8, BR-DXMS-04-06) — lần gửi lại giữ nguyên nội dung phiếu. Hồ sơ mẫu dùng giá trị mẫu D.ycbgTerms0. */
+    const u = live ? Flow.ui || {} : {}, t0 = D.ycbgTerms0, l8 = live ? Flow.lastOf(8) : null;
+    const cId = live ? (Array.isArray(u.dauMoiBg) ? (u.dauMoiBg.length ? u.dauMoiBg : null) : u.dauMoiBg) || (l8 && l8.who) || 'minh' : (D.personas.find((p) => p.name === x.creator) || {}).id;
+    const terms = g.kdt ? null : { payment: u.dkThanhToan != null ? u.dkThanhToan : t0.payment, place: u.diaDiemGiao != null ? u.diaDiemGiao : t0.place,
+      other: u.yeuCauKhac != null ? u.yeuCauKhac : t0.other, contact: (cId && D.contactOf(cId)) || x.creator || '',
+      warranty: u.baoHanh != null ? u.baoHanh : 12, year: u.namSx != null ? u.namSx : '' };
     const out = [];
     for (let i = 1; i <= sent; i++) {
       const date = live ? Flow.dateOf((sends[i - 1] || Flow.lastOf(8) || {}).t || Flow.state.clock) : addDays(pd.created, 5 + (i - 1) * 9);
@@ -105,7 +111,8 @@
           date: got ? addDays(date, 2 + k) : null, valid: got ? (i > 1 && q.validRetry ? q.validRetry : q.valid) : null, expired, prices: q.prices };
       });
       out.push({ code: `YCBG-${g.kdt ? x.code : x.code.slice(5)}-${String(i).padStart(2, '0')}`, lan: i, kdt: g.kdt, dxms: x.code, title: x.title, unit: x.unit, hs: pd.code, hsHref: g.hsHref(pd),
-        creator: x.creator || persona('minh').name, status: st, sent: date, due: addDays(date, 7), items, ncc });
+        creator: x.creator || persona('minh').name, status: st, sent: date, due: addDays(date, 7), items, ncc,
+        nv: x.nv ? [x.nv] : [], nvText: x.nv && D.nvOf(x.nv) ? `${x.nv} — ${D.nvOf(x.nv).name}` : '', terms });
     }
     return out;
   }
@@ -118,10 +125,12 @@
     });
   }
   /* kind: 'dxms' (SCR-73) / 'kdt' (SCR-76); không truyền = cả hai (tra theo mã). */
-  const allYcbg = (kind) => (kind === 'kdt' ? Flow.kdtAll() : kind === 'dxms' ? Flow.dxmsAll() : Flow.dxmsAll().concat(Flow.kdtAll())).flatMap((x) => ycbgOf(x.code));
+  /* T29 B3b: YCBG tạo trực tiếp (SCR-106, ycbg-form.js) đứng cùng danh sách ĐXMS. */
+  const allYcbg = (kind) => (kind === 'kdt' ? Flow.kdtAll() : kind === 'dxms' ? Flow.dxmsAll() : Flow.dxmsAll().concat(Flow.kdtAll())).flatMap((x) => ycbgOf(x.code))
+    .concat(kind !== 'kdt' && window.YcbgForm ? window.YcbgForm.all() : []);
 
   /* ---------- SCR-73 Danh sách yêu cầu báo giá ĐXMS / SCR-76 YCBG KĐT (khuôn profile-list) ---------- */
-  const emptyF = () => ({ code: '', dxms: '', hs: '', unit: null, st: [], ncc: null, from: '', to: '' });
+  const emptyF = () => ({ code: '', dxms: '', hs: '', unit: null, st: [], ncc: null, from: '', to: '', nv: null, creator: null });
   const newL = () => ({ kw: '', adv: false, f: emptyF(), d: emptyF(), page: 1, size: 10, psOpen: false });
   const LS = { dxms: newL(), kdt: newL() };
   /* Nhãn theo đối tượng cha: ĐXMS (#/ycbg) hoặc KĐT (#/ycbg-kdt). */
@@ -132,11 +141,12 @@
   let kind = 'dxms';
   function filtered(k) {
     const L = LS[k], f = L.f, n = norm;
-    return allYcbg(k).filter((y) => (!L.adv
-      ? !L.kw || n(`${y.code} ${y.dxms} ${y.title}`).includes(n(L.kw))
-      : (!f.code || n(y.code).includes(n(f.code))) && (!f.dxms || n(y.dxms).includes(n(f.dxms))) && (!f.hs || n(y.hs).includes(n(f.hs)))
+    /* T29 B3b (DTMS_CN_0150): từ khoá và bộ lọc nâng cao áp đồng thời; RV-PROTO-0511 #9 lọc theo Dự án / Đề tài. */
+    return allYcbg(k).filter((y) => (!L.kw || n(`${y.code} ${y.dxms} ${y.title} ${y.nvText || ''}`).includes(n(L.kw)))
+      && (!L.adv || ((!f.code || n(y.code).includes(n(f.code))) && (!f.dxms || n(y.dxms).includes(n(f.dxms))) && (!f.hs || n(y.hs).includes(n(f.hs)))
         && (!f.unit || y.unit === f.unit) && (!f.st.length || f.st.includes(y.status)) && (!f.ncc || y.ncc.some((c) => c.code === f.ncc))
-        && (!f.from || dkey(y.sent) >= dkey(f.from)) && (!f.to || dkey(y.sent) <= dkey(f.to))))
+        && (!f.nv || (y.nv || []).includes(f.nv)) && (!f.creator || y.creator === f.creator)
+        && (!f.from || dkey(y.sent) >= dkey(f.from)) && (!f.to || dkey(y.sent) <= dkey(f.to)))))
       .sort((a, b) => dkey(b.sent).localeCompare(dkey(a.sent)) || b.code.localeCompare(a.code));
   }
   function advPanel(k) {
@@ -151,6 +161,8 @@
         ${sel('unit', 'Đơn vị đề xuất', { placeholder: 'Chọn đơn vị đề xuất', options: units.map((u) => ({ value: u, label: u })) })}
         ${sel('st', 'Trạng thái', { multi: true, searchable: false, placeholder: 'Tất cả trạng thái', options: Object.entries(YST).map(([value, [label]]) => ({ value, label })) })}
         ${sel('ncc', 'Nhà cung cấp', { placeholder: 'Chọn nhà cung cấp', options: nccs.map((c) => ({ value: c.code, label: `${c.code} - ${c.name}` })) })}
+        ${k === 'kdt' ? '' : sel('nv', 'Dự án / Đề tài', { placeholder: 'Chọn dự án / đề tài', options: D.nhiemVu.map((x) => ({ value: x.code, label: `${x.code} — ${x.name}` })) })}
+        ${sel('creator', 'Người tạo', { placeholder: 'Chọn người tạo', options: [...new Set(all.map((y) => y.creator))].map((c) => ({ value: c, label: c })) })}
         ${txt('from', 'Ngày gửi từ', 'DD/MM/YYYY')}${txt('to', 'Ngày gửi đến', 'DD/MM/YYYY')}</div>
       <div class="acts"><button type="button" class="vbtn secondary" data-y="reset">Làm mới</button><button type="submit" class="vbtn primary">Tìm kiếm</button></div></form>`;
   }
@@ -184,19 +196,19 @@
     const pages = Math.max(1, Math.ceil(rows.length / L.size));
     if (L.page > pages) L.page = pages;
     const from = (L.page - 1) * L.size;
-    const cols = [['Thao tác', 80, 'c'], ['Trạng thái', 169, 'c'], ['Mã yêu cầu báo giá', 200], ['Mã ' + o.obj, 160], ['Mã hồ sơ', 140], ['Tên ' + o.obj, 300],
-      ['Đơn vị đề xuất', 185], ['Lần', 70, 'c'], ['Số NCC nhận', 110, 'c'], ['Số báo giá đã nhận', 140, 'c'], ['Ngày gửi', 120], ['Hạn báo giá', 120]];
+    const cols = [['Thao tác', 100, 'c'], ['Trạng thái', 169, 'c'], ['Mã yêu cầu báo giá', 200], ['Mã ' + o.obj, 160], ['Mã hồ sơ', 140], ['Tên ' + o.obj, 300]].concat(kind === 'kdt' ? [] : [['Dự án / Đề tài', 260]], [
+      ['Đơn vị đề xuất', 185], ['Lần', 70, 'c'], ['Số NCC nhận', 110, 'c'], ['Số báo giá đã nhận', 140, 'c'], ['Ngày gửi', 120], ['Hạn báo giá', 120]]);
     const body = rows.slice(from, from + L.size).map((y, i) => `<tr class="click" data-go="${yHref(y)}" data-code="${esc(y.code)}">
-        <td class="ord">${from + i + 1}</td><td class="c"><div class="acts"><button type="button" class="vbtn icon ghost" aria-label="Xuất file" title="Xuất file" data-y-export="${esc(y.code)}">${icon('download')}</button></div></td>
+        <td class="ord">${from + i + 1}</td><td class="c"><div class="acts">${y.user && window.YcbgForm.canEdit(y.code) ? `<button type="button" class="vbtn icon ghost" aria-label="Cập nhật" title="Cập nhật" data-go="ycbg/${encodeURIComponent(y.code)}/edit">${icon('edit')}</button>` : ''}<button type="button" class="vbtn icon ghost" aria-label="Xuất file" title="Xuất file" data-y-export="${esc(y.code)}">${icon('download')}</button></div></td>
         <td class="c">${badge(...YST[y.status])}</td><td><a class="link" data-go="${yHref(y)}">${esc(y.code)}</a></td>
-        <td><a class="link" data-go="${o.objHref(y.dxms)}">${esc(y.dxms)}</a></td><td><a class="link" data-go="${y.hsHref}">${esc(y.hs)}</a></td>
-        <td>${clamp(y.title)}</td><td>${clamp(y.unit)}</td><td class="c">${y.lan}</td><td class="c">${y.ncc.length}</td><td class="c">${y.ncc.filter((c) => c.got).length}</td>
+        <td>${y.dxms ? `<a class="link" data-go="${o.objHref(y.dxms)}">${esc(y.dxms)}</a>` : dash}</td><td>${y.hs ? `<a class="link" data-go="${y.hsHref}">${esc(y.hs)}</a>` : dash}</td>
+        <td>${clamp(y.title)}</td>${kind === 'kdt' ? '' : `<td>${clamp(y.nvText)}</td>`}<td>${clamp(y.unit)}</td><td class="c">${y.lan}</td><td class="c">${y.ncc.length}</td><td class="c">${y.ncc.filter((c) => c.got).length}</td>
         <td class="num">${esc(y.sent)}</td><td class="num">${esc(y.due)}</td></tr>`).join('');
     return `<div class="pg">
-      ${S.head({ title: 'Danh sách yêu cầu báo giá', info: kind === 'kdt' ? LIST_INFO_KDT : LIST_INFO, right: `<button class="vbtn secondary" data-y="export">${icon('excel')} Xuất excel</button>` })}
+      ${S.head({ title: 'Danh sách yêu cầu báo giá', info: kind === 'kdt' ? LIST_INFO_KDT : LIST_INFO, right: `<button class="vbtn secondary" data-y="export">${icon('excel')} Xuất excel</button>${kind === 'kdt' ? '' : `<button class="vbtn primary" data-go="ycbg/create">${icon('add')} Thêm mới</button>`}` })}
       <div class="vcard">
         <div class="pg-head"><span></span><div class="r">
-          ${L.adv ? '' : `<label class="vsearch" style="width:264px">${icon('search')}<input id="y-kw" maxlength="255" placeholder="Tìm kiếm theo mã YCBG, mã ${o.obj}, tên ${o.obj}" value="${esc(L.kw)}"></label>`}
+          <label class="vsearch" style="width:264px">${icon('search')}<input id="y-kw" maxlength="255" placeholder="Tìm kiếm theo mã YCBG, mã ${o.obj}, tên ${o.obj}" value="${esc(L.kw)}"></label>
           <button class="vbtn ${L.adv ? 'active' : 'secondary'}" data-y="adv">${L.adv ? 'Ẩn tìm kiếm nâng cao' : 'Tìm kiếm nâng cao'}</button></div></div>
         ${L.adv ? advPanel(kind) : ''}
         <div class="vtable-vp"><table class="vtable"><thead><tr><th class="ord">STT</th>${cols.map(([h, w, a]) => `<th class="${a || ''}" style="width:${w}px;min-width:${w}px">${h}</th>`).join('')}</tr></thead>
@@ -211,8 +223,10 @@
   }
   /* Xuất file YCBG: phiếu gửi NCC — hạng mục, số lượng, hạn báo giá (cùng nội dung email service task 09). */
   function exportOne(y) {
-    csv(`${y.code}.csv`, ['STT', 'Mã yêu cầu báo giá', 'Hạng mục', 'Đơn vị tính', 'Số lượng', 'Hạn báo giá', 'Nhà cung cấp nhận'],
-      y.items.map((it, i) => [i + 1, y.code, it.name, it.uom, it.buy, y.due, y.ncc.map((c) => c.name).join('; ')]));
+    /* T29 B4 P2: thêm điều khoản trên phiếu (BR-DXMS-04-06). */
+    const t = y.terms || {};
+    csv(`${y.code}.csv`, ['STT', 'Mã yêu cầu báo giá', 'Hạng mục', 'Đơn vị tính', 'Số lượng', 'Hạn báo giá', 'Nhà cung cấp nhận', 'Điều kiện thanh toán', 'Địa điểm giao hàng', 'Các yêu cầu khác', 'Đầu mối tiếp nhận báo giá'],
+      y.items.map((it, i) => [i + 1, y.code, it.name, it.uom, it.buy, y.due, y.ncc.map((c) => c.name).join('; '), t.payment || '', t.place || '', t.other || '', t.contact || '']));
   }
 
   /* ---------- SCR-74 Chi tiết yêu cầu báo giá (khuôn profile-detail: cards thông tin chung + bảng) ---------- */
@@ -255,12 +269,14 @@
       .concat(y.ncc.filter((n) => n.got).map((n) => ({ at: n.date, who: y.creator, act: `Ghi nhận báo giá của ${n.name}` })))
       .concat(y.status === 'OK' || y.status === 'FAIL' ? [{ at: addDays(y.sent, 6), who: y.creator, act: YST[y.status][0] }] : y.status === 'CANCEL' ? [{ at: addDays(y.sent, 3), who: 'Hệ thống ĐTMS', act: 'Huỷ do hồ sơ kết thúc' }] : []);
     return `<div class="pg">
-      ${S.head({ title: 'Xem chi tiết yêu cầu báo giá', back, lg: true, info, right: `<button class="vbtn secondary" data-y-export="${esc(y.code)}">${icon('download')} Xuất file</button>` })}
+      ${S.head({ title: 'Xem chi tiết yêu cầu báo giá', back, lg: true, info, right: `<button class="vbtn secondary" data-y-export="${esc(y.code)}">${icon('download')} Xuất file</button>${y.user && window.YcbgForm.canEdit(y.code) ? `<button class="vbtn primary" data-go="ycbg/${encodeURIComponent(y.code)}/edit">${icon('edit')} Cập nhật</button>` : ''}` })}
       <section class="vcard pad24 gen"><h3>Thông tin chung</h3><div class="ginfo c3">
         ${kv('Mã yêu cầu báo giá', esc(y.code))}${kv('Lần gửi', String(y.lan))}${kv('Trạng thái', badge(...YST[y.status]))}
-        ${kv('Mã ' + o.obj, `<a class="link-red" href="#/${o.objHref(y.dxms)}">${esc(y.dxms)}</a>`)}${kv('Tên ' + o.obj, esc(y.title), 'span2')}
-        ${kv('Mã hồ sơ', `<a class="link-red" href="#/${y.hsHref}">${esc(y.hs)}</a>`)}${kv('Đơn vị đề xuất', esc(y.unit))}${kv('Người tạo', esc(y.creator))}
-        ${kv('Ngày gửi', esc(y.sent))}${kv('Hạn báo giá', esc(y.due))}${kv('Kênh gửi', 'Email hệ thống (thay TTMS)')}</div></section>
+        ${kv('Mã ' + o.obj, y.dxms ? `<a class="link-red" href="#/${o.objHref(y.dxms)}">${esc(y.dxms)}</a>` : '')}${kv(y.user ? 'Tên yêu cầu báo giá' : 'Tên ' + o.obj, esc(y.title), 'span2')}
+        ${kv('Mã hồ sơ', y.hs ? `<a class="link-red" href="#/${y.hsHref}">${esc(y.hs)}</a>` : '')}${kv('Đơn vị đề xuất', esc(y.unit))}${kv('Người tạo', esc(y.creator))}
+        ${kv('Ngày gửi', esc(y.sent))}${kv('Hạn báo giá', esc(y.due))}${kv('Kênh gửi', y.status === 'DRAFT' ? '' : 'Email hệ thống (thay TTMS)')}
+        ${y.kdt ? '' : kv('Dự án / Đề tài', esc(y.nvText), 'span3')}</div></section>
+      ${y.terms ? `<section class="vcard pad24"><h3>Điều khoản trên phiếu yêu cầu báo giá</h3><div class="ginfo c3">${kv('Điều kiện thanh toán', esc(y.terms.payment), 'span3')}${kv('Địa điểm giao hàng', esc(y.terms.place))}${kv('Bảo hành tối thiểu', y.terms.warranty != null && y.terms.warranty !== '' ? esc(y.terms.warranty + ' tháng') : dash)}${kv('Năm sản xuất từ', y.terms.year ? esc(y.terms.year) : dash)}${kv('Đầu mối tiếp nhận báo giá', esc(y.terms.contact), 'span3')}${kv('Các yêu cầu khác', esc(y.terms.other), 'span3')}</div></section>` : ''}
       <section class="vcard pad24"><h3>Hạng mục yêu cầu báo giá</h3>
         ${table([['Hạng mục', 360], ['Đơn vị tính', 120], ['Số lượng', 110, 'r'], ['Ngành hàng', 220]], y.items, (it, i) => `${ord(i)}<td>${clamp(it.name)}</td><td>${esc(it.uom)}</td>
           <td class="r num">${num(it.buy)}</td><td>${clamp((window.Catalog.rows('loai-hang-hoa').find((r) => r.code === it.goods) || {}).name)}</td>`)}</section>
@@ -285,7 +301,10 @@
     const T1 = g.kdt ? 'Căn cứ hình thành KĐT' : 'Căn cứ mua sắm';
     if (!g.pd) return emptyCard(T1, `${g.obj} chưa có hồ sơ. Căn cứ và hạng mục được chọn, bóc tách ở các bước đầu của hồ sơ Phê duyệt ${g.obj}.`);
     const b = g.basisDoc, hold = g.items.reduce((s, it) => s + (it.amount || 0), 0);
-    const basisRows = b ? [{ no: b.no, date: b.date, title: b.title, type: ((g.kdt ? D.kdtBasisTypes : D.basisTypes).find((t) => t.id === b.type) || {}).name, value: b.value, other: Math.round((b.value - b.remain) * 100) / 100, hold, remain: Math.round((b.remain - hold) * 100) / 100 }]
+    const row = (d, h) => ({ no: d.no, date: d.date, title: d.title, type: ((g.kdt ? D.kdtBasisTypes : D.basisTypes).find((t) => t.id === d.type) || {}).name, value: d.value, other: Math.round((d.value - d.remain) * 100) / 100, hold: h, remain: Math.round((d.remain - h) * 100) / 100 });
+    /* T29 B3c: văn bản căn cứ bổ sung của hồ sơ đang chạy (Flow.ui.basisMore) — hạng mục liên kết văn bản chính (GIẢ LẬP). */
+    const more = !g.kdt && g.live && b ? (Flow.ui.basisMore || []).filter((id) => id !== b.id).map((id) => D.basisDocs.find((d) => d.id === id)).filter(Boolean) : [];
+    const basisRows = b ? [row(b, hold)].concat(more.map((d) => row(d, 0)))
       : g.nv ? [{ no: g.nv.code, date: '', title: g.nv.name, type: g.nv.kind, value: null, other: null, hold, remain: null }] : [];
     const basis = `<section class="vcard pad24"><div class="vcard-h"><h3>${T1}</h3><span class="cap">Nguồn: ${esc(g.ref.src || (g.nv ? g.nv.kind : 'Kế hoạch / dự toán'))}</span></div>
       ${table([['Số văn bản / mã', 150], ['Ngày ban hành', 120], ['Trích yếu', 340], ['Loại căn cứ', 170], ['Giá trị căn cứ (tỷ đồng)', 150, 'r'], [`Đã dùng ở ${g.obj} khác`, 150, 'r'], [`${g.obj} này đang giữ`, 140, 'r'], ['Còn có thể sử dụng', 140, 'r']],
@@ -306,7 +325,7 @@
     const snaps = [{ code: rstk, at: at7, by: g.pd.code, why: `Rà soát lần đầu (hồ sơ Phê duyệt ${g.obj})`, cur: true }];
     (g.kdt ? [] : g.cases.filter((c) => c.kind === 'DC')).forEach((c, i) => { snaps[0].cur = false; snaps.push({ code: `${rstk}-DC${i + 1}`, at: addDays(c.created, 2), by: c.code, why: 'Rà soát lại khi điều chỉnh ĐXMS (MS02)', cur: true }); });
     return `<section class="vcard pad24"><div class="vcard-h"><h3>Kết quả rà soát tồn kho</h3><span class="cap">${esc(rstk)} · lấy từ phân hệ Quản lý kho ngày ${esc(at7)}</span></div>
-      ${table([['Hạng mục', 280], ['ĐVT', 80], ['SL đề xuất', 100, 'r'], ['Tồn sổ sách', 110, 'r'], [`Đang giữ cho ${g.obj} khác`, 200], ['Tồn khả dụng', 110, 'r'], ['Chốt dùng từ kho', 130, 'r'], ['Tạm giữ', 150, 'c'], ['Còn phải mua', 120, 'r']], g.items,
+      ${table([['Hạng mục', 280], ['ĐVT', 80], ['SL đề xuất', 100, 'r'], ['Tồn kho', 110, 'r'], [`Đang giữ cho ${g.obj} khác`, 200], ['Tồn khả dụng', 110, 'r'], ['Chốt dùng từ kho', 130, 'r'], ['Tạm giữ', 150, 'c'], ['Còn phải mua', 120, 'r']], g.items,
         (it, i) => { const take = (it.prop || 0) - (it.buy || 0); return `${ord(i)}<td>${clamp(it.name)}</td><td>${esc(it.uom)}</td><td class="r num">${num(it.prop)}</td>
           <td class="r num">${num(it.book != null ? it.book : it.stock)}</td><td>${it.held ? esc(`${it.held} — ${it.heldFor}`) : dash}</td><td class="r num">${num(it.stock)}</td>
           <td class="r num">${num(take)}</td><td class="c">${take > 0 ? badge(...hold) : dash}</td><td class="r num"><b>${num(it.buy)}</b></td>`; })}</section>

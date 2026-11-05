@@ -11,22 +11,16 @@
 
   /* ---------- Dữ liệu quy trình (§3.1) ----------
      Mỗi quy trình (processDefinitionId) có các phiên bản deploy (processDefinitionKey). page = trang ĐTMS.drawio vẽ sơ đồ.
-     P-37 (chốt 2026-09-28): MS01.01 / .02 / .03 là ba quy trình riêng. Bản vẽ chuẩn gộp cả ba trên trang MS01 v1.1 nên ba quy trình
-     tạm dùng chung sơ đồ đó. at = ngày deploy: hồ sơ chạy phiên bản mới nhất đã deploy tại ngày tạo hồ sơ. */
+     T29 B1 (D-54, thay P-37 chốt 2026-09-28): MS01 một quy trình trên trang MS01 v1.1; MS01.01 / .02 / .03 là luồng con. at = ngày deploy: hồ sơ chạy phiên bản mới nhất đã deploy tại ngày tạo hồ sơ. */
   const WF_STATUS = { ACTIVE: ['Hoạt động', 'success'], DELETED: ['Dừng hoạt động', 'warning'] }; // WORKFLOW_STATUS_LABEL_MAP / VARIANT_MAP
   const WORKFLOWS = [
-    { code: 'MS01.01', id: 'DTMS_MS01_01', name: D.processes['MS01.01'].name, versions: [
+    /* T29 B1 (D-54, thay P-37): một quy trình MS01; MS01.01 / .02 / .03 là luồng con (biến hồ sơ), không phải process definition riêng. */
+    { code: 'MS01', id: 'DTMS_MS01', name: D.mainProc.name, versions: [
       { key: '2251799813690112', version: 2, modeler: 'v1.1', deploy: 2, status: 'ACTIVE', page: 'MS01 v1.1', at: '01/07/2026' },
       { key: '2251799813685377', version: 1, modeler: 'v1.0', deploy: 1, status: 'DELETED', page: 'MS01', at: '02/03/2026' }],
       history: [
-        { version: 'v1.1', at: '2026-06-30T10:15', current: true, desc: 'Vẽ chung trang MS01 v1.1 với MS01.02, MS01.03; thêm cổng kiểm tra giá trị khớp quy trình đã chọn, bước xử lý không khớp (Sửa lại / Chuyển quy trình). 61 bước.' },
+        { version: 'v1.1', at: '2026-06-30T10:15', current: true, desc: 'Trang MS01 v1.1, 61 bước: một quy trình, luồng con MS01.01 / .02 / .03 theo cổng "Giá trị?" sau bước 10 (Tổng giá trị, ngưỡng phân luồng) và bước 48 (có / không báo cáo TGĐ Tập đoàn).' },
         { version: 'v1.0', at: '2026-03-02T09:40', desc: 'Bản đầu theo quy trình TO-BE MS01.01, 58 bước.' }] },
-    { code: 'MS01.02', id: 'DTMS_MS01_02', name: D.processes['MS01.02'].name, versions: [
-      { key: '2251799813690118', version: 1, modeler: 'v1.1', deploy: 1, status: 'ACTIVE', page: 'MS01 v1.1', at: '01/07/2026' }],
-      history: [{ version: 'v1.1', at: '2026-06-30T10:20', current: true, desc: 'Bản đầu: nhánh từ 160 tỷ của trang MS01 v1.1, căn cứ đã được CT/TGĐ Tập đoàn phê duyệt (không báo cáo Tập đoàn).' }] },
-    { code: 'MS01.03', id: 'DTMS_MS01_03', name: D.processes['MS01.03'].name, versions: [
-      { key: '2251799813690124', version: 1, modeler: 'v1.1', deploy: 1, status: 'ACTIVE', page: 'MS01 v1.1', at: '01/07/2026' }],
-      history: [{ version: 'v1.1', at: '2026-06-30T10:25', current: true, desc: 'Bản đầu: nhánh dưới 160 tỷ của trang MS01 v1.1 (thẩm định trực tiếp BM-09).' }] },
     { code: 'MS02', id: 'DTMS_MS02', name: 'Điều chỉnh đề xuất mua sắm', versions: [
       { key: '2251799813690540', version: 1, modeler: 'v1.1', deploy: 1, status: 'ACTIVE', page: 'MS02 ver1.1', at: '15/07/2026' }],
       history: [{ version: 'v1.1', at: '2026-07-15T14:05', current: true, desc: 'Điều chỉnh ĐXMS theo cùng khung MS01 v1.1.' }] },
@@ -38,15 +32,15 @@
       history: [{ version: 'v1.0', at: '2026-08-04T08:45', current: true, desc: 'Quy trình TO-BE lập, thẩm định, phê duyệt dự án đầu tư.' }] },
   ];
   /* T24 Q2: Đồng bộ từ Camunda (SRS-QTQT 3.1.1.5, P-117). Thay đổi mẫu đang chờ trên Camunda — áp một lần: phiên bản mới (MS13 chạy song song với bản cũ),
-     MS14 v1 bị xoá trên Camunda → Dừng hoạt động, MS01.03 phiên bản mới kéo theo sinh luật còn thiếu. */
+     MS14 v1 bị xoá trên Camunda → Dừng hoạt động, MS01 phiên bản mới (bản chuẩn 12/10) — luật đã đủ, không sinh thêm. */
   const WF_SEED = JSON.stringify(WORKFLOWS);
   const PENDING = [
     { code: 'MS13', add: { key: '2251799813692104', version: 2, modeler: 'v1.1', deploy: 2, status: 'ACTIVE', page: 'MS13', at: '30/10/2026' },
       at: '2026-10-30T08:10', desc: 'Cập nhật theo bản vẽ quy trình mới; hồ sơ đang chạy giữ phiên bản đã khởi tạo.' },
     { code: 'MS14', add: { key: '2251799813692236', version: 2, modeler: 'v1.1', deploy: 2, status: 'ACTIVE', page: 'MS14', at: '30/10/2026' }, stop: [1],
       at: '2026-10-30T08:20', desc: 'Thay phiên bản 1, phiên bản 1 đã xoá trên Camunda.' },
-    { code: 'MS01.03', add: { key: '2251799813692318', version: 2, modeler: 'v1.2', deploy: 2, status: 'ACTIVE', page: 'MS01 v1.1', at: '30/10/2026' }, rules: true,
-      at: '2026-10-30T08:30', desc: 'Bổ sung bước xử lý ĐXMS không khớp quy trình; sinh luật hành động còn thiếu.' },
+    { code: 'MS01', add: { key: '2251799813692318', version: 3, modeler: 'v1.2', deploy: 3, status: 'ACTIVE', page: 'MS01 v1.1', at: '30/10/2026' }, rules: true,
+      at: '2026-10-30T08:30', desc: 'Cập nhật theo BPMN chuẩn bản 12/10; sinh luật hành động còn thiếu (nếu có).' },
   ];
   const SYNC = { mode: 'ok', done: false };
   function applySync() {
@@ -120,15 +114,15 @@
       scr: 'SCR-41', name: 'Danh sách quy trình', uc: 'UC-02-01 · UR-WF-01',
       notes: [
         'Không có Thêm mới: quy trình vào hệ thống qua "Đồng bộ từ Camunda" (deploy từ Web Modeler). Nút đồng bộ chỉ hiện khi có quyền QT03.',
-        'Đồng bộ (SRS 3.1.1.5, P-117 GIẢ LẬP): lần đầu áp thay đổi mẫu đang chờ trên Camunda — MS13 thêm phiên bản 2 (bản 1 vẫn Hoạt động, hồ sơ đang chạy giữ bản đã khởi tạo); MS14 thêm phiên bản 2, phiên bản 1 đã xoá trên Camunda chuyển Dừng hoạt động; MS01.03 thêm phiên bản 2 và sinh 2 luật còn thiếu (xem Đối soát BPMN). Lần sau không còn thay đổi. Danh sách tải lại, các dòng thu gọn. Thông báo giữ câu chữ FE, không có số lượng vì API trả void; số bản ghi thêm / dừng / luật sinh mới ghi ở log phía BE.',
+        'Đồng bộ (SRS 3.1.1.5, P-117 GIẢ LẬP): lần đầu áp thay đổi mẫu đang chờ trên Camunda — MS13 thêm phiên bản 2 (bản 1 vẫn Hoạt động, hồ sơ đang chạy giữ bản đã khởi tạo); MS14 thêm phiên bản 2, phiên bản 1 đã xoá trên Camunda chuyển Dừng hoạt động; MS01 thêm phiên bản 3 (bản chuẩn 12/10) và sinh luật hành động còn thiếu nếu có — dữ liệu mẫu đã đủ luật, xoá một luật ở Ma trận hành động để thấy luật được sinh lại (xem Đối soát BPMN). Lần sau không còn thay đổi. Danh sách tải lại, các dòng thu gọn. Thông báo giữ câu chữ FE, không có số lượng vì API trả void; số bản ghi thêm / dừng / luật sinh mới ghi ở log phía BE.',
         'Nút demo nổi › Đồng bộ từ Camunda chọn ca: Đang có phiên (báo ngay, không khoá nút, không đổi dữ liệu); Lỗi Camunda (báo Đồng bộ thất bại, giữ nguyên dữ liệu, không ghi một phần). Đồng bộ realtime theo sự kiện deploy không có thao tác trên màn.',
         'Quyền (T24 Q3, P-118): QT00 / QT01 vào danh sách; QT02 mới có liên kết Mã quy trình (không có thì hiện chữ); QT03 mới có nút đồng bộ. Tài khoản Người dùng quản trị quy trình không có QT03.',
         'Bảng cây như source: dòng cha = quy trình (Mã quy trình "-", không có badge), bấm ▾ mở dòng con = từng phiên bản deploy; Mã quy trình ở dòng con là liên kết mở Chi tiết quy trình. Tìm kiếm / lọc Trạng thái thu gọn lại mọi dòng.',
-        'MS01.01, MS01.02, MS01.03 là ba quy trình riêng (P-37 đã chốt), cùng là ba lựa chọn của ô Quy trình khi tạo ĐXMS. Bản vẽ chuẩn gộp cả ba trên trang MS01 v1.1 nên ba quy trình tạm dùng chung sơ đồ đó.',
-        'SL hồ sơ đang xử lý đếm từ hồ sơ đang chạy của từng quy trình (cùng số với Giám sát tiến trình: Đang chạy + Quá hạn); hồ sơ MS01.01 tạo trước 01/07/2026 chạy phiên bản 1 (đã dừng hoạt động nhưng vẫn xử lý nốt). MS02 đếm hồ sơ Điều chỉnh ĐXMS; MS13, MS14 chưa có hồ sơ.',
-        'Dữ liệu: 6 quy trình theo các trang của ĐTMS.drawio — MS01.01 (phiên bản 2: MS01 v1.1, phiên bản 1: MS01), MS01.02 và MS01.03 (MS01 v1.1), MS02 ver1.1, MS13, MS14. Mã Camunda = BPMN process id.',
+        '<b>T29 B1 (D-54, thay P-37):</b> MS01 Phê duyệt đề xuất mua sắm là một quy trình (một process definition); MS01.01 / .02 / .03 là luồng con — biến của hồ sơ do cổng sau bước 10 và bước 48 đặt, không phải lựa chọn khi tạo hồ sơ.',
+        'SL hồ sơ đang xử lý đếm từ hồ sơ đang chạy của từng quy trình (cùng số với Giám sát tiến trình: Đang chạy + Quá hạn); hồ sơ MS01 tạo trước 01/07/2026 chạy phiên bản 1 (đã dừng hoạt động nhưng vẫn xử lý nốt). MS02 đếm hồ sơ Điều chỉnh ĐXMS; MS13, MS14 chưa có hồ sơ.',
+        'Dữ liệu: 4 quy trình theo các trang BPMN — MS01 (phiên bản 2: MS01 v1.1, phiên bản 1: MS01), MS02 ver1.1, MS13, MS14. Mã Camunda = BPMN process id.',
         'Tìm kiếm nâng cao (Backlog, T16 B1 — source chưa có): Mã quy trình, Mã Camunda, Tên quy trình, Trạng thái, Ngày deploy từ / đến, Có hồ sơ đang xử lý. Mở panel thì ẩn ô tìm và ô Trạng thái như các màn danh sách khác (B5); dòng con chỉ còn phiên bản khớp điều kiện. BE: thêm tham số lọc cho API danh sách quy trình.',
-        'Quy trình bị xoá trên Camunda (Backlog Tích hợp › "Đánh dấu quy trình đã bị xóa từ Camunda"): Camunda chỉ có Hoạt động / Xoá, app ghi trạng thái DELETED và hiện <b>Dừng hoạt động</b> — đúng WORKFLOW_STATUS_LABEL_MAP của source (MS01.01 phiên bản 1). Không thêm trạng thái mới.',
+        'Quy trình bị xoá trên Camunda (Backlog Tích hợp › "Đánh dấu quy trình đã bị xóa từ Camunda"): Camunda chỉ có Hoạt động / Xoá, app ghi trạng thái DELETED và hiện <b>Dừng hoạt động</b> — đúng WORKFLOW_STATUS_LABEL_MAP của source (MS01 phiên bản 1). Không thêm trạng thái mới.',
       ],
       q: ['P-117', 'P-118'], src: 'workflow-management/workflow-management.component (repo-khcn-dtms-fe cùng cấu trúc) · /workflow-management',
     };
@@ -181,8 +175,8 @@
 
   /* ---------- SCR-42 Chi tiết quy trình ---------- */
   const DT = { key: null, sel: null, closed: new Set() };
-  /* T10 B4: bước của MS01.01 / .02 / .03 — mã biểu mẫu trong ô Biểu mẫu là link mở Thiết kế biểu mẫu (E-Form Phê duyệt ĐXMS). */
-  const EFORM_PROCS = ['MS01.01', 'MS01.02', 'MS01.03'];
+  /* T10 B4: bước của MS01 — mã biểu mẫu trong ô Biểu mẫu là link mở Thiết kế biểu mẫu (E-Form Phê duyệt ĐXMS). */
+  const EFORM_PROCS = ['MS01'];
   const TYPE_GROUPS = (el, code) => {
     const f = (label, value, html) => ({ label, value: value || '-', html });
     /* Phân công (T24 Q4, SRS 3.1.1.2): Người cụ thể = Assignment/Assignee, Cần vai trò = Candidate users. Dữ liệu mẫu: bước đầu giao người lập hồ sơ, còn lại theo vai của bước. */
@@ -219,7 +213,7 @@
         'Phân công (T24 Q4): Người cụ thể = Assignee, Cần vai trò = Candidate users của BPMN; dữ liệu mẫu suy từ vai của bước, MS14 chưa có mô tả bước nên hiện "-". Service Task có thêm Mô tả Job Type theo SRS 3.1.1.2 (source hiện chỉ có Job type).',
         'Quyền (T24 Q3, P-118): QT02 vào màn này; QT05 mới có khối Lịch sử phiên bản (không có thì để trống cột phải như source).',
         'Lịch sử phiên bản là các phiên bản Web Modeler (type MODELER) của quy trình, không phải lịch sử deploy.',
-        'Biểu mẫu phần tử (MS01.01 / .02 / .03): mã BM-xx / Checklist xx có trong Quản lý E-Form là liên kết mở Thiết kế biểu mẫu; quay lại về màn này. Biểu mẫu đang Dừng hoạt động mở ở chế độ chỉ xem. MS02, MS13, MS14 chưa có biểu mẫu E-Form tương ứng (P-43, P-44) nên chỉ hiện chữ.',
+        'Biểu mẫu phần tử (MS01): mã BM-xx / Checklist xx có trong Quản lý E-Form là liên kết mở Thiết kế biểu mẫu; quay lại về màn này. Biểu mẫu đang Dừng hoạt động mở ở chế độ chỉ xem. MS02, MS13, MS14 chưa có biểu mẫu E-Form tương ứng (P-43, P-44) nên chỉ hiện chữ.',
       ],
       q: ['P-44', 'P-118'], src: 'workflow-management/workflow-detail (repo-khcn-dtms-fe cùng cấu trúc) · /workflow-management/:id?processDefinitionId=',
     };
@@ -306,7 +300,9 @@
   /* Ô lọc Trạng thái lấy từ GET /process-instances/statuses — BE bỏ "Đã hủy" khỏi danh sách này. */
   const FILTER_STATUS = ['Đang chạy', 'Hoàn thành', 'Quá hạn'];
   /* Quy trình của hồ sơ = quy trình chọn khi tạo (c.flow); phiên bản = bản mới nhất đã deploy tại ngày tạo hồ sơ (chưa có thì bản đầu). */
-  const wfOf = (code) => WORKFLOWS.find((w) => w.code === code);
+  /* T29 B1: hồ sơ Phê duyệt (c.flow = luồng con MS01.0x) thuộc quy trình MS01. */
+  const procCode = (flow) => (/^MS01\.0[1-3]$/.test(flow || '') ? 'MS01' : flow);
+  const wfOf = (code) => WORKFLOWS.find((w) => w.code === procCode(code));
   function versionAt(w, created) {
     const on = w.versions.filter((v) => parseDate(v.at) <= parseDate(created));
     return on.length ? Math.max(...on.map((v) => v.version)) : Math.min(...w.versions.map((v) => v.version));
@@ -349,7 +345,7 @@
         }
       }
       const w = wfOf(c.flow);
-      return { status, key: camundaKey(c.code), code: c.code, href: S.caseHref(c), step, proc: c.flow, name: w ? w.name : c.flow,
+      return { status, key: camundaKey(c.code), code: c.code, href: S.caseHref(c), step, proc: procCode(c.flow), name: w ? w.name : c.flow,
         version: w ? versionAt(w, c.created) : 1, created: c.created, updated: c.updated };
     }).concat(kdtRows()).sort((a, b) => parseDate(b.created) - parseDate(a.created));
   }
@@ -390,8 +386,8 @@
         'Màn chỉ xem (D-3): không có nút trên hàng tiêu đề, không có cột Thao tác, bấm dòng không mở gì. Chỉ <b>Mã hồ sơ</b> là liên kết, mở Chi tiết hồ sơ (SCR-20); nút quay lại của Chi tiết hồ sơ về lại đúng trang và bộ lọc đang xem (khác source: profile-detail luôn về Danh sách hồ sơ).',
         'Mỗi dòng là một process instance của một hồ sơ ĐXMS hoặc hồ sơ KĐT: hồ sơ đang chạy luồng, hồ sơ đã chuyển quy trình / chuyển luồng và hồ sơ mẫu. Mã Camunda là process instance key (dữ liệu mẫu).',
         'Hồ sơ KĐT: quy trình là MS13 (instance start khi Lưu hồ sơ, cả khi nhóm KĐT chưa xác định — D-7), hồ sơ mới sau chuyển luồng là MS14; mã hồ sơ mở Chi tiết hồ sơ KĐT. Việc trong quy trình con 41 / 49 hiện tên bước quy trình con. Hồ sơ MS13 chuyển luồng hiện Đã hủy như hồ sơ ĐXMS chuyển quy trình (P-38).',
-        'Trạng thái: Đang chạy; Quá hạn khi bước hiện tại quá hạn xử lý; Hoàn thành khi đã phê duyệt; Đã hủy khi hồ sơ kết thúc do Chuyển quy trình (10b) hoặc Dừng xử lý (P-38). Ô lọc Trạng thái không có "Đã hủy" như source (BE loại khỏi danh sách trạng thái lọc).',
-        'Quy trình: quy trình người tạo chọn cho hồ sơ (MS01.01 / .02 / .03 là ba quy trình riêng — P-37 đã chốt), dòng phụ là mã quy trình và phiên bản. Hồ sơ MS01.01 tạo trước 01/07/2026 chạy v1.0 (58 task), sau đó v2.0 (61 task, trang MS01 v1.1); MS01.02, MS01.03 mới có v1.0.',
+        'Trạng thái: Đang chạy; Quá hạn khi bước hiện tại quá hạn xử lý; Hoàn thành khi đã phê duyệt; Đã hủy khi hồ sơ kết thúc do Dừng xử lý (P-38; không còn Chuyển quy trình 10b — D-54). Ô lọc Trạng thái không có "Đã hủy" như source (BE loại khỏi danh sách trạng thái lọc).',
+        'Quy trình: hồ sơ Phê duyệt ĐXMS thuộc quy trình MS01 (luồng con .01 / .02 / .03 là biến hồ sơ — D-54), dòng phụ là mã quy trình và phiên bản. Hồ sơ MS01 tạo trước 01/07/2026 chạy v1.0 (58 task), sau đó v2.0 (61 task, trang MS01 v1.1).',
         'Bước hiện tại: nhiều nhánh song song thì hiện bước đầu và (+N).',
         'Chưa có trong source nên không dựng (UR-WF-05): chi tiết instance, danh sách User/Service Task, incident, biến input/output, Retry (P-40).',
         'Quyền xem (P-41, T24 Q3): mã GS00 — Quản trị hệ thống, Người dùng quản trị quy trình, Chuyên viên TTMS; vai khác thấy thông báo chưa được cấp quyền. Source ẩn mục menu theo quyền GS00; prototype giữ menu để đổi vai demo.',

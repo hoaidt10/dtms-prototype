@@ -1,6 +1,6 @@
-/* SINH TỰ ĐỘNG từ project-knowledge/03. Thiết kế (Tài liệu BA)/BPMN/ĐTMS.drawio, trang "MS01 v1.1" (61 task + 10a, 10b).
+/* SINH TỰ ĐỘNG từ project-knowledge/03. Thiết kế (Tài liệu BA)/BPMN/ĐTMS-121026.drawio, trang "MS01 v1.1" (61 task).
    Không sửa tay — chạy lại: node tools/bpmn-extract.mjs. `old` = số task ở bản 58 task cũ (MS01_01_TO_BE_VHT), trống = task mới. */
-window.BPMN_SOURCE = {"file":"ĐTMS.drawio","page":"MS01 v1.1","count":61,"extra":["10a","10b"]};
+window.BPMN_SOURCE = {"file":"ĐTMS-121026.drawio","page":"MS01 v1.1","count":61};
 window.BPMN_TASKS = {
  "1": {
   "name": "Chọn căn cứ và nội dung mua sắm",
@@ -8,7 +8,7 @@ window.BPMN_TASKS = {
   "type": "user",
   "form": "Không có mẫu riêng; Tài liệu đầu vào",
   "old": "1",
-  "note": "Chọn tài liệu đầu vào/căn cứ lập ĐXMS đã được phê duyệt ở cấp áp dụng và xác định phạm vi nội dung mua sắm. Chỉ hiện căn cứ hợp với quy trình đã chọn (.01: chưa được CT/TGĐ TĐ duyệt; .02: đã duyệt; .03: mọi loại)."
+  "note": "Chọn tài liệu đầu vào/căn cứ lập ĐXMS đã được phê duyệt ở cấp áp dụng và xác định phạm vi nội dung mua sắm."
  },
  "2": {
   "name": "Lấy dữ liệu căn cứ đã phê duyệt",
@@ -489,21 +489,5 @@ window.BPMN_TASKS = {
   "form": "BM-08 (>160 tỷ); BM-09 (",
   "old": "58",
   "note": "Tự động chuyển BM-08 đã được xác nhận sang VOffice để ký duyệt/phát hành và cập nhật kết quả."
- },
- "10a": {
-  "name": "Xử lý ĐXMS không khớp quy trình",
-  "actor": "Đơn vị đề xuất mua sắm",
-  "type": "user",
-  "form": "Không có",
-  "old": "",
-  "note": "Hệ thống báo giá trị hiện tại lệch ngưỡng của quy trình đã chọn và gợi ý quy trình đúng. Chọn Sửa lại (về task 10) hoặc Chuyển quy trình ; bắt buộc ghi lý do."
- },
- "10b": {
-  "name": "Tạo ĐXMS mới theo quy trình đúng",
-  "actor": "Hệ thống ĐTMS/Tích hợp/ AI",
-  "type": "service",
-  "form": "Không có",
-  "old": "",
-  "note": "Tạo ĐXMS mới, khởi tạo quy trình đúng; sao chép căn cứ, thông tin cơ bản, danh mục, kết quả RSTK, báo giá; liên kết hai hồ sơ. Không dùng migration instance."
  }
 };

@@ -19,8 +19,10 @@ const rows = (page) => page.locator('.vtable tbody tr');
 test('D-15: menu theo 12 module Backlog; Quản lý quy trình có 3 mục (D-2); route cũ của mục bị bỏ vẫn mở', async ({ page }) => {
   await fresh(page, '#/viec-cua-toi');
   const tops = await page.locator('.sb-nav > .nav:not(.child) .l').allInnerTexts();
-  // Vận hành trước, cấu hình sau; Tích hợp và Trợ lý AI ẩn (2026-10-07).
-  expect(tops).toEqual(['Tổng quan', 'Việc của tôi', 'Quản lý đề xuất mua sắm', 'Quản lý khoản đầu tư', 'Quản lý thầu',
+  // Vận hành trước, cấu hình sau; Tích hợp và Trợ lý AI ẩn (2026-10-07); Quản lý thầu / hợp đồng ẩn ở bản demo ĐXMS (D-76, cờ D.show.menuThau).
+  expect(tops).toEqual(['Tổng quan', 'Việc của tôi', 'Quản lý đề xuất mua sắm', 'Quản lý khoản đầu tư', 'Báo cáo', 'Quản lý quy trình', 'Thông báo']);
+  await page.evaluate(() => { D.show.menuThau = true; App.render(); });
+  expect(await page.locator('.sb-nav > .nav:not(.child) .l').allInnerTexts()).toEqual(['Tổng quan', 'Việc của tôi', 'Quản lý đề xuất mua sắm', 'Quản lý khoản đầu tư', 'Quản lý thầu',
     'Quản lý hợp đồng', 'Báo cáo', 'Quản lý quy trình', 'Thông báo']);
   // Mục con của một nhóm = các nút .child liền sau nút nhóm.
   const kids = (label) => page.evaluate((l) => {
@@ -32,7 +34,7 @@ test('D-15: menu theo 12 module Backlog; Quản lý quy trình có 3 mục (D-2)
   await page.locator('.sb-nav [data-toggle="Quản lý quy trình"]').click();
   expect(await kids('Quản lý quy trình')).toEqual(['Quản lý quy trình', 'Ma trận hành động', 'Giám sát tiến trình']);
   // T29 D-63: thêm Đề tài / dự án (SCR-103) đầu nhóm.
-  expect(await kids('Quản lý đề xuất mua sắm')).toEqual(['Đề tài / dự án', 'Đề xuất mua sắm', 'Hồ sơ đề xuất mua sắm', 'Yêu cầu báo giá ĐXMS']);
+  expect(await kids('Quản lý đề xuất mua sắm')).toEqual(['Đề tài / dự án', 'Đề xuất mua sắm', 'Hồ sơ đề xuất mua sắm', 'Quản lý hồ sơ', 'Yêu cầu báo giá ĐXMS']);
   await page.locator('.sb-nav [data-toggle="Quản lý khoản đầu tư"]').click();
   expect(await kids('Quản lý khoản đầu tư')).toEqual(['Khoản đầu tư', 'Hồ sơ khoản đầu tư', 'Yêu cầu báo giá KĐT']);
   await page.locator('.sb-nav [data-toggle="Quản lý thầu"]').click();
@@ -86,12 +88,12 @@ test('D-3: chỉ Mã hồ sơ là liên kết, bấm dòng không mở gì; liê
   await page.locator('.vpager [data-pg="2"]').first().click();
   const r = rows(page).filter({ hasText: 'HS-2026-0101' });
   await expect(r.locator('.vbadge')).toHaveText('Quá hạn');
-  await expect(r.locator('.proc-cell .n')).toHaveText('Phê duyệt ĐXMS ≥ 160 tỷ — căn cứ chưa được CT/TGĐ Tập đoàn phê duyệt');
-  await expect(r.locator('.proc-cell .s')).toHaveText('MS01.01 - v2.0');
-  // Mỗi hồ sơ theo quy trình đã chọn khi tạo (P-37: ba quy trình riêng).
+  await expect(r.locator('.proc-cell .n')).toHaveText('Phê duyệt đề xuất mua sắm');
+  await expect(r.locator('.proc-cell .s')).toHaveText('MS01 - v2.0');
+  // T29 B1 (D-54, thay P-37): hồ sơ Phê duyệt của mọi luồng con thuộc quy trình MS01.
   const procs = await page.evaluate(() => Object.fromEntries(QuyTrinh.monitorRows().map((x) => [x.code, `${x.proc} - v${x.version}.0`])));
-  expect(procs['HS-2026-0074']).toBe('MS01.03 - v1.0');
-  expect(procs['HS-2026-0103']).toBe('MS01.02 - v1.0');
+  expect(procs['HS-2026-0074']).toBe('MS01 - v2.0');
+  expect(procs['HS-2026-0103']).toBe('MS01 - v2.0');
   // Hồ sơ Điều chỉnh ĐXMS chạy quy trình MS02 (D-10).
   expect(procs['HS-2026-0126']).toBe('MS02 - v1.0');
   await r.locator('td').nth(5).click();
@@ -99,7 +101,7 @@ test('D-3: chỉ Mã hồ sơ là liên kết, bấm dòng không mở gì; liê
   await page.locator('.vpager [data-pg="3"]').first().click();
   const old = rows(page).filter({ hasText: 'HS-2026-0072' });
   await expect(old.locator('.vbadge')).toHaveText('Đã hủy');
-  await expect(old.locator('.proc-cell .s')).toHaveText('MS01.01 - v1.0');
+  await expect(old.locator('.proc-cell .s')).toHaveText('MS01 - v1.0');
   await old.locator('a.link').click();
   await expect(page).toHaveURL(/#\/ho-so-dxms\/HS-2026-0072$/);
   await expect(page.locator('.pg-title')).toHaveText('Chi tiết hồ sơ');

@@ -56,7 +56,7 @@
         txt('Kết quả rà soát tồn kho cập nhật tại thời điểm điều chỉnh: **{{stock.trangThai}}** · {{stock.ma}} · gửi yêu cầu {{stock.gui}} — kết quả cũ: {{stockCu}}'),
         dl('ruaSoatKho', 'Kết quả rà soát (mới) và kết quả cũ (chỉ xem)', [
           txt('**{{this.n}}. {{this.name}}**\nSL đề xuất: {{this.prop}}', 4),
-          txt('Tồn sổ sách **{{this.book}}** · đang giữ {{this.held}} · khả dụng **{{this.avail}}**', 4),
+          txt('Tồn kho **{{this.book}}** · đang giữ {{this.held}} · khả dụng **{{this.avail}}**', 4),
           txt('*Cũ: khả dụng {{this.cuAvail}} · dùng từ kho {{this.cuDung}}*', 3),
           num('fromStock', 'Dùng từ kho', { validate: { min: 0 }, layout: { columns: 3 }, conditional: { hide: '=not(this.coKho)' } }),
           txt('SL mua: **{{this.prop - this.fromStock}}**', 2)])] }),

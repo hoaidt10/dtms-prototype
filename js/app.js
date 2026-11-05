@@ -48,6 +48,7 @@
       <a class="brand" href="#/phan-he" aria-label="Về Danh sách Phân hệ"><span class="brand-logo">VHT</span>
         <span class="brand-text"><span>${prod.code}</span><span>${prod.name}</span></span></a>
       <div class="topbar-right">
+        ${window.Tour ? window.Tour.topBtn() : ''}
         <button class="bell" aria-label="Thông báo" data-go="viec-cua-toi">${icon('bell')}${n ? `<span class="count">${n}</span>` : ''}</button>
         <span class="rule"></span>
         <button class="who" id="who">${avatar(p.id)}<span class="who-text"><span>${esc(p.name)}</span><span class="r">${esc(p.role)}</span></span></button></div></header>`;
@@ -71,7 +72,7 @@
     const dm = app === 'dmdc';
     /* Danh mục dùng chung: mục phẳng và nhóm Đầu tư mua sắm cùng lọc theo vai (P-36). */
     const items = dm ? D.dmdcMenu.filter((m) => (m.dmdc ? window.Catalog.canSee(m.dmdc) : !m.dmdcGroup || m.children.some((k) => window.Catalog.canSee(k.dmdc))))
-      : window.Luong.menu().filter((m) => !m.hidden);
+      : window.Luong.menu().filter((m) => !m.hidden && !(m.show && !D.show[m.show]));
     return `<aside class="sidebar ${collapsed ? 'collapsed' : ''}">
       <div class="sb-head"><span class="ic">${icon(dm ? 'danh_muc_dung_chung' : 'phan_he_mua_sam')}</span><span class="t">${dm ? 'Danh mục dùng chung' : 'Đầu tư mua sắm'}</span></div>
       <div class="sb-rule"></div>
@@ -108,12 +109,19 @@
     if (a === 'luong') return window.Luong.route(r.split('/'));
     /* T29 S6, S7: SCR-103 Danh sách đề tài / dự án, SCR-104 Chi tiết (de-tai.js). */
     if (a === 'de-tai') return window.DeTai.route(r.split('/'));
+    /* T29 B3a: SCR-105 Rà soát tồn kho — việc của Phòng QLTS / Thủ kho (ngoài sơ đồ). */
+    if (a === 'ra-soat-kho') return window.RaSoatKho.page();
+    /* T29 B12 (D-78): SCR-107 Quản lý hồ sơ — biểu mẫu / văn bản đã sinh của mọi luồng. */
+    if (a === 'quan-ly-ho-so') return window.QuanLyHoSo.page();
     /* ĐXMS (cha): SCR-27 danh sách, SCR-28 thêm mới / chỉnh sửa, SCR-29 chi tiết — theo task-management. */
     if (a === 'dxms' && b === 'create') return S.dxmsForm();
     if (a === 'dxms' && b && c === 'edit') return S.dxmsForm();
     if (a === 'dxms' && b) return S.dxmsDetail(decodeURIComponent(b));
     if (a === 'dxms') return S.dxmsList();
     /* Yêu cầu báo giá ĐXMS (T16 B1): SCR-73 danh sách, SCR-74 chi tiết. */
+    /* T29 B3b: SCR-106 Thêm mới / Cập nhật yêu cầu báo giá (ycbg/create, ycbg/<mã>/edit). */
+    if (a === 'ycbg' && b === 'create') return window.YcbgForm.form(null);
+    if (a === 'ycbg' && b && r.split('/')[2] === 'edit') return window.YcbgForm.form(decodeURIComponent(b));
     if (a === 'ycbg') return b ? window.Ycbg.detail(decodeURIComponent(b)) : window.Ycbg.list('dxms');
     /* T16 B2: YCBG KĐT (SCR-76/77), Danh sách hồ sơ KĐT (SCR-75), Quản lý thầu (SCR-78…83, thau.js). */
     if (a === 'ycbg-kdt') return b ? window.Ycbg.detail(decodeURIComponent(b)) : window.Ycbg.list('kdt');
@@ -157,6 +165,7 @@
       ${demoOpen ? `<div class="demo-panel">
         <h4>Công cụ demo (không thuộc giao diện app)</h4>
         <div class="row"><a class="btn sm secondary" href="#/chon-vai">Chọn vai</a></div>
+        ${window.Tour ? window.Tour.demoRow() : ''}
         <h4>Phương án menu ĐXMS (T17)</h4>
         <div class="row"><button class="btn sm ${window.Luong.isGop() ? 'secondary' : 'primary'}" data-luong-mode="tach">Tách: ĐXMS · Hồ sơ</button><button class="btn sm ${window.Luong.isGop() ? 'primary' : 'secondary'}" data-luong-mode="gop">Gộp: Luồng mua sắm</button></div>
         <h4>Đồng bộ từ Camunda</h4>
@@ -410,4 +419,6 @@
   Flow.init();
   Flow.onChange(render);
   render();
+  /* T33 B2: tour hướng dẫn — ?tour=n mở thẳng; bản gửi khách lần đầu hiện danh sách tour. */
+  if (window.Tour) window.Tour.boot();
 })();

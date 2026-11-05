@@ -76,6 +76,11 @@
      DX-03: kết quả AI kiểm tra báo giá ở task 10 → cổng "Báo giá đạt?" (MS01) / "Báo giá đạt yêu cầu?" (MS13). */
   function beforeComplete(tok, choice) {
     if (String(tok.task) !== '10' || Flow.state.parent) return null;
+    /* D-77: ĐVĐX sửa "Căn cứ đã được phê duyệt" ở task 10 → biến basisTD (cổng sau task 10, mặc định task 48). */
+    /* T29 B3b (BR-DXMS-04-10): Tổng giá trị theo cơ sở giá là giá trị của hồ sơ — cổng sau task 10 đọc vars.totalQ. */
+    if (choice && /^Báo giá đạt/.test(choice.label) && window.BaoGia && window.BaoGia.applies(tok)) Flow.state.vars.totalQ = window.BaoGia.total();
+    const cd = (Flow.ui || {}).canCuDuyet;
+    if (cd && !Flow.state.kdt) Flow.state.vars.basisTD = cd === 'Đã phê duyệt';
     const ok = !H().quoteFail();
     Flow.state.vars.quoteAi = ok;
     if (ok || !choice || !choice.main) return null;

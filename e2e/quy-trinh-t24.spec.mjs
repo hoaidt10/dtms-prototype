@@ -22,7 +22,8 @@ async function openTask(page) {
   await expect(page.locator('main .pg-head [data-act]').first()).toBeVisible();
   return t;
 }
-const ruleIds = (page, t) => page.evaluate((x) => MaTran.rules().filter((r) => r.proc === x.flow && r.step === 'Activity_' + x.task).map((r) => r.id), t);
+// T29 B1 (D-54): hồ sơ của luồng con MS01.0x dùng luật của quy trình MS01.
+const ruleIds = (page, t) => page.evaluate((x) => MaTran.rules().filter((r) => r.proc === x.flow.replace(/^MS01\.0[1-3]$/, 'MS01') && r.step === 'Activity_' + x.task).map((r) => r.id), t);
 const setRule = (page, id, k, v) => page.evaluate(([i, kk, vv]) => { MaTran.rules().find((r) => r.id === i)[kk] = vv; App.render(); }, [id, k, v]);
 
 test('Q1: tắt luật bằng công tắc thì nút ẩn; bật lại thì hiện; đổi Tên hiển thị đổi nhãn; xoá luật thì ẩn', async ({ page }) => {
@@ -79,10 +80,10 @@ test('Q1: luật sang màn khác hoặc vai khác thì ẩn nút; tài khoản t
   expect(page.errors).toEqual([]);
 });
 
-test('Q1: bước 10a chưa có luật vẫn giữ nút; quy trình chưa có luật (MS13) giữ nguyên nút', async ({ page }) => {
+test('Q1: luồng con MS01.0x dùng luật của MS01; quy trình chưa có luật (MS13) giữ nguyên nút', async ({ page }) => {
   await fresh(page, '#/viec-cua-toi');
   const r = await page.evaluate(() => ({
-    a: MaTran.allowed('MS01.01', '10a', 'Sửa lại', 'minh').show,
+    a: MaTran.allowed('MS01.03', '11', 'Gửi chỉ huy duyệt', 'minh').show,
     k: MaTran.allowed('MS13', '10', 'Bất kỳ', 'minh').show,
   }));
   expect(r).toEqual({ a: true, k: true });
@@ -99,11 +100,12 @@ test('Q2: đồng bộ thêm phiên bản, chuyển Dừng hoạt động, sinh 
   await expect(sync).toBeEnabled();
   expect(await lastToast(page)).toContain('Đã đồng bộ danh sách quy trình từ Camunda.');
 
-  for (const k of ['DTMS_MS13', 'DTMS_MS14', 'DTMS_MS01_03']) await page.locator(`[data-vtt-key="${k}"]`).click();
-  await expect(page.locator('.vtt tbody tr.child')).toHaveCount(6);
-  await expect(page.locator('.vtt tbody tr.child .vbadge', { hasText: 'Dừng hoạt động' })).toHaveCount(1);
+  for (const k of ['DTMS_MS13', 'DTMS_MS14', 'DTMS_MS01']) await page.locator(`[data-vtt-key="${k}"]`).click();
+  await expect(page.locator('.vtt tbody tr.child')).toHaveCount(7);
+  // MS14 bản 1 và MS01 bản 1 (v1.0, đã dừng từ trước).
+  await expect(page.locator('.vtt tbody tr.child .vbadge', { hasText: 'Dừng hoạt động' })).toHaveCount(2);
   const added = await page.evaluate(() => MaTran.rules().length);
-  expect(added - before).toBe(2);
+  expect(added - before, 'T29 B1: dữ liệu mẫu đã đủ luật cho MS01').toBe(0);
   const versions = () => page.evaluate(() => QuyTrinh.WORKFLOWS.find((w) => w.code === 'MS14').versions.map((v) => [v.version, v.status]));
   expect(await versions()).toEqual([[2, 'ACTIVE'], [1, 'DELETED']]);
 
@@ -113,8 +115,7 @@ test('Q2: đồng bộ thêm phiên bản, chuyển Dừng hoạt động, sinh 
   expect(await page.evaluate(() => MaTran.rules().length)).toBe(added);
   expect(await versions()).toEqual([[2, 'ACTIVE'], [1, 'DELETED']]);
 
-  /* Hai luật mới làm hai nhánh 10a của MS01.03 thành Đã khớp. */
-  expect(await page.evaluate(() => MaTran.reconRows('MS01.03').filter((x) => !x.rule).length)).toBe(0);
+  expect(await page.evaluate(() => MaTran.reconRows('MS01').filter((x) => !x.rule).length)).toBe(0);
   expect(page.errors).toEqual([]);
 });
 
@@ -156,7 +157,7 @@ test('Q2: đang có phiên và lỗi Camunda không đổi dữ liệu; Reset lu
   await page.locator('#reset').click();
   await page.locator('#rs').click();
   expect(await count()).toBe(n0);
-  expect(await page.evaluate(() => MaTran.reconRows('MS01.03').filter((x) => !x.rule).length)).toBe(2);
+  expect(await page.evaluate(() => MaTran.reconRows('MS01').filter((x) => !x.rule).length)).toBe(0);
 
   /* Khôi phục dữ liệu mẫu cũng đưa quy trình và luật về mẫu. */
   await as(page, 'qt');
@@ -177,7 +178,7 @@ test('Q3: Người dùng quản trị quy trình xem được, không đồng b�
   await go(page, '#/quy-trinh');
   await expect(page.locator('.vtt')).toBeVisible();
   await expect(page.locator('[data-wf="sync"]')).toHaveCount(0);
-  await page.locator('[data-vtt-key="DTMS_MS01_01"]').click();
+  await page.locator('[data-vtt-key="DTMS_MS01"]').click();
   await page.locator('.vtt tbody tr.child a.link').first().click();
   await expect(page.locator('main h1')).toContainText('Chi tiết quy trình');
   await expect(page.locator('main')).toContainText('Sơ đồ quy trình');
@@ -200,7 +201,7 @@ test('Q3: thiếu QT02 thì Mã quy trình là chữ; TTMS không vào Ma trận
   await fresh(page, '#/viec-cua-toi');
   await page.evaluate(() => { D.perms.qlqt = ['QT00', 'QT01']; Flow.setPersona('qlqt'); });
   await go(page, '#/quy-trinh');
-  await page.locator('[data-vtt-key="DTMS_MS01_01"]').click();
+  await page.locator('[data-vtt-key="DTMS_MS01"]').click();
   await expect(page.locator('.vtt tbody tr.child').first()).toBeVisible();
   await expect(page.locator('.vtt tbody tr.child a.link')).toHaveCount(0);
   await as(page, 'lan');

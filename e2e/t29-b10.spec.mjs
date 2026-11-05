@@ -75,7 +75,7 @@ test('Lần 01: Ghi lại giữ Đang thẩm định → hoàn thành phiếu Y�
 test('Lần 02 (nhánh phụ): lịch sử hai lần, lần hiện tại ở trên; phiếu lần 02', async ({ page }) => {
   await fresh(page, '#/viec-cua-toi');
   await page.locator('#demo').click();
-  await page.locator('[data-branch="6"]').click();
+  await page.locator('[data-branch="5"]').click();
   await expect(card(page)).toBeVisible();
   expect(await page.evaluate(() => Flow.state.vars.round)).toBe(1);
   await expect(card(page).locator('[data-td-lan]')).toHaveCount(2);

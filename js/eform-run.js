@@ -11,7 +11,7 @@
  * count(), sum(), string(), list contains(), lọc danh sách xs[điều kiện theo item], chỉ số xs[1] (đếm từ 1).
  */
 (function () {
-  const { esc, vRadio, vSelect, vModal, toast, badge } = window.UI;
+  const { esc, icon, vRadio, vSelect, vModal, toast, badge } = window.UI;
 
   /* ---------- FEEL rút gọn ---------- */
   const FN = {
@@ -106,7 +106,7 @@
   const cell = (v) => (typeof v === 'string' && (TONE[v] || /^Cấm đến /.test(v)) ? badge(v, TONE[v] || 'error') : esc(fmt(v)));
 
   /* ---------- Duyệt schema ---------- */
-  const INPUT = new Set(['textfield', 'textarea', 'number', 'datetime', 'select', 'radio', 'checkbox', 'checklist', 'taglist']);
+  const INPUT = new Set(['textfield', 'textarea', 'number', 'datetime', 'select', 'radio', 'checkbox', 'checklist', 'taglist', 'filepicker']);
   const span = (c) => `style="grid-column:span ${Math.min(16, (c.layout && c.layout.columns) || 16)}"`;
   const empty = (c) => (c.type === 'checklist' || c.type === 'taglist' ? [] : c.type === 'checkbox' ? false : c.type === 'number' ? null : '');
   const optsOf = (c, ctx) => (c.valuesExpression ? feel(c.valuesExpression, ctx) || [] : c.valuesKey ? get(ctx, c.valuesKey) || [] : c.values || []);
@@ -160,6 +160,8 @@
     if (c.type === 'number') return `<input class="vctl num-in" type="number" data-ef="${esc(fk)}" data-num="1" value="${v == null ? '' : v}" ${c.validate && c.validate.min != null ? `min="${c.validate.min}"` : ''} ${dis}>`;
     if (c.type === 'textarea') return `<textarea class="vctl ta" rows="${c.rows || 3}" data-ef="${esc(fk)}" placeholder="${ph}" ${dis}>${esc(v == null ? '' : v)}</textarea>`;
     if (c.type === 'checkbox') return `<label class="check"><input type="checkbox" data-ef-chk="${esc(fk)}" ${v ? 'checked' : ''} ${dis}> ${esc(c.text || '')}</label>`;
+    /* filepicker (Camunda form-js): giá trị = tên tệp đã chọn; thật: tệp tải lên MinIO, biến giữ id tệp. */
+    if (c.type === 'filepicker') return `<div class="row ef-file"><label class="vbtn sm secondary ${dis ? 'dis' : ''}">${icon('upload')} Tải file lên<input type="file" hidden data-ef-file="${esc(fk)}" ${c.multiple ? 'multiple' : ''} ${dis}></label>${v ? `<span class="rsk-file">${esc(v)}</span>` : ''}</div>`;
     const opts = optsOf(c, ctx);
     if (c.type === 'radio') return `<div class="vradio ${opts.length <= 4 ? 'h' : ''}">${opts.map((o) => vRadio(esc(o.label), v === o.value, `data-ef-radio="${esc(fk)}" data-v='${esc(JSON.stringify(o.value))}'`, !!dis)).join('')}</div>`;
     if (c.type === 'checklist') {
@@ -190,7 +192,7 @@
         return `<div class="ef-dl" ${span(c)}>${c.label ? `<div class="ef-gh">${esc(c.label)}</div>` : ''}<div class="ef-list">
           ${rows.map((r, i) => `<div class="ef-row"><div class="ef-grid">${renderList(c.components, ctx, form, r, `${c.path}::${i}::`)}</div>
             ${add ? `<div class="row end"><button type="button" class="vbtn sm secondary red-t" data-ef-dup="${esc(c.path)}" data-i="${i}">Nhân bản</button><button type="button" class="vbtn sm ghost" data-ef-del="${esc(c.path)}" data-i="${i}">Xoá</button></div>` : ''}</div>`).join('')}
-          ${!rows.length && add ? `<div><button type="button" class="vbtn sm secondary" data-ef-add="${esc(c.path)}">Thêm dòng</button></div>` : ''}
+          ${add ? `<div><button type="button" class="vbtn sm secondary" data-ef-add="${esc(c.path)}">Thêm dòng</button></div>` : ''}
           ${!rows.length && !add ? '<div class="empty-t">Chưa có dữ liệu</div>' : ''}</div></div>`;
       }
       if (!INPUT.has(c.type)) return '';
@@ -263,6 +265,7 @@
         /* Ô nhập: vẽ lại sau khi sự kiện focus sang ô kế tiếp chạy xong, giữ con trỏ ở ô đang nhập (không mất chữ đang gõ). */
         if (t.dataset.ef) { form.set(t.dataset.ef, t.dataset.num ? (t.value === '' ? null : Number(t.value)) : t.value); setTimeout(redraw, 0); return; }
         if (t.dataset.efChk) { form.set(t.dataset.efChk, t.checked, true); return; }
+        if (t.dataset.efFile) { form.set(t.dataset.efFile, [...t.files].map((f) => f.name).join(', '), true); return; }
         if (t.dataset.efList) {
           const cur = (form.get(t.dataset.efList) || []).slice(), v = parse(t.dataset.v), i = cur.indexOf(v);
           if (t.checked && i < 0) cur.push(v); if (!t.checked && i >= 0) cur.splice(i, 1);

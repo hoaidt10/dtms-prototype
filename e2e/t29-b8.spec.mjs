@@ -19,6 +19,12 @@ const DT = 'NV-KHCN-2026-014';
 test('SCR-103: menu, lọc Loại → Loại chi tiết, Khối → Đơn vị lập, Xuất Excel theo TPL-DADT-EX', async ({ page }) => {
   await fresh(page, '#/de-tai');
   await expect(page.locator('.sidebar .child.active')).toHaveText('Đề tài / dự án');
+  // Góp ý 05/11: menu Đề tài / dự án đứng đầu nhóm, trước Luồng mua sắm (phương án Gộp) và trước Đề xuất mua sắm (phương án Tách).
+  const subs = async () => (await page.locator('.sidebar .child').allInnerTexts()).map((x) => x.trim()).slice(0, 2);
+  expect(await subs()).toEqual(['Đề tài / dự án', 'Đề xuất mua sắm']);
+  await page.evaluate(() => { localStorage.setItem('dtms-proto-menu', 'gop'); window.App.render(); });
+  await expect.poll(subs).toEqual(['Đề tài / dự án', 'Luồng mua sắm']);
+  await page.evaluate(() => { localStorage.setItem('dtms-proto-menu', 'tach'); window.App.render(); });
   await expect(page.locator('.pg-title')).toHaveText('Danh sách đề tài / dự án');
   await expect(page.locator('[data-dt-list] thead th')).toHaveText(['STT', 'Trạng thái', 'Loại dự án / đề tài', 'Mã dự án / đề tài', 'Tên dự án / đề tài', 'Đơn vị lập', 'Chủ nhiệm',
     'Nguồn vốn', 'Tổng dự toán (tỷ đồng)', 'TG bắt đầu', 'TG kết thúc', 'Số ngày còn thực hiện', 'Nguồn dữ liệu']);
@@ -59,79 +65,76 @@ test('SCR-103: menu, lọc Loại → Loại chi tiết, Khối → Đơn vị l
   expect(page.errors).toEqual([]);
 });
 
-test('SCR-104: 4 tab cho mọi Loại; dự toán — thêm, Nhập tay, sửa, copy, xóa; xóa bị chặn khi có ĐXMS; accordion đợt', async ({ page }) => {
+test('SCR-104: 5 tab cho mọi Loại (T31 B2); dự toán chỉ xem (góp ý 05/11), ghim cột Loại CP / Khoản mục; accordion đợt; xuất', async ({ page }) => {
   await fresh(page, '#/de-tai/' + encodeURIComponent('DA-2026-002'));
+  // T29 B15 (D-80): bản demo ĐXMS ẩn tab Gói thầu / Hợp đồng và bảng KĐT liên quan (cờ D.show).
   await expect(page.locator('[data-dt-tab]')).toHaveText(['Thông tin chung', 'Dự toán chi phí', 'ĐXMS liên quan', 'Văn bản pháp lý']);
-  await expect(page.locator('main .ginfo')).toContainText('Nhập ở hệ thống cũ');
+  await expect(page.locator('main .ginfo').first()).toContainText('Nhập ở hệ thống cũ');
 
   await go(page, '#/de-tai/' + encodeURIComponent(DT));
-  await expect(page.locator('main .ginfo')).toContainText('KHCN (đồng bộ)');
+  await expect(page.locator('main .ginfo').first()).toContainText('KHCN (đồng bộ)');
   await page.locator('[data-dt-tab="du-toan"]').click();
-  await expect(page.locator('[data-dt-kpi]')).toContainText('Đang giữ (ĐXMS đang xử lý)');
+  await expect(page.locator('[data-dt-kpi]')).toContainText('Đang giữ (ĐXMS / KĐT đang xử lý)');
+  // Chỉ xem: không Thêm mới, không cột Thao tác (Sao chép / Sửa / Xoá) — kể cả đơn vị lập đề tài.
+  await expect(page.locator('[data-dt-x="add"]')).toHaveCount(0);
+  await expect(page.locator('[data-dt-edit], [data-dt-copy], [data-dt-del]')).toHaveCount(0);
+  await expect(page.locator('[data-dt-dutoan] thead th')).not.toContainText(['Thao tác']);
+  // Ghim cột: STT và Loại chi phí / Khoản mục chi phí đứng yên khi cuộn ngang.
+  const head = page.locator('[data-dt-dutoan] thead th.pin');
+  await expect(head).toHaveText(['STT', 'Loại chi phí / Khoản mục chi phí']);
+  const vp = page.locator('[data-dt-dutoan] .vtable-vp');
+  const x0 = await head.nth(1).evaluate((e) => e.getBoundingClientRect().left);
+  await vp.evaluate((e) => { e.scrollLeft = 600; });
+  expect(await vp.evaluate((e) => e.scrollLeft)).toBeGreaterThan(0);
+  expect(await head.nth(1).evaluate((e) => e.getBoundingClientRect().left)).toBe(x0);
+  await vp.evaluate((e) => { e.scrollLeft = 0; });
   // Accordion: khoản mục 1 có đợt của ĐXMS-2026-0101 (đang phê duyệt).
   await line(page, `${DT}-1`).locator('[data-vtt]').click();
   await expect(line(page, `${DT}-1:ĐXMS-2026-0101`)).toContainText('ĐXMS-2026-0101');
   await expect(line(page, `${DT}-1:ĐXMS-2026-0101`)).toContainText('Đang phê duyệt');
-  // Chuyên quản ĐVĐX (đơn vị lập): có thao tác, không đổi được Chi mua sắm.
+  // Vai không phải TTMS: không đổi được Chi mua sắm, Trạng thái chỉ là nhãn.
   await expect(page.locator(`[data-dt-buy="${DT}-1"]`)).toBeDisabled();
-
-  await page.locator('[data-dt-x="add"]').click();
-  const dlg = page.locator('.vmodal');
-  await dlg.locator('#dtl-save').click();
-  await expect(dlg.locator('.vfield.invalid .msg')).toHaveText(['Bạn cần chọn Loại chi phí.', 'Bạn cần nhập Khoản mục chi phí.', 'Bạn cần nhập Khối lượng cần thực hiện.', 'Bạn cần nhập Giá trị trước thuế.']);
-  await pick(dlg, 'dtl-type', 'PL2');
-  await dlg.locator('[data-lf="item"]').fill('Bộ nguồn DC lập trình');
-  await dlg.locator('[data-lf="uom"]').fill('Bộ');
-  await dlg.locator('[data-lf="qty"]').fill('5');
-  await dlg.locator('[data-lf="pre"]').fill('1,2');
-  await expect(dlg.locator('[data-ff="tax"] input')).toHaveValue('0,12');
-  await expect(dlg.locator('[data-ff="value"] input')).toHaveValue('1,32');
-  await dlg.locator('#dtl-save').click();
-  await expect(dlg).toHaveCount(0);
-  expect(await lastToast(page)).toContain('Thêm mới thành công');
-  const added = `${DT}-10`;
-  await expect(line(page, added)).toContainText('Bộ nguồn DC lập trình');
-  await expect(line(page, added)).toContainText('1,32');
-
-  await line(page, added).locator(`[data-dt-edit="${added}"]`).click();
-  await dlg.locator('[data-lf="manual"]').check();
-  await dlg.locator('[data-lf="tax"]').fill('0,1');
-  await expect(dlg.locator('[data-ff="value"] input')).toHaveValue('1,30');
-  await dlg.locator('#dtl-save').click();
-  await expect(line(page, added)).toContainText('1,30');
-
-  await line(page, added).locator(`[data-dt-copy="${added}"]`).click();
-  await expect(dlg.locator('[data-lf="item"]')).toHaveValue('Bộ nguồn DC lập trình (bản sao)');
-  await dlg.locator('#dtl-save').click();
-  await expect(line(page, `${DT}-11`)).toContainText('(bản sao)');
-  await line(page, `${DT}-11`).locator(`[data-dt-del="${DT}-11"]`).click();
-  await page.locator('#cf-ok').click();
-  await expect(line(page, `${DT}-11`)).toHaveCount(0);
-
-  await line(page, `${DT}-1`).locator(`[data-dt-del="${DT}-1"]`).click();
-  expect(await lastToast(page)).toContain('Khoản mục đã được dùng ở ĐXMS-2026-0101');
-  await expect(line(page, `${DT}-1`)).toHaveCount(1);
+  await expect(line(page, `${DT}-1`).locator('[data-vsel]')).toHaveCount(0);
+  // D-79: trạng thái suy từ ĐXMS — khoản mục 1 có ĐXMS-2026-0101 đang phê duyệt.
+  await expect(line(page, `${DT}-1`)).toContainText('Đang mua sắm');
   const dl = page.waitForEvent('download');
   await page.locator('[data-dt-x="export"]').click();
   expect((await dl).suggestedFilename()).toBe(`Du toan ${DT}.csv`);
   expect(page.errors).toEqual([]);
 });
 
-test('SCR-104: Chi mua sắm chỉ TTMS; bỏ tích bị chặn khi ĐXMS đang giữ (D-64); tích dòng mới hiện Trạng thái', async ({ page }) => {
+test('SCR-104: Chi mua sắm chỉ TTMS; bỏ tích bị chặn khi ĐXMS đang giữ (D-64); Trạng thái chỉ hiện khi tích, TTMS chọn Hoàn thành → không bóc tách thêm (P-203)', async ({ page }) => {
   await fresh(page, '#/de-tai/' + encodeURIComponent(DT));
   await page.evaluate(() => Flow.setPersona('lan'));
   await page.locator('[data-dt-tab="du-toan"]').click();
-  await expect(page.locator('[data-dt-x="add"]')).toHaveCount(0);
-  await expect(page.locator(`[data-dt-del="${DT}-1"]`)).toHaveCount(0);
   await page.locator(`[data-dt-buy="${DT}-1"]`).click();
   expect(await lastToast(page)).toContain('Khoản mục đang được giữ bởi ĐXMS-2026-0101');
   await expect(page.locator(`[data-dt-buy="${DT}-1"]`)).toBeChecked();
-  await expect(line(page, `${DT}-5`).locator('td').last()).toBeVisible();
-  await expect(line(page, `${DT}-5`)).not.toContainText('Đang thực hiện');
+  // Dòng chưa tích: không có Trạng thái.
+  await expect(line(page, `${DT}-5`).locator('[data-vsel]')).toHaveCount(0);
+  await expect(line(page, `${DT}-5`)).not.toContainText('Chưa mua sắm');
   await page.locator(`[data-dt-buy="${DT}-5"]`).check();
   expect(await lastToast(page)).toContain('Cập nhật Chi mua sắm thành công');
-  await expect(line(page, `${DT}-5`)).toContainText('Đang thực hiện');
+  const st = line(page, `${DT}-5`).locator(`[data-vsel="dts-${DT}-5"]`);
+  await expect(st).toContainText('Chưa mua sắm');
   expect(await page.evaluate((c) => D.duToanOf(c).find((l) => l.id === c + '-5').buy, DT)).toBe(true);
+  // TTMS chọn Hoàn thành.
+  await st.click();
+  await page.locator('.vsel-panel .vsel-opt', { hasText: 'Hoàn thành' }).click();
+  expect(await lastToast(page)).toContain('Cập nhật Trạng thái thành công');
+  await expect(line(page, `${DT}-5`).locator(`[data-vsel="dts-${DT}-5"]`)).toContainText('Hoàn thành');
+  expect(await page.evaluate((c) => D.duToanOf(c).find((l) => l.id === c + '-5').status, DT)).toBe('Hoàn thành');
+  // Khoản mục Hoàn thành không còn trong danh sách bóc tách khi tạo KĐT (GIẢ LẬP P-203): dòng 6 (PL2) đang Chi mua sắm.
+  await line(page, `${DT}-6`).locator(`[data-vsel="dts-${DT}-6"]`).click();
+  await page.locator('.vsel-panel .vsel-opt', { hasText: 'Hoàn thành' }).click();
+  await go(page, '#/kdt/create');
+  await page.locator('[data-vsel="k-nv"]').click();
+  await page.locator(`.vsel-panel [data-opt="${DT}"]`).click();
+  await page.locator('[data-vsel="kc-ctype"]').click();
+  await page.locator('.vsel-panel [data-opt="PL2"]').click();
+  await page.locator('[data-vsel="kc-cline"]').click();
+  await expect(page.locator(`.vsel-panel [data-opt="${DT}-1"]`)).toHaveCount(1);
+  await expect(page.locator(`.vsel-panel [data-opt="${DT}-6"]`)).toHaveCount(0);
   expect(page.errors).toEqual([]);
 });
 
@@ -142,9 +145,13 @@ test('D-66: ĐXMS hiện "Đề tài / dự án", mở chi tiết đề tài; Đ
   await link.click();
   await expect(page).toHaveURL(/#\/de-tai\/NV-KHCN-2026-006$/);
   await page.locator('[data-dt-tab="dxms"]').click();
-  await expect(page.locator('main tbody')).toContainText('ĐXMS-2026-0072');
-  await expect(page.locator('main tbody')).toContainText('Đã phê duyệt');
+  await expect(page.locator('main tbody').first()).toContainText('ĐXMS-2026-0072');
+  await expect(page.locator('main tbody').first()).toContainText('Đã phê duyệt');
   await page.locator('[data-dt-tab="phap-ly"]').click();
   await expect(page.locator('main tbody')).toContainText('0917/QĐ-VHT');
+  // Góp ý 05/11: cột tải file văn bản pháp lý.
+  await expect(page.locator('main thead th').nth(1)).toHaveText('Thao tác');
+  await page.locator('main tbody [data-dl="0917-QĐ-VHT.pdf"]').click();
+  expect(await lastToast(page)).toContain('Đã tải xuống 0917-QĐ-VHT.pdf');
   expect(page.errors).toEqual([]);
 });

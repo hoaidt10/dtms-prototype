@@ -36,16 +36,17 @@ export async function createDxms(page, title = 'Mua sắm thiết bị đo kiể
   return page.evaluate(() => Flow.dxmsAll()[0].code);
 }
 
-// Chỉnh sửa ĐXMS → Danh sách hồ sơ → Tạo hồ sơ (SCR-25, ô ĐXMS khoá, loại Phê duyệt chọn sẵn) → chọn quy trình → Lưu: start ngay, mở task 01.
+// Chỉnh sửa ĐXMS → Danh sách hồ sơ → Tạo hồ sơ (SCR-25, ô ĐXMS khoá, loại Phê duyệt chọn sẵn) → Lưu: start ngay, mở task 01.
+// T29 B1 (D-54): không chọn quy trình — Quy trình chỉ đọc (MS01); luồng con dự kiến kiểm ở `proc`.
 export async function createCase(page, proc, dxms) {
   const code = dxms || (await createDxms(page));
   await page.evaluate((c) => { location.hash = `#/dxms/${encodeURIComponent(c)}/edit`; }, code);
   await page.locator('[data-dxms-profiles] .vcard-h [data-go^="ho-so-dxms/create/"]').click();
   await expect(page).toHaveURL(/#\/ho-so-dxms\/create\//);
-  await page.locator('[data-vsel="c-proc"]').click();
-  await page.locator(`.vsel-panel [data-opt="${proc}"]`).click();
+  await expect(page.locator('#c-proc')).toHaveValue(/^MS01 — /);
   await page.locator('#c-save').click();
   await expect(page).toHaveURL(/#\/task\//);
+  if (proc) expect(await page.evaluate(() => Flow.state.vars.process)).toBe(proc);
   return code;
 }
 

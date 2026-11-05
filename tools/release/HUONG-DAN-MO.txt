@@ -1,0 +1,42 @@
+PROTOTYPE HỆ THỐNG ĐẦU TƯ MUA SẮM (ĐTMS) – bản ngày {{DATE}}
+==============================================================
+
+{{GUIDE}}CÁCH MỞ
+1. Giải nén toàn bộ tệp .zip ra một thư mục trên máy (chuột phải > Extract All / Giải nén tất cả).
+   Không mở trực tiếp bên trong tệp .zip: trình duyệt sẽ không tải được phần giao diện đi kèm.
+2. Trong thư mục vừa giải nén, nháy đúp tệp  index.html
+   Nên dùng Google Chrome hoặc Microsoft Edge bản mới.
+
+Không cần cài đặt, không cần mạng Internet, không cần tài khoản.
+Giữ nguyên cấu trúc thư mục (index.html, assets, js) khi sao chép sang máy khác.
+
+CÁCH DÙNG
+- Đổi vai người dùng: bấm ảnh đại diện ở góc trên bên phải.
+  Việc được giao cho vai nào sẽ hiện ở mục "Việc của tôi" của vai đó.
+- Chạy luồng: mở một việc, bấm nút hành động, nhập biểu mẫu rồi bấm Xác nhận.
+- Hướng dẫn theo tác vụ: nút "Hướng dẫn" trên thanh trên cùng mở 7 tour, mỗi tour đưa hồ sơ
+  mẫu tới đúng bước và chỉ từng chỗ cần bấm. Danh sách tour tự hiện mỗi lần mở; bỏ chọn
+  "Tự hiện…" ở cuối danh sách nếu không cần (nút Hướng dẫn vẫn còn).
+- Công cụ demo (nút nổi ở góc dưới bên phải): chọn bộ hồ sơ mẫu, nhảy tới từng cảnh,
+  đặt lại luồng, khôi phục dữ liệu mẫu.
+- Nhãn tím "❓ P-xx": điểm nghiệp vụ còn chờ chốt. Bấm vào để ghi ý kiến. Nút "Điểm ❓"
+  trong Công cụ demo mở trang tổng hợp, có thể xuất ý kiến ra tệp Markdown/CSV để gửi lại nhóm dự án.
+
+GÓP Ý TRỰC TIẾP TRÊN MÀN (COMMENT)
+- Bấm nút tròn màu tím ở góc dưới bên phải (hoặc phím C), rồi bấm vào chỗ cần góp ý trên màn,
+  nhập nội dung, chọn loại góp ý và bấm Lưu. Lần đầu nhập tên của anh/chị.
+  Trong chế độ comment, bấm vào màn chỉ đặt ghim, không bấm nút của màn.
+- Bấm vào ghim số để xem, trả lời hoặc đánh dấu Đã xử lý. Phím Esc để thoát chế độ comment.
+  Nút tím > "Danh sách comment" xem tất cả góp ý, bấm một dòng để tới đúng màn.
+- Xong: nút tím > "Xuất JSON gửi nhóm dự án", gửi tệp .json vừa tải về cho nhóm dự án.
+  Góp ý chỉ lưu trên máy này cho tới khi xuất tệp. Reset luồng / Khôi phục dữ liệu mẫu không xoá góp ý.
+
+LƯU Ý
+- Đây là bản mô phỏng giao diện và luồng nghiệp vụ, dữ liệu là dữ liệu mẫu.
+  Không kết nối với hệ thống thật nào.
+- Thao tác của anh/chị được lưu trong trình duyệt trên chính máy này để mở lại không mất.
+  Muốn làm lại từ đầu: Công cụ demo > Reset luồng và Khôi phục dữ liệu mẫu.
+- Nếu trên máy đã từng mở bản prototype trước ({{PREV}}): mở bản này rồi vào
+  Công cụ demo > Reset luồng và Khôi phục dữ liệu mẫu một lần để nạp dữ liệu mẫu mới.
+- Nếu máy chặn chạy tệp HTML tải về (thường do chính sách bảo mật của đơn vị):
+  chuột phải tệp .zip > Properties > tích "Unblock" > OK, rồi giải nén lại.

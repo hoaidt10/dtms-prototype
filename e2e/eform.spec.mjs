@@ -565,7 +565,8 @@ test('C3: không có chữ BA ngoài nút (i); (i) có ghi chú và ❓ P-47; ?c
 });
 
 // T10 B4 — nối SCR-42 (panel Biểu mẫu phần tử → Thiết kế biểu mẫu; chỉ xem khi Dừng hoạt động) và SCR-44 (Biểu mẫu sử dụng lấy biểu mẫu Hoạt động).
-const WF = { 'MS01.01': '2251799813690112', 'MS01.02': '2251799813690118', 'MS01.03': '2251799813690124', MS02: '2251799813690540' };
+// T29 B1 (D-54): MS01 một quy trình (thay MS01.01 / .02 / .03).
+const WF = { MS01: '2251799813690112', MS02: '2251799813690540' };
 const pickEl = (page, key, pg, id) => page.evaluate(([k, p, i]) => {
   document.dispatchEvent(new CustomEvent('bpmn-element', { detail: { key: 'wf/' + k, page: p, id: i } }));
 }, [key, pg, id]);
@@ -577,10 +578,10 @@ const openWf = async (page, k) => {
   await expect(page.locator('.bp-vp')).toBeVisible();
 };
 
-test('B4: SCR-42 — mã biểu mẫu trong panel là link mở Thiết kế biểu mẫu; quay lại / Huỷ về Chi tiết quy trình (cả MS01.01 / .02 / .03)', async ({ page }) => {
+test('B4: SCR-42 — mã biểu mẫu trong panel là link mở Thiết kế biểu mẫu; quay lại / Huỷ về Chi tiết quy trình (MS01, MS02)', async ({ page }) => {
   await asAdmin(page, '#/quy-trinh');
-  await openWf(page, WF['MS01.01']);
-  await pickEl(page, WF['MS01.01'], 'MS01 v1.1', 'Activity_13');
+  await openWf(page, WF.MS01);
+  await pickEl(page, WF.MS01, 'MS01 v1.1', 'Activity_13');
   await expect(formCell(page)).toHaveText('BM-01; Checklist 01 (đối với luồng >160 tỷ) - BM-09; Checklist 02 (đối với luồng <160 tỷ)');
   await expect(formCell(page).locator('a.link')).toHaveText(['BM-01', 'Checklist 01', 'BM-09', 'Checklist 02']);
   await expect(formCell(page).locator('a.link').nth(1)).toHaveAttribute('title', 'CL-01 - Checklist 01 — danh mục hồ sơ (≥ 160 tỷ)');
@@ -591,13 +592,13 @@ test('B4: SCR-42 — mã biểu mẫu trong panel là link mở Thiết kế bi�
   await expect(page.locator('[data-efd-save]')).toBeVisible();
   await expect(page.locator('[data-efd-ro]')).toHaveCount(0);
   await page.locator('.efd-back').click();
-  await expect(page).toHaveURL(new RegExp(`#/quy-trinh/${WF['MS01.01']}$`));
+  await expect(page).toHaveURL(new RegExp(`#/quy-trinh/${WF.MS01}$`));
   await expect(page.locator('.wf-el')).toBeVisible();
   await formCell(page).locator('a.link', { hasText: 'BM-09' }).click();
   await expect(page).toHaveURL(/#\/eform\/9\/thiet-ke$/);
   await page.locator('.efd-bar [data-efd-leave]', { hasText: 'Huỷ' }).click();
-  await expect(page).toHaveURL(new RegExp(`#/quy-trinh/${WF['MS01.01']}$`));
-  for (const p of ['MS01.02', 'MS01.03']) {
+  await expect(page).toHaveURL(new RegExp(`#/quy-trinh/${WF.MS01}$`));
+  for (const p of ['MS01']) {
     await openWf(page, WF[p]);
     await pickEl(page, WF[p], 'MS01 v1.1', 'Activity_20');
     await expect(formCell(page).locator('a.link')).toHaveText(['BM-04']);
@@ -620,8 +621,8 @@ test('B4: SCR-42 → biểu mẫu Dừng hoạt động mở chỉ xem; mở t�
   await row(page, 'BM-04').locator('[data-ef-tg]').click();
   await page.locator('.vconfirm #cf-ok').click();
   await expect(row(page, 'BM-04').locator('[data-ef-tg]')).not.toHaveClass(/on/);
-  await openWf(page, WF['MS01.01']);
-  await pickEl(page, WF['MS01.01'], 'MS01 v1.1', 'Activity_20');
+  await openWf(page, WF.MS01);
+  await pickEl(page, WF.MS01, 'MS01 v1.1', 'Activity_20');
   await formCell(page).locator('a.link').click();
   await expect(page).toHaveURL(/#\/eform\/4\/thiet-ke$/);
   await expect(page.locator('[data-efd-ro]')).toHaveText('Biểu mẫu đang Dừng hoạt động — chỉ xem, không chỉnh sửa được thiết kế.');
@@ -639,7 +640,7 @@ test('B4: SCR-42 → biểu mẫu Dừng hoạt động mở chỉ xem; mở t�
   await page.keyboard.press('Escape');
   const before = await page.evaluate(() => EForm.rows().find((r) => r.code === 'BM-04').history.length);
   await page.locator('.efd-back').click();
-  await expect(page).toHaveURL(new RegExp(`#/quy-trinh/${WF['MS01.01']}$`));
+  await expect(page).toHaveURL(new RegExp(`#/quy-trinh/${WF.MS01}$`));
   expect(await page.evaluate(() => EForm.rows().find((r) => r.code === 'BM-04').history.length)).toBe(before);
   // Từ danh sách (icon Thiết kế) → sửa được như B3.
   await goHash(page, '#/eform');
@@ -675,11 +676,11 @@ test('B4: SCR-44 — Biểu mẫu sử dụng lấy biểu mẫu Hoạt động 
   expect(page.errors).toEqual([]);
 });
 
-test('C3: SCR-42 — mọi link biểu mẫu của MS01.01 / .02 / .03 mở được Thiết kế, không chữ BA (cả chế độ chỉ xem)', async ({ page }) => {
+test('C3: SCR-42 — mọi link biểu mẫu của MS01 mở được Thiết kế, không chữ BA (cả chế độ chỉ xem)', async ({ page }) => {
   await asAdmin(page, '#/quy-trinh');
   const ids = await page.evaluate(() => [...new Set(BPMN_DIAGRAMS['MS01 v1.1'].nodes.filter((n) => n.el && /BM-|Checklist/.test(n.el.form || '')).map((n) => n.el.id))]);
   const seen = new Set();
-  for (const p of ['MS01.01', 'MS01.02', 'MS01.03']) {
+  for (const p of ['MS01']) {
     await openWf(page, WF[p]);
     for (const id of ids) {
       await pickEl(page, WF[p], 'MS01 v1.1', id);
@@ -690,7 +691,7 @@ test('C3: SCR-42 — mọi link biểu mẫu của MS01.01 / .02 / .03 mở đư
   expect([...seen].sort((a, b) => a - b)).toEqual(['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11']);
   await page.evaluate(() => { EForm.rows().forEach((r) => { r.active = false; }); });
   for (const id of seen) {
-    await page.evaluate(([k, i]) => { location.hash = '#/quy-trinh/' + k; setTimeout(() => EForm.openFrom(i, 'quy-trinh/' + k), 0); }, [WF['MS01.01'], id]);
+    await page.evaluate(([k, i]) => { location.hash = '#/quy-trinh/' + k; setTimeout(() => EForm.openFrom(i, 'quy-trinh/' + k), 0); }, [WF.MS01, id]);
     await expect(page).toHaveURL(new RegExp(`#/eform/${id}/thiet-ke$`));
     await expect(page.locator('[data-efd-ro]')).toBeVisible();
     await expect(page.locator('.efd-f').first()).toBeVisible();

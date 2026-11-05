@@ -1,10 +1,10 @@
-// Kịch bản demo §2.4 bằng click thật: tạo ĐXMS (SCR-28), tạo hồ sơ Phê duyệt và chọn quy trình (SCR-25), chạy luồng chính MS01.01
-// (BPMN MS01 v1.1, 61 task) tới phê duyệt, rồi thử 6 nhánh phụ (gồm B-3e: chọn nhầm quy trình → 10a → 10b → mở hồ sơ mới của cùng ĐXMS).
+// Kịch bản demo §2.4 bằng click thật: tạo ĐXMS (SCR-28), tạo hồ sơ Phê duyệt (SCR-25, quy trình MS01 chỉ đọc — T29 B1, D-54), chạy luồng chính
+// (BPMN MS01 v1.1, 61 task; luồng con MS01.01) tới phê duyệt, rồi thử 5 nhánh phụ.
 // Bản Playwright của tools/e2e.mjs (bỏ phần chụp ảnh từng màn).
 import { test, expect } from '@playwright/test';
 import { fresh, primary, lastToast, state, createDxms, createCase, openForm, aiDecide, closeForm, uploadReq } from './helpers.mjs';
 
-test('SCR-28 → SCR-25: tạo ĐXMS không start quy trình; Tạo hồ sơ khoá ĐXMS, chọn sẵn loại Phê duyệt; bắt buộc quy trình; đủ 3 quy trình; Lưu là start task 01', async ({ page }) => {
+test('SCR-28 → SCR-25: tạo ĐXMS không start quy trình; Tạo hồ sơ khoá ĐXMS, chọn sẵn loại Phê duyệt; Quy trình MS01 chỉ đọc; Lưu là start task 01', async ({ page }) => {
   await fresh(page, '#/dxms');
   expect((await state(page)).s).toBe('new');
   await page.locator('[data-create="dxms"]').click();
@@ -39,23 +39,19 @@ test('SCR-28 → SCR-25: tạo ĐXMS không start quy trình; Tạo hồ sơ kho
   await expect(page.locator('[data-vsel="c-dxms"]')).toHaveClass(/dis/);
   await expect(page.locator('[data-vsel="c-kind"]')).toHaveText('Phê duyệt ĐXMS');
   await expect(page.locator('#c-name')).toHaveValue('Mua sắm thiết bị đo kiểm phục vụ phát triển trạm gNodeB thế hệ 2');
-  await page.locator('#c-save').click();
-  await expect(page.locator('.vfield.invalid .msg')).toHaveText(['Bạn cần chọn Quy trình.']);
-  await page.locator('[data-vsel="c-proc"]').click();
-  await expect(page.locator('.vsel-panel .vsel-opt')).toHaveCount(3);
-  await expect(page.locator('.vsel-panel .vsel-opt.dis')).toHaveCount(0);
-  await page.locator('.vsel-panel [data-opt="MS01.01"]').click();
+  await expect(page.locator('#c-proc')).toBeDisabled();
+  await expect(page.locator('#c-proc')).toHaveValue('MS01 — Phê duyệt đề xuất mua sắm');
   await page.locator('#c-save').click();
   await expect(page).toHaveURL(/#\/task\//);
   expect(await lastToast(page)).toContain('Thêm mới thành công');
-  await expect(page.locator('.tmain .ginfo')).toContainText('MS01.01');
+  await expect(page.locator('.tmain .ginfo')).toContainText('MS01 — Phê duyệt đề xuất mua sắm');
   await expect(page.locator('.tmain .ginfo')).toContainText('Mã ĐXMSĐXMS-2026-0117');
-  // Task 1 (eForm): chỉ có căn cứ chưa được TĐ duyệt (qd1, qd2 — loại QĐ nhiệm vụ KHCN có 1482 và 0917); không còn nội dung bước trên trang.
+  // Task 1 (T29 B12, D-81): căn cứ và phần còn khả dụng là khối chỉ xem ở Thông tin chung; hộp thoại Hoàn thành chỉ xác nhận.
   await expect(page.locator('.tmain > section > h3, .tmain > section > .vcard-h > h3')).toHaveText(['Thông tin chung', 'Quy trình', 'Danh sách tài liệu', 'Văn bản đầu ra']);
   const f1 = await openForm(page);
   await expect(f1.locator('.vmodal-h h3')).toHaveText('Hoàn thành');
-  await expect(f1.locator('.ef-table tbody tr')).toHaveCount(2);
-  await expect(f1.locator('.ef-table tbody')).toContainText('1482/QĐ-VHT');
+  await expect(f1.locator('[data-ef-field="basisDoc"], [data-ef-field="basisType"]')).toHaveCount(0);
+  await expect(page.locator('[data-basis-avail] tbody').first()).toContainText('1482/QĐ-VHT');
   await closeForm(page);
   const s = await page.evaluate(() => ({ code: Flow.ci().code, dxms: Flow.ci().dxms, flow: Flow.ci().flow, tok: Flow.state.tokens.map((t) => [t.task, t.who]) }));
   expect(s).toEqual({ code: 'HS-2026-0117', dxms: 'ĐXMS-2026-0117', flow: 'MS01.01', tok: [[1, 'minh']] });
@@ -73,17 +69,15 @@ test('SCR-25 luật R1–R3: ĐXMS đã phê duyệt chỉ tạo được Điề
   await page.locator('[data-create="hs"]').click();
   await expect(page).toHaveURL(/#\/ho-so-dxms\/create$/);
   await page.locator('#c-save').click();
-  await expect(page.locator('.vfield.invalid .msg')).toHaveText(['Bạn cần nhập Tên hồ sơ.', 'Bạn cần chọn Loại hồ sơ.', 'Bạn cần chọn Quy trình.', 'Bạn cần chọn ĐXMS.']);
+  await expect(page.locator('.vfield.invalid .msg')).toHaveText(['Bạn cần nhập Tên hồ sơ.', 'Bạn cần chọn Loại hồ sơ.', 'Bạn cần chọn ĐXMS.']);
   // ĐXMS-2026-0103 đã phê duyệt: chọn Phê duyệt bị chặn.
   await page.locator('[data-vsel="c-dxms"]').click();
   await page.locator('.vsel-panel [data-opt="ĐXMS-2026-0103"]').click();
   await expect(page.locator('[data-vsel="c-kind"]')).toHaveText('Điều chỉnh ĐXMS');
-  await expect(page.locator('[data-vsel="c-proc"]')).toContainText('MS02');
+  await expect(page.locator('#c-proc')).toHaveValue(/^MS02 — /);
   await expect(page.locator('#c-name')).toHaveValue('Điều chỉnh lần 1 — Mua sắm hệ thống mô phỏng mạng lõi 5G');
   await page.locator('[data-vsel="c-kind"]').click();
   await page.locator('.vsel-panel [data-opt="PD"]').click();
-  await page.locator('[data-vsel="c-proc"]').click();
-  await page.locator('.vsel-panel [data-opt="MS01.03"]').click();
   await page.locator('#c-save').click();
   await expect(page.locator('.vfield.invalid .msg')).toHaveText(['ĐXMS đã được phê duyệt. Chọn loại hồ sơ Điều chỉnh ĐXMS.']);
   // ĐXMS-2026-0077 đang có hồ sơ Điều chỉnh xử lý: chặn mọi loại.
@@ -127,6 +121,8 @@ test('luồng chính tới phê duyệt', async ({ page }) => {
     await expect(page.locator('.task-acts [data-act]').first()).toBeVisible();
 
     // Điều kiện trước của kịch bản
+    // T29 B3a: bước 7 chỉ xác nhận được khi Kho (Phòng QLTS) đã nhập lần 2 — mô phỏng Kho đã làm (luồng Kho kiểm ở t29-b3.spec).
+    if (tok.task === 7) await page.evaluate(() => RaSoatKho.has('p2') || RaSoatKho.fillSample());
     if (tok.task === 10) await uploadReq(page, 'quote_');
     // DX-03: lần YCBG đầu AI Không đạt — bấm "Báo giá đạt" vẫn quay lại task 09 (cổng đọc quoteCheck).
     if (tok.task === 10 && (await page.evaluate(() => Flow.doneCount(9))) === 1) {
@@ -167,13 +163,13 @@ test('luồng chính tới phê duyệt', async ({ page }) => {
 });
 
 // [nhánh, task mở ra, nút bấm, task phải tới] — theo BRANCHES trong app.js.
+// T29 B1: bỏ nhánh 10a / 10b (D-54) — các nhánh lùi một vị trí.
 const branches = [
-  [0, '10a', 'Chuyển quy trình', '10b'],
-  [1, 13, 'Không đồng ý', 12],
-  [2, 17, 'Chưa đúng', 16],
-  [3, 28, 'Gửi giải trình', 31],
-  [4, 48, 'Không báo cáo', 58],
-  [5, 60, 'Yêu cầu hoàn chỉnh', 26],
+  [0, 13, 'Không đồng ý', 12],
+  [1, 17, 'Chưa đúng', 16],
+  [2, 28, 'Gửi giải trình', 31],
+  [3, 48, 'Không báo cáo', 58],
+  [4, 60, 'Yêu cầu hoàn chỉnh', 26],
 ];
 
 for (const [i, from, label, expected] of branches) {
@@ -184,51 +180,9 @@ for (const [i, from, label, expected] of branches) {
     await expect.poll(async () => (await state(page)).mine.map((t) => t.task)).toContain(from);
 
     await primary(page, label);
-    if (i === 4) expect(await page.evaluate(() => Flow.state.vars.reportTD)).toBe(false);
-    if (i === 3) expect(await page.evaluate(() => Flow.state.vars.round)).toBe(3);
+    if (i === 3) expect(await page.evaluate(() => Flow.state.vars.reportTD)).toBe(false);
+    if (i === 2) expect(await page.evaluate(() => Flow.state.vars.round)).toBe(3);
     await expect.poll(() => page.evaluate((t) => Flow.taskStatus(t) !== 'todo' || Flow.state.tokens.some((k) => k.task === t), expected)).toBe(true);
     expect(page.errors).toEqual([]);
   });
 }
-
-test('B-3e: Sửa lại ở 10a về task 10; Chuyển quy trình → hồ sơ cũ "Đã chuyển quy trình", mở hồ sơ mới MS01.01 từ task 01', async ({ page }) => {
-  await fresh(page, '#/viec-cua-toi');
-  await page.locator('#demo').click();
-  await page.locator('[data-branch="0"]').click();
-  const fa = await openForm(page, 'Sửa lại');
-  await expect(fa.locator('.banner-bad')).toBeVisible();
-  await expect(fa.locator('.ef-text').first()).toContainText('MS01.01');
-  await closeForm(page);
-  await primary(page, 'Sửa lại');
-  await expect.poll(async () => (await state(page)).mine.map((t) => t.task)).toContain(10);
-  const tok10 = (await state(page)).mine.find((t) => t.task === 10);
-  await page.evaluate((id) => { location.hash = `#/task/${id}`; }, tok10.id);
-  const f10 = await openForm(page, 'Báo giá đạt');
-  await expect(f10).toContainText('Không khớp');
-  await closeForm(page);
-  await uploadReq(page, 'quote_');
-  await primary(page, 'Báo giá đạt');
-  await expect.poll(async () => (await state(page)).mine.map((t) => t.task)).toContain('10a');
-  const tokA = (await state(page)).mine.find((t) => t.task === '10a');
-  await page.evaluate((id) => { location.hash = `#/task/${id}`; }, tokA.id);
-  await primary(page, 'Chuyển quy trình');
-  await expect(page).toHaveURL(/#\/ho-so$/);
-  await expect(page.locator('.ginfo')).toContainText('Được thay bởiHS-2026-0125');
-  await expect(page.locator('.ginfo')).toContainText('Đã chuyển quy trình');
-  expect((await state(page)).s).toBe('moved');
-  await page.locator('.ginfo [data-open-new]').click();
-  await expect(page).toHaveURL(/#\/task\//);
-  const s = await page.evaluate(() => ({ s: Flow.state.status, code: Flow.ci().code, dxms: Flow.ci().dxms, flow: Flow.ci().flow, replaces: Flow.state.replaces, tok: Flow.state.tokens.map((t) => t.task) }));
-  expect(s).toEqual({ s: 'running', code: 'HS-2026-0125', dxms: 'ĐXMS-2026-0117', flow: 'MS01.01', replaces: 'HS-2026-0117', tok: [1] });
-  await page.evaluate(() => { location.hash = '#/ho-so-dxms'; });
-  await expect(page.locator('tr[data-code="HS-2026-0117"]')).toContainText('Đã chuyển quy trình');
-  await expect(page.locator('tr[data-go="ho-so"]')).toContainText('HS-2026-0125');
-  await page.locator('tr[data-code="HS-2026-0117"] .link').click();
-  await expect(page.locator('.ginfo')).toContainText('Được thay bởi');
-  // Hai hồ sơ cùng một ĐXMS (D-10): Danh sách hồ sơ của ĐXMS-2026-0117 có cả hai.
-  await page.evaluate(() => { location.hash = '#/dxms/%C4%90XMS-2026-0117'; });
-  await expect(page.locator('[data-dxms-profiles] tbody tr')).toHaveCount(2);
-  await expect(page.locator('[data-dxms-profiles] tbody')).toContainText('HS-2026-0125');
-  await expect(page.locator('[data-dxms-profiles] tbody')).toContainText('HS-2026-0117');
-  expect(page.errors).toEqual([]);
-});

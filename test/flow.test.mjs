@@ -1,5 +1,5 @@
-// Kiểm tra bộ máy luồng MS01.01 của prototype theo BPMN chuẩn ĐTMS.drawio / MS01 v1.1 (61 task + 10a, 10b)
-// và quyết định "chọn quy trình khi tạo ĐXMS" (2026-09-28).
+// Kiểm tra bộ máy luồng MS01 của prototype theo BPMN chuẩn ĐTMS-121026.drawio / MS01 v1.1 (61 task)
+// và quyết định "MS01 một quy trình, luồng con do hệ thống đặt" (T29 B1, D-54, D-77).
 // Chạy: node --test prototype/dtms/test/flow.test.mjs
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -57,7 +57,7 @@ function runMain(w, max = 400) {
 test('61 task đều có trong BPMN v1.1 và có cấu hình trong D.flow', () => {
   const w = boot();
   assert.equal(w.BPMN_SOURCE.page, 'MS01 v1.1');
-  for (const n of [...Array.from({ length: 61 }, (_, i) => i + 1), '10a', '10b']) {
+  for (const n of Array.from({ length: 61 }, (_, i) => i + 1)) {
     assert.ok(w.BPMN_TASKS[n], `thiếu BPMN task ${n}`);
     assert.ok(w.D.flow[n], `thiếu flow task ${n}`);
     if (w.BPMN_TASKS[n].type === 'user') assert.ok(w.D.flow[n].who && w.D.flow[n].scr, `user task ${n} thiếu who/scr`);
@@ -80,9 +80,8 @@ test('nhánh chính chạy tới phê duyệt theo v1.1, KPI ≤ 20 NLV', () => 
   for (const n of [1, 12, 13, 16, 17, 18, 19, 20, 24, 26, 28, 29, 27, 35, 36, 37, 41, 42, 43, 44, 46, 47, 48, 50, 53, 56, 58, 60, 61]) {
     assert.equal(Flow.taskStatus(n), 'done', `task ${n} phải đã chạy`);
   }
-  // Nhánh < 160 tỷ không chạy; timeline đánh dấu "không áp dụng". 10a/10b chỉ chạy khi không khớp.
+  // Nhánh < 160 tỷ không chạy; timeline đánh dấu "không áp dụng".
   for (const n of [11, 38, 39, 40]) assert.equal(Flow.taskStatus(n), 'na', `task ${n} phải là na`);
-  for (const n of ['10a', '10b']) assert.equal(Flow.taskStatus(n), 'cond');
   assert.deepEqual(plain(Flow.state.vars.checks.map((c) => c.ok)), [true]);
   assert.equal(Flow.ci().code, 'HS-2026-0117');
   assert.equal(Flow.ci().dxms, 'ĐXMS-2026-0117');
@@ -181,7 +180,10 @@ test('TTMS chọn Không báo cáo Tập đoàn ở task 48 → bỏ 49–56, đ
   step(w, { task: 48, label: 'Không báo cáo' });
   runMain(w);
   assert.equal(w.Flow.state.status, 'approved');
-  assert.equal(w.Flow.taskStatus(49), 'todo');
+  // T29 B1: chọn Không báo cáo = chốt luồng con MS01.02 → 49–56 "Không áp dụng".
+  assert.equal(w.Flow.state.vars.process, 'MS01.02');
+  assert.equal(w.Flow.ci().flowLabel, 'MS01.02');
+  assert.equal(w.Flow.taskStatus(49), 'na');
   assert.equal(w.Flow.taskStatus(57), 'done');
 });
 
@@ -214,8 +216,26 @@ test('nhảy tới từng cảnh demo đặt đúng task và vai', () => {
     if (s.start === 'NEW') { assert.equal(Flow.state.status, 'new'); assert.equal(Flow.state.tokens.length, 0); continue; }
     assert.ok(Flow.state.tokens.find((t) => t.task === s.start), `cảnh ${s.n}: phải có token ở task ${s.start}`);
     assert.equal(Flow.state.persona, s.who);
+    // T29 B3a: cảnh Kho — việc ngoài sơ đồ (SCR-105), Kho không có token BPMN; chưa có kết quả rà soát.
+    if (s.go === 'ra-soat-kho') { assert.equal((Flow.ui.rstk || {}).kq, undefined); continue; }
     assert.ok(Flow.tokensFor(s.who).length > 0, `cảnh ${s.n}: vai ${s.who} phải có việc`);
   }
+});
+
+test('T29 B3a + B5 (D-82): tua qua bước 7 điền kết quả rà soát mẫu một lần theo BM-RSTK (Kho); SL xuất kho = khả dụng = tồn − đang giữ', () => {
+  const w = boot();
+  const { Flow, D } = w;
+  w.Flow.jumpTo(7, 'minh');
+  assert.equal(Flow.ui.rstk, undefined, 'tới bước 7: Kho chưa nhập');
+  w.Flow.jumpTo(8, 'minh');
+  const r = Flow.ui.rstk;
+  assert.ok(r && r.kq && !r.p1 && !r.p2);
+  const i4 = D.items.find((i) => i.n === 4), a = r.kq.rows.find((x) => x.n === 4);
+  assert.equal(a.code, D.rstkCode(4));
+  assert.equal(a.stock, 8);
+  assert.equal(a.out, i4.stock, 'xuất 6 = khả dụng 8 − 2');
+  assert.equal(i4.prop - a.out, i4.buy, 'SL cần mua = yêu cầu − xuất kho (BM-RSTK E − K)');
+  assert.equal(r.kq.rows.find((x) => x.n === 5).code, '', 'dịch vụ không quản lý tồn');
 });
 
 test('mở prototype: chưa có hồ sơ; tạo ĐXMS không start quy trình; Lưu hồ sơ ở SCR-25 mới start instance và giao task 1 cho người tạo', () => {
@@ -275,60 +295,55 @@ test('task 1 chỉ hiện căn cứ hợp với quy trình đã chọn', () => {
   assert.equal(D.basisFits('MS01.02', { type: 'khsx', group: true }), false, 'MS01.02 không nhận Kế hoạch SXKD năm');
 });
 
-test('chọn nhầm MS01.03 cho hồ sơ 182,90 tỷ: cổng báo không khớp → 10a; Sửa lại về task 10', () => {
+test('T29 B1: hồ sơ dự kiến MS01.03 nhưng Tổng giá trị 182,90 tỷ — cổng sau task 10 đặt luồng con MS01.01, vào task 12 (không còn 10a / 10b)', () => {
   const w = boot('MS01.03');
-  const { Flow } = w;
-  runUntil(w, '10a');
-  assert.ok(has(w, '10a', 'minh'));
-  assert.ok(!has(w, 11) && !has(w, 12));
-  assert.deepEqual(plain(Flow.state.vars.checks.map((c) => [c.ok, c.suggest])), [[false, 'MS01.01']]);
-  step(w, { task: '10a', label: 'Sửa lại' });
-  assert.ok(has(w, 10, 'minh'));
-  step(w, { task: 10 });
-  assert.ok(has(w, '10a'), 'giá trị vẫn lệch → lại vào 10a');
-  assert.equal(Flow.state.vars.checks.length, 2);
+  const { Flow, D } = w;
+  assert.equal(D.flow['10a'], undefined);
+  assert.equal(D.flow['10b'], undefined);
+  assert.equal(w.BPMN_TASKS['10a'], undefined);
+  runUntil(w, 12);
+  assert.ok(has(w, 12, 'minh'));
+  assert.equal(Flow.state.vars.process, 'MS01.01');
+  assert.equal(Flow.state.vars.big, true);
+  assert.equal(Flow.taskStatus(11), 'na');
 });
 
-test('chuyển quy trình: 10b tạo hồ sơ mới của cùng ĐXMS theo MS01.01, hồ sơ cũ "Đã chuyển quy trình"; hồ sơ mới làm lại từ task 1 và chạy tới phê duyệt', () => {
-  const w = boot('MS01.03');
-  const { Flow } = w;
-  Flow.setUi('basisDoc', 'qd1');
-  runUntil(w, '10a');
-  step(w, { task: '10a', label: 'Chuyển quy trình' });
-  assert.equal(Flow.state.status, 'moved');
-  assert.equal(Flow.caseStatus(), 'Đã chuyển quy trình');
-  assert.equal(Flow.taskStatus('10b'), 'done');
-  assert.deepEqual({ ...Flow.state.movedTo }, { code: 'HS-2026-0125', process: 'MS01.01' });
-  assert.equal(Flow.state.tokens.length, 0);
-  assert.equal(Flow.kpiUsed(), null, 'không tính KPI');
-
-  Flow.openReplacement();
-  assert.equal(Flow.state.status, 'running');
-  assert.equal(Flow.ci().code, 'HS-2026-0125');
-  assert.equal(Flow.ci().dxms, 'ĐXMS-2026-0117', 'cùng ĐXMS');
-  assert.equal(Flow.ci().flow, 'MS01.01');
-  assert.equal(Flow.state.replaces, 'HS-2026-0117');
-  assert.equal(Flow.state.archived.length, 1);
-  assert.equal(Flow.state.archived[0].replacedBy, 'HS-2026-0125');
-  assert.equal(Flow.state.archived[0].dxms, 'ĐXMS-2026-0117');
-  assert.equal(Flow.ui.basisDoc, 'qd1', 'dữ liệu đã sao chép');
-  assert.deepEqual(Array.from(Flow.state.tokens, (t) => t.task), [1]);
-  runMain(w);
-  assert.equal(Flow.state.status, 'approved');
-  assert.equal(Flow.state.archived.length, 1);
-});
-
-test('chọn MS01.01 nhưng giá trị < 160 tỷ: không khớp, gợi ý MS01.03', () => {
+test('T29 B1: hồ sơ dự kiến MS01.01 nhưng 45,2 tỷ — luồng con MS01.03, vào task 11', () => {
   const w = boot('MS01.01', 45.2);
-  runUntil(w, '10a');
-  assert.equal(w.Flow.matchCheck().suggest, 'MS01.03');
+  runUntil(w, 11);
+  assert.ok(has(w, 11, 'minh'));
+  assert.equal(w.Flow.state.vars.process, 'MS01.03');
+  assert.equal(w.Flow.state.vars.big, false);
+  assert.equal(w.Flow.ci().flowLabel, 'MS01.03');
 });
 
-test('nhánh phụ B-3e: jumpTo 10a với hồ sơ tạo theo MS01.03', () => {
+test('T29 B1: nhãn Quy trình "MS01" trước cổng, ".01 (dự kiến)" tới task 48, chốt sau task 48', () => {
   const w = boot();
-  w.Flow.jumpTo('10a', 'minh', {}, 'MS01.03');
-  assert.ok(has(w, '10a', 'minh'));
-  assert.equal(w.Flow.ci().flow, 'MS01.03');
+  const { Flow } = w;
+  assert.equal(Flow.ci().flowLabel, 'MS01');
+  runUntil(w, 12);
+  assert.equal(Flow.ci().flowLabel, 'MS01.01 (dự kiến)');
+  runUntil(w, 50);
+  assert.equal(Flow.state.vars.reportTD, true);
+  assert.equal(Flow.ci().flowLabel, 'MS01.01');
+});
+
+test('T29 B1 (D-77): Căn cứ đã được phê duyệt → luồng con dự kiến MS01.02, task 48 chọn sẵn Không báo cáo và chốt MS01.02', () => {
+  const w = boot();
+  const { Flow, D } = w;
+  assert.equal(D.subFlow(182.9, true), 'MS01.02');
+  assert.equal(D.subFlow(182.9, false), 'MS01.01');
+  assert.equal(D.subFlow(45.2, true), 'MS01.03');
+  assert.equal(D.subFlow(null, true), 'MS01.02');
+  Flow.state.vars.basisTD = true;
+  runUntil(w, 48);
+  assert.equal(Flow.state.vars.process, 'MS01.02', 'cổng sau task 10 theo basisTD');
+  const [yes, no] = Flow.choices(48);
+  assert.equal(yes.lockWhen, undefined, 'TTMS vẫn chọn được Có báo cáo');
+  assert.equal(Flow.mainChoice(48).label, no.label);
+  step(w, { task: 48 });
+  assert.equal(Flow.state.vars.reportTD, false);
+  assert.equal(Flow.state.vars.process, 'MS01.02');
 });
 
 // T8 B5 — ngưỡng phân luồng lấy từ bảng Ngưỡng phân luồng (SCR-40, D.dxmsRules), hồ sơ giữ bản chụp lúc tạo (P-34).
@@ -340,15 +355,14 @@ test('ngưỡng mặc định: điều kiện hiển thị < 160 / ≥ 160 tỷ 
   assert.equal(w.Flow.condOf('MS01.01'), '≥ 160 tỷ · căn cứ chưa được CT/TGĐ TĐ duyệt');
 });
 
-test('ngưỡng MS01 sửa thành 150 tỷ: hồ sơ 155 tỷ chọn MS01.03 không khớp, gợi ý MS01.01', () => {
+test('ngưỡng MS01 sửa thành 150 tỷ: hồ sơ 155 tỷ dự kiến MS01.03 — cổng đặt MS01.01 theo ngưỡng hồ sơ giữ', () => {
   const w = boot(null, 155);
   w.D.dxmsRules = TH150;
   w.Flow.create('MS01.03');
   assert.equal(w.Flow.condOf('MS01.03'), '< 150 tỷ · mọi loại căn cứ');
-  runUntil(w, '10a');
-  const r = w.Flow.matchCheck();
-  assert.equal(r.ok, false);
-  assert.equal(r.suggest, 'MS01.01');
+  runUntil(w, 12);
+  assert.equal(w.Flow.matchCheck().suggest, 'MS01.01');
+  assert.equal(w.Flow.state.vars.process, 'MS01.01');
 });
 
 // T6 — MS01.02 (ĐXMS-2026-0124) và MS01.03 (ĐXMS-2026-0098): docs/dtms/prototype-MS01-02-03-chuan-bi.md §3, §8.3.
@@ -372,13 +386,12 @@ test('dữ liệu theo ĐXMS: hồ sơ của 0124 / 0098 dùng bộ dữ liệu 
   assert.equal(w.D.caseInfo.total, 182.9, 'reset về bộ dữ liệu ĐXMS-2026-0117');
 });
 
-test('MS01.02: chạy tới phê duyệt; task 48 luôn "Không báo cáo" (lựa chọn Có bị khoá), bỏ 49–56 và nhánh < 160 tỷ', () => {
+test('MS01.02: chạy tới phê duyệt; task 48 chọn sẵn "Không báo cáo" theo căn cứ đã được phê duyệt (D-77), bỏ 49–56 và nhánh < 160 tỷ', () => {
   const w = bootCase('ĐXMS-2026-0124', 'MS01.02');
   const { Flow } = w;
+  assert.equal(Flow.state.vars.basisTD, true, 'ĐXMS-2026-0124 có basisTD');
   runUntil(w, 48);
-  const [yes, no] = Flow.choices(48);
-  assert.ok(yes.lockWhen(Flow.state.vars), 'Có báo cáo phải bị khoá');
-  assert.equal(no.lockWhen, undefined);
+  const [, no] = Flow.choices(48);
   assert.equal(Flow.mainChoice(48).label, no.label);
   runMain(w);
   assert.equal(Flow.state.status, 'approved');
@@ -463,6 +476,8 @@ test('bộ demo: mỗi cảnh của ba hồ sơ demo đặt đúng task, vai và
       if (s.start === 'END') { assert.equal(Flow.state.status, 'approved', `cảnh ${s.n}`); continue; }
       assert.equal(Flow.ci().dxms, s.kdt || s.dxms || set.dxms || set.kdt);
       assert.equal(Flow.state.vars.process === set.key || Flow.ci().flow === set.key, true, `cảnh ${s.n}: quy trình`);
+      // T29 B3a: cảnh Kho (việc ngoài sơ đồ) — token bước 7 thuộc ĐVĐX, Kho làm SCR-105.
+      if (s.go === 'ra-soat-kho') { assert.ok(Flow.state.tokens.find((t) => String(t.task) === '7'), `cảnh ${s.n}: hồ sơ ở bước 7`); continue; }
       assert.ok(Flow.state.tokens.find((t) => String(t.task) === String(s.start) && t.who === s.who), `cảnh ${s.n}: ${s.who} phải có việc ở task ${s.start}`);
     }
     for (const b of set.branches) {
@@ -1078,4 +1093,37 @@ test('T18 B4: chủ trương và KĐT đều thuộc Tập đoàn — lên Tập
   assert.equal(Flow.state.status, 'approved');
   assert.deepEqual(plain(Flow.state.vars.tdDocs.map((d) => [d.code, d.kind])), [['BM-01', 'CT'], ['BM-14', 'KDT'], ['BM-18', 'KDT']]);
   assert.deepEqual(plain([47, 48, 56, 60].map(Flow.taskStatus)), ['na', 'na', 'na', 'na']);
+});
+
+// T29 B16 — DX-10 (D-83): ba cấp chỉ huy duyệt trên ĐTMS; Kho, Thầu TTMS là tác nhân trên sơ đồ; MS02 giữ thứ tự cũ.
+test('DX-10: 5 → 5.1 Chỉ huy ĐVĐX → 7 Kho → 7.1 Chỉ huy Kho → 8–10 Thầu → 10.1 Chỉ huy Thầu → 12 → 13 → 16 → 16.1 → 17; trả lại về đúng bước', () => {
+  const w = boot();
+  const { Flow } = w;
+  const seen = [];
+  const at = (k) => Flow.state.tokens.find((t) => String(t.task) === String(k));
+  const go = (k, label) => kdtStep(w, k, label);
+  let n = 0;
+  while (!at(17) && n++ < 200) { const t = Flow.state.tokens[0]; seen.push([String(t.task), t.who]); kdtStep(w, t.task); }
+  const order = seen.map(([k]) => k);
+  const idx = (k) => order.indexOf(k);
+  assert.ok(idx('5') < idx('5.1') && idx('5.1') < idx('7') && idx('7') < idx('7.1') && idx('7.1') < idx('8'), order.join(' '));
+  assert.ok(idx('10') < idx('10.1') && idx('10.1') < idx('12') && idx('13') < idx('16') && idx('16') < idx('16.1'), order.join(' '));
+  const who = Object.fromEntries(seen);
+  assert.deepEqual([who['5.1'], who['7'], who['7.1'], who['8'], who['10'], who['10.1'], who['16.1']], ['hai', 'qlts', 'khoch', 'thau', 'thau', 'thauch', 'hai']);
+  // Trả lại: 16.1 → 16; 10.1 → 10; 7.1 → 7; 5.1 → 5.
+  const back = (k, to) => { const w2 = boot(); w2.Flow.jumpTo(k, 'minh'); kdtStep(w2, k, 'Trả lại'); assert.ok(w2.Flow.state.tokens.some((t) => String(t.task) === String(to)), `${k} trả lại → ${to}`); };
+  back('5.1', 5); back('7.1', 7); back('10.1', 10); back('16.1', 16);
+});
+
+test('DX-10 (b): người khởi tạo là Chỉ huy ĐVĐX → bỏ qua 5.1 (không áp dụng); MS02 không có bước DX-10', () => {
+  const w = boot();
+  const { Flow } = w;
+  Flow.state.vars.creatorCh = true;
+  runUntil(w, 7);
+  assert.ok(!Flow.state.history.some((h) => String(h.task) === '5.1'), 'không qua 5.1');
+  assert.equal(Flow.taskStatus('5.1'), 'na');
+  const a = w.D.flows.MS02;
+  for (const k of ['5.1', '7.1', '10.1', '16.1', 'g5']) assert.equal(a[k], undefined, `MS02 không có ${k}`);
+  assert.equal(a[7].who, 'minh');
+  assert.equal(a[16].next, 17);
 });

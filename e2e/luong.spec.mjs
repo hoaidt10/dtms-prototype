@@ -1,5 +1,5 @@
 // T17 — Phương án Gộp menu "Luồng mua sắm" (plan docs/dtms/prototype-T17-luong-mua-sam-chuan-bi.md v0.2).
-// B1: công tắc Tách / Gộp (D-25), SCR-95 Danh sách luồng, SCR-96 Tạo luồng (D-26 một lần Lưu, D-30 tệp căn cứ, D-27 nhân sự chỉ định theo bước), DMDC SCR-99.
+// B1: công tắc Tách / Gộp (D-25), SCR-95 Danh sách luồng, SCR-96 Tạo luồng (D-26 một lần Lưu, D-30 tệp căn cứ, D-75 nhân sự theo vai trò — T29 B12), DMDC SCR-99.
 // B2: SCR-97 Chi tiết luồng (6 tab), SCR-98 Cập nhật nhân sự — Thay / Bổ sung, bước đã xong khoá (D-28), văn bản đã ký giữ nguyên (D-29).
 import { test, expect } from '@playwright/test';
 import { fresh, lastToast } from './helpers.mjs';
@@ -17,11 +17,11 @@ const pick = async (page, id, value) => {
 };
 const upload = (page, names) => page.locator('#lf-file').setInputFiles(names.map((name) => ({ name, mimeType: 'application/pdf', buffer: Buffer.alloc(16) })));
 
-// Nhập Thông tin chung + chọn quy trình.
-async function fillGeneral(page, proc = 'MS01.01') {
+// Nhập Thông tin chung (T29 B1: không còn Quy trình; est < ngưỡng → luồng con dự kiến MS01.03).
+async function fillGeneral(page, est) {
   await page.locator('#lf-title').fill('Luồng mua sắm cho dự án A');
   await pick(page, 'lf-nv', 'NV-KHCN-2026-014');
-  await pick(page, 'lf-proc', proc);
+  if (est != null) { await page.locator('#lf-est').fill(String(est)); await page.locator('#lf-est').dispatchEvent('change'); }
 }
 
 test('D-25: công tắc Tách / Gộp — Gộp thay hai mục ĐXMS / Hồ sơ bằng Luồng mua sắm, route cũ vẫn mở', async ({ page }) => {
@@ -47,79 +47,73 @@ test('D-25: công tắc Tách / Gộp — Gộp thay hai mục ĐXMS / Hồ sơ 
   expect(page.errors).toEqual([]);
 });
 
-// Thêm một dòng chỉ định: chọn bước rồi chọn nhân sự.
-async function addRow(page, step, people) {
+// Thêm một dòng chỉ định (D-75): chọn Vai trò thực hiện rồi chọn một Người thực hiện.
+async function addRow(page, role, person) {
   await page.locator('[data-lf-add]').click();
-  const id = await page.locator('[data-lf-members] tbody tr').last().locator('[data-row-step]').getAttribute('data-row-step');
-  if (step) await pick(page, 'lf-step-' + id, step);
-  if (people.length) {
-    await page.locator(`[data-vsel="lf-m-${id}"]`).evaluate((e) => e.scrollIntoView({ block: 'center' }));
-    await page.locator(`[data-vsel="lf-m-${id}"]`).click();
-    for (const p of people) await page.locator(`.vsel-panel [data-opt="${p}"]`).click();
-    await page.keyboard.press('Escape');
-  }
+  const id = await page.locator('[data-lf-members] tbody tr').last().locator('[data-row-role]').getAttribute('data-row-role');
+  if (role) await pick(page, 'lf-role-' + id, role);
+  if (person) await pick(page, 'lf-m-' + id, person);
   return id;
 }
 
-test('SCR-96: Nhân sự thực hiện — mỗi dòng một bước (Bước, Tên công việc, Vai trò); Thêm / Xóa dòng; bước đã chọn không chọn lại', async ({ page }) => {
+test('SCR-96 (D-75): Nhân sự thực hiện — Vai trò thực hiện + Người thực hiện; mỗi vai trò một dòng; Thêm / Xóa dòng', async ({ page }) => {
   await gop(page, '#/luong/create');
-  await expect(page.locator('[data-lf-members]')).toContainText('Chọn Quy trình để chỉ định nhân sự');
-  await expect(page.locator('[data-lf-add]')).toBeDisabled();
-  await fillGeneral(page, 'MS01.01');
-  await expect(page.locator('[data-lf-members] .vcard-h')).not.toContainText('Bước không chỉ định');
-  await expect(page.locator('[data-lf-members] thead th')).toHaveText(['STT', 'Thao tác', 'Bước', 'Tên công việc', 'Vai trò thực hiện', 'Nhân sự thực hiện']);
-  // Mặc định không có dòng: không bước nào bắt buộc chỉ định.
-  await expect(page.locator('[data-lf-members] .vtable-empty')).toContainText('Chưa chỉ định nhân sự cho bước nào');
-  await addRow(page, '47', []);
+  await expect(page.locator('[data-lf-add]')).toBeEnabled();
+  await expect(page.locator('[data-vsel="lf-proc"]')).toHaveCount(0);
+  await fillGeneral(page);
+  await expect(page.locator('[data-lf-members] thead th')).toHaveText(['STT', 'Thao tác', 'Vai trò thực hiện', 'Người thực hiện']);
+  await expect(page.locator('[data-lf-members] .vtable-empty')).toContainText('Chưa chỉ định');
+  await addRow(page, 'R-TTMS', null);
   const row = page.locator('[data-lf-members] tbody tr').first();
-  await expect(row.locator('td:nth-child(3) .vsel-label')).toHaveText('47');
-  await expect(row.locator('td:nth-child(4)')).toHaveText(await page.evaluate(() => BPMN_TASKS['47'].name));
-  await expect(row.locator('td:nth-child(5)')).toHaveText('Phó Tổng Giám đốc');
-  // Danh sách bước: chỉ bước người dùng của quy trình; bước đã có dòng, bước hệ thống, bước không áp dụng không có.
-  const id2 = await addRow(page, null, []);
-  await page.locator(`[data-vsel="lf-step-${id2}"]`).evaluate((e) => e.scrollIntoView({ block: 'center' }));
-  await page.locator(`[data-vsel="lf-step-${id2}"]`).click();
-  await expect(page.locator('.vsel-panel [data-opt="47"]')).toHaveCount(0);
-  await expect(page.locator('.vsel-panel [data-opt="39"]')).toHaveCount(0);
-  await expect(page.locator('.vsel-panel [data-opt="2"]')).toHaveCount(0);
-  await expect(page.locator('.vsel-panel [data-opt="1"]')).toContainText('01 · Chọn căn cứ');
-  // Nhân sự theo vai trò của bước (bước 17 — Chuyên viên TTMS: Lan, Mai).
-  await page.locator('.vsel-panel [data-opt="17"]').click();
-  await page.locator(`[data-vsel="lf-m-${id2}"]`).click();
+  await expect(row.locator('td:nth-child(3) .vsel-label')).toHaveText('Chuyên viên TTMS');
+  // Người thực hiện theo vai trò (Chuyên viên TTMS: Lan, Mai), chọn một người.
+  await page.locator('[data-vsel="lf-m-1"]').click();
   await expect(page.locator('.vsel-panel .vsel-opt')).toHaveCount(2);
   await page.keyboard.press('Escape');
-  // Xóa dòng.
+  // Vai trò đã có dòng không chọn lại; CQCM (chọn ở bước 16) không có trong danh sách.
+  const id2 = await addRow(page, null, null);
+  await page.locator(`[data-vsel="lf-role-${id2}"]`).click();
+  await expect(page.locator('.vsel-panel [data-opt="R-TTMS"]')).toHaveCount(0);
+  await expect(page.locator('.vsel-panel [data-opt="R-CQCM"]')).toHaveCount(0);
+  await expect(page.locator('.vsel-panel [data-opt="R-DVDX-CH"]')).toContainText('Chỉ huy ĐVĐX');
+  await page.keyboard.press('Escape');
   await page.locator(`[data-lf-rdel="${id2}"]`).click();
   await expect(page.locator('[data-lf-members] tbody tr')).toHaveCount(1);
-  // Đổi sang MS01.03: bước 47 không áp dụng → dòng bị bỏ.
-  await pick(page, 'lf-proc', 'MS01.03');
-  await expect(page.locator('[data-lf-members] .vtable-empty')).toHaveCount(1);
+  // Đổi Giá trị dự kiến (luồng con dự kiến đổi) không bỏ dòng — vai trò không phụ thuộc luồng con.
+  await page.locator('#lf-est').fill('45.000.000.000'); await page.locator('#lf-est').dispatchEvent('change');
+  await expect(page.locator('[data-lf-members] tbody tr')).toHaveCount(1);
   expect(page.errors).toEqual([]);
 });
 
-test('D-30 / D-27: thiếu tệp của loại căn cứ bắt buộc / chưa chọn loại / dòng chỉ định thiếu bước hoặc người → không Lưu được', async ({ page }) => {
+test('D-30 / D-75: thiếu tệp của loại căn cứ bắt buộc / chưa chọn loại / dòng chỉ định thiếu vai trò hoặc người → không Lưu được', async ({ page }) => {
   await gop(page, '#/luong/create');
   await fillGeneral(page);
   await page.locator('#lf-save').click();
   await expect(page.locator('[data-lf-basis] .lf-err')).toContainText('Thiếu tài liệu căn cứ bắt buộc');
+  // Lỗi nằm cuối form: Lưu cuộn tới lỗi đầu tiên + toast, không để người dùng tưởng nút không chạy.
+  await expect(page.locator('[data-lf-basis] .lf-err')).toBeInViewport();
+  // Lỗi cấp card (chưa có tệp nào để tô đỏ): card viền đỏ, chữ lỗi đỏ (không bị .vcard .msg đè thành xám).
+  await expect(page.locator('[data-lf-basis]')).toHaveClass(/invalid/);
+  await expect(page.locator('[data-lf-basis] .lf-err')).toHaveCSS('color', 'rgb(238, 0, 51)');
+  expect(await lastToast(page)).toContain('Chưa lưu được');
   await expect(page.locator('[data-lf-basis] .lf-err')).toContainText('Kế hoạch mua sắm năm');
   await expect(page.locator('[data-lf-basis]')).not.toContainText('Loại bắt buộc');
   await upload(page, ['QD-1482-VHT.pdf']);
   await page.locator('#lf-save').click();
   await expect(page.locator('[data-lf-basis] .lf-err')).toContainText('Bạn cần chọn Loại tài liệu căn cứ');
   await pick(page, 'lf-type-1', 'QD_NV');
-  await addRow(page, null, []);
-  await addRow(page, '13', []);
+  await addRow(page, null, null);
+  await addRow(page, 'R-DVDX-CH', null);
   await page.locator('#lf-save').click();
   await expect(page.locator('[data-lf-basis] .lf-err')).toContainText('Kế hoạch mua sắm năm');
   await expect(page.locator('[data-lf-basis] .lf-err')).not.toContainText('QĐ giao nhiệm vụ');
-  await expect(page.locator('[data-row-step] .msg')).toContainText('Bạn cần chọn Bước');
-  await expect(page.locator('[data-row-people] .msg')).toContainText('ít nhất một người');
+  await expect(page.locator('[data-row-role] .msg')).toContainText('Bạn cần chọn Vai trò thực hiện');
+  await expect(page.locator('[data-row-people] .msg')).toContainText('Bạn cần chọn Người thực hiện');
   await expect(page).toHaveURL(/#\/luong\/create$/);
   expect(page.errors).toEqual([]);
 });
 
-test('D-26 / D-27: Lưu tạo ĐXMS + hồ sơ Phê duyệt + start; task 01 mở; tệp gắn đúng nơi; bước chỉ định giao người đã chọn', async ({ page }) => {
+test('D-26 / D-75: Lưu tạo ĐXMS + hồ sơ Phê duyệt + start; task 01 mở; tệp gắn đúng nơi; mọi bước của vai trò giao người đã chọn', async ({ page }) => {
   await gop(page, '#/luong/create');
   await fillGeneral(page);
   await upload(page, ['QD-1482-VHT.pdf', 'KH-mua-sam-2026.pdf', 'Bao-gia-so-bo.pdf']);
@@ -128,22 +122,23 @@ test('D-26 / D-27: Lưu tạo ĐXMS + hồ sơ Phê duyệt + start; task 01 m�
   await pick(page, 'lf-type-3', 'BAO_GIA');
   // Báo giá chỉ áp dụng cho hồ sơ → Gắn vào = Hồ sơ Phê duyệt, khoá.
   await expect(page.locator('[data-vsel="lf-tg-3"]')).toContainText('Hồ sơ Phê duyệt');
-  // Bước 17 (Chuyên viên TTMS) chỉ định Mai; bước 01 chỉ định Minh + Ngọc.
-  await addRow(page, '17', ['mai']);
-  await addRow(page, '1', ['minh', 'ngoc']);
+  // Chuyên viên TTMS → Mai (mọi bước của vai trò, vd 17, 42); Chuyên quản ĐVĐX → Ngọc (bước 01…).
+  await addRow(page, 'R-TTMS', 'mai');
+  await addRow(page, 'R-DVDX-CQ', 'ngoc');
   await page.locator('#lf-save').click();
   await expect(page).toHaveURL(/#\/task\/k\d+$/);
   expect(await lastToast(page)).toContain('Đã tạo luồng');
   const st = await page.evaluate(() => {
     const x = Flow.findDxms(Flow.state.dxms);
-    return { members: x.members, basis: x.basis.map((f) => f.type), uploads: Flow.ui.uploads.map((f) => f.name), proc: Flow.state.vars.process, t1: Flow.state.tokens[0] };
+    return { members: x.members, roles: x.roleMembers, basis: x.basis.map((f) => f.type), uploads: Flow.ui.uploads.map((f) => f.name), proc: Flow.state.vars.process, t1: Flow.state.tokens[0] };
   });
-  expect(st.members).toEqual({ 17: ['mai'], 1: ['minh', 'ngoc'] });
+  expect(st.roles).toEqual([{ role: 'R-TTMS', person: 'mai' }, { role: 'R-DVDX-CQ', person: 'ngoc' }]);
+  expect([st.members['17'], st.members['42'], st.members['1']]).toEqual([['mai'], ['mai'], ['ngoc']]);
   expect(st.basis).toEqual(['QD_NV', 'KH_NAM']);
   expect(st.uploads).toEqual(['Bao-gia-so-bo.pdf']);
   expect(st.proc).toBe('MS01.01');
   expect(String(st.t1.task)).toBe('1');
-  expect(st.t1.cands).toEqual(['minh', 'ngoc']);
+  expect(st.t1.cands).toEqual(['ngoc']);
   // Danh sách tài liệu của hồ sơ có tệp căn cứ gắn hồ sơ.
   await expect(page.locator('main')).toContainText('Bao-gia-so-bo.pdf');
   // Danh sách luồng: luồng mới ở đầu, có hồ sơ đang xử lý và người đang xử lý.
@@ -177,14 +172,14 @@ test('SCR-99: Loại tài liệu căn cứ trong Danh mục dùng chung, cột �
 });
 
 /* ---------- B2: SCR-97 Chi tiết luồng, SCR-98 Cập nhật nhân sự (D-28, D-29) ---------- */
-// Tạo luồng MS01.01 đủ căn cứ bắt buộc, chỉ định bước 17 → Mai; trả về mã ĐXMS.
+// Tạo luồng MS01.01 đủ căn cứ bắt buộc, chỉ định vai trò Chuyên viên TTMS → Mai (bước 17, 42…); trả về mã ĐXMS.
 async function newLuong(page) {
   await gop(page, '#/luong/create');
   await fillGeneral(page);
   await upload(page, ['QD-1482-VHT.pdf', 'KH-mua-sam-2026.pdf']);
   await pick(page, 'lf-type-1', 'QD_NV');
   await pick(page, 'lf-type-2', 'KH_NAM');
-  await addRow(page, '17', ['mai']);
+  await addRow(page, 'R-TTMS', 'mai');
   await page.locator('#lf-save').click();
   await expect(page).toHaveURL(/#\/task\/k\d+$/);
   return page.evaluate(() => Flow.state.dxms);
@@ -311,17 +306,12 @@ test('D-29 (3): thay người đã ký — văn bản đã ký giữ nguyên; ta
   await expect(bm03).toContainText('Đinh Thị Mai');
   await expect(bm03).toContainText('Đã ký');
   await expect(page.locator('.vtable tbody tr', { hasText: 'Đang trình ký' })).toHaveCount(0);
-  // Bước 17 đã xong → không có trong danh sách bước. Bước 42 (theo vai trò: Lan) thay bằng Mai.
+  // Bước 17 đã xong → không có trong danh sách bước. Bước 42 (vai trò Chuyên viên TTMS đã chỉ định Mai, D-75) thay bằng Lan.
   await page.evaluate((c) => Luong.membersDialog(c, null), code);
   await page.locator('.vmodal [data-vsel="um-step"]').click();
   await expect(page.locator('.vsel-panel [data-opt="17"]')).toHaveCount(0);
   await page.locator('.vsel-panel [data-opt="42"]').click();
-  await umPick(page, 'um-drop', ['lan']);
-  await umPick(page, 'um-add', ['mai']);
-  await expect(page.locator('[data-um-impact]')).toContainText('Không có văn bản người bị thay đã ký');
-  await page.locator('#um-ok').click();
-  // Thay lại Mai (đã ký BM-03 ở bước 17) → BM-03 giữ nguyên.
-  await page.evaluate((c) => Luong.membersDialog(c, '42'), code);
+  // Mai đã ký BM-03 ở bước 17 → BM-03 giữ nguyên.
   await umPick(page, 'um-drop', ['mai']);
   await umPick(page, 'um-add', ['lan']);
   await expect(page.locator('[data-um-impact]')).toContainText('BM-03 (Đinh Thị Mai');

@@ -113,7 +113,7 @@ test('SCR-41: Tìm kiếm nâng cao — ẩn ô tìm và ô Trạng thái; lọc
   await page.locator('.vsel-panel [data-opt="DELETED"]').click();
   await page.locator('[data-wfadv] button[type="submit"]').click();
   const rows = page.locator('.vtree tbody tr, table tbody tr');
-  await expect(page.locator('main tbody')).toContainText('DTMS_MS01_01');
+  await expect(page.locator('main tbody')).toContainText('DTMS_MS01');
   await expect(page.locator('main tbody')).not.toContainText('DTMS_MS01_02');
   await page.locator('[data-wf="adv-reset"]').click();
   await expect(page.locator('main tbody')).toContainText('DTMS_MS14');
@@ -206,7 +206,7 @@ test('SCR-73/74: Danh sách yêu cầu báo giá — tìm kiếm nâng cao, mở
   for (const c of codes) {
     await go(page, '#/ycbg/' + encodeURIComponent(c));
     await expect(page.locator('.pg-title')).toHaveText('Xem chi tiết yêu cầu báo giá');
-    await expect(page.locator('main .ginfo')).toContainText(c);
+    await expect(page.locator('main .ginfo').first()).toContainText(c);
   }
   await go(page, '#/ycbg/' + encodeURIComponent(codes[0]));
   await expect(card(page, 'Hạng mục yêu cầu báo giá').locator('tbody tr').first()).not.toContainText('Chưa có dữ liệu');

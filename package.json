@@ -8,7 +8,8 @@
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "report": "playwright show-report",
-    "e2e:shots": "node tools/e2e.mjs"
+    "e2e:shots": "node tools/e2e.mjs",
+    "release": "node tools/release.mjs --check"
   },
   "keywords": [],
   "author": "",

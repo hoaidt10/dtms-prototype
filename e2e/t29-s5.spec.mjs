@@ -81,15 +81,15 @@ test('F5, F8, F10: Chi tiết hồ sơ — Số, ngày Tờ trình; hộp thoạ
   expect(page.errors).toEqual([]);
 });
 
-test('F7, F8: bước lập dự thảo có 6 phụ lục "nếu có", tải lên thì Checklist Đủ; hồ sơ đang thẩm định hiện Chưa xem / Đang xem', async ({ page }) => {
+test('F7, F8: bước lập dự thảo — phụ lục chọn Có (B17, P-212) bắt buộc tải lên, Checklist Đủ; hồ sơ đang thẩm định hiện Chưa xem / Đang xem', async ({ page }) => {
   await fresh(page, '#/viec-cua-toi');
-  await page.evaluate(() => { Flow.jumpTo(12, 'minh', {}, 'MS01.01', undefined, null, false); });
+  await page.evaluate(() => { Flow.jumpTo(12, 'minh', { phuLuc: { plCtkt: 'Có' } }, 'MS01.01', undefined, null, false); });
   const tok = await page.evaluate(() => Flow.tokensFor('minh').find((t) => t.task === 12).id);
   await go(page, '#/task/' + tok);
-  await expect(page.locator('.doc-req.opt')).toHaveCount(6);
-  await expect(page.locator('.doc-req.opt').first()).toContainText('Phụ lục Danh mục mua sắm chi tiết');
+  await expect(page.locator('.doc-req', { hasText: 'Phụ lục' })).toHaveCount(1);
+  await expect(page.locator('.doc-req', { hasText: 'Phụ lục' })).toContainText('Phụ lục Chỉ tiêu kỹ thuật — bắt buộc');
   await page.locator('[data-req-up="plCtkt"]').click();
-  await expect(page.locator('.doc-req.opt')).toHaveCount(5);
+  await expect(page.locator('.doc-req', { hasText: 'Phụ lục' })).toHaveCount(0);
   const st = await page.evaluate(() => EVars.of(Flow.state.tokens.find((t) => t.task === 12)).checklist.find((c) => c.muc === 'Phụ lục Chỉ tiêu kỹ thuật').tinhTrang);
   expect(st).toBe('Đủ');
 
@@ -126,27 +126,35 @@ test('F1, F2, F4: Danh sách luồng (Gộp) — Tìm kiếm nâng cao theo SRS 
 });
 
 // Cách 1 (người dùng chọn 04/11): trường của màn Thêm mới TTr cũ trên Thêm mới luồng, không trái Locked decisions.
-test('SCR-96 cách 1: Loại biểu mẫu / Cấp phê duyệt / Hình thức trình ký chỉ đọc; AI kiểm tra Mật; bảng bóc tách chi phí; căn cứ pháp lý; người thẩm định → bước 16', async ({ page }) => {
+test('SCR-96 cách 1 + T29 B12: Loại biểu mẫu / Cấp phê duyệt trống tới khi có giá trị; Hình thức trình ký chọn được (D-74); AI kiểm tra Mật; bóc tách chi phí (đồng, gói thầu dropdown); căn cứ pháp lý', async ({ page }) => {
   await fresh(page, '#/viec-cua-toi');
   await page.evaluate(() => localStorage.setItem('dtms-proto-menu', 'gop'));
   await page.goto(page.url().replace(/#.*$/, '') + '#/luong/create');
   await page.locator('#lf-title').fill('Luồng mua sắm cho dự án A');
-  await expect(page.locator('#lf-d-form')).toHaveValue('Theo giá trị báo giá (bước 10)');
-  await page.locator('#lf-est').fill('45,5');
+  await expect(page.locator('#lf-d-form')).toHaveValue('');
+  await expect(page.locator('#lf-d-level')).toHaveValue('');
+  await page.locator('#lf-est').fill('45.500.000.000');
   await page.locator('#lf-est').blur();
-  await expect(page.locator('#lf-d-form')).toHaveValue(/dưới nhóm B/);
-  await expect(page.locator('#lf-d-level')).toHaveValue(/Tổng công ty/);
-  await expect(page.locator('#lf-d-sign')).toHaveValue(/VOffice/);
+  await expect(page.locator('#lf-d-form')).toHaveValue('ĐXMS có giá trị dưới nhóm B');
+  await expect(page.locator('#lf-d-level')).toHaveValue('Tổng công ty');
+  await expect(page.locator('[data-vsel="lf-sign"] .vsel-label')).toHaveText('VOffice');
   await pick(page, 'lf-sec', 'Có');
-  await expect(page.locator('#lf-d-sign')).toHaveValue(/Bản cứng/);
+  await expect(page.locator('[data-vsel="lf-sign"] .vsel-label')).toHaveText('Bản cứng');
+  // D-74: hồ sơ Mật vẫn chọn được VOffice.
+  await pick(page, 'lf-sign', 'VOffice');
+  await expect(page.locator('[data-vsel="lf-sign"] .vsel-label')).toHaveText('VOffice');
   await expect(page.locator('[data-sec-check]')).toContainText('AI kiểm tra quy tắc bảo mật');
+  await expect(page.locator('[data-sec-check]')).not.toContainText('Mục đích');
+  await expect(page.locator('#lf-purpose')).toHaveCount(0);
   await pick(page, 'lf-sec', 'Không');
   await expect(page.locator('[data-sec-check]')).toHaveCount(0);
 
   await expect(page.locator('[data-lf-cost]')).toContainText('Chọn Đề tài / dự án');
   await pick(page, 'lf-nv', 'NV-KHCN-2026-014');
-  await pick(page, 'lf-proc', 'MS01.01');
-  await expect(page.locator('#lf-d-form')).toHaveValue(/nhóm B trở lên/);
+  // T29 B1 (D-54): không chọn Quy trình — Loại biểu mẫu / Cấp phê duyệt theo Giá trị dự kiến và Căn cứ đã được phê duyệt.
+  await page.locator('#lf-est').fill('182900000000');
+  await page.locator('#lf-est').blur();
+  await expect(page.locator('#lf-d-form')).toHaveValue('ĐXMS có giá trị nhóm B trở lên');
   await expect(page.locator('#lf-d-level')).toHaveValue('Tập đoàn');
   await pick(page, 'lf-ctype', 'PL2');
   await pick(page, 'lf-cline', 'NV-KHCN-2026-014-1');
@@ -154,12 +162,11 @@ test('SCR-96 cách 1: Loại biểu mẫu / Cấp phê duyệt / Hình thức tr
   await expect(page.locator('[data-lf-cost] tbody tr')).toHaveCount(1);
   await expect(page.locator('[data-lf-cost] tbody')).toContainText('Quỹ phát triển KHCN');
   await page.locator('[data-lf-cqty]').fill('1');
-  await page.locator('[data-lf-cval]').fill('999');
-  await page.locator('[data-lf-cpkg]').fill('Gói thầu số 01 — Thiết bị đo kiểm');
+  await page.locator('[data-lf-cval]').fill('999.000.000.000');
+  const pkg = await page.locator('[data-lf-cost] [data-vsel^="lf-cpkg-"]').getAttribute('data-vsel');
+  await pick(page, pkg, 'Không hình thành gói thầu');
   await page.locator('#lf-legal').fill('QĐ 1482/QĐ-VHT ngày 12/03/2026 phê duyệt nhiệm vụ KHCN');
-  await pick(page, 'lf-rev', 'PC');
-  await page.locator('[data-lf-radd]').click();
-  await expect(page.locator('[data-lf-rev] tbody')).toContainText('Ban Pháp chế');
+  await expect(page.locator('[data-lf-rev]')).toHaveCount(0);
 
   const up = (names) => page.locator('#lf-file').setInputFiles(names.map((name) => ({ name, mimeType: 'application/pdf', buffer: Buffer.alloc(16) })));
   await up(['QD-1482-VHT.pdf', 'KH-mua-sam-2026.pdf']);
@@ -168,16 +175,17 @@ test('SCR-96 cách 1: Loại biểu mẫu / Cấp phê duyệt / Hình thức tr
   await page.locator('#lf-save').click();
   await expect(page.locator('[data-lf-cost] .msg')).toContainText('Vượt giá trị dự toán');
   await expect(page.locator('#lf-legal')).toHaveValue(/1482/);
-  await page.locator('[data-lf-cval]').fill('64');
+  await page.locator('[data-lf-cval]').fill('64.000.000.000');
   await page.locator('#lf-save').click();
   await expect(page).toHaveURL(/#\/task\/k\d+$/);
-  const st = await page.evaluate(() => { const x = Flow.findDxms(Flow.state.dxms); return { code: x.code, cost: x.cost, legal: x.legal, cq: Flow.cqcmSel() }; });
-  expect(st.cost[0]).toMatchObject({ type: 'PL2', value: 64, pkg: 'Gói thầu số 01 — Thiết bị đo kiểm' });
+  const st = await page.evaluate(() => { const x = Flow.findDxms(Flow.state.dxms); return { code: x.code, cost: x.cost, legal: x.legal, sign: x.sign }; });
+  expect(st.cost[0]).toMatchObject({ type: 'PL2', value: 64, pkg: 'Không hình thành gói thầu' });
   expect(st.legal).toContain('1482');
-  expect(st.cq).toEqual(['PC']);
+  expect(st.sign).toBe('VOffice');
   await go(page, '#/luong/' + encodeURIComponent(st.code));
   await page.locator('[data-ltab="can-cu"]').click();
-  await expect(page.locator('main')).toContainText('Gói thầu số 01 — Thiết bị đo kiểm');
+  await expect(page.locator('main')).toContainText('Không hình thành gói thầu');
+  await expect(page.locator('main')).toContainText('64.000.000.000');
   await expect(page.locator('.lf-legal')).toContainText('1482');
   expect(page.errors).toEqual([]);
 });
