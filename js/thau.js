@@ -26,27 +26,8 @@
   const qcOf = (k) => (k.law ? 'LUAT' : 'MSTX');
   const levelOf = (k) => k.level || 'TCT';
   const ownerOf = (k) => k.owner || k.creator;
-  /* Tiền bằng chữ cho dòng Tổng của bảng gói thầu (như hệ thống cũ, IMG 7212). */
-  const DIG = ['không', 'một', 'hai', 'ba', 'bốn', 'năm', 'sáu', 'bảy', 'tám', 'chín'];
-  function read3(n, full) {
-    const h = Math.floor(n / 100), t = Math.floor(n / 10) % 10, u = n % 10, w = [];
-    if (h || full) w.push(DIG[h] + ' trăm');
-    if (t > 1) { w.push(DIG[t] + ' mươi'); if (u) w.push(u === 1 ? 'mốt' : u === 5 ? 'lăm' : DIG[u]); }
-    else if (t === 1) { w.push('mười'); if (u) w.push(u === 5 ? 'lăm' : DIG[u]); }
-    else if (u) { if (h || full) w.push('lẻ'); w.push(DIG[u]); }
-    return w.join(' ');
-  }
-  function inWords(ty0) {
-    const v = Math.round((ty0 || 0) * 1e9);
-    if (!v) return 'Không đồng';
-    const parts = [];
-    [[1e9, 'tỷ'], [1e6, 'triệu'], [1e3, 'nghìn'], [1, '']].forEach(([d, unit]) => {
-      const n = Math.floor(v / d) % (d === 1e9 ? 1e6 : 1000);
-      if (n) parts.push((read3(n, parts.length > 0) + ' ' + unit).trim());
-    });
-    const t = parts.join(', ') + ' đồng';
-    return t[0].toUpperCase() + t.slice(1);
-  }
+  /* Tiền bằng chữ cho dòng Tổng của bảng gói thầu (như hệ thống cũ, IMG 7212) — dùng UI.inWords (chung với Tờ trình BM-01 / BM-09). */
+  const inWords = window.UI.inWords;
 
   /* ---------- Đối tượng nguồn (S4): giá trị được phê duyệt lấy từ hồ sơ Hoàn thành gần nhất của ĐXMS / KĐT ---------- */
   const SRC = { DXMS: 'Đề xuất mua sắm', KDT: 'Khoản đầu tư', DADT: 'Dự án đầu tư' };

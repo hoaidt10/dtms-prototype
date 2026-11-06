@@ -27,7 +27,7 @@ test('Lần 01: Ghi lại giữ Đang thẩm định → hoàn thành phiếu Y�
 
   // Khu 2: lần 01 mới có yêu cầu thẩm định, chưa có phiếu.
   await expect(card(page).locator('[data-td-lan]')).toHaveCount(1);
-  await expect(card(page).locator('[data-td-lan="1"]')).toContainText('TTMS gửi yêu cầu thẩm định');
+  await expect(card(page).locator('[data-td-lan="1"]')).toContainText('hệ thống gửi yêu cầu thẩm định');
 
   // Khu 4: Ghi lại mở eForm chỉ có Hủy / Ghi lại.
   await page.locator('[data-td-save]').click();

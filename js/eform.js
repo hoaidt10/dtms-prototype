@@ -38,7 +38,7 @@
       ['BM-02', 'Thuyết minh / phụ lục giải trình', 'Thuyết minh', 'BM-02_Thuyet-minh-giai-trinh.docx',
         [TA('Nội dung giải trình', 'noiDungGiaiTrinh', req), TA('Ý kiến tiếp thu', 'yKienTiepThu'), fld('FILE', 'Phụ lục kèm theo', 'phuLuc', { multiple: true })],
         created('02/03/2026 09:15:00')],
-      ['BM-03', 'Phiếu yêu cầu thẩm định', 'Phiếu', 'BM-03_Phieu-yeu-cau-tham-dinh.docx',
+      ['BM-03', 'Công văn đề nghị góp ý dự thảo hồ sơ ĐXMS', 'Công văn', 'BM-03_CV-de-nghi-gop-y-du-thao-DXMS.docx',
         [fld('TAGLIST', 'Danh sách CQCM', 'danhSachCqcm', { required: true, options: D.cqcm.map((c) => c.unit) }),
           fld('DATETIME', 'Hạn góp ý', 'hanGopY', { required: true, dateFormat: 'DD/MM/YYYY' }), TA('Nội dung đề nghị thẩm định', 'noiDungDeNghi')],
         created('02/03/2026 09:20:00', [cfg('v1.1', '30/06/2026 15:25:00', 'Danh sách CQCM chuyển sang Nhận nhiều chọn.')])],

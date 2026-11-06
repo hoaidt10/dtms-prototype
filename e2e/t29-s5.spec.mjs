@@ -172,11 +172,11 @@ test('SCR-96 cách 1 + T29 B12: Loại biểu mẫu / Cấp phê duyệt trống
   await up(['QD-1482-VHT.pdf', 'KH-mua-sam-2026.pdf']);
   await pick(page, 'lf-type-1', 'QD_NV');
   await pick(page, 'lf-type-2', 'KH_NAM');
-  await page.locator('#lf-save').click();
+  await page.locator('#lf-draft').click();
   await expect(page.locator('[data-lf-cost] .msg')).toContainText('Vượt giá trị dự toán');
   await expect(page.locator('#lf-legal')).toHaveValue(/1482/);
   await page.locator('[data-lf-cval]').fill('64.000.000.000');
-  await page.locator('#lf-save').click();
+  await page.locator('#lf-draft').click();
   await expect(page).toHaveURL(/#\/task\/k\d+$/);
   const st = await page.evaluate(() => { const x = Flow.findDxms(Flow.state.dxms); return { code: x.code, cost: x.cost, legal: x.legal, sign: x.sign }; });
   expect(st.cost[0]).toMatchObject({ type: 'PL2', value: 64, pkg: 'Không hình thành gói thầu' });

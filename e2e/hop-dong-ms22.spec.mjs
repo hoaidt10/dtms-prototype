@@ -177,7 +177,8 @@ test('MS22: hồ sơ con không đụng hồ sơ đang chạy ở luồng chính
   await expect(page.locator('.vtable tbody')).toContainText(main);
   // Mở việc hồ sơ chính rồi quay lại việc hợp đồng: đúng hồ sơ theo route
   await goto(page, '#/task/' + (await page.evaluate(() => Flow.tokensFor('admin')[0].id)));
-  await expect(page.locator('.ginfo')).toContainText('ĐXMS-2026-0117');
+  // T29 B19: việc bước 1 của hồ sơ chính mở màn Lập ĐXMS (Mã ĐXMS ở ô chỉ đọc).
+  await expect(page.locator('[data-luong-form] input[disabled]').first()).toHaveValue('ĐXMS-2026-0117');
   await goto(page, '#/task/' + (await page.evaluate(() => Flow.caseTokens('admin')[0].id)));
   await expect(page.locator('.ginfo')).toContainText(HD);
   // Tải lại trang trên màn hồ sơ con

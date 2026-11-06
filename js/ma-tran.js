@@ -69,9 +69,9 @@
     /* "Phê duyệt" (task 60) mở hộp thoại ký BM-08 nhưng là hành động phê duyệt, xét trước cờ ký. */
     if (/^phê duyệt/.test(l)) return 'PHE_DUYET';
     if (c && c.sign) return 'TRINH_KY';
-    if (/^không đồng ý/.test(l)) return 'TU_CHOI';
+    if (/^(không đồng ý|từ chối)/.test(l)) return 'TU_CHOI';
     if (/trả lại|chưa|không đạt|yêu cầu|kết thúc|thiếu/.test(l)) return 'TRA_LAI';
-    if (/^(gửi|trình)/.test(l)) return 'GUI_DUYET';
+    if (/^(gửi|trình|soạn thảo tờ trình)/.test(l)) return 'GUI_DUYET';
     if (/đồng ý|xác nhận|đạt|thống nhất|chấp nhận|báo cáo|hoàn tất/.test(l)) return 'XAC_NHAN';
     return 'HOAN_THANH';
   }

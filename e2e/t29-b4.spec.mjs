@@ -6,6 +6,8 @@ import { fresh, openForm, lastToast } from './helpers.mjs';
 const bg = (page) => page.locator('[data-bg-card]');
 
 test('P1: nhánh demo vượt căn cứ — bảng Đối chiếu phần căn cứ âm, câu đỏ; Báo giá đạt bị chặn, ở lại bước 10; chọn lại cơ sở giá thì xác nhận được', async ({ page }) => {
+  // Review nhi 06/11 #2: card Đánh giá báo giá tạm ẩn (D.quoteManual) — bật lại cờ thì chạy lại test này.
+  test.skip(true, 'D.quoteManual: card Đánh giá báo giá tạm ẩn');
   await fresh(page, '#/viec-cua-toi');
   await page.locator('#demo').click();
   await page.locator('[data-branch]', { hasText: 'Báo giá vượt phần căn cứ' }).click();
@@ -45,6 +47,8 @@ test('P1: nhánh demo vượt căn cứ — bảng Đối chiếu phần căn c�
 });
 
 test('P1: hạng mục Ngoài căn cứ không tính; văn bản bổ sung chưa có hạng mục liên kết thì không chặn', async ({ page }) => {
+  // Review nhi 06/11 #2: card Đánh giá báo giá tạm ẩn (D.quoteManual) — bật lại cờ thì chạy lại test này.
+  test.skip(true, 'D.quoteManual: card Đánh giá báo giá tạm ẩn');
   await fresh(page, '#/viec-cua-toi');
   const id = await page.evaluate(() => { Flow.jumpTo(10, 'minh', null, null, null, { basisMore: ['qd2'] }); const k = Flow.state.tokens.find((t) => t.task === 10); Flow.setPersona(k.who); return k.id; });
   await page.evaluate((i) => { location.hash = '#/task/' + i; }, id);

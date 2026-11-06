@@ -61,7 +61,7 @@ test('SCR-96 S8: bóc tách từ dự toán vào ĐXMS → bước 01 có dòng 
   await pick(page, 'lf-type-1', 'QD_NV');
   await pick(page, 'lf-type-2', 'KH_NAM');
   // Lưu đổi hash sang màn việc; không chờ điều hướng của trình duyệt (Playwright chờ mãi sau click ở kịch bản có cảnh báo).
-  await page.locator('#lf-save').click({ noWaitAfter: true });
+  await page.locator('#lf-draft').click({ noWaitAfter: true });
   await expect(page).toHaveURL(/#\/task\/k\d+$/);
   const st = await page.evaluate(() => { const x = Flow.findDxms(Flow.state.dxms); return { code: x.code, cost: x.cost }; });
   expect(st.cost.map((r) => [r.line, r.qty, r.value])).toEqual([[`${DT}-6`, 9, 0.3], [`${DT}-1`, 2, 50]]);

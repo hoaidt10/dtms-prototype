@@ -2,7 +2,7 @@
 // (BPMN MS01 v1.1, 61 task; luồng con MS01.01) tới phê duyệt, rồi thử 5 nhánh phụ.
 // Bản Playwright của tools/e2e.mjs (bỏ phần chụp ảnh từng màn).
 import { test, expect } from '@playwright/test';
-import { fresh, primary, lastToast, state, createDxms, createCase, openForm, aiDecide, closeForm, uploadReq } from './helpers.mjs';
+import { fresh, primary, lastToast, state, createDxms, createCase, openForm, aiDecide, closeForm, uploadReq, aiApply } from './helpers.mjs';
 
 test('SCR-28 → SCR-25: tạo ĐXMS không start quy trình; Tạo hồ sơ khoá ĐXMS, chọn sẵn loại Phê duyệt; Quy trình MS01 chỉ đọc; Lưu là start task 01', async ({ page }) => {
   await fresh(page, '#/dxms');
@@ -44,15 +44,11 @@ test('SCR-28 → SCR-25: tạo ĐXMS không start quy trình; Tạo hồ sơ kho
   await page.locator('#c-save').click();
   await expect(page).toHaveURL(/#\/task\//);
   expect(await lastToast(page)).toContain('Thêm mới thành công');
-  await expect(page.locator('.tmain .ginfo')).toContainText('MS01 — Phê duyệt đề xuất mua sắm');
-  await expect(page.locator('.tmain .ginfo')).toContainText('Mã ĐXMSĐXMS-2026-0117');
-  // Task 1 (T29 B12, D-81): căn cứ và phần còn khả dụng là khối chỉ xem ở Thông tin chung; hộp thoại Hoàn thành chỉ xác nhận.
-  await expect(page.locator('.tmain > section > h3, .tmain > section > .vcard-h > h3')).toHaveText(['Thông tin chung', 'Quy trình', 'Danh sách tài liệu', 'Văn bản đầu ra']);
-  const f1 = await openForm(page);
-  await expect(f1.locator('.vmodal-h h3')).toHaveText('Hoàn thành');
-  await expect(f1.locator('[data-ef-field="basisDoc"], [data-ef-field="basisType"]')).toHaveCount(0);
+  // Task 1 (T29 B19, DX-11): việc bước 1 mở màn Lập ĐXMS (bước 1–5), không mở hộp thoại; căn cứ và phần còn khả dụng hiện ở phần bước 1.
+  await expect(page.locator('[data-luong-form]')).toHaveCount(1);
+  await expect(page.locator('[data-luong-form] input[disabled]').first()).toHaveValue('ĐXMS-2026-0117');
+  await expect(page.locator('.vmodal.ef')).toHaveCount(0);
   await expect(page.locator('[data-basis-avail] tbody').first()).toContainText('1482/QĐ-VHT');
-  await closeForm(page);
   const s = await page.evaluate(() => ({ code: Flow.ci().code, dxms: Flow.ci().dxms, flow: Flow.ci().flow, tok: Flow.state.tokens.map((t) => [t.task, t.who]) }));
   expect(s).toEqual({ code: 'HS-2026-0117', dxms: 'ĐXMS-2026-0117', flow: 'MS01.01', tok: [[1, 'minh']] });
   // ĐXMS giờ Đang phê duyệt, không xoá được; Danh sách hồ sơ của ĐXMS có hồ sơ vừa tạo.
@@ -118,6 +114,14 @@ test('luồng chính tới phê duyệt', async ({ page }) => {
     }
     const tok = s.mine[0];
     await page.evaluate((id) => { location.hash = `#/task/${id}`; }, tok.id);
+    // T29 B19 (DX-11): bước 1 / 4 / 5 là màn Lập ĐXMS — Chấp nhận mọi gợi ý AI rồi Gửi.
+    await expect(page.locator('.task-acts [data-act], [data-luong-form]').first()).toBeVisible();
+    if (await page.locator('[data-luong-form]').count()) {
+      await aiApply(page);
+      await page.locator('#lf-save').click();
+      await expect(page).toHaveURL(/#\/viec-cua-toi$/);
+      continue;
+    }
     await expect(page.locator('.task-acts [data-act]').first()).toBeVisible();
 
     // Điều kiện trước của kịch bản
@@ -125,14 +129,18 @@ test('luồng chính tới phê duyệt', async ({ page }) => {
     if (tok.task === 7) await page.evaluate(() => RaSoatKho.has('p2') || RaSoatKho.fillSample());
     if (tok.task === 10) await uploadReq(page, 'quote_');
     // DX-03: lần YCBG đầu AI Không đạt — bấm "Báo giá đạt" vẫn quay lại task 09 (cổng đọc quoteCheck).
-    if (tok.task === 10 && (await page.evaluate(() => Flow.doneCount(9))) === 1) {
+    // Review nhi 06/11 #2 (D.quoteManual): không còn AI kiểm tra báo giá — Thầu tự quyết Báo giá đạt.
+    if (tok.task === 10 && !(await page.evaluate(() => D.quoteManual)) && (await page.evaluate(() => Flow.doneCount(9))) === 1) {
       await primary(page);
       expect(await lastToast(page), 'T10 lần 1: AI Không đạt → về task 09').toContain('Không đạt');
       continue;
     }
-    // DX-01: thiếu "Sự cần thiết" → AI kiểm tra Không đạt, hồ sơ ở lại task 12; chọn Chấp nhận gợi ý AI rồi gửi lại.
+    // DX-01: thiếu "Sự cần thiết" → AI kiểm tra Không đạt, hồ sơ ở lại task 12; AI điền ô trống (review nhi 06/11 #35) rồi gửi lại.
     if (tok.task === 12 && !(await page.evaluate(() => !!Flow.ui.necessity))) {
-      await primary(page);
+      const f0 = await openForm(page);
+      await f0.locator('[data-ef="mucDich"]').fill('Mục đích mua sắm.');
+      await f0.locator('[data-ef="phamVi"]').fill('Danh mục theo bóc tách.');
+      await f0.locator('#ok').click();
       expect(await lastToast(page), 'T12 phải báo AI Fail khi thiếu Sự cần thiết').toContain('Fail');
       await page.evaluate((id) => { location.hash = `#/task/${id}`; }, tok.id);
       const f = await openForm(page);
@@ -141,12 +149,18 @@ test('luồng chính tới phê duyệt', async ({ page }) => {
       await f.locator('#ok').click();
       continue;
     }
-    // E3: tài liệu bắt buộc tải lên ở Danh sách tài liệu.
+    // E3: tài liệu bắt buộc — tải lên ngay trong popup (Tài liệu đính kèm), cùng khoá với Danh sách tài liệu.
     if (tok.task === 16 && !(await page.evaluate(() => !!Flow.ui.bm03File))) {
       await primary(page);
       expect(await lastToast(page), 'T16 phải yêu cầu đính kèm BM-03').toContain('BM-03');
-      await page.locator('.vmodal.ef [data-close]').first().click();
-      await page.locator('[data-req-up="bm03File"]').click();
+      const f = page.locator('.vmodal.ef');
+      await expect(f.locator('.ef-docs'), 'Popup T16 phải có chỗ tải BM-03').toContainText('BM-03');
+      await f.locator('[data-ef-doc="bm03File"]').setInputFiles({ name: 'BM-03.pdf', mimeType: 'application/pdf', buffer: Buffer.from('x') });
+      await expect(f.locator('.ef-docs')).toContainText('Đã tải lên');
+      await f.locator('#ok').click();
+      await expect(f).toHaveCount(0);
+      expect(await page.evaluate(() => !!Flow.ui.bm03File)).toBe(true);
+      continue;
     }
     if (tok.task === 32) await page.locator('[data-req-up="minutesFile"]').click();
     if (tok.task === 51) await page.locator('[data-req-up="bm06File"]').click();
@@ -157,7 +171,8 @@ test('luồng chính tới phê duyệt', async ({ page }) => {
   const fin = await page.evaluate(() => ({ s: Flow.state.status, kpi: Flow.kpiUsed(), q9: Flow.doneCount(9), checks: Flow.state.vars.checks.map((c) => c.ok) }));
   expect(fin.s, 'Luồng chính phải tới phê duyệt').toBe('approved');
   expect(fin.checks, 'Cổng kiểm tra khớp qua 1 lần, khớp').toEqual([true]);
-  expect(fin.q9, 'YCBG phải gửi 2 lần').toBe(2);
+  // Review nhi 06/11 #2: không còn AI kiểm tra báo giá → YCBG gửi một lần (Thầu tự chọn Không đạt khi cần).
+  expect(fin.q9, 'Số lần gửi YCBG').toBe(await page.evaluate(() => (D.quoteManual ? 1 : 2)));
   expect(fin.kpi, 'KPI phải ≤ 20 NLV').toBeLessThanOrEqual(20);
   expect(page.errors).toEqual([]);
 });
@@ -166,7 +181,7 @@ test('luồng chính tới phê duyệt', async ({ page }) => {
 // T29 B1: bỏ nhánh 10a / 10b (D-54) — các nhánh lùi một vị trí.
 const branches = [
   [0, 13, 'Không đồng ý', 12],
-  [1, 17, 'Chưa đúng', 16],
+  [1, 17, 'Từ chối', 16],
   [2, 28, 'Gửi giải trình', 31],
   [3, 48, 'Không báo cáo', 58],
   [4, 60, 'Yêu cầu hoàn chỉnh', 26],

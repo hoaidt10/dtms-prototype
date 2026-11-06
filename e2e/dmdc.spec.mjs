@@ -1,7 +1,7 @@
 // T8 — Danh mục dùng chung (D-14: menu cấp cha): Tổng quan SCR-30 + khuôn danh mục (thử với Nguồn vốn SCR-32) theo ecat common-catalog;
 // B2 7 danh mục SCR-33…39; B3 Nhà cung cấp SCR-31 (hộp thoại lg, tìm kiếm nâng cao, nhập Excel); B4 Ngưỡng phân luồng SCR-40.
 import { test, expect } from '@playwright/test';
-import { fresh, lastToast, openForm, closeForm } from './helpers.mjs';
+import { fresh, lastToast, openForm, closeForm, aiApply } from './helpers.mjs';
 
 const BA = /SCR-\d|UC-\d|task \d|Prototype|minh hoạ|giả lập/i;
 const mainText = (page) => page.evaluate(() => {
@@ -627,29 +627,26 @@ test('B5 §5.4: ngưỡng dừng hoạt động không áp dụng; cổng kiểm
   expect(page.errors).toEqual([]);
 });
 
-test('B5 §6: Nguồn vốn ở task 04 chọn từ danh mục; nguồn vốn dừng hoạt động không hiện; mặc định theo gợi ý AI (Quỹ phát triển khoa học công nghệ)', async ({ page }) => {
+test('B5 §6: Nguồn vốn ở bước 04 (màn Lập ĐXMS, T29 B19) chọn từ danh mục; nguồn vốn dừng hoạt động không hiện; mặc định theo gợi ý AI (Quỹ phát triển khoa học công nghệ)', async ({ page }) => {
   await asAdmin(page, '#/viec-cua-toi');
   await openTask(page, 4, 'minh');
-  // eForm task 04: ô Nguồn vốn = select, options đọc từ biến fundOptions (E1); mặc định là nguồn vốn AI trích từ căn cứ (G2 mặc định Chấp nhận).
-  await openForm(page);
-  await expect(page.locator('[data-vsel="ef-fund"] .vsel-label')).toHaveText('Quỹ phát triển khoa học công nghệ');
-  expect(await optLabels(page, 'ef-fund')).toEqual(['Quỹ phát triển khoa học công nghệ', 'Đầu tư phát triển', 'Chi phí sản xuất kinh doanh', 'Vốn góp của chủ sở hữu', 'Chi phí thường xuyên']);
-  await pick(page, 'ef-fund', 'Chi phí sản xuất kinh doanh');
-  await expect(page.locator('[data-vsel="ef-fund"] .vsel-label')).toHaveText('Chi phí sản xuất kinh doanh');
-  await closeForm(page);
-  // Hồ sơ đang giữ Chi phí sản xuất kinh doanh; Quản trị dừng hoạt động Chi phí sản xuất kinh doanh: form vẫn hiện giá trị đang giữ; lựa chọn mới không còn Chi phí sản xuất kinh doanh (P-33).
+  await aiApply(page);
+  // Màn Lập ĐXMS: ô Nguồn vốn chọn từ danh mục Nguồn vốn; mặc định là nguồn vốn AI trích từ căn cứ.
+  await expect(page.locator('[data-vsel="lf-fund"] .vsel-label')).toHaveText('Quỹ phát triển khoa học công nghệ');
+  expect(await optLabels(page, 'lf-fund')).toEqual(['Quỹ phát triển khoa học công nghệ', 'Đầu tư phát triển', 'Chi phí sản xuất kinh doanh', 'Vốn góp của chủ sở hữu', 'Chi phí thường xuyên']);
+  await pick(page, 'lf-fund', 'Chi phí sản xuất kinh doanh');
+  await expect(page.locator('[data-vsel="lf-fund"] .vsel-label')).toHaveText('Chi phí sản xuất kinh doanh');
+  // Hồ sơ đang giữ Chi phí sản xuất kinh doanh; Quản trị dừng hoạt động Chi phí sản xuất kinh doanh: màn vẫn hiện giá trị đang giữ; lựa chọn mới không còn Chi phí sản xuất kinh doanh (P-33).
   await page.evaluate(() => Flow.setUi('fund', 'SXKD'));
   await page.evaluate(() => { Flow.setPersona('qt'); location.hash = '#/dmdc/nguon-von'; });
   await row(page, 'SXKD').locator('[data-cat-tg]').click();
   await page.locator('.vconfirm #cf-ok').click();
   await expect(row(page, 'SXKD').locator('.vswitch')).not.toHaveClass(/on/);
   await page.evaluate(() => { Flow.setPersona('minh'); location.hash = '#/task/' + Flow.state.tokens.find((k) => k.task === 4).id; });
-  await openForm(page);
-  await expect(page.locator('[data-vsel="ef-fund"] .vsel-label')).toHaveText('Chi phí sản xuất kinh doanh');
-  await closeForm(page);
-  await page.evaluate(() => Flow.setUi('fund', 'KHCN'));
-  await openForm(page);
-  expect(await optLabels(page, 'ef-fund')).toEqual(['Quỹ phát triển khoa học công nghệ', 'Đầu tư phát triển', 'Vốn góp của chủ sở hữu', 'Chi phí thường xuyên']);
+  await expect(page.locator('[data-vsel="lf-fund"] .vsel-label')).toHaveText('Chi phí sản xuất kinh doanh');
+  await page.evaluate(() => { Flow.setUi('fund', 'KHCN'); location.hash = '#/viec-cua-toi'; });
+  await page.evaluate(() => { location.hash = '#/task/' + Flow.state.tokens.find((k) => k.task === 4).id; });
+  expect(await optLabels(page, 'lf-fund')).toEqual(['Quỹ phát triển khoa học công nghệ', 'Đầu tư phát triển', 'Vốn góp của chủ sở hữu', 'Chi phí thường xuyên']);
   expect(page.errors).toEqual([]);
 });
 
@@ -689,11 +686,9 @@ test('B5 §6: báo giá lấy tên và loại tiền của nhà cung cấp từ 
   await expect(dlg).toHaveCount(0);
   await openTask(page, 10, 'minh');
   const f = await openForm(page);
-  const q = f.locator('.ef-table', { hasText: 'So sánh báo giá' });
-  const names = [...new Set(await q.locator('tbody tr td:first-child').allInnerTexts())];
-  expect(names).toEqual(['Alpha Tech', 'NCC Beta', 'NCC Gamma']);
-  await expect(q.locator('tbody tr', { hasText: 'NCC Gamma' }).first()).toContainText('USD');
-  await expect(q.locator('tbody tr', { hasText: 'Alpha Tech' }).first()).toContainText('VNĐ');
+  // Review nhi 06/11 #3: popup không còn bảng so sánh — tên NCC từ danh mục ở dòng tệp báo giá (Tài liệu đính kèm).
+  await expect(f.locator('.ef-docs')).toContainText('Báo giá — Alpha Tech');
+  await expect(f.locator('.ef-docs')).toContainText('Báo giá — NCC Gamma');
   expect(page.errors).toEqual([]);
 });
 

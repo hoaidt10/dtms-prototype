@@ -20,9 +20,10 @@
   const fmtNum = (v, d) => (v == null || Number.isNaN(v) ? '' : Number(v).toLocaleString('vi-VN', { maximumFractionDigits: d == null ? 2 : d }));
 
   /* Màn việc nào có card: bước 10 của MS01 đang chạy (không KĐT, hợp đồng, Điều chỉnh MS02). */
-  const applies = (tok) => !!tok && String(tok.task) === '10' && !Flow.state.kdt && !Flow.state.parent && !Flow.state.vars.adj && !!window.Ycbg;
+  /* Review nhi 06/11 #2: D.quoteManual — tạm ẩn card (Thầu so sánh, đánh giá ngoài hệ thống); không chặn Báo giá đạt theo card. */
+  const applies = (tok) => !D.quoteManual && !!tok && String(tok.task) === '10' && !Flow.state.kdt && !Flow.state.parent && !Flow.state.vars.adj && !!window.Ycbg;
   /* T29 B16 — DX-10 (f): bước 10.1 Chỉ huy Thầu TTMS xem card báo giá (chỉ xem) để duyệt. */
-  const viewOnly = (tok) => !!tok && String(tok.task) === '10.1' && !Flow.state.kdt && !Flow.state.parent && !!window.Ycbg;
+  const viewOnly = (tok) => !D.quoteManual && !!tok && String(tok.task) === '10.1' && !Flow.state.kdt && !Flow.state.parent && !!window.Ycbg;
   const yNow = () => { const ys = window.Ycbg.ycbgOf(Flow.state.dxms) || []; return ys[ys.length - 1] || null; };
   const items = () => D.items.filter((i) => i.buy > 0);
 
@@ -56,7 +57,7 @@
   function basisCheck(m) {
     m = m || model();
     const docs = D.basisDocsFor(Flow.state.vars.process), u = Flow.ui || {};
-    const main = docs.find((d) => d.id === (u.basisDoc || D.caseRef.basisDoc)) || null;
+    const main = (!Flow.state.kdt && window.EVars && window.EVars.h.basisSel().doc) || docs.find((d) => d.id === (u.basisDoc || D.caseRef.basisDoc)) || null;
     const more = (u.basisMore || []).filter((id) => !main || id !== main.id).map((id) => docs.find((d) => d.id === id)).filter(Boolean);
     const r2 = (v) => Math.round(v * 100) / 100;
     return (main ? [main] : []).concat(more).map((d) => {

@@ -14,8 +14,22 @@
   const dash = '<span class="dash">-</span>';
   const num = (v) => (v == null || v === '' ? dash : esc(Number(v).toLocaleString('vi-VN')));
   const clamp = (v) => (v ? `<span class="clamp">${esc(v)}</span>` : dash);
-  const head2 = (groups, cols) => `<tr><th class="ord" rowspan="2">STT</th>${groups.map(([h, n, cls]) => `<th colspan="${n}" class="c ${cls || ''}">${h}</th>`).join('')}</tr>
-    <tr>${cols.map(([h, w, a]) => `<th class="${a || ''}" style="width:${w}px;min-width:${w}px">${h}</th>`).join('')}</tr>`;
+  /* Tiêu đề nhóm cột. Nhóm có thể có nhóm con: [nhãn, số cột, class, [[nhãn con | null, số cột], …]] — nhãn con null = cột lá nằm thẳng dưới nhóm
+     (vd Kết quả rà soát ⊃ Hợp đồng đầu vào, BM-RSTK) → tiêu đề ba tầng. */
+  const head2 = (groups, cols) => {
+    const th = ([h, w, a], rs) => `<th class="${a || ''}" ${rs > 1 ? `rowspan="${rs}"` : ''} style="width:${w}px;min-width:${w}px">${h}</th>`;
+    const deep = groups.some((g) => g[3]), D3 = deep ? 3 : 2;
+    let i = 0, r2 = '', r3 = '';
+    groups.forEach(([, n, , subs]) => {
+      (subs || [[null, n]]).forEach(([h, k]) => {
+        const leaf = cols.slice(i, i + k); i += k;
+        if (h == null) r2 += leaf.map((c) => th(c, D3 - 1)).join('');
+        else { r2 += `<th colspan="${k}" class="c">${h}</th>`; r3 += leaf.map((c) => th(c, 1)).join(''); }
+      });
+    });
+    return `<tr><th class="ord" rowspan="${D3}">STT</th>${groups.map(([h, n, cls]) => `<th colspan="${n}" class="c ${cls || ''}">${h}</th>`).join('')}</tr>
+    <tr>${r2}</tr>${deep ? `<tr>${r3}</tr>` : ''}`;
+  };
   const table2 = (groups, cols, rows, cell, foot) => `<div class="vtable-vp"><table class="vtable rsk-t"><thead>${head2(groups, cols)}</thead>
     <tbody>${rows.length ? rows.map((r, i) => `<tr><td class="ord">${i + 1}</td>${cell(r, i)}</tr>`).join('') : `<tr><td class="vtable-empty" colspan="${cols.length + 1}"><img src="assets/empty-table.svg" alt=""><div>Không có dữ liệu</div></td></tr>`}</tbody>${foot || ''}</table></div>`;
   const kv = (k, v) => `<div><div class="k">${k}</div><div class="v clamp">${v || '-'}</div></div>`;
@@ -61,7 +75,8 @@
   const pendingFor = (pid) => (canKho(pid) && pending() && !inFlow() ? 1 : 0);
   const stateText = () => (!done() ? ['Chờ kết quả rà soát', 'info'] : tok7() ? ['Đã có kết quả — chờ đơn vị xác nhận bước 7', 'success'] : ['Đã chốt ở bước 7', 'default']);
 
-  const GROUPS = [['Yêu cầu', 4], ['Kết quả rà soát', 6, 'rsk-g'], ['Hợp đồng đầu vào', 5], ['Ghi chú', 1]];
+  /* Hợp đồng đầu vào là nhóm con của Kết quả rà soát (góp ý người dùng 06/11). */
+  const GROUPS = [['Yêu cầu', 4], ['Kết quả rà soát', 11, 'rsk-g', [[null, 6], ['Hợp đồng đầu vào', 5]]], ['Ghi chú', 1]];
   const COLS = [['Mô tả', 240], ['ĐVT', 70], ['Số lượng', 90, 'r'], ['Đang giữ cho ĐXMS khác', 170], ['Mã hàng trong kho', 140], ['Nhà sản xuất', 140], ['SL tồn kho', 100, 'r'],
     ['SL xuất kho', 100, 'r'], ['SL điều chuyển', 110, 'r'], ['SL cần mua', 100, 'r'], ['Nguyên giá (VNĐ)', 140, 'r'], ['Thuế GTGT', 100, 'r'], ['Số hợp đồng', 140],
     ['Nguồn gốc Đề tài / Dự án', 200], ['Đơn giá nhận (VNĐ)', 140, 'r'], ['Vị trí (thùng)', 120]];
@@ -77,13 +92,17 @@
         '<b>Tồn khả dụng</b> = SL tồn kho − Đang giữ cho ĐXMS khác, không âm (BR-DXMS-03-02); SL xuất kho không vượt Tồn khả dụng và Số lượng yêu cầu. Bỏ trống Mã hàng = hạng mục không quản lý tồn (dịch vụ). Bước 7 của ĐVĐX chỉ xác nhận được khi Kho đã nhập kết quả.',
         '<b>Biên bản rà soát vật tư, linh kiện tồn kho</b> (C1, D-56): hệ thống sinh theo mẫu BM-RSTK từ kết quả (số …/BBRS-MS, thành phần TTMS + đơn vị đề xuất, căn cứ phiếu yêu cầu, câu hiệu lực giữ hàng 30 ngày), đưa vào Danh sách tài liệu của hồ sơ. Chân ký <b>GIẢ LẬP P-187</b> (Thủ kho → Chỉ huy bộ phận QLTS → GĐ TTMS, theo đề xuất trong ghi âm; biên bản thật chỉ có NV QLTS và GĐ TTMS); bước ký chờ DX-07. <b>Phiếu yêu cầu rà soát</b> (C2): hệ thống sinh khi gửi yêu cầu ở bước 6 — GIẢ LẬP P-186.',
         '<b>Tệp kết quả</b> (biên bản kiểm đếm có ký) bắt buộc. <b>GIẢ LẬP P-196:</b> số tồn do Kho nhập tay (BM-RSTK cho thấy kho dùng sổ Excel); khi có tích hợp WMS / QLTS thì điền sẵn (DTMS_Q_0080).',
+        '<b>T29 B19 (góp ý 06/11):</b> hộp thoại Cập nhật kết quả có nút <b>Toàn màn hình</b> (bảng 16 cột); <b>Hợp đồng đầu vào</b> là nhóm con của <b>Kết quả rà soát</b> (tiêu đề ba tầng). Ô <b>Tệp kết quả</b> đặt trên bảng: tải tệp Excel theo mẫu BM-RSTK thì hệ thống đọc và điền bảng, người nhập sửa lại trước khi Lưu. <b>GIẢ LẬP</b>: prototype điền số mẫu khi tệp là .xlsx / .xls / .csv; thật — BE đọc theo cột cố định của mẫu, khớp dòng theo STT, trả lỗi từng ô; tệp PDF / ảnh chỉ đính kèm.',
       ],
       q: ['P-196', 'P-186', 'P-187'], src: 'my-task-detail (khung) · hộp thoại nhập bảng · BM-RSTK · SRS-DXMS 3.1.3.1',
     };
+    /* Review nhi 06/11 #21, #31–33: Kho nhập ngay trên màn, không còn hộp thoại; MS01: Gửi Chỉ huy Kho = lưu kết quả và hoàn thành bước 7; MS02 (việc ngoài sơ đồ): Lưu. */
+    info.notes.unshift('<b>Review nhi 06/11 #21, #31–33:</b> màn mở từ nút <b>Cập nhật kết quả rà soát</b> trên việc Bước 7 ở Việc của tôi. Tệp kết quả và bảng nhập, sửa ngay trên màn (bỏ hộp thoại, thay ghi chú hộp thoại của T29 B19). <b>Gửi Chỉ huy Kho</b> lưu kết quả và chuyển bước 7.1, không còn nút Hoàn thành riêng. Hồ sơ MS02 giữ việc ngoài sơ đồ: nút Lưu.');
     const can = canKho(pid) && !!t;
-    const right = can ? `<button type="button" class="vbtn primary" data-rsk-open>${icon('edit')} Cập nhật kết quả rà soát</button>` : '';
+    if (can && ED !== t.id) initEdit(t);
+    const right = can ? `<div class="task-acts"><button type="button" class="vbtn secondary" data-rsk-draft>Lưu nháp</button><button type="button" class="vbtn primary" data-rsk-save>${inFlow() ? 'Gửi Chỉ huy Kho' : 'Lưu'}</button></div>` : '';
     const st = stateText();
-    const head = window.Screens.head({ title: 'Rà soát tồn kho', back: 'viec-cua-toi', info, right });
+    const head = window.Screens.head({ title: 'Rà soát tồn kho', back: t && can && inFlow() ? `task/${t.id}` : 'viec-cua-toi', info, right });
     if (!live() && !done()) return `<div class="pg">${head}<section class="vcard pad24"><div class="empty-t">Không có hồ sơ cần rà soát tồn kho.</div></section></div>`;
     const since = t ? t.since : (d.kq || {}).t || 0;
     const R = rows();
@@ -98,14 +117,14 @@
         ${kv('Trạng thái', badge(st[0], st[1]))}${kv('Kết quả rà soát', res)}${kv('Phiếu yêu cầu rà soát', `Số ${esc(pycNo())} — hệ thống gửi ở bước 06`)}
       </div></section>
       <section class="vcard"><div class="vcard-h"><h3>Kết quả rà soát vật tư, linh kiện tồn kho</h3><span class="cap">Theo biểu mẫu biên bản rà soát (BM-RSTK) · hạng mục ĐVĐX đã bóc tách ở bước 05</span></div>
-        ${table2(GROUPS, COLS, R, (r) => `<td>${clamp(r.name)}</td><td>${esc(r.uom)}</td><td class="r num">${num(r.prop)}</td><td>${r.held ? esc(`${r.held} — ${r.heldFor}`) : dash}</td>
+        ${can ? `<div data-rsk-ed>${body()}</div>` : table2(GROUPS, COLS, R, (r) => `<td>${clamp(r.name)}</td><td>${esc(r.uom)}</td><td class="r num">${num(r.prop)}</td><td>${r.held ? esc(`${r.held} — ${r.heldFor}`) : dash}</td>
           <td>${r.code ? esc(r.code) : (done() ? dash : '')}</td><td>${clamp(r.maker)}</td><td class="r num">${r.managed ? num(r.stock) : dash}</td>
           <td class="r num">${r.managed ? num(r.out) : dash}</td><td class="r num">${r.managed ? num(r.transfer) : dash}</td><td class="r num">${r.buy == null ? dash : `<b>${num(r.buy)}</b>`}</td>
           <td class="r num">${num(r.cost)}</td><td class="r num">${num(r.vat)}</td><td>${clamp(r.contract)}</td><td>${clamp(r.origin)}</td><td class="r num">${num(r.price)}</td><td>${clamp(r.bin)}</td>`, foot)}
       </section>
       ${done() ? minutes(ci, d) : ''}
-      <section class="vcard"><h3>Tài liệu kết quả</h3>
-        ${d.file ? `<a class="link-red" href="#" data-dl="${esc(d.file)}">${esc(d.file)}</a>` : '<span class="dash">Chưa có tệp kết quả</span>'}</section></div>`;
+      ${can ? '' : `<section class="vcard"><h3>Tài liệu kết quả</h3>
+        ${d.file ? `<a class="link-red" href="#" data-dl="${esc(d.file)}">${esc(d.file)}</a>` : '<span class="dash">Chưa có tệp kết quả</span>'}</section>`}</div>`;
   }
 
   /* C1 (D-56) — Biên bản rà soát theo BM-RSTK, sinh từ kết quả; chân ký GIẢ LẬP P-187. */
@@ -122,39 +141,58 @@
   }
   const bbFile = () => `Bien-ban-ra-soat-ton-kho_${String(Flow.ci().code || '').replace('Đ', 'D')}.pdf`;
 
-  /* ---------- Hộp thoại Cập nhật kết quả rà soát (một lần — D-82) ---------- */
+  /* ---------- Nhập kết quả rà soát ngay trên màn (một lần — D-82; review nhi 06/11 #32, #33 bỏ hộp thoại) ---------- */
   const KEYS = ['code', 'maker', 'stock', 'out', 'transfer', 'cost', 'vat', 'contract', 'origin', 'price', 'bin'];
   const NUMS = ['stock', 'out', 'transfer', 'cost', 'vat', 'price'];
-  const DL = { vals: {}, file: '', err: {} };
-  function openDialog() {
-    const d = data();
+  const DL = { vals: {}, file: '', err: {}, imported: 0 };
+  let ED = null; // mã việc bước 7 đang nhập trên màn
+  function initEdit(tok) {
+    const d = data(), dr = (Flow.ui || {}).rstkDraft;
+    ED = tok.id;
     DL.file = d.file || '';
     DL.err = {};
+    DL.imported = 0;
     DL.vals = {};
     rows().forEach((r) => { DL.vals[r.n] = {}; KEYS.forEach((k) => { DL.vals[r.n][k] = r[k] == null ? '' : String(r[k]); }); });
     /* Chưa có kết quả: gợi ý Mã hàng trong kho theo danh mục kho (GIẢ LẬP — thật: chọn từ QLTS khi có tích hợp). */
     if (!done()) D.items.forEach((i) => { if (i.stock != null) DL.vals[i.n].code = D.rstkCode(i.n); });
-    draw();
+    if (dr) { DL.file = dr.file || DL.file; Object.keys(dr.vals || {}).forEach((n) => { if (DL.vals[n]) Object.assign(DL.vals[n], dr.vals[n]); }); }
   }
-  let dlg = null;
   function body() {
     const R = rows();
     const inp = (n, k, ph, dis, w) => `<input class="vctl ${DL.err[n + k] ? 'invalid' : ''}" data-rsk-in="${n}:${k}" value="${esc(DL.vals[n][k])}" placeholder="${ph}" ${dis ? 'disabled' : ''} style="min-width:${w || 90}px">${DL.err[n + k] ? `<p class="msg" role="alert">${esc(DL.err[n + k])}</p>` : ''}`;
     return `<div class="rsk-dlg">
+      <div class="vfield rsk-up ${DL.err.file ? 'invalid' : ''}"><div class="lr"><label>Tệp kết quả (biên bản kiểm đếm có ký hoặc tệp Excel theo mẫu BM-RSTK)</label><span class="req" aria-hidden="true">*</span></div>
+        <div class="row"><button type="button" class="vbtn secondary" data-rsk-up>${icon('upload')} Tải tệp lên</button><input type="file" id="rsk-file" accept=".pdf,.xlsx,.xls,.csv,.jpg,.png" hidden>
+          <a class="link-red" href="#" data-dl="Mau-ket-qua-ra-soat-ton-kho_BM-RSTK.xlsx">Tải mẫu Excel</a>
+          ${DL.file ? `<span class="rsk-file">${esc(DL.file)}</span>` : ''}</div>
+        <p class="cap">Tải tệp Excel theo mẫu: hệ thống đọc và điền sẵn bảng bên dưới, người nhập kiểm tra và sửa lại trước khi gửi.</p>
+        ${DL.imported ? `<p class="cap" data-rsk-imported>Đã đọc ${DL.imported} dòng từ tệp ${esc(DL.file)} và điền vào bảng.</p>` : ''}
+        ${DL.err.file ? `<p class="msg" role="alert">${esc(DL.err.file)}</p>` : ''}</div>
       ${table2(GROUPS, COLS, R, (r) => { const v = DL.vals[r.n], m = !!(v.code || '').trim(), c = (k, ph, w) => `<td><div class="vfield">${inp(r.n, k, ph, !m, w)}</div></td>`;
         const out = numOf(v.out);
         return `<td>${clamp(r.name)}</td><td>${esc(r.uom)}</td><td class="r num">${num(r.prop)}</td><td>${r.held ? esc(`${r.held} — ${r.heldFor}`) : dash}</td>
           <td><div class="vfield">${inp(r.n, 'code', 'Bỏ trống nếu không quản lý tồn', false, 140)}</div></td>${c('maker', 'Nhà sản xuất', 120)}${c('stock', 'Nhập số')}${c('out', 'Nhập số')}${c('transfer', 'Nhập số')}
           <td class="r num" data-rsk-buy="${r.n}"><b>${num(r.prop - (m && out != null && !Number.isNaN(out) ? out : 0))}</b></td>
-          ${c('cost', 'VNĐ', 120)}${c('vat', 'VNĐ')}${c('contract', 'Số hợp đồng', 120)}${c('origin', 'Đề tài / dự án', 160)}${c('price', 'VNĐ', 120)}${c('bin', 'Ví dụ: Thùng 31', 100)}`; })}
-      <div class="vfield ${DL.err.file ? 'invalid' : ''}"><div class="lr"><label>Tệp kết quả (biên bản kiểm đếm có ký)</label><span class="req" aria-hidden="true">*</span></div>
-        <div class="row"><button type="button" class="vbtn secondary" data-rsk-up>${icon('upload')} Tải tệp lên</button><input type="file" id="rsk-file" hidden>
-          ${DL.file ? `<span class="rsk-file">${esc(DL.file)}</span>` : ''}</div>${DL.err.file ? `<p class="msg" role="alert">${esc(DL.err.file)}</p>` : ''}</div></div>`;
+          ${c('cost', 'VNĐ', 120)}${c('vat', 'VNĐ')}${c('contract', 'Số hợp đồng', 120)}${c('origin', 'Đề tài / dự án', 160)}${c('price', 'VNĐ', 120)}${c('bin', 'Ví dụ: Thùng 31', 100)}`; })}</div>`;
   }
+  /* Vẽ lại khối nhập tại chỗ, giữ vị trí cuộn ngang của bảng 16 cột. */
   function draw() {
-    const actions = '<button type="button" class="vbtn secondary grey" data-close>Hủy</button><button type="button" class="vbtn primary" data-rsk-save>Lưu</button>';
-    if (dlg && document.body.contains(dlg.el)) { dlg.el.querySelector('.vmodal-b').innerHTML = body() + `<div class="vmodal-acts">${actions}</div>`; return; }
-    dlg = vModal({ title: 'Cập nhật kết quả rà soát tồn kho', body: body(), actions, size: 'lg' });
+    const box = document.querySelector('[data-rsk-ed]');
+    if (!box) return;
+    const vp = box.querySelector('.vtable-vp'), x = vp ? vp.scrollLeft : 0;
+    box.innerHTML = body();
+    const vp2 = box.querySelector('.vtable-vp');
+    if (vp2) vp2.scrollLeft = x;
+  }
+  /* Tệp Excel theo mẫu BM-RSTK → điền bảng. GIẢ LẬP: điền số mẫu (D.rstkSample) theo hạng mục của hồ sơ.
+     Khi phát triển thật: BE đọc tệp theo cột cố định của mẫu (khớp dòng theo STT / Mô tả), trả về danh sách dòng + lỗi từng ô; FE điền vào bảng, chưa lưu. */
+  const isSheet = (name) => /\.(xlsx|xls|csv)$/i.test(name || '');
+  function importSheet() {
+    const rs = D.rstkSample(D.items, Flow.state.clock).kq.rows;
+    rs.forEach((r) => { if (!DL.vals[r.n]) return; KEYS.forEach((k) => { DL.vals[r.n][k] = r[k] == null ? '' : String(r[k]); }); });
+    DL.err = {};
+    DL.imported = rs.length;
   }
   function readInputs() {
     document.querySelectorAll('[data-rsk-in]').forEach((el) => { const [n, k] = el.dataset.rskIn.split(':'); DL.vals[n][k] = el.value; });
@@ -178,21 +216,44 @@
       out.push(r);
     });
     if (!DL.file) DL.err.file = 'Vui lòng tải lên Tệp kết quả.';
-    if (Object.keys(DL.err).length) { draw(); return; }
-    Flow.setUi('rstk', { kq: { t: Flow.state.clock, by: Flow.state.persona, rows: out }, file: DL.file });
-    if (dlg) dlg.close();
+    if (Object.keys(DL.err).length) {
+      draw();
+      const first = document.querySelector('[data-rsk-ed] .invalid');
+      if (first) first.scrollIntoView({ block: 'center' });
+      toast('Chưa gửi được. Kiểm tra các trường báo lỗi.', 'warn');
+      return;
+    }
+    /* BR-DXMS-03-06: mọi hạng mục dùng hết từ kho → không còn nhu cầu mua. */
+    if (inFlow() && D.items.length && D.items.every((i) => { const r = out.find((x) => x.n === i.n); return i.prop - (r && r.code ? r.out || 0 : 0) <= 0; })) {
+      toast('Mọi hạng mục đều dùng từ kho, không còn phần phải mua. Giảm SL xuất kho hoặc Hủy hồ sơ.', 'warn');
+      return;
+    }
+    const t = tok7();
+    Flow.setUiMany({ rstk: { kq: { t: Flow.state.clock, by: Flow.state.persona, rows: out }, file: DL.file }, rstkDraft: null });
+    ED = null;
+    if (inFlow() && t) {
+      Flow.complete(t.id, null);
+      toast('<b>Thành công</b><br>Đã lưu kết quả rà soát tồn kho, sinh biên bản rà soát và trình Chỉ huy Kho duyệt.');
+      location.hash = '#/viec-cua-toi';
+      return;
+    }
     toast('<b>Thành công</b><br>Đã lưu kết quả rà soát tồn kho và sinh biên bản rà soát. Hệ thống thông báo đơn vị đề xuất xác nhận bước 7.');
+  }
+  function saveDraft() {
+    readInputs();
+    Flow.setUi('rstkDraft', { vals: JSON.parse(JSON.stringify(DL.vals)), file: DL.file });
+    toast('<b>Thành công</b><br>Đã lưu nháp kết quả rà soát tồn kho.');
   }
 
   document.addEventListener('click', (e) => {
     const t = e.target;
-    if (t.closest('[data-rsk-open]')) { openDialog(); return; }
-    if (t.closest('[data-rsk-up]')) { document.getElementById('rsk-file').click(); return; }
+    if (t.closest('[data-rsk-up]')) { readInputs(); document.getElementById('rsk-file').click(); return; }
+    if (t.closest('[data-rsk-draft]')) { saveDraft(); return; }
     if (t.closest('[data-rsk-save]')) save();
   });
   /* SL cần mua cập nhật tại chỗ khi rời ô SL xuất kho. */
   document.addEventListener('change', (e) => {
-    if (e.target.id === 'rsk-file' && e.target.files.length) { readInputs(); DL.file = e.target.files[0].name; delete DL.err.file; draw(); return; }
+    if (e.target.id === 'rsk-file' && e.target.files.length) { readInputs(); DL.file = e.target.files[0].name; DL.imported = 0; if (isSheet(DL.file)) importSheet(); delete DL.err.file; draw(); return; }
     const k = e.target.dataset && e.target.dataset.rskIn;
     if (!k || !/:out$|:code$/.test(k)) return;
     readInputs();
@@ -209,7 +270,7 @@
     const mine = k === '7' && Flow.state.tokens.some((t) => t.id === tok.id) && (tok.who === Flow.state.persona || D.allAccess(Flow.state.persona));
     const R = rows(), d = data();
     return `<section class="vcard pad24" data-rsk-card><div class="vcard-h"><h3>Kết quả rà soát tồn kho</h3><div class="row">
-        ${mine ? `<button type="button" class="vbtn secondary" data-rsk-open>${icon('edit')} Cập nhật kết quả rà soát</button>` : ''}<a class="vbtn ghost" data-go="ra-soat-kho">Xem đủ cột</a></div></div>
+        ${done() && !mine ? '<a class="vbtn ghost" data-go="ra-soat-kho">Xem đủ cột</a>' : ''}</div></div>
       ${table2([['Yêu cầu', 3], ['Kết quả rà soát', 4, 'rsk-g']], [['Mô tả', 240], ['ĐVT', 70], ['Số lượng', 90, 'r'], ['SL tồn kho', 100, 'r'], ['SL xuất kho', 100, 'r'], ['SL điều chuyển', 110, 'r'], ['SL cần mua', 100, 'r']], R,
         (r) => `<td>${clamp(r.name)}</td><td>${esc(r.uom)}</td><td class="r num">${num(r.prop)}</td><td class="r num">${r.managed ? num(r.stock) : dash}</td><td class="r num">${r.managed ? num(r.out) : dash}</td>
           <td class="r num">${r.managed ? num(r.transfer) : dash}</td><td class="r num">${r.buy == null ? dash : `<b>${num(r.buy)}</b>`}</td>`)}

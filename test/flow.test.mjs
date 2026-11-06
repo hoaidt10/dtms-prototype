@@ -97,7 +97,7 @@ test('TTMS phải xác nhận danh sách CQCM (task 17) trước khi gửi; tr�
   runUntil(w, 17);
   assert.ok(has(w, 17, 'lan'));
   assert.ok(!has(w, 19));
-  step(w, { task: 17, label: 'Chưa đúng' });
+  step(w, { task: 17, label: 'Từ chối' });
   assert.ok(has(w, 16, 'minh'));
 });
 
@@ -1111,7 +1111,8 @@ test('DX-10: 5 → 5.1 Chỉ huy ĐVĐX → 7 Kho → 7.1 Chỉ huy Kho → 8–
   const who = Object.fromEntries(seen);
   assert.deepEqual([who['5.1'], who['7'], who['7.1'], who['8'], who['10'], who['10.1'], who['16.1']], ['hai', 'qlts', 'khoch', 'thau', 'thau', 'thauch', 'hai']);
   // Trả lại: 16.1 → 16; 10.1 → 10; 7.1 → 7; 5.1 → 5.
-  const back = (k, to) => { const w2 = boot(); w2.Flow.jumpTo(k, 'minh'); kdtStep(w2, k, 'Trả lại'); assert.ok(w2.Flow.state.tokens.some((t) => String(t.task) === String(to)), `${k} trả lại → ${to}`); };
+  // Review nhi 06/11 #7: 10.1 Chỉ huy Thầu dùng Đồng ý / Từ chối.
+  const back = (k, to) => { const w2 = boot(); w2.Flow.jumpTo(k, 'minh'); kdtStep(w2, k, k === '10.1' ? 'Từ chối' : 'Trả lại'); assert.ok(w2.Flow.state.tokens.some((t) => String(t.task) === String(to)), `${k} trả lại → ${to}`); };
   back('5.1', 5); back('7.1', 7); back('10.1', 10); back('16.1', 16);
 });
 

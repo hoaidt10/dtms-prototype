@@ -18,6 +18,10 @@
     { id: 'tung', name: 'Đỗ Mạnh Tùng', short: 'Tùng', role: 'Trưởng ban CQCM', unit: 'Ban Pháp chế', urd: 'R-CQCM-CH', actor: 'A03' },
     { id: 'thu', name: 'Vũ Hoài Thu', short: 'Thu', role: 'Chuyên viên Tài chính (CQCM)', unit: 'Ban Tài chính', urd: 'R-TC', actor: 'A05' },
     { id: 'quang', name: 'Bùi Minh Quang', short: 'Quang', role: 'Chuyên viên CQCM', unit: 'Phòng Chất lượng', urd: 'R-CQCM', actor: 'A03' },
+    /* Review nhi 06/11 #40: thêm chuyên viên để chọn đích danh người thẩm định ở bước 16 (GIẢ LẬP P-224). */
+    { id: 'ngatt', name: 'Trần Thị Nga', short: 'Nga', role: 'Chuyên viên CQCM', unit: 'Ban Pháp chế', urd: 'R-CQCM', actor: 'A03' },
+    { id: 'hant', name: 'Nguyễn Thu Hà', short: 'Hà', role: 'Chuyên viên Tài chính (CQCM)', unit: 'Ban Tài chính', urd: 'R-TC', actor: 'A05' },
+    { id: 'sonph', name: 'Phạm Hồng Sơn', short: 'Sơn', role: 'Chuyên viên CQCM', unit: 'Phòng Chất lượng', urd: 'R-CQCM', actor: 'A03' },
     { id: 'binh', name: 'Hoàng Quốc Bình', short: 'Bình', role: 'Phó Tổng Giám đốc', unit: 'Ban Giám đốc', urd: 'R-PTGD', actor: 'A22' },
     { id: 'tgd', name: 'Ngô Đình Khôi', short: 'TGĐ Khôi', role: 'Tổng Giám đốc VHT', unit: 'Ban Giám đốc', urd: 'R-TGD-VHT', actor: 'A06' },
     { id: 'qt', name: 'Đặng Thu Trang', short: 'Trang', role: 'Quản trị hệ thống', unit: 'Ban Công nghệ thông tin', urd: 'R-QTHT', actor: 'A21' },
@@ -58,9 +62,9 @@
 
   /* CQCM tham gia góp ý hồ sơ mẫu. `doer` làm task 16/33/34/42, `signer` thông qua ở task 17. */
   D.cqcm = [
-    { id: 'PC', unit: 'Ban Pháp chế', doer: 'hoa', signer: 'tung' },
-    { id: 'TC', unit: 'Ban Tài chính', doer: 'thu', signer: 'thu' },
-    { id: 'CL', unit: 'Phòng Chất lượng', doer: 'quang', signer: 'quang' },
+    { id: 'PC', unit: 'Ban Pháp chế', doer: 'hoa', signer: 'tung', doers: ['hoa', 'ngatt'] },
+    { id: 'TC', unit: 'Ban Tài chính', doer: 'thu', signer: 'thu', doers: ['thu', 'hant'] },
+    { id: 'CL', unit: 'Phòng Chất lượng', doer: 'quang', signer: 'quang', doers: ['quang', 'sonph'] },
   ];
 
   /* ---------- 5 giai đoạn theo nhãn trang MS01 v1.1 (dải task do nhóm suy ra từ vị trí trên sơ đồ) ---------- */
@@ -180,7 +184,12 @@
   }
   /* Khoá bước theo thứ tự (số 1…last, chèn bước DX-10 sau bước gốc). */
   D.stepKeys = (last) => { const out = []; for (let n = 1; n <= last; n++) { out.push(n); if (D.dx10.after[n]) out.push(D.dx10.after[n]); } return out; };
-  const approve = (who, scr, ok, back, okLabel) => ({ who, scr, nlv: 0.5, choices: [{ label: okLabel || 'Duyệt', to: ok, main: true }, { label: 'Trả lại', to: back, kind: 'danger', reason: true }] });
+  const approve = (who, scr, ok, back, okLabel, backLabel) => ({ who, scr, nlv: 0.5, choices: [{ label: okLabel || 'Duyệt', to: ok, main: true }, { label: backLabel || 'Trả lại', to: back, kind: 'danger', reason: true }] });
+  /* Review nhi 06/11 #2, #3: bước 10 không so sánh / đánh giá báo giá trên hệ thống (Thầu làm ngoài hệ thống) — Thầu chỉ tải tệp báo giá của các NCC
+     và nhập giá trị báo giá cuối cùng. Cờ tạm ẩn card Đánh giá báo giá và cơ sở giá (T29 B3b / B4 P1) và kiểm tra AI báo giá (DX-03); false = bật lại. */
+  D.quoteManual = true;
+  /* Review nhi 06/11 #18 (GIẢ LẬP P-223): tạm ẩn bảng AI bước 6 Bóc tách và đối chiếu trong popup của màn Lập ĐXMS; bật lại bằng D.bocHide = false. */
+  D.bocHide = true;
 
   const F = {
     1: { who: 'minh', scr: 'SCR-03', next: 2, nlv: 0.5 },
@@ -196,36 +205,38 @@
     '5.1': approve('hai', 'SCR-05', 6, 5, 'Xác nhận khởi tạo'),
     6: { varGate: { basisOk: { true: 7, false: 4 } } },
     /* DX-10 (c), (d): Kho rà soát tồn kho trên sơ đồ (SCR-105), Chỉ huy Kho duyệt. */
-    7: { who: 'qlts', scr: 'SCR-06', next: '7.1', nlv: 1, actionLabel: 'Hoàn thành rà soát, trình Chỉ huy Kho' },
+    /* Review nhi 06/11 #21, #31–33: nút mở thẳng màn SCR-105 (page), nhập trên màn; Gửi = hoàn thành bước, không còn nút Hoàn thành riêng. */
+    7: { who: 'qlts', scr: 'SCR-06', next: '7.1', nlv: 1, actionLabel: 'Cập nhật kết quả rà soát', page: 'ra-soat-kho' },
     '7.1': approve('khoch', 'SCR-06', 8, 7),
     /* DX-10 (e): Thầu TTMS khởi tạo YCBG, hệ thống gửi (9), Thầu tổng hợp báo giá (10); không đạt → YCBG mới. */
-    8: { who: 'thau', scr: 'SCR-07', next: 9, nlv: 0.5 },
+    8: { who: 'thau', scr: 'SCR-07', next: 9, nlv: 0.5, actionLabel: 'Tạo yêu cầu báo giá' },
     9: { next: 10 },
     10: { who: 'thau', scr: 'SCR-07', nlv: 3, choices: [
       { label: 'Báo giá đạt', to: 'gQuote', main: true },
       /* DX-10 (e), review Huylx4 #27: không đạt → Thầu tạo YCBG mới (về bước 8). */
-      { label: 'Không đạt — tạo YCBG mới', to: 8, kind: 'secondary' }] },
+      /* Review nhi 06/11 #7: Không đạt nhập lý do (dialog nhận xét), không mở form báo giá. */
+      { label: 'Không đạt — tạo YCBG mới', to: 8, kind: 'secondary', reason: true }] },
     /* DX-03 (duyệt 2026-10-07, chờ BA): cổng "Báo giá đạt?" đọc thêm kết quả AI kiểm tra báo giá (vars.quoteAi, ghi trước khi hoàn thành task 10).
        DX-10 (f): đạt → Chỉ huy Thầu TTMS duyệt (10.1) rồi mới tới cổng Giá trị. */
     gQuote: { gw: true, when: (v) => (v.quoteAi === false ? 9 : '10.1') },
-    '10.1': approve('thauch', 'SCR-07', 'gValue', 10),
+    /* Review nhi 06/11 #7: Chỉ huy Thầu phê duyệt kết quả báo giá — Đồng ý / Từ chối (Từ chối về bước Thầu tổng hợp). */
+    '10.1': approve('thauch', 'SCR-07', 'gValue', 10, 'Đồng ý', 'Từ chối'),
     /* T29 B1 (D-54): cổng "Giá trị?" của v1.1 — một quy trình MS01, hệ thống đặt luồng con theo Tổng giá trị và ngưỡng hồ sơ giữ:
        .03 → 11; ≥ ngưỡng → 12 (.01 / .02 dự kiến theo "Căn cứ đã được phê duyệt", chốt ở bước 48). Không còn 10a / 10b. */
     gValue: { gw: true, matchGate: { big: 12, small: 11 } },
-    11: { who: 'minh', scr: 'SCR-08', next: 13, nlv: 2, actionLabel: 'Gửi chỉ huy duyệt' },
-    12: { who: 'minh', scr: 'SCR-08', next: 13, nlv: 2, actionLabel: 'Gửi chỉ huy duyệt' },
+    11: { who: 'minh', scr: 'SCR-08', next: 13, nlv: 2, actionLabel: 'Soạn thảo tờ trình ĐXMS' },
+    12: { who: 'minh', scr: 'SCR-08', next: 13, nlv: 2, actionLabel: 'Soạn thảo tờ trình ĐXMS' },
     13: { who: 'hai', scr: 'SCR-09', nlv: 0.5, choices: [
       { label: 'Đồng ý', to: 15, main: true },
       { label: 'Không đồng ý', to: 14, kind: 'danger', reason: true }] },
     14: { varGate: { big: { true: 12, false: 11 } } },
     15: { next: 16 },
-    16: { who: 'minh', scr: 'SCR-10', next: '16.1', nlv: 0.5, actionLabel: 'Trình chỉ huy duyệt BM-03' },
+    16: { who: 'minh', scr: 'SCR-10', next: '16.1', nlv: 0.5, actionLabel: 'Lập phiếu yêu cầu thẩm định' },
     /* DX-10 (g), (h): Chỉ huy ĐVĐX duyệt BM-03 + danh sách CQCM trước khi TTMS kiểm (17). */
-    '16.1': approve('hai', 'SCR-10', 17, 16, 'Đồng ý BM-03, gửi TTMS'),
-    17: { who: 'lan', scr: 'SCR-22', nlv: 0.5, choices: [
-      { label: 'Danh sách đúng, đủ — gửi yêu cầu thẩm định', to: 18, main: true, sign: 'BM-03' },
-      { label: 'Chưa đúng/đủ — trả lại', to: 16, kind: 'danger', reason: true }] },
-    18: { fork: 'cqcm', to: 19, kpiStart: true },
+    '16.1': approve('hai', 'SCR-10', 17, 16, 'Phê duyệt phiếu yêu cầu thẩm định'),
+    /* BPMN v1.1: bước 17 TTMS chỉ kết luận danh sách CQCM (Đồng ý → 18, Từ chối → 16); gửi yêu cầu + trình ký BM-03 là service task 18 của hệ thống (P-225). */
+    17: approve('lan', 'SCR-22', 18, 16, 'Đồng ý', 'Từ chối'),
+    18: { fork: 'cqcm', to: 19, kpiStart: true, sysSign: 'BM-03' },
     19: { who: 'cqcm:doer', scr: 'SCR-11', next: 20, nlv: 1, actionLabel: 'Hoàn thành phiếu, trình chỉ huy' },
     20: { who: 'cqcm:signer', scr: 'SCR-11', nlv: 0.5, choices: [
       { label: 'Đồng ý & trình ký BM-04', to: 22, main: true, sign: 'BM-04' },
@@ -1229,6 +1240,16 @@
     'P-213': { q: 'Nút "Đặt giá trị mặc định" của màn YCBG cũ: giá trị mặc định của Điều kiện thanh toán, Địa điểm giao hàng, Các yêu cầu khác cấu hình ở đâu — toàn hệ thống, theo đơn vị hay theo loại hàng hoá', src: 'HT-DXMS-IMG (Yêu cầu báo giá / Cập nhật)', def: 'GIẢ LẬP — một bộ giá trị mẫu (D.ycbgTerms0) điền sẵn khi mở phiếu ở bước 8; eForm không có nút trong form, đặt lại giá trị mặc định = cần dev riêng (hoặc xoá nháp mở lại)', scr: 'SCR-106' },
     'P-214': { q: 'BM-YCKT bắt buộc nêu thời gian bảo hành và năm sản xuất: là trường chung của phiếu YCBG, cột theo từng dòng hàng, hay chỉ nằm trong tệp Yêu cầu kỹ thuật', src: 'BM-YCKT (Lưu ý); BM-YCBG (bảo hành ≥ mức NSX)', def: 'GIẢ LẬP — hai trường chung ở Điều khoản: Bảo hành tối thiểu (tháng, mặc định 12), Năm sản xuất từ (mặc định năm trước)', scr: 'SCR-106' },
     'P-215': { q: 'Nút "Soạn thảo" của màn YCBG cũ sinh công văn Word: BM-YCBG là công văn TGĐ ký — YCBG gửi email tự động (bước 9) có cần công văn ký kèm không; nếu có thì ký ở bước nào', src: 'HT-DXMS-IMG (nút Soạn thảo); BM-YCBG; BR-DXMS-04-06', def: 'GIẢ LẬP — không ký: email gửi nội dung phiếu + tệp đính kèm; mẫu BM-YCBG tải ở "Chọn mẫu tài liệu" của bước 8; sinh công văn điền sẵn = văn bản đầu ra của bước 8 khi BA xác nhận', scr: 'SCR-106' },
+    'P-216': { q: 'AI bước 3 (gợi ý thông tin cơ bản) chạy tự động khi chọn căn cứ trên màn Lập ĐXMS hay khi người dùng bấm nút', src: 'BPMN MS01 v1.1 task 2, 3; DX-11', def: 'Người dùng chốt 06/11: theo nút Gợi ý từ AI (không tự chạy khi chọn đề tài); đổi đề tài thì báo và có nút Gợi ý lại. Chờ BA ghi vào DX-11', scr: 'SCR-96' },
+    'P-217': { q: 'Đổi căn cứ sau khi người dùng đã sửa gợi ý AI: giữ nội dung đã sửa hay thay bằng gợi ý mới', src: 'DX-11', def: 'GIẢ LẬP — dòng đã Sửa giữ nội dung, gắn nhãn "Căn cứ đã đổi — xem lại"; dòng khác nhận gợi ý mới, về Chưa xử lý', scr: 'SCR-96' },
+    'P-218': { q: 'Nguồn số tồn kho sổ sách AI dùng ở bước 6 (đối chiếu khi bóc tách): WMS hay phân hệ Quản lý kho của ĐTMS', src: 'BPMN MS01 v1.1 task 6; BG-0411; C14', def: 'GIẢ LẬP — số mẫu của hồ sơ demo; Kho vẫn rà soát thực tế ở bước 7', scr: 'SCR-96' },
+    'P-219': { q: 'Bước 10 không so sánh / đánh giá báo giá trên hệ thống (review nhi 06/11 #2, #3): bỏ hẳn DX-03 (AI kiểm tra báo giá) và đối chiếu phần căn cứ theo đơn giá (T29 B4 P1), hay kiểm phần căn cứ theo Giá trị báo giá cuối cùng; giá trị cuối cùng có cần tách theo hạng mục / loại chi phí cho Tờ trình mục 3 không', src: 'Review nhi 06/11 #2, #3, #7; DX-03; BR-DXMS-04-10, 04-11', def: 'GIẢ LẬP — tạm ẩn card Đánh giá báo giá (cờ D.quoteManual); Thầu tải tệp + nhập một giá trị cuối cùng (đồng, gồm VAT) = giá trị hồ sơ cho cổng Giá trị; không chạy AI kiểm tra báo giá, không chặn vượt căn cứ', scr: 'SCR-07' },
+    'P-221': { q: 'Thầu sửa tên, xoá, thêm hàng hoá trên phiếu YCBG ở bước 8 (review nhi 06/11 #23) và bỏ bảng Đối soát ĐXMS (#24): phiếu gửi nhà cung cấp được khác danh mục ĐXMS đã xác nhận ở mức nào, có cần đồng bộ ngược về danh mục hồ sơ hay trả ĐVĐX xác nhận lại không', src: 'Review nhi 06/11 #23, #24; P-73', def: 'GIẢ LẬP — chỉ đổi trên phiếu YCBG, danh mục hồ sơ dùng cho Tờ trình không đổi, không kiểm tra lại', scr: 'SCR-07' },
+    'P-222': { q: 'Sửa Phụ lục chi phí ở bước Soạn thảo tờ trình (review nhi 06/11 #36): được lệch giá trị báo giá đã được Chỉ huy Thầu phê duyệt ở 10.1 không; qua ngưỡng 160 tỷ thì đổi biểu mẫu tại chỗ hay phải quay lại bước 10 / 10.1', src: 'Review nhi 06/11 #36; D-54', def: 'GIẢ LẬP — lệch giá chỉ cảnh báo; qua ngưỡng thì khi gửi hồ sơ đổi luồng con, biểu mẫu và Checklist theo giá trị mới, người soạn kiểm tra lại rồi gửi; đơn giá mẫu quy đổi theo tỷ lệ cho khớp giá trị cuối cùng', scr: 'SCR-08' },
+    'P-223': { q: 'Tạm ẩn bảng AI bước 6 Bóc tách và đối chiếu ở màn Lập ĐXMS (review nhi 06/11 #18): bỏ hẳn bước 6 trên BPMN hay chỉ ẩn trên giao diện; khi đó ai kiểm số lượng đề xuất so với số còn được dùng', src: 'Review nhi 06/11 #18; BPMN MS01 v1.1 bước 6', def: 'GIẢ LẬP — ẩn bảng bằng cờ D.bocHide, áp dụng theo số đề xuất của căn cứ; popup còn dữ liệu căn cứ và bảng điền Loại chi phí', scr: 'SCR-96' },
+    'P-224': { q: 'Chọn đích danh Người thẩm định của từng CQCM ở bước 16 (review nhi 06/11 #40): danh sách người lấy từ đâu; lãnh đạo CQCM có được đổi người được giao không', src: 'Review nhi 06/11 #40; D-27', def: 'GIẢ LẬP — danh sách chuyên viên mẫu theo đơn vị, mặc định người đầu danh sách; bước 19 giao đúng người đã chọn, bước 20 vẫn là lãnh đạo CQCM', scr: 'SCR-10' },
+    'P-225': { q: 'Bước 18 "Gửi yêu cầu thẩm định, trình ký và thông báo" (tác nhân Hệ thống): ai là Đại diện đơn vị đề xuất ký BM-03; bước 16.1 Chỉ huy ĐVĐX duyệt trên ĐTMS có thay được việc ký không; hồ sơ Mật ký bản cứng thì ai tải bản scan, CQCM có phải chờ ký xong mới nhận yêu cầu không', src: 'BPMN-DTMS trang MS01 v1.1 bước 17, 18; BM-10.2.1 BM-03 (khối ký Đại diện đơn vị đề xuất); QT-10.2.1 bước 2', def: 'GIẢ LẬP — hệ thống tự trình Chỉ huy ĐVĐX (người duyệt 16.1) ký BM-03 theo Hình thức trình ký của hồ sơ (Mật: bản cứng), nhận kết quả ngay rồi gửi CQCM; 16.1 vẫn tách riêng với việc ký; chưa dựng bước tải bản scan', scr: 'SCR-22' },
+    'P-220': { q: 'Bộ trường nhập của Tờ trình BM-01 / BM-09 và phiếu BM-03 trên eForm (review nhi 06/11 #8, #15): các ô của mẫu Word chưa có nguồn dữ liệu (Quan điểm thực hiện, Nguồn ngân sách, Đánh giá hiệu quả, số / trích yếu công văn BM-03) do người soạn nhập trên form hay để điền tiếp trên Word', src: 'BM-10.2.1 (BM-01, BM-09, BM-03); review nhi 06/11', def: 'GIẢ LẬP — mọi mục của mẫu có ô nhập trên eForm (không bắt buộc trừ mục bắt buộc của mẫu); ô bỏ trống in "…" trên văn bản', scr: 'SCR-08' },
     'P-206': { q: 'Hình thành gói thầu (bảng bóc tách chi phí ở Thêm mới luồng) là dropdown — danh sách giá trị gồm những gì', src: 'RV-PROTO-0511 #14; HT-DXMS-NOTE màn 8 (cột Hình thành gói thầu); QC-12869 Điều 39', def: 'GIẢ LẬP — Hình thành gói thầu / Không hình thành gói thầu (các trường hợp Điều 39 QC-12869)', scr: 'SCR-96' },
     'P-207': { q: 'Lý do khi chọn Mức ưu tiên Khẩn / Thượng khẩn nhập ở đâu — review ghi ở dòng "Luồng mua sắm / Tìm kiếm"', src: 'RV-PROTO-0511 #1', def: 'GIẢ LẬP — nhập ở Thêm mới luồng (trường Lý do ưu tiên, bắt buộc khi Khẩn / Thượng khẩn), hiện ở Chi tiết luồng; tìm kiếm chỉ lọc theo Mức ưu tiên', scr: 'SCR-96' },
     'P-208': { q: 'Số tiền nhập số thường (đồng) chỉ áp dụng cho Giá trị dự tính ở Thêm mới luồng, hay đổi đơn vị trên mọi màn (báo giá, eForm, báo cáo, ngưỡng 160 tỷ)', src: 'RV-PROTO-0511 #8', def: 'GIẢ LẬP — Thêm mới luồng và Chi tiết luồng nhập / hiện đồng; các màn khác giữ tỷ đồng tới khi BA xác nhận', scr: 'SCR-96' },

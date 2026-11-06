@@ -294,6 +294,21 @@
     log('START', { system: true, action: `Khởi tạo ${o.code} theo quy trình ${process}` });
     enter(o.at != null ? o.at : 1, {});
   }
+  /* Đổi nhân sự của một bước (không emit, không ghi lịch sử): bỏ `drop`, thêm `add`; task đang mở của bước giao lại ngay (BE replaceCandidateUsers). */
+  function applyMembers(k, drop, add) {
+    const cur = Flow.membersOf(k).list;
+    const rest = cur.filter((x) => !(drop || []).includes(x)), list = rest.concat((add || []).filter((x) => !rest.includes(x)));
+    S.members = Object.assign({}, S.members, { [k]: list });
+    const own = S.dxmsUser.find((x) => x.code === S.dxms);
+    if (own) own.members = Object.assign({}, own.members, { [k]: list.slice() });
+    const moved = [];
+    S.tokens.filter((t) => String(t.task) === k).forEach((t) => {
+      t.cands = list.slice();
+      if (!list.includes(t.who)) t.who = list[0];
+      moved.push(t.id);
+    });
+    return { list, moved };
+  }
   function startCase(process, o) {
     openNew(process, o);
     emit();
@@ -418,6 +433,8 @@
     if (w.startsWith('ky:')) return (S.vars.ky || {})[w.slice(3)] || null;
     if (w.startsWith('cqcm:')) {
       const c = window.D.cqcm.find((x) => x.id === ctx.cqcm);
+      /* Review nhi 06/11 #40: người thẩm định chọn đích danh ở bước 16 (ui.cqcmNguoi), mặc định người đầu của CQCM. */
+      if (c && w === 'cqcm:doer') return (S.ui && S.ui.cqcmNguoi && S.ui.cqcmNguoi[c.id]) || c.doer;
       return c ? c[w.slice(5)] : null;
     }
     return w;
@@ -425,6 +442,16 @@
 
   function log(key, entry) {
     S.history.push(Object.assign({ task: key, t: S.clock }, S.vars.td ? { td: S.vars.td } : {}, entry));
+  }
+
+  /* Bước 18 MS01 / MS02: hệ thống tự trình ký văn bản (P-225, GIẢ LẬP) — người ký là Chỉ huy ĐVĐX đã duyệt gần nhất (16.1; MS02 không có 16.1 thì 13), hình thức theo hồ sơ. */
+  function sysSign(key, doc) {
+    const by = S.history.slice().reverse().find((h) => h.who && ['16.1', '13'].includes(String(h.task)));
+    const signer = by ? by.who : F()[13].who;
+    const hard = Flow.ci().secret || ((S.dxms && Flow.findDxms(S.dxms)) || {}).sign === 'Bản cứng';
+    const name = (D.personas.find((p) => p.id === signer) || {}).name || signer;
+    log(key, { system: true, action: `Trình ký ${hard ? 'bản cứng' : 'VOffice'} ${doc} — người ký: ${name}`, signDoc: doc, signer });
+    if (hard) S.vars.hardSigns = (S.vars.hardSigns || []).concat([{ task: key, who: signer, doc, reason: 'Theo Hình thức trình ký của hồ sơ', t: S.clock }]);
   }
 
   /* Đưa luồng vào `key` với ngữ cảnh (group, cqcm). Task hệ thống chạy ngay rồi đi tiếp. */
@@ -479,6 +506,7 @@
     }
     if (f.fork) {
       if (isTask(key)) log(key, { system: true, action: T()[key].name });
+      if (f.sysSign) sysSign(key, f.sysSign);
       if (f.kpiStart && S.kpiStart === null) S.kpiStart = S.clock;
       const sel = Flow.cqcmSel();
       window.D.cqcm.filter((c) => sel.includes(c.id)).forEach((c) => addToken(f.to, { group: f.fork, cqcm: c.id }));
@@ -769,21 +797,49 @@
     /* SCR-98 Cập nhật nhân sự (T17 D-29): o = { task, mode: 'add' | 'replace', add: [người], drop: [người], doc, reason }.
        Bổ sung = thêm candidate; Thay = bỏ người cũ, thêm người mới. Task đang mở của bước giao lại ngay (BE replaceCandidateUsers),
        lần sau tới bước cũng giao theo danh sách mới. Văn bản đã ký giữ nguyên. Không cần duyệt. Trả về bản ghi lịch sử. */
+    /* Review nhi 06/11 #40: người thẩm định của CQCM theo lựa chọn ở bước 16. */
+    cqcmDoer(id) { const c = window.D.cqcm.find((x) => x.id === id); return (S.ui && S.ui.cqcmNguoi && S.ui.cqcmNguoi[id]) || (c ? c.doer : null); },
+    /* Review nhi 06/11 #36 (GIẢ LẬP P-222): bước lập dự thảo sửa Phụ lục chi phí → tổng mới là giá trị hồ sơ; qua lại ngưỡng thì đổi luồng con và đổi bước 11 ↔ 12
+       (BM-09 / Checklist 02 ↔ BM-01 / Checklist 01) ngay trên việc đang mở, người soạn kiểm tra lại rồi gửi. Trả { task } khi đổi bước, null khi không. */
+    applyDraftTotal(tokenId, total) {
+      if (S.kdt || S.parent || S.vars.adj || total == null) return null;
+      const cur = S.vars.totalQ != null ? S.vars.totalQ : window.D.caseInfo.total;
+      if (Math.abs(total - cur) < 0.05) return null;
+      S.vars.totalQ = total;
+      const r = matchCheck(), big = r.suggest !== 'MS01.03', t = S.tokens.find((x) => x.id === tokenId);
+      S.vars.checks.push({ t: S.clock, total: r.total, process: r.process, ok: r.ok, suggest: r.suggest });
+      S.vars.process = r.suggest;
+      if (big === S.vars.big || !t) { emit(); return null; }
+      S.vars.big = big;
+      t.task = big ? 12 : 11;
+      emit();
+      return { task: t.task };
+    },
     updateMembers(o) {
       const k = String(o.task), cur = Flow.membersOf(k).list;
       const drop = o.mode === 'replace' ? o.drop || [] : [];
-      const rest = cur.filter((x) => !drop.includes(x)), list = rest.concat((o.add || []).filter((x) => !rest.includes(x)));
-      S.members = Object.assign({}, S.members, { [k]: list });
-      const own = S.dxmsUser.find((x) => x.code === S.dxms);
-      if (own) own.members = Object.assign({}, own.members, { [k]: list.slice() });
-      const moved = [];
-      S.tokens.filter((t) => String(t.task) === k).forEach((t) => {
-        t.cands = list.slice();
-        if (!list.includes(t.who)) t.who = list[0];
-        moved.push(t.id);
-      });
+      const { list, moved } = applyMembers(k, drop, o.add);
       const rec = { t: S.clock, at: Flow.dateOf(S.clock), by: S.persona, task: k, mode: o.mode, old: cur, now: list.slice(), add: (o.add || []).slice(), drop: drop.slice(),
         doc: o.doc || null, reason: o.reason || null, moved };
+      S.memberLog = (S.memberLog || []).concat([rec]);
+      emit();
+      return rec;
+    },
+    /* SCR-98 theo Vai trò (D-75): o = { role, roleName, tasks: [bước chưa xong của vai trò], mode, add, drop, doc, reason }.
+       Áp cho mọi bước chưa xong của vai trò (bước đã xong giữ nguyên — D-28); ĐXMS cập nhật roleMembers; một dòng lịch sử. */
+    updateRole(o) {
+      const keys = (o.tasks || []).map(String), cur = [...new Set(keys.flatMap((k) => Flow.membersOf(k).list))];
+      const drop = o.mode === 'replace' ? o.drop || [] : [];
+      let now = [];
+      const moved = [];
+      keys.forEach((k) => { const r = applyMembers(k, drop, o.add); now = [...new Set(now.concat(r.list))]; moved.push(...r.moved); });
+      const own = S.dxmsUser.find((x) => x.code === S.dxms);
+      if (own) {
+        const rm = (own.roleMembers || []).filter((r) => r.role !== o.role);
+        own.roleMembers = rm.concat(now.map((person) => ({ role: o.role, person })));
+      }
+      const rec = { t: S.clock, at: Flow.dateOf(S.clock), by: S.persona, role: o.role, roleName: o.roleName, tasks: keys, task: keys[0], mode: o.mode, old: cur, now,
+        add: (o.add || []).slice(), drop: drop.slice(), doc: o.doc || null, reason: o.reason || null, moved };
       S.memberLog = (S.memberLog || []).concat([rec]);
       emit();
       return rec;

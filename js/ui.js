@@ -88,6 +88,27 @@
       <div class="vmodal-b">${o.body}${o.actions ? `<div class="vmodal-acts">${o.actions}</div>` : ''}</div>`, { v: o.size || 'sm' });
   }
 
+  /* Nút Toàn màn hình cạnh nút đóng (T29 B18, B19): thêm vào hộp thoại vModal đã mở. vht-modal thật: cờ maximizable / class full-screen.
+     key: khoá localStorage nhớ lựa chọn theo người xem (chỉ là tiện ích hiển thị); attr: thuộc tính data-* của nút. */
+  const MAX_ON = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M16 21h3a2 2 0 0 0 2-2v-3"/></svg>';
+  const MAX_OFF = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3v3a2 2 0 0 1-2 2H3M21 8h-3a2 2 0 0 1-2-2V3M3 16h3a2 2 0 0 1 2 2v3M16 21v-3a2 2 0 0 1 2-2h3"/></svg>';
+  function vMaximize(m, key, attr) {
+    const box = m.el.querySelector('.vmodal'), xBtn = m.el.querySelector('.vmodal-h .vmodal-x');
+    const btn = document.createElement('button');
+    btn.type = 'button'; btn.className = 'vmodal-max'; btn.setAttribute(attr || 'data-vmax', '1');
+    const set = (on) => {
+      box.classList.toggle('max', on);
+      btn.innerHTML = on ? MAX_OFF : MAX_ON;
+      btn.title = on ? 'Thu nhỏ' : 'Toàn màn hình'; btn.setAttribute('aria-label', btn.title); btn.setAttribute('aria-pressed', String(on));
+    };
+    const wrap = document.createElement('div'); wrap.className = 'vmodal-hb';
+    xBtn.replaceWith(wrap); wrap.append(btn, xBtn);
+    let on0 = false; try { on0 = localStorage.getItem(key) === '1'; } catch (e) { /* bỏ qua */ }
+    set(on0);
+    btn.onclick = () => { const on = !box.classList.contains('max'); set(on); try { localStorage.setItem(key, on ? '1' : '0'); } catch (e) { /* bỏ qua */ } };
+    return btn;
+  }
+
   /* vht-radio: nút 16px, viền #cfd4dc; chọn → viền và chấm #ff3045. attrs: thuộc tính data-* của lựa chọn. */
   const vRadio = (label, on, attrs, dis) => `<label class="vradio-opt ${on ? 'on' : ''} ${dis ? 'dis' : ''}" ${dis ? '' : attrs || ''}><span class="rb"></span><span>${label}</span></label>`;
 
@@ -298,6 +319,8 @@
     if (t && !t.classList.contains('dis')) { const id = t.dataset.vsel; if (selOpen === id) selClose(); else selPanel(id); return; }
     if (!e.target.closest('.vsel-panel')) selClose();
   });
+  /* Escape đóng danh sách đang mở (như p-select). */
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && selOpen) selClose(); });
   window.addEventListener('hashchange', () => { selClose(); document.querySelectorAll('.info-pop').forEach((x) => x.remove()); });
 
   /* ---------- badge (trạng thái) — biến thể theo components/badge của repo-khcn-bpmn-fe ---------- */
@@ -391,5 +414,27 @@
     if (o && o.onToggle) o.onToggle(b.dataset.accKey);
   });
 
-  window.UI = { esc, icon, persona, avatar, initials, ty, pad2, cqcmUnit, qChip, qStrip, modal, vModal, vRadio, vSteps, toast, askReason, signDialog, qDialog, infoBtn, vSelect, badge, pager, norm, vTreeTable, vAccordion };
+  /* Tiền bằng chữ (tỷ đồng → chữ): dòng Tổng bảng gói thầu (IMG 7212), "Bằng chữ" của Tờ trình BM-01 / BM-09. */
+  const DIG = ['không', 'một', 'hai', 'ba', 'bốn', 'năm', 'sáu', 'bảy', 'tám', 'chín'];
+  function read3(n, full) {
+    const h = Math.floor(n / 100), t = Math.floor(n / 10) % 10, u = n % 10, w = [];
+    if (h || full) w.push(DIG[h] + ' trăm');
+    if (t > 1) { w.push(DIG[t] + ' mươi'); if (u) w.push(u === 1 ? 'mốt' : u === 5 ? 'lăm' : DIG[u]); }
+    else if (t === 1) { w.push('mười'); if (u) w.push(u === 5 ? 'lăm' : DIG[u]); }
+    else if (u) { if (h || full) w.push('lẻ'); w.push(DIG[u]); }
+    return w.join(' ');
+  }
+  function inWords(ty0) {
+    const v = Math.round((ty0 || 0) * 1e9);
+    if (!v) return 'Không đồng';
+    const parts = [];
+    [[1e9, 'tỷ'], [1e6, 'triệu'], [1e3, 'nghìn'], [1, '']].forEach(([d, unit]) => {
+      const n = Math.floor(v / d) % (d === 1e9 ? 1e6 : 1000);
+      if (n) parts.push((read3(n, parts.length > 0) + ' ' + unit).trim());
+    });
+    const t = parts.join(', ') + ' đồng';
+    return t[0].toUpperCase() + t.slice(1);
+  }
+
+  window.UI = { esc, icon, persona, avatar, initials, ty, pad2, cqcmUnit, qChip, qStrip, modal, vModal, vMaximize, vRadio, vSteps, toast, askReason, signDialog, qDialog, infoBtn, vSelect, badge, pager, norm, vTreeTable, vAccordion, inWords };
 })();

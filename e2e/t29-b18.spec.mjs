@@ -19,6 +19,9 @@ test('B18: popup bước 8 bố cục theo màn YCBG cũ; Xác nhận lưu đầ
   const who = await jump8(page);
   await page.locator('.task-acts [data-act].primary').click();
   const f = form(page);
+  // Tiêu đề hộp thoại theo nội dung (eForm title), nút trên màn việc vẫn là nhãn hành động.
+  await expect(f.locator('.vmodal-h h3')).toHaveText('Yêu cầu báo giá');
+  await expect(page.locator('.task-acts [data-act].primary')).toHaveText('Tạo yêu cầu báo giá');
   await expect(f.locator('.banner-info')).toContainText('yêu cầu bảo mật');
   await expect(f.locator('[data-ef-field="hanTraLoi"] label')).toHaveText('Thời hạn tiếp nhận báo giá');
   // Dự án / đề tài của luồng, có Nguồn vốn.
@@ -81,5 +84,92 @@ test('B18: Chọn mẫu tài liệu ở bước 8 có BM-YCKT và BM-YCBG; khôn
   const dlg = page.locator('.vmodal', { hasText: 'Danh sách tài liệu mẫu' });
   await expect(dlg.locator('tbody')).toContainText('BM-YCKT_Mẫu yêu cầu kỹ thuật để báo giá.docx');
   await expect(dlg.locator('tbody')).toContainText('BM-YCBG_Công văn yêu cầu báo giá và Mẫu báo giá.docx');
+  expect(page.errors).toEqual([]);
+});
+
+test('B18: popup eForm có nút Toàn màn hình — phóng to phủ cửa sổ, thu nhỏ về 85vw, nhớ lựa chọn khi mở lại', async ({ page }) => {
+  await fresh(page);
+  await jump8(page);
+  await page.locator('.task-acts [data-act].primary').click();
+  const box = form(page), btn = box.locator('[data-ef-max]');
+  await expect(btn).toHaveAttribute('title', 'Toàn màn hình');
+  const vw = await page.evaluate(() => innerWidth), vh = await page.evaluate(() => innerHeight);
+  expect((await box.boundingBox()).width).toBeLessThan(vw * 0.9);
+  await btn.click();
+  await expect(box).toHaveClass(/\bmax\b/);
+  await expect(btn).toHaveAttribute('title', 'Thu nhỏ');
+  const b = await box.boundingBox();
+  expect(Math.round(b.width)).toBe(vw);
+  expect(Math.round(b.height)).toBe(vh);
+  await expect(box.locator('#ok')).toBeInViewport();
+  // Đóng rồi mở lại: vẫn toàn màn hình; thu nhỏ lại được.
+  await box.locator('[data-close]').first().click();
+  await expect(box).toHaveCount(0);
+  await page.locator('.task-acts [data-act].primary').click();
+  await expect(form(page)).toHaveClass(/\bmax\b/);
+  await form(page).locator('[data-ef-max]').click();
+  await expect(form(page)).not.toHaveClass(/\bmax\b/);
+  expect(page.errors).toEqual([]);
+});
+
+// T29 B18 — SCR-106 Thêm mới / Cập nhật YCBG theo màn cũ (plan §3.11 Y1–Y10, P-213, P-214, P-215), cùng mẫu với eForm bước 8.
+const pickV = async (page, id, value) => { await page.locator(`[data-vsel="${id}"]`).click(); await page.locator(`.vsel-panel [data-opt="${value}"]`).click(); await page.keyboard.press('Escape'); };
+test('B18: SCR-106 lưu ý bảo mật, bảng dự án / đối tác / đầu mối, giá trị mặc định, nhập CSV, công văn Word, Xem lịch sử', async ({ page }) => {
+  await fresh(page, '#/ycbg/create');
+  const main = page.locator('main');
+  await expect(main.locator('[data-yc-note]')).toContainText('yêu cầu bảo mật');
+  await expect(main.locator('.vfield label', { hasText: 'Thời hạn tiếp nhận báo giá' })).toHaveCount(1);
+  await expect(main.locator('[data-yc-items] th')).toContainText(['Model / Mã NSX tham khảo']);
+  await expect(main.locator('a[data-yc-tpl]')).toHaveAttribute('href', 'assets/mau/BM-YCKT.docx');
+  await expect(main.locator('[data-yc-logt], [data-yc-log]')).toHaveCount(0);
+  // Đầu mối mặc định người tạo; bảo hành 12, năm SX năm trước.
+  const me = await page.evaluate(() => UI.persona(Flow.state.persona).name);
+  await expect(main.locator('[data-yc-ctt] tbody tr')).toHaveCount(1);
+  await expect(main.locator('[data-yc-ctt] tbody tr')).toContainText(me);
+  await expect(main.locator('[data-yc-in="terms.warranty"]')).toHaveValue('12');
+  await expect(main.locator('[data-yc-in="terms.year"]')).toHaveValue('2025');
+  // Dự án → bảng có Nguồn vốn.
+  await main.locator('[data-yc-in="title"]').fill('Khảo sát giá máy đo phổ');
+  await pickV(page, 'yc-nv', 'NV-KHCN-2026-014');
+  await expect(main.locator('[data-yc-nvt] tbody tr')).toContainText(['Quỹ phát triển KHCN']);
+  // Đối tác → bảng có Email; đối tác thiếu email thì chặn Gửi.
+  const [ok, noMail] = await page.evaluate(() => { const r = Catalog.rows('nha-cung-cap').filter((x) => x.active && !x.ban); return [r.find((x) => x.email).code, (r.find((x) => !x.email) || {}).code || null]; });
+  await pickV(page, 'yc-ncc', ok);
+  await expect(main.locator('[data-yc-ncct] tbody tr')).toHaveCount(1);
+  await expect(main.locator('[data-yc-ncct] tbody tr')).toContainText('@');
+  // Đặt giá trị mặc định.
+  await main.locator('[data-yc-def]').click();
+  await expect(main.locator('[data-yc-in="terms.place"]')).toHaveValue(/Kho Viettel Hòa Lạc/);
+  // Nhập từ Excel (.csv): thêm 2 dòng.
+  await main.locator('#yc-xls').setInputFiles({ name: 'hang-hoa.csv', mimeType: 'text/csv', buffer: Buffer.from('﻿"Hàng hoá / dịch vụ","Model / Mã NSX tham khảo","ĐVT","Số lượng","Chỉ tiêu kỹ thuật"\n"Máy phân tích phổ","N9020B","Bộ","2","26,5 GHz"\n"Bộ suy hao","8496B","Cái","4",""\n') });
+  await expect(main.locator('[data-yc-it="1.name"]')).toHaveValue('Bộ suy hao');
+  await expect(main.locator('[data-yc-it="0.qty"]')).toHaveValue('2');
+  // Bỏ hết đầu mối → bắt buộc khi Gửi.
+  await main.locator('[data-yc-ctt] [data-yc-rm="contact"]').click();
+  await main.locator('[data-yc-save="send"]').click();
+  await expect(main.locator('.vfield.invalid .msg')).toHaveText(['Bạn cần chọn đầu mối tiếp nhận báo giá.']);
+  await pickV(page, 'yc-contact', 'lan');
+  await expect(main.locator('[data-yc-ctt] tbody tr')).toContainText(['Phạm Thị Lan']);
+  // Soạn thảo công văn: tải .doc theo BM-YCBG.
+  const dl = page.waitForEvent('download');
+  await main.locator('[data-yc-word]').click();
+  expect((await dl).suggestedFilename()).toMatch(/^BM-YCBG_Cong-van-yeu-cau-bao-gia_.*\.doc$/);
+  // Lưu nháp → Cập nhật có Xem lịch sử.
+  await main.locator('[data-yc-in="terms.warranty"]').fill('24');
+  await main.locator('[data-yc-save="draft"]').click();
+  await expect(page).toHaveURL(/#\/ycbg\/YCBG-2026-0001$/);
+  const card = main.locator('.vcard', { hasText: 'Điều khoản trên phiếu yêu cầu báo giá' });
+  await expect(card).toContainText('24 tháng');
+  await expect(card).toContainText('Phạm Thị Lan');
+  await main.locator('.pg-head .r [data-go$="/edit"]').click();
+  await expect(main.locator('[data-yc-ctt] tbody tr')).toContainText(['Phạm Thị Lan']);
+  await main.locator('[data-yc-log]').click();
+  await expect(page.locator('[data-yc-logt] tbody tr')).toContainText(['Tạo mới (lưu nháp)']);
+  await page.locator('.vmodal [data-close]').last().click();
+  if (noMail) {
+    await pickV(page, 'yc-ncc', noMail);
+    await main.locator('[data-yc-save="send"]').click();
+    await expect(main.locator('.vfield.invalid .msg').first()).toContainText('chưa có Email');
+  }
   expect(page.errors).toEqual([]);
 });

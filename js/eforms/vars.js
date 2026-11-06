@@ -10,7 +10,9 @@
   const D = window.D, Flow = window.Flow;
   const { esc, persona, avatar, ty, pad2, cqcmUnit, badge } = window.UI;
 
-  const U = () => Flow.ui;
+  /* Review nhi 06/11 #6, #12, #16: xem trước văn bản ngay trong popup eForm — giá trị form đang soạn (chưa lưu) chồng lên biến hồ sơ (LIVE). */
+  let LIVE = null;
+  const U = () => (LIVE ? Object.assign({}, Flow.ui, LIVE) : Flow.ui);
   const R = () => D.caseRef;
   const kdt = () => !!Flow.state.kdt;
   const small = () => Flow.isSmall();
@@ -20,7 +22,7 @@
   const buyItems = () => D.items.filter((i) => i.buy > 0);
   const vv = (x) => (Array.isArray(x) ? x[Flow.doneCount(27) ? 1 : 0] : x);
   const vnd = (t) => Math.round(t * 1e9).toLocaleString('vi-VN');
-  const selCqcm = () => D.cqcm.filter((c) => Flow.cqcmSel().includes(c.id));
+  const selCqcm = () => D.cqcm.filter((c) => Flow.cqcmSel().includes(c.id)).map((c) => Object.assign({}, c, { doer: Flow.cqcmDoer(c.id) }));
   const catName = (key, code) => ((window.Catalog ? window.Catalog.rows(key) : []).find((r) => r.code === code) || {}).name || code || '';
   const proc = () => Flow.state.vars.process;
   const procOf = (k) => D.processes[k] || {};
@@ -32,7 +34,10 @@
   const basisList = (bt) => D.basisDocsFor(proc()).filter((d) => (!bt || d.type === bt) && (kdt() || D.basisFits(proc(), d)));
   function basisSel() {
     const u = U(), bt = u.basisType || R().basisType, list = basisList(null);
-    const doc = list.find((d) => d.id === u.basisDoc) || (u.basisDoc ? null : list.find((d) => d.id === R().basisDoc) || list[0]) || null;
+    /* Văn bản căn cứ chính mặc định theo Đề tài / dự án chọn khi tạo luồng (D.nhiemVu[].basis); không có thì theo hồ sơ mẫu. */
+    const x = !kdt() && Flow.state.dxms ? Flow.findDxms(Flow.state.dxms) : null, nvB = x && x.nv ? (D.nvOf(x.nv) || {}).basis : null;
+    const def = (nvB && list.find((d) => d.id === nvB)) || list.find((d) => d.id === R().basisDoc) || list[0];
+    const doc = list.find((d) => d.id === u.basisDoc) || (u.basisDoc ? null : def) || null;
     return { bt, list, doc };
   }
   const basisDoc = () => basisSel().doc || D.basisDocsFor(proc()).find((d) => d.id === R().basisDoc);
@@ -154,18 +159,33 @@
 
   /* Gợi ý AI theo mục (G2): một dòng / mục — Gợi ý, Nguồn chỉ đọc; Quyết định Chấp nhận / Sửa / Bỏ; Nội dung sửa.
      Dòng đã có quyết định (Flow.ui[path]) được giữ. def = quyết định mặc định ('Chấp nhận' hoặc null = chưa chọn). */
+  /* Task 04 (BPMN MS01 v1.1): mục đích; phạm vi / quy mô; giá trị, nguồn vốn, thời gian; biện pháp / kế hoạch thực hiện — theo thứ tự mục 1–6
+     của Tờ trình BM-01 / BM-09 (BM-10.2.1). Biện pháp, Kế hoạch tổ chức thực hiện (mục 6) chỉ có ở ĐXMS; KĐT giữ bộ mục của MS13. */
+  function basicRows() {
+    if (kdt()) return D.aiBasic;
+    const d = R().doc || {}, src = (basisDoc() || {}).no || 'căn cứ';
+    return D.aiBasic.concat([
+      { key: 'bienPhap', label: 'Biện pháp thực hiện', value: vv(d.measures) || '', from: `${src}; BM-01 mục 6 (Luật Đấu thầu / Quy chế LCNT của Tập đoàn)` },
+      { key: 'keHoach', label: 'Kế hoạch tổ chức thực hiện', value: typeof d.plan === 'string' ? d.plan : '', from: `Tiến độ trong ${src}` }]);
+  }
+  /* Giá trị đã xác nhận ở task 04 (Chấp nhận → gợi ý, Sửa → nội dung sửa, Bỏ → rỗng) — đầu vào dự thảo Tờ trình (task 11 / 12). */
+  const basicPick = (key, dflt) => {
+    const s = (U().aiGoiY || []).find((x) => x.key === key);
+    return !s ? dflt : s.quyetDinh === 'Sửa' ? (s.noiDungSua || dflt) : s.quyetDinh === 'Bỏ' ? '' : dflt;
+  };
   function aiRows(path, list, def) {
     const saved = U()[path] || [];
-    return list.map((x) => Object.assign({ key: x.key, muc: x.muc, goiY: x.goiY, nguon: x.nguon, quyetDinh: def, noiDungSua: '' },
+    return list.map((x) => Object.assign({ key: x.key, muc: x.muc, goiY: x.goiY, nguon: x.nguon, quyetDinh: def, noiDungSua: '', nhanXet: '' },
       saved.find((s) => s.key === x.key) || {}, { goiY: x.goiY, nguon: x.nguon, muc: x.muc }));
   }
-  /* Giá trị cuối của một dòng gợi ý AI (BE tính khi Xác nhận): Chấp nhận → gợi ý; Sửa → nội dung sửa; Bỏ / chưa chọn → rỗng. */
-  const aiFinal = (r) => (!r ? '' : r.quyetDinh === 'Chấp nhận' ? r.goiY : r.quyetDinh === 'Sửa' ? r.noiDungSua || '' : '');
+  /* Giá trị cuối của một dòng gợi ý AI (BE tính khi Xác nhận): Chấp nhận → gợi ý; Sửa / Từ chối (task 11, 12) → nội dung sửa / thay thế; Bỏ / chưa chọn → rỗng. */
+  const aiFinal = (r) => (!r ? '' : r.quyetDinh === 'Chấp nhận' ? r.goiY : r.quyetDinh === 'Sửa' || r.quyetDinh === 'Từ chối' ? r.noiDungSua || '' : '');
   const aiOf = (path, key) => aiFinal((U()[path] || []).find((r) => r.key === key));
 
   /* Task 13 — các phần chỉ huy duyệt (comment #6–8). */
-  const PARTS = () => ['1. Sự cần thiết', '2–3. Mục đích, phạm vi, quy mô', '4. Tổng kinh phí, phụ lục chi phí', '5–6. Phương pháp tính, phương án kỹ thuật',
-    '7–8. Nguồn vốn, sử dụng hàng tồn kho', '9–10. Biện pháp, kế hoạch thực hiện', 'BM-02 Thuyết minh', clName()];
+  /* Review nhi 06/11 #8, #11: phần duyệt theo mục 1–6 của mẫu BM-01 / BM-09. */
+  const PARTS = () => ['1. Mục đích', '2. Phạm vi, quy mô (sự cần thiết, danh mục hàng hóa)', '3. Giá trị, phương pháp tính, phương án kỹ thuật',
+    '4. Nguồn vốn, thời gian thực hiện', '5. Đánh giá hiệu quả', '6. Biện pháp, kế hoạch thực hiện', 'BM-02 Thuyết minh', clName()];
   /* Nguồn đối soát ở task 08 (comment #4): theo nhiệm vụ / đề tài của ĐXMS, mặc định theo loại căn cứ. */
   const SRC = { mbom: 'MBOM + dự toán nhiệm vụ KHCN', dutoan: 'Dự toán dự án SXKD (PAKD)', khn: 'Kế hoạch mua sắm thường xuyên năm (KHN)' };
   function srcKey() {
@@ -183,13 +203,48 @@
   /* T29 B17 (P-212): phụ lục của Tờ trình chọn Có / Không — chọn khi tạo luồng (vars.phuLuc), sửa ở bước lập dự thảo (pl_<khoá>);
      vals = giá trị form đang nộp (chưa ghi vào U). */
   const plOn = (key, vals) => ((vals && vals['pl_' + key]) || U()['pl_' + key] || (Flow.state.vars.phuLuc || {})[key] || 'Không') === 'Có';
-  const checklistRows = () => D.checklist.map((c) => {
+  /* Review nhi 06/11 #9: tên Tờ trình theo luồng (BM-01 ≥ 160 tỷ / BM-09 < 160 tỷ) — bảng là Checklist 01 / 02 theo giá trị hồ sơ (clName). */
+  const clName0 = (c) => c.name.replace('(BM-01)', `(${tt()})`);
+  const fileOf = (x) => (typeof x === 'string' ? x : x ? 'Đã tải lên' : '');
+  /* Review nhi 06/11 #29: cột Tệp — dòng đã có tệp tải về được (liên kết [tên](dl:tên), eform-run). */
+  const checklistRows = () => { const tep = checklistForm(); return D.checklist.map((c, i) => {
+    const f = tep[i].tepDa === 'Chưa có tệp' ? '-' : tep[i].tepDa;
     /* T29 F7, B17: phụ lục chọn Có — bắt buộc, Đủ khi đã tải lên; chọn Không — Không áp dụng. */
-    if (c.up) return plOn(c.up) ? { nhom: c.g, muc: c.name, so: U()[c.up] ? 'Đã tải lên' : c.no, yeuCau: 'Bắt buộc', tinhTrang: U()[c.up] ? 'Đủ' : 'Thiếu' }
-      : { nhom: c.g, muc: c.name, so: '—', yeuCau: 'Không', tinhTrang: 'Không áp dụng' };
+    if (c.up) return plOn(c.up) ? { nhom: c.g, muc: c.name, so: U()[c.up] ? 'Đã tải lên' : c.no, yeuCau: 'Bắt buộc', tinhTrang: U()[c.up] ? 'Đủ' : 'Thiếu', tep: f }
+      : { nhom: c.g, muc: c.name, so: '—', yeuCau: 'Không', tinhTrang: 'Không áp dụng', tep: '-' };
     const ok = c.by == null ? null : Flow.taskStatus(c.by) !== 'todo' || c.by === draftTask();
-    return { nhom: c.g, muc: c.name, so: c.no, yeuCau: c.req, tinhTrang: ok == null ? 'Không có' : ok ? 'Đủ' : 'Thiếu' };
-  });
+    return { nhom: c.g, muc: clName0(c), so: c.no, yeuCau: c.req, tinhTrang: ok == null ? 'Không có' : ok ? 'Đủ' : 'Thiếu', tep: f };
+  }); };
+  /* Review nhi 06/11 #4, #5: Checklist trong popup bước lập dự thảo = danh mục hồ sơ, gộp 6 phụ lục (chọn Có / Không ngay trên dòng),
+     mỗi dòng hiện tệp đã có trên hồ sơ và cho tải thêm. Tệp hệ thống sinh (Tờ trình, BM-02) không tải ở đây. Thật: dynamiclist + filepicker của vht-e-form;
+     tệp lên MinIO, gắn Loại tài liệu = dòng checklist (danh mục Loại tài liệu), cùng nơi với Danh sách tài liệu. */
+  const GEN = /\((BM-0[129])\)$/;
+  const SEEDED = { 1: () => `${(basisDoc() || {}).no || 'Văn bản căn cứ'}.pdf`, 10: () => { const up = (U().nccSel || nccDefault()).filter((c) => U()[quoteKey(c)]).map((c) => (typeof U()[quoteKey(c)] === 'string' ? U()[quoteKey(c)] : `Báo giá ${nccName(c)}.pdf`));
+    return (up.length ? up : D.quotes.map((q) => `Báo giá ${nccName(q.ncc)}.pdf`)).join(', ') || 'Bao-gia-nha-cung-cap.pdf'; }, 7: () => `${R().rstk || 'Kết quả rà soát tồn kho'}.xlsx` };
+  function checklistForm() {
+    const extra = U().clFiles || {}, kem = U().clKem || {};
+    const link = (s) => String(s).split(', ').filter(Boolean).map((n) => `[${n}](dl:${n})`).join(', ');
+    return D.checklist.map((c, i) => {
+      const key = c.up || 'cl' + i, gen = !c.up && (GEN.test(c.name) || c.by === draftTask());
+      const seeded = !c.up && c.by != null && SEEDED[c.by] && Flow.taskStatus(c.by) !== 'todo' ? SEEDED[c.by]() : '';
+      const files = [seeded, c.up ? fileOf(U()[c.up]) : '', extra[key] || ''].filter(Boolean).join(', ');
+      const on = c.up ? plOn(c.up) : null;
+      const ok = c.up ? (on ? !!files : null) : c.by == null ? (files ? true : null) : Flow.taskStatus(c.by) !== 'todo' || c.by === draftTask();
+      /* Review nhi 06/11 #27: Tình trạng Có / Không trên mọi dòng (phụ lục = Kèm theo); mặc định theo tệp đã có. */
+      const genFile = gen ? `${/BM-02/.test(c.name) ? 'BM-02' : /^Checklist/.test(c.name) ? clName().replace(' ', '-') : tt()}_du-thao-v${version()}.pdf` : '';
+      return { key, up: c.up || '', nhom: c.g, muc: clName0(c), pl: !!c.up, gen, noFile: !gen && !files, kemTheo: c.up ? (on ? 'Có' : 'Không') : gen ? 'Có' : kem[key] || (files || ok ? 'Có' : 'Không'),
+        batBuoc: c.up ? 'Không bắt buộc' : c.req === 'Bắt buộc' ? 'Bắt buộc' : 'Không bắt buộc',
+        yeuCau: c.up ? (on ? 'Bắt buộc' : 'Không') : c.req, tinhTrang: c.up && !on ? 'Không áp dụng' : ok == null ? 'Không có' : ok ? 'Đủ' : 'Thiếu',
+        tepDa: gen ? link(genFile) : files ? link(files) : 'Chưa có tệp', tepMoi: '' };
+    });
+  }
+  /* Giá trị Có / Không của phụ lục và tệp vừa chọn trong bảng Checklist của form (vals.checklistDs) → pl_<khoá>, tệp phụ lục. */
+  const plFromForm = (vals) => {
+    const o = {};
+    ((vals && vals.checklistDs) || []).forEach((r) => { if (r.up) o['pl_' + r.up] = r.kemTheo || 'Không'; });
+    return o;
+  };
+  const formFile = (vals, key) => (((vals && vals.checklistDs) || []).find((r) => r.key === key) || {}).tepMoi || '';
   /* Checklist số 01 / 02 của KĐT (BM-8.6.5): không xoá dòng khi thiếu tài liệu — cột Ghi chú. */
   function kdtChecklist(no) {
     const b = basisDoc(), x = b3();
@@ -320,11 +375,11 @@
     v.aiEstimate = ty(D.aiEstimate, 0);
     v.tenDeXuat = u.tenDeXuat || ci.title;
     v.purposeCode = u.purposeCode || R().purposeCode;
-    v.secret = u.secret != null ? u.secret : kdt() ? Flow.isMat() : false;
-    v.priority = u.priority || D.caseInfo.priority;
+    /* Mật mặc định theo lựa chọn khi tạo luồng (SCR-96); KĐT theo khoản đầu tư. */
+    v.secret = u.secret != null ? u.secret : kdt() ? Flow.isMat() : !!ci.secret;
     v.fund = u.fund !== undefined ? u.fund : (D.aiBasic.find((a) => a.key === 'fund') || {}).code || null;
     v.fundOptions = window.Catalog.rows('nguon-von').filter((r) => r.active || r.code === v.fund).map((r) => ({ value: r.code, label: r.name }));
-    v.aiGoiY = aiRows('aiGoiY', D.aiBasic.map((a) => ({ key: a.key, muc: a.label, goiY: a.value, nguon: `${a.from} (căn cứ ${basisDoc() ? basisDoc().no : ''})` })), 'Chấp nhận');
+    v.aiGoiY = aiRows('aiGoiY', basicRows().map((a) => ({ key: a.key, muc: a.label, goiY: a.value, nguon: `${a.from} (căn cứ ${basisDoc() ? basisDoc().no : ''})` })), 'Chấp nhận');
     if (kdt()) { const k = kd(); v.kdtInfo = { linhVuc: catName('linh-vuc', k.field), loai: catName('loai-kdt', k.type), tinhChat: catName('tinh-chat-tai-san', k.nature) }; }
 
     /* T29 S8 (D-60) — dòng dự toán đề tài / dự án đã bóc tách khi tạo luồng: BE ghi biến khi start từ hạng mục của ĐXMS (bảng giữ chỗ căn cứ).
@@ -350,7 +405,13 @@
     v.tenHoSo = ci.name || ci.title || '';
     v.bocTachXem = D.items.map((i) => ({ n: i.n, hang: i.name, dvt: i.uom, sl: propOf(i) }));
     v.tongBaoGia = (() => { try { return window.BaoGia && !kdt() ? ty(window.BaoGia.total()) : '-'; } catch (e) { return '-'; } })();
-    v.cqcmXem = (Flow.cqcmSel ? Flow.cqcmSel() : []).map((id) => { const c = D.cqcm.find((x) => x.id === id) || {}; return { donVi: c.unit || id, nguoi: c.doer ? persona(c.doer).name : '-' }; });
+    /* Review nhi 06/11 #3, #7 (D.quoteManual): giá trị báo giá cuối cùng Thầu nhập ở bước 10 (đồng); điền sẵn tổng báo giá mẫu (GIẢ LẬP P-219). */
+    const gtMau = (() => { try { return Math.round((window.BaoGia && !kdt() ? window.BaoGia.total() : D.caseInfo.total) * 1e9); } catch (e) { return Math.round(D.caseInfo.total * 1e9); } })();
+    v.giaTriBaoGia = u.giaTriBaoGia != null ? u.giaTriBaoGia : gtMau;
+    v.giaTriBaoGiaTxt = `${vnd(v.giaTriBaoGia / 1e9)} đồng (${ty(v.giaTriBaoGia / 1e9)} tỷ)`;
+    v.ghiChuBaoGia = u.ghiChuBaoGia || '';
+    v.baoGiaTep = kdt() ? [] : (u.nccSel || nccDefault()).map((c) => ({ ncc: nccName(c), tep: u[quoteKey(c)] ? (typeof u[quoteKey(c)] === 'string' ? u[quoteKey(c)] : 'Đã tải lên') : 'Chưa tải lên' }));
+    v.cqcmXem = (Flow.cqcmSel ? Flow.cqcmSel() : []).map((id) => { const c = D.cqcm.find((x) => x.id === id) || {}; return { donVi: c.unit || id, chucNang: CQ_FN[id] || '', nguoi: c.doer ? persona(Flow.cqcmDoer(id)).name : '-' }; });
 
     /* 07 — kết quả tích hợp hệ thống kho (task 06, service task) */
     v.stock = { trangThai: 'Đã có kết quả', ma: R().rstk, gui: Flow.dateOf(Math.max(0, Flow.state.clock - 1)) };
@@ -453,15 +514,52 @@
 
     /* 11 / 12 — tờ trình: nội dung từng mục (L1), "Sự cần thiết" theo gợi ý AI (G2), kết quả AI kiểm tra (DX-01) */
     const d = R().doc || {};
-    v.mucDich = u.mucDich != null ? u.mucDich : D.aiBasic[0].value;
-    v.phamVi = u.phamVi != null ? u.phamVi : D.aiBasic[1].value;
+    v.mucDich = u.mucDich != null ? u.mucDich : basicPick('purposeText', D.aiBasic[0].value);
+    v.phamVi = u.phamVi != null ? u.phamVi : basicPick('scope', D.aiBasic[1].value);
     v.phuongPhap = u.phuongPhap != null ? u.phuongPhap : `Đơn giá thấp nhất trong 3 báo giá hợp lệ (${D.quotes.map((q) => nccName(q.ncc)).join(', ')}).`;
     v.phuongAn = u.phuongAn != null ? u.phuongAn : d.tech || '';
     v.nguonVonTt = u.nguonVonTt != null ? u.nguonVonTt : (d.fund ? vv(d.fund) : D.caseInfo.fund);
-    v.bienPhap = u.bienPhap != null ? u.bienPhap : vv(d.measures) || '';
-    v.keHoach = u.keHoach != null ? u.keHoach : (typeof d.plan === 'string' ? d.plan : '');
+    v.bienPhap = u.bienPhap != null ? u.bienPhap : basicPick('bienPhap', vv(d.measures) || '');
+    v.keHoach = u.keHoach != null ? u.keHoach : basicPick('keHoach', typeof d.plan === 'string' ? d.plan : '');
     v.tongKinhPhi = vv(d.total) || '';
     v.cauTonKho = d.stock || '';
+    /* Review nhi 06/11 #8: ô nhập theo đúng mục 1–6 của mẫu BM-01 / BM-09 (BM-10.2.1) — thêm Quan điểm thực hiện, Nguồn ngân sách,
+       Thời gian thực hiện mua sắm, Đánh giá hiệu quả; Giá trị (mục 3) và Danh mục hàng hoá (mục 2b) chỉ xem, lấy từ báo giá / bóc tách. GIẢ LẬP P-220. */
+    v.quanDiem = u.quanDiem != null ? u.quanDiem : '';
+    v.nguonNganSach = u.nguonNganSach != null ? u.nguonNganSach : '';
+    v.thoiGianTh = u.thoiGianTh != null ? u.thoiGianTh : period2(ci.period).replace(/&ndash;/g, '–');
+    v.hieuQua = u.hieuQua != null ? u.hieuQua : '';
+    /* Review nhi 06/11 #36 (GIẢ LẬP P-222): Phụ lục chi phí sửa được ở bước lập dự thảo. Mặc định từ hạng mục hồ sơ; Thầu chỉ nhập một giá trị cuối cùng (#3) nên đơn giá mẫu
+       được quy đổi theo tỷ lệ cho khớp giá trị đã duyệt — thật: nhập theo hạng mục hoặc đọc từ báo giá, chờ BA (P-219). */
+    const edTotal = Flow.ci().total, edBase = D.items.reduce((a, i) => a + (i.buy || 0) * (i.price || 0), 0), edK = edBase > 0 && Math.abs(edBase - edTotal) > 0.05 ? edTotal / edBase : 1;
+    v.phuLucEd = u.phuLucEd || D.items.map((i) => ({ n: i.n, hang: i.name, chungLoai: goodsName(i.goods), dvt: i.uom, sl: i.buy || 0, donGia: Math.round((i.price || 0) * edK * 1e4) / 1e4,
+      thanhTien: (i.buy || 0) * (i.price || 0) * edK, coSo: i.buy ? `Báo giá ${nccName('NCC-000001')}` : 'Dùng tồn kho', loai: i.cost || '' }));
+    v.giaTriDuyetTy = Math.round(edTotal * 100) / 100;
+    v.nguongTy = ((Flow.state.vars.th || D.dxmsRules()).find((r) => r.from > 0) || { from: 160 }).from;
+    v.danhMucHang = u.phuLucEd ? u.phuLucEd.filter((r) => r.sl > 0).map((r, k) => ({ n: k + 1, hang: r.hang, loai: r.chungLoai, dvt: r.dvt, sl: r.sl }))
+      : buyItems().map((i, k) => ({ n: k + 1, hang: i.name, loai: goodsName(i.goods), dvt: i.uom, sl: i.buy }));
+    /* Review nhi 06/11 #34, #35: nội dung service task AI soạn cho các ô của Tờ trình, kèm nguồn (GIẢ LẬP — mẫu của hồ sơ demo). */
+    const aiNv = D.nvOf && D.nvOf((Flow.findDxms(Flow.state.dxms) || {}).nv), aiCc = `Căn cứ ${(basisDoc() || {}).no || ''}`;
+    v.suCanThiet = u.necessity != null ? u.necessity : '';
+    v.aiTt = {
+      mucDich: { value: basicPick('purposeText', D.aiBasic[0].value), nguon: `${aiCc}, thông tin chung của hồ sơ` },
+      suCanThiet: { value: d.necessity || '', nguon: `${aiCc}, kết quả rà soát tồn kho` },
+      phamVi: { value: basicPick('scope', D.aiBasic[1].value), nguon: `${aiCc}, danh mục bóc tách` },
+      phuongPhap: { value: `Đơn giá thấp nhất trong 3 báo giá hợp lệ (${D.quotes.map((q) => nccName(q.ncc)).join(', ')}).`, nguon: 'Tệp báo giá của nhà cung cấp' },
+      quanDiem: { value: 'Mua sắm đúng nhu cầu, tận dụng tồn kho hiện có, ưu tiên hàng hóa đáp ứng yêu cầu kỹ thuật với chi phí hợp lý.', nguon: 'Mẫu BM-10.2.1' },
+      phuongAn: { value: d.tech || '', nguon: `${aiCc}, yêu cầu kỹ thuật` },
+      nguonNganSach: { value: aiNv ? `Dự toán ${aiNv.code}` : 'Theo căn cứ của hồ sơ', nguon: 'Đề tài / dự án của hồ sơ' },
+      hieuQua: { value: 'Giảm chi phí thuê ngoài, chủ động tiến độ thực hiện và nâng cao năng lực của đơn vị.', nguon: aiCc },
+      bienPhap: { value: basicPick('bienPhap', vv(d.measures) || ''), nguon: 'Quy chế QC-12868' },
+      keHoach: { value: basicPick('keHoach', typeof d.plan === 'string' ? d.plan : ''), nguon: `${aiCc}, thời gian thực hiện của hồ sơ` },
+    };
+    const tot = Flow.ci().total, costs = Object.entries(buyItems().reduce((o, i) => { const k = COST_LBL[i.cost] || 'Chi phí khác'; o[k] = (o[k] || 0) + (i.amount || 0); return o; }, {}));
+    v.giaTriTt = `**Tổng kinh phí đề xuất: ${vnd(tot)} VNĐ (đã bao gồm VAT)**
+*(Bằng chữ: ${window.UI.inWords(tot)}./.)*` + (costs.length > 1 ? `
+Trong đó:
+${costs.map(([k, a]) => `- ${k}: ${vnd(a)} VNĐ`).join('\n')}` : '');
+    v.tenTt = small() ? 'Tờ trình đề xuất mua sắm (ký trực tiếp)' : 'Tờ trình thẩm định, phê duyệt đề xuất mua sắm';
+    v.checklistDs = checklistForm();
     v.aiSuCanThiet = aiRows('aiSuCanThiet', [{ key: 'suCanThiet', muc: 'Sự cần thiết', goiY: d.necessity || '', nguon: `Căn cứ ${(basisDoc() || {}).no || ''}, thông tin cơ bản của hồ sơ` }], null);
     v.aiCheck = u.aiCheck || null;
     v.phuLucChiPhi = D.items.map((i) => ({ n: i.n, hang: i.name, sl: i.buy, donGia: ty(i.price), thanhTien: ty(i.amount), coSo: i.buy ? `Báo giá ${nccName('NCC-000001')}` : 'Dùng tồn kho', loai: i.cost || '' }));
@@ -475,7 +573,7 @@
       .map((r) => Object.assign(r, { xuLy: 'Đã sửa', giaiTrinh: '' }));
 
     /* 13 */
-    v.tomTat = `**Tên:** ${ci.title}\n**Căn cứ:** ${(basisDoc() || {}).no || ''} · **Giá trị:** ${ty(D.caseInfo.total)} tỷ (${buyItems().length} hạng mục)\n**Nguồn vốn:** ${D.caseInfo.fund} · **Thời gian:** ${D.caseInfo.period} · **Quy trình:** ${proc()}${small() ? ` (${tt()} + ${clName()})` : ''} — khớp giá trị`;
+    v.tomTat = `**Tên:** ${ci.title}\n**Căn cứ:** ${(basisDoc() || {}).no || ''} · **Giá trị:** ${ty(Flow.ci().total)} tỷ (${v.danhMucHang.length} hạng mục)\n**Nguồn vốn:** ${D.caseInfo.fund} · **Thời gian:** ${D.caseInfo.period} · **Quy trình:** ${proc()}${small() ? ` (${tt()} + ${clName()})` : ''} — khớp giá trị`;
     v.coCauChiPhi = buyItems().map((i) => ({ n: i.n, hang: i.name, thanhTien: ty(i.amount), tyTrong: ty((i.amount / D.caseInfo.total) * 100, 1) + '%' }));
     /* Comment #9 — lịch sử chỉnh sửa theo phần (BE ghi mỗi lần gửi lại sau khi chỉ huy trả lại). */
     const ph = Flow.doneCount(draftTask()) > 1 ? (u.phanHoiChiHuy || []) : [], sent = Flow.lastOf(draftTask());
@@ -483,17 +581,55 @@
       noiDung: r.xuLy === 'Không sửa' ? `Không sửa — giải trình: ${r.giaiTrinh}` : `Đã sửa theo chỉ đạo: ${r.chiDao}`, nguoi: pname('minh'), thoiDiem: sent ? Flow.dateOf(sent.t) : '-' }));
     const nSua = ph.filter((r) => r.xuLy !== 'Không sửa').length;
     v.aiTomTatSua = `${nSua} phần đã sửa theo chỉ đạo, ${ph.length - nSua} phần giữ nguyên có giải trình. Đối chiếu nội dung trước / sau ở tab Lịch sử phiên bản.`;
-    v.duyetPhan = PARTS().map((p) => {
+    /* Review nhi 06/11 #11: mỗi phần hiện đủ nội dung người soạn đã điền ở bước lập dự thảo (chỉ xem), chỉ huy đọc ngay trên form. */
+    const nec13 = U().necessity || aiFinal((v.aiSuCanThiet || [])[0]) || '';
+    const dash = (x) => (x && String(x).trim() ? x : '—');
+    const cl13 = checklistForm(), need13 = cl13.filter((r) => r.yeuCau === 'Bắt buộc'), ok13 = need13.filter((r) => r.tinhTrang === 'Đủ').length;
+    const PART_TXT = [
+      `- Mục đích: ${dash(v.mucDich)}`,
+      `- a) Sự cần thiết phải mua sắm: ${dash(nec13)}
+- Hiện trạng tồn kho: ${dash(v.cauTonKho)}
+- b) Danh mục hàng hóa, dịch vụ: ${dash(v.phamVi)}
+${v.danhMucHang.map((r) => `- ${r.hang} — ${r.sl} ${r.dvt}`).join('\n')}`,
+      `- Tổng kinh phí đề xuất: ${vnd(Flow.ci().total)} VNĐ (đã bao gồm VAT)
+- Phương pháp tính toán, cơ sở đơn giá: ${dash(v.phuongPhap)}
+- Quan điểm thực hiện: ${dash(v.quanDiem)}
+- Phương án kỹ thuật – công nghệ: ${dash(v.phuongAn)}`,
+      `- Nguồn vốn: ${dash(v.nguonVonTt)}
+- Nguồn ngân sách: ${dash(v.nguonNganSach)}
+- Thời gian thực hiện mua sắm: ${dash(v.thoiGianTh)}`,
+      `- Đánh giá hiệu quả: ${dash(v.hieuQua)}`,
+      `- Biện pháp thực hiện: ${dash(v.bienPhap)}
+- Kế hoạch tổ chức thực hiện: ${dash(v.keHoach)}`,
+      '- Thuyết minh (BM-02) hệ thống sinh từ Tờ trình và phụ lục chi phí — xem ở Văn bản đầu ra.',
+      `- ${ok13}/${need13.length} tài liệu bắt buộc đã đủ${need13.length - ok13 ? `; còn thiếu: ${need13.filter((r) => r.tinhTrang !== 'Đủ').map((r) => r.muc).join('; ')}` : ''}
+- Phụ lục kèm theo: ${cl13.filter((r) => r.pl && r.kemTheo === 'Có').map((r) => r.muc).join('; ') || 'Không có'}`];
+    v.duyetPhan = PARTS().map((p, k) => {
       const g = ph.find((r) => r.phan === p);
-      return { phan: p, ketQua: 'Đạt', lyDo: '', giaiTrinh: g ? (g.xuLy === 'Không sửa' ? 'Người soạn giải trình: ' + g.giaiTrinh : 'Người soạn: đã sửa theo chỉ đạo') : '' };
+      return { phan: p, noiDung: PART_TXT[k] || '', ketQua: 'Đạt', lyDo: '', giaiTrinh: g ? (g.xuLy === 'Không sửa' ? 'Người soạn giải trình: ' + g.giaiTrinh : 'Người soạn: đã sửa theo chỉ đạo') : '' };
     });
 
     /* 16 */
     const cs = Flow.cqcmSel();
     v.cqcmSel = u.cqcmSel || (small() ? [...new Set(cs.concat(['TC']))] : cs);
-    v.cqcmValues = D.cqcm.map((c) => ({ value: c.id, label: `${c.unit} — ${pname(c.doer)}` }));
+    v.cqcmValues = D.cqcm.map((c) => ({ value: c.id, label: c.unit }));
+    /* Review nhi 06/11 #40 (GIẢ LẬP P-224): mỗi CQCM chọn Người thẩm định trong danh sách chuyên viên của đơn vị. */
+    v.cqcmNguoiDs = D.cqcm.map((c) => ({ value: c.id, donVi: c.unit, chucNang: CQ_FN[c.id] || '', nguoi: Flow.cqcmDoer(c.id), nguoiOpts: (c.doers || [c.doer]).map((p) => ({ value: p, label: pname(p) })) }));
     v.hanGopY = u.hanGopY || Flow.dateOf(Flow.state.clock + 5);
     v.dauMoi = u.dauMoi || 'minh';
+    /* Review nhi 06/11 #14, #15: CQCM chọn bằng danh sách thả xuống, các cơ quan đã chọn hiện thành bảng; trường của phiếu BM-03
+       (Công văn đề nghị góp ý dự thảo hồ sơ ĐXMS, BM-10.2.1) — trích yếu, căn cứ, nội dung đề nghị, đầu mối (ĐT, email), nơi nhận. GIẢ LẬP P-220. */
+    v.cqcmInfo = D.cqcm.map((c) => ({ value: c.id, donVi: c.unit, chucNang: CQ_FN[c.id] || '', nguoi: pname(Flow.cqcmDoer(c.id)) }));
+    const ci16 = Flow.ci(), dm16 = D.contactParts(v.dauMoi) || {};
+    v.bm03Vv = u.bm03Vv != null ? u.bm03Vv : `V/v đề nghị góp ý dự thảo hồ sơ ĐXMS ${ci16.title}`;
+    v.bm03CanCu = u.bm03CanCu != null ? u.bm03CanCu : [legalLines()[0], plainText(basisLine()).replace(/;$/, ',')].filter(Boolean).join('\n');
+    v.bm03NoiDung = u.bm03NoiDung != null ? u.bm03NoiDung : `Trên cơ sở ${plainText(basisName())} đã được phê duyệt, ${ci16.unit || ''} đã hoàn thành dự thảo Hồ sơ đề xuất mua sắm ${ci16.title}. Nhằm đảm bảo ĐXMS được lập, thẩm định đúng quy định, đáp ứng tiến độ mua sắm, ${ci16.unit || ''} kính đề nghị các CQCM phối hợp góp ý dự thảo hồ sơ ĐXMS theo chức năng, nhiệm vụ và gửi ý kiến nhận xét, góp ý để hoàn chỉnh nội dung ĐXMS trước ngày hạn góp ý.`;
+    /* Review nhi 06/11 #30: bước 16.1 đọc lại nội dung phiếu BM-03. */
+    v.dauMoiTen = pname(v.dauMoi);
+    v.bm03Tep = u.bm03File ? (typeof u.bm03File === 'string' ? `[${u.bm03File}](dl:${u.bm03File})` : '[BM-03_ky-nhay.pdf](dl:BM-03_ky-nhay.pdf)') : 'Chưa có tệp';
+    v.dmDienThoai = u.dmDienThoai != null ? u.dmDienThoai : dm16.dienThoai || '';
+    v.dmEmail = u.dmEmail != null ? u.dmEmail : dm16.email || '';
+    v.bm03NoiNhan = u.bm03NoiNhan != null ? u.bm03NoiNhan : `Như trên; Lưu: VT, ${unitSign(ci16.unit)}.`;
     v.nguoiDungOptions = D.personas.map((p) => ({ value: p.id, label: `${p.name} — ${p.role}` }));
     const b17 = Flow.lastOf(17);
     v.traLai17 = b17 && /^Chưa/.test(b17.action) && Flow.doneCount(16) === Flow.doneCount(17) ? { lyDo: b17.reason || '' } : null;
@@ -527,22 +663,32 @@
     const rv = reviewRows();
     v.bm04TrangThai = selCqcm().map((c) => ({ cqcm: c.unit, nguoi: `${persona(c.doer).short} / ${persona(c.signer).short}`, lan: pad2(bm04Round()), ky: signedBy.includes(c.id) ? 'Đã ký' : 'Chưa ký',
       khongOk: opinionsOf(c.id).filter((o) => !o.ok).length, tinhTrang: (rv.find((r) => r.id === c.id) || {}).st || '-', soNgay: (rv.find((r) => r.id === c.id) || {}).days || '-' }));
-    v.quyetDinhYKien = nok().map((o) => ({ cqcm: o.cqcm, cqcmTen: cqcmUnit(o.cqcm), muc: o.sec, yKien: o.text, quyetDinh: respOf(o.cqcm) }));
+    const hx = u.huongXuLy || {}, ykId = (o) => `${o.cqcm}|${o.sec}`;
+    v.quyetDinhYKien = nok().map((o) => ({ id: ykId(o), cqcm: o.cqcm, cqcmTen: cqcmUnit(o.cqcm), muc: o.sec, yKien: o.text, quyetDinh: respOf(o.cqcm), huongXuLy: hx[ykId(o)] || '' }));
     v.vongGiaiTrinh = Flow.state.vars.round;
     /* Comment #13, #15 — AI đồng bộ ý kiến các CQCM theo mục BM-01 (service task 25). */
     const bySec = {};
     nok().forEach((o) => { (bySec[o.sec] = bySec[o.sec] || []).push(o); });
     v.aiDongBo = Object.entries(bySec).map(([sec, l]) => `- **${sec}** (${l.map((o) => cqcmUnit(o.cqcm)).join(', ')}): ${l.map((o) => o.guide || o.text).join(' ')}${l.length > 1 ? ' — các cơ quan cùng yêu cầu, sửa một lần cho cả hai.' : ''}`).join('\n')
       || '- Không có ý kiến cần sửa.';
+    /* Góp ý 06/11 — gợi ý AI theo từng ý kiến cho popup ✦ Gợi ý từ AI (bước 26). GIẢ LẬP: quyết định gợi ý = dự thảo phản hồi của đơn vị
+       (D.responses); Đồng ý sửa → hướng sửa đã gộp theo mục BM-01, Không đồng ý → dự thảo giải trình. */
+    v.aiXungDot = 'Không có xung đột — không có cặp ý kiến mâu thuẫn giữa các CQCM trên cùng một mục của BM-01.';
+    v.aiYKien = nok().map((o) => {
+      const r = D.responses[o.cqcm] || {}, d = r.decision || 'Tiếp thu', same = (bySec[o.sec] || []).filter((x) => x.cqcm !== o.cqcm);
+      const fix = `${o.guide || o.text}${same.length ? ` (trùng mục với ${same.map((x) => cqcmUnit(x.cqcm)).join(', ')} — sửa một lần cho cả hai)` : ''}`;
+      return { id: ykId(o), cqcmTen: cqcmUnit(o.cqcm), muc: o.sec, yKien: o.text, quyetDinh: d,
+        huongXuLy: d === 'Bảo lưu' ? r.keepText || r.text || '' : fix, nguon: `BM-04 của ${cqcmUnit(o.cqcm)} · ${o.sec}${d === 'Bảo lưu' && r.ref ? ` · ${r.ref}` : ''}` };
+    });
 
     /* 27 / 28 */
     const accepted = Flow.state.vars.round > 0 ? selCqcm().filter((c) => respOf(c.id) === 'Bảo lưu') : [];
-    v.viecCanSua = nok().filter((o) => respOf(o.cqcm) === 'Tiếp thu').map((o) => `- ${o.sec}: ${o.guide || o.text}`)
+    v.viecCanSua = nok().filter((o) => respOf(o.cqcm) === 'Tiếp thu').map((o) => `- ${o.sec}: ${hx[ykId(o)] || o.guide || o.text}`)
       .concat(accepted.map((c) => `- ${c.unit} đã chấp nhận giải trình: ghi chú làm rõ trong hồ sơ.`)).join('\n');
     const savedGt = u.giaiTrinh || [];
     v.giaiTrinh = nok().map((o, i) => {
       const dd = respOf(o.cqcm), r = D.responses[o.cqcm] || {}, sv = savedGt.find((x) => x.cqcm === o.cqcm && x.muc === o.sec);
-      return { cqcm: o.cqcm, muc: o.sec, yKien: `${cqcmUnit(o.cqcm)} · ${o.sec}: ${o.text}`, quyetDinh: dd, noiDung: sv ? sv.noiDung : (dd === 'Bảo lưu' && r.keepText) || r.text || '', thamChieu: r.ref || '' };
+      return { cqcm: o.cqcm, muc: o.sec, yKien: `${cqcmUnit(o.cqcm)} · ${o.sec}: ${o.text}`, quyetDinh: dd, noiDung: sv ? sv.noiDung : (dd === 'Bảo lưu' && (hx[ykId(o)] || r.keepText)) || r.text || '', thamChieu: r.ref || '' };
     });
     v.tongHopGiaiTrinh = `${nok().filter((o) => respOf(o.cqcm) === 'Tiếp thu').length} ý kiến tiếp thu, ${nok().filter((o) => respOf(o.cqcm) === 'Bảo lưu').length} ý kiến bảo lưu`;
     v.nokGiaiTrinh = v.giaiTrinh.map((g) => ({ yKien: g.yKien, quyetDinh: g.quyetDinh, giaiTrinh: g.noiDung, thamChieu: g.thamChieu }));
@@ -806,58 +952,189 @@
   /* T29 B17: phụ lục chọn Có (P-212) — in ở mục Danh mục hồ sơ kèm theo của Tờ trình. */
   const plList = () => D.phuLuc.filter(([k]) => plOn(k)).map(([, n]) => n);
 
-  /* T29 B17 (A6) — Xuất file Word Tờ trình theo mẫu tờ trình của hệ thống cũ (HT-DXMS-TT): đầu văn bản, Kính gửi, căn cứ,
-     I. Thông tin chung 5 mục, II. Danh mục hồ sơ kèm theo, câu kết. Dữ liệu = Thông tin chung của luồng + eForm bước lập dự thảo.
-     Thật: BE trộn mẫu .docx (TTMS tải lên ở Quản lý biểu mẫu) với biến eForm — cùng cơ chế xem trước / tải xuống (ProfileTaskFormService).
-     Prototype: HTML lưu đuôi .doc (Word mở được). Mục không có trường tương ứng trên eForm để "…" cho người soạn điền tiếp trên Word. */
-  function wordTt() {
-    const v = of({ task: draftTask() }), ci = Flow.ci(), x = Flow.findDxms(Flow.state.dxms) || {}, nv = D.nvOf(x.nv) || {};
-    const t = (s) => esc(s || '…').replace(/\n/g, '<br>');
-    const dot = x.dot ? ` (đợt ${x.dot})` : '';
-    const sub = nv.code ? `${esc(ci.title)} thuộc ${esc((nv.kind || 'đề tài / dự án').toLowerCase())} mã số ${esc(nv.code)}${dot}` : `${esc(ci.title)}${dot}`;
-    const legal = (x.legal || D.legalDefault.join('\n')).split('\n').filter((s) => s.trim());
-    const h = (s) => `<p class="h">${s}</p>`, p = (s) => `<p>${s}</p>`;
-    const pl = plList();
-    const body = `<table class="hd"><tr><td>TCT CÔNG NGHIỆP CÔNG NGHỆ CAO VIETTEL<br><b>${esc((ci.unit || '').toUpperCase())}</b><br>Số: ……/TTr-……</td>
-        <td><b>CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM</b><br><b><u>Độc lập - Tự do - Hạnh phúc</u></b><br><i>Hà Nội, ngày … tháng … năm 20…</i></td></tr></table>
-      <p class="c"><b>TỜ TRÌNH</b></p><p class="c"><b>Đề xuất mua sắm <i>${sub}</i></b></p>
-      <p class="kg">Kính gửi: Tổng Giám đốc.</p>
-      ${legal.map((s) => p(esc(s))).join('')}
-      ${p(`Trên cơ sở ${esc((nv.kind || 'đề tài / dự án').toLowerCase())} đã được phê duyệt, ${esc(ci.unit || '')} kính trình Tổng Giám đốc tổ chức thẩm định, phê duyệt Đề xuất mua sắm ${sub} với các nội dung chính sau:`)}
-      ${h('I. THÔNG TIN CHUNG VỀ ĐỀ XUẤT MUA SẮM')}
-      ${h('1. Mục tiêu đề xuất mua sắm')}${p(t(v.mucDich))}
-      ${h('2. Lý do, sự cần thiết phải mua sắm')}${h('2.1. Hiện trạng')}${p('…')}${h('2.2. Nhu cầu')}${p('…')}
-      ${h('2.3. Đánh giá hiện trạng tồn kho hàng hóa')}${p(t(v.cauTonKho))}${h('2.4. Giải trình, đánh giá sự cần thiết phải mua sắm')}${p(t(U().necessity))}
-      ${h('3. Quan điểm thực hiện')}${h('3.1. Quan điểm chung')}${p('…')}${h('3.2. Phương án kỹ thuật – công nghệ, giải pháp triển khai')}${p(t(v.phuongAn))}
-      ${h('4. Nội dung đề xuất mua sắm')}${h('4.1. Hạng mục và kinh phí đề xuất')}
-      ${p(`- Quy mô đề xuất mua sắm: ${t(v.phamVi)}`)}${p(`- Phương pháp tính toán: ${t(v.phuongPhap)}`)}${p(`- Tổng kinh phí đề xuất: <b>${t(v.tongKinhPhi)}</b>`)}
-      ${h('4.2. Nguồn vốn thực hiện')}${p(`- Nguồn vốn: ${t(v.nguonVonTt)}`)}${h('4.3. Hiệu quả hoặc lợi ích, giá trị mang lại của đề xuất mua sắm')}${p('…')}
-      ${h('5. Biện pháp và kế hoạch tổ chức thực hiện')}${h('5.1. Kế hoạch triển khai')}${p(t(v.keHoach))}${h('5.2. Thời gian thực hiện dự kiến')}${p(t(ci.period))}
-      ${h('5.3. Tổ chức thực hiện')}${p(t(v.bienPhap))}
-      ${h('II. DANH MỤC HỒ SƠ KÈM THEO')}${pl.length ? pl.map((n, i) => p(`${i + 1}. ${esc(n)}`)).join('') : p('Không có phụ lục kèm theo.')}
-      ${p(`${esc(ci.unit || '')} kính trình Tổng Giám đốc xem xét, tổ chức thẩm định và phê duyệt đề xuất mua sắm làm cơ sở để các đơn vị thực hiện các thủ tục tiếp theo theo đúng quy định của pháp luật và Tập đoàn./.`)}`;
-    const css = 'body{font-family:"Times New Roman";font-size:13pt}p{margin:0 0 6pt;text-align:justify}.c{text-align:center}.h{font-weight:bold}.kg{text-align:center}table.hd{width:100%}table.hd td{text-align:center;vertical-align:top;width:50%}';
+  /* Review nhi 06/11 #37 (thay mẫu cũ HT-DXMS-TT của T29 B17): tệp Word = đúng văn bản đang xem trước theo BM-01 / BM-09 (BM-10.2.1).
+     Thật: BE trộn mẫu .docx (TTMS tải lên ở Quản lý biểu mẫu) với biến eForm — cùng cơ chế xem trước (ProfileTaskFormService). Prototype: HTML lưu đuôi .doc (Word mở được). */
+  function wordOf(html) {
+    const css = 'body{font-family:"Times New Roman";font-size:13pt}p{margin:0 0 6pt;text-align:justify}.c{text-align:center}.b,.h,.h2{font-weight:bold}.i{font-style:italic}.ph{color:#666;font-style:italic}.ind,.ind2,.li{margin-left:12pt}table{width:100%;border-collapse:collapse}table.dh td,table.df td{vertical-align:top;width:50%}.dh-l,.dh-r,.df-r,.sg{text-align:center}table.dt th,table.dt td{border:1px solid #000;padding:3pt 5pt}.r{text-align:right}';
     return { name: `${tt()}_To-trinh_${Flow.state.code || 'du-thao'}.doc`,
-      html: `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word"><head><meta charset="utf-8"><title>Tờ trình</title><style>${css}</style></head><body>${body}</body></html>` };
+      html: `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word"><head><meta charset="utf-8"><title>Tờ trình</title><style>${css}</style></head><body>${html || ''}</body></html>` };
   }
 
-  /* Tờ trình BM-01 (≥ 160 tỷ) hoặc BM-09 (< 160 tỷ, P-19): 10 mục lấy từ eForm task 11/12. */
-  function docTt() {
-    const v = of({ task: draftTask() }), s = small() ? bm09Signs() : null, nec = U().necessity;
-    return `<div class="doc paper"><p class="c"><b>TỜ TRÌNH ${adj() ? 'ĐIỀU CHỈNH ' : ''}ĐỀ XUẤT MUA SẮM (${tt()})</b><br>${esc(Flow.ci().title)} · Phiên bản v${version()}</p>
-      ${adj() ? docAdj() : ''}
-      ${s ? `<div class="doc-sec"><h4>PHÊ DUYỆT</h4><p>${esc(pname('tgd'))} — Tổng Giám đốc · ${esc(s.tgd.st)}${s.tgd.at ? ' ' + s.tgd.at : ''}</p></div>` : ''}
-      ${docSec(1, 'Sự cần thiết', nec ? P(nec) : missing, true)}${docSec(2, 'Mục đích', P(v.mucDich))}${docSec(3, 'Phạm vi, quy mô', P(v.phamVi))}
-      ${docSec(4, 'Tổng kinh phí (gồm VAT)', P(v.tongKinhPhi))}${docSec(5, 'Phương pháp tính, cơ sở đơn giá', P(v.phuongPhap))}${docSec(6, 'Phương án kỹ thuật – công nghệ', P(v.phuongAn))}
-      ${docSec(7, 'Nguồn vốn', P(v.nguonVonTt))}${docSec(8, 'Sử dụng hàng tồn kho', P(`“${v.cauTonKho}”`))}${docSec(9, 'Biện pháp thực hiện', P(v.bienPhap))}${docSec(10, 'Kế hoạch tổ chức thực hiện', P(v.keHoach))}
-      ${adj() ? '' : `<div class="doc-sec" data-doc-pl><h4>Danh mục hồ sơ kèm theo</h4>${plList().length ? `<ul class="plain">${plList().map((n) => `<li>${esc(n)}</li>`).join('')}</ul>` : '<p>Không có phụ lục kèm theo.</p>'}</div>`}
-      ${s ? `<div class="doc-sec"><h4>Thẩm định</h4><p>CQCM về ĐTXD (TTMS): ${esc(pname('lan'))} · ${esc(s.ttms.st)}</p><p>Phó Tổng Giám đốc: ${esc(pname('binh'))} · ${esc(s.ptgd.st)}</p></div>` : ''}</div>`;
+  /* ---------- Văn bản theo bộ biểu mẫu BM-10.2.1 (Hướng dẫn biểu mẫu hồ sơ trình thẩm định, phê duyệt ĐXMS — Word gốc "Bieu mau (5).docx") ----------
+     Bố cục giữ đúng mẫu: đầu văn bản hai cột (cơ quan chủ quản / đơn vị – Quốc hiệu), tên văn bản, Kính gửi, căn cứ, nội dung theo mục của mẫu,
+     Nơi nhận – chữ ký. Ô có dữ liệu trên hệ thống điền từ eForm / Thông tin chung; ô chưa có dữ liệu để "…" (in nghiêng xám) cho người soạn điền trên Word.
+     Thật: BE trộn mẫu .docx (TTMS tải lên ở Quản lý biểu mẫu) với biến eForm — prototype dựng HTML cùng bố cục. */
+  /* Câu chữ văn bản (đã esc để in HTML) → văn bản thuần cho ô nhập / khối chỉ xem của eForm. */
+  const plainText = (x) => String(x).replace(/<[^>]+>/g, '').replace(/&quot;/g, '"').replace(/&#0?39;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
+  const ORG = 'TCT CÔNG NGHIỆP CÔNG NGHỆ CAO VIETTEL';
+  const PH = (s) => `<span class="ph">${esc(s || '…')}</span>`;
+  const T_ = (s) => (s ? esc(s).replace(/\n/g, '<br>') : PH());
+  const vnDate = (t) => { if (t == null) return 'ngày … tháng … năm 20…'; const [d, m, y] = Flow.dateOf(t).split('/'); return `ngày ${d} tháng ${m} năm ${y}`; };
+  const unitSign = (u) => (u || '').split(/\s+/).map((w) => w[0]).join('').toUpperCase();
+  const doneAt = (task) => { const h = Flow.lastOf(task); return h && h.who ? h.t : null; };
+  /* Số, ngày Tờ trình cấp khi gửi yêu cầu thẩm định (bước 18) — cùng cách với Thông tin chung của SCR-20 (GIẢ LẬP P-192). */
+  const ttNo = () => (Flow.lastOf(18) ? `${Flow.ci().code.slice(-3)}/TTr-${unitSign(Flow.ci().unit)}` : '……/TTr-' + unitSign(Flow.ci().unit));
+  function docHead(o) {
+    return `<table class="dh"><tr><td class="dh-l"><div>${ORG}</div><div class="b">${esc((o.unit || Flow.ci().unit || '').toUpperCase())}</div><div class="dh-rule"></div>
+        <div>Số: ${esc(o.no)}</div>${o.vv ? `<div class="dh-vv">${o.vv}</div>` : ''}${o.approve || ''}</td>
+      <td class="dh-r"><div class="b">CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM</div><div class="b">Độc lập - Tự do - Hạnh phúc</div><div class="dh-rule"></div>
+        <div class="i">Hà Nội, ${vnDate(o.at)}</div></td></tr></table>`;
   }
+  /* Ô chữ ký: chức danh, dấu "Đã ký" khi bước ký / duyệt trên luồng đã xong, họ tên. */
+  const stamp = (sg) => (sg && sg.st === 'Đã ký' ? `<span class="stamp">Đã ký${sg.at ? ' · ' + esc(sg.at) : ''}</span>` : '');
+  const signBox = (title, who, sg, sub) => `<div class="sg"><div class="b">${title}</div>${sub ? `<div class="i">${sub}</div>` : ''}
+    <div class="sg-st">${stamp(sg)}</div><div class="b">${who ? esc(pname(who)) : ''}</div></div>`;
+  const docFoot = (sign, luu) => `<table class="df"><tr><td class="df-l"><b><i>Nơi nhận:</i></b><br>- Như trên;<br>- Lưu: VT, ${esc(luu || unitSign(Flow.ci().unit))}.</td><td class="df-r">${sign}</td></tr></table>`;
+  const legalLines = () => { const x = Flow.findDxms(Flow.state.dxms) || {}; return (x.legal || D.legalDefault.join('\n')).split('\n').filter((s) => s.trim()); };
+  const basisLine = () => { const b = basisDoc(); return b ? `Căn cứ Quyết định số ${esc(b.no)} ngày ${esc(b.date)} ${esc(b.title.replace(/^Phê duyệt/, 'phê duyệt'))};` : `Căn cứ ${PH('[Tên tài liệu đầu vào]')};`; };
+  const basisName = () => { const b = basisDoc(); return b ? `Quyết định số ${esc(b.no)}` : PH('[Tên tài liệu đầu vào]'); };
+  const COST_LBL = { 'Hàng hoá': 'Chi phí mua sắm hàng hóa kinh doanh', CCDC: 'Chi phí mua sắm CCDC', 'Chi phí SXKD': 'Chi phí sản xuất kinh doanh', 'TSCĐ': 'Chi phí mua sắm tài sản cố định' };
+  const period2 = (p) => { const m = String(p || '').match(/(\d{2}\/\d{4})\s*[–-]\s*(\d{2}\/\d{4})/); return m ? `Từ tháng ${m[1]} đến tháng ${m[2]}` : (p ? esc(p) : 'Từ tháng …/… đến tháng …/…'); };
+  const goodsTable = () => `<table class="dt"><tr><th class="c" style="width:40px">TT</th><th>Tên hàng hóa, dịch vụ</th><th style="width:160px">Chủng loại</th><th class="c" style="width:80px">ĐVT</th><th class="r" style="width:80px">Số lượng</th></tr>
+    ${((U().phuLucEd || []).length ? U().phuLucEd.filter((r) => r.sl > 0).map((r) => ({ name: r.hang, kind: r.chungLoai, uom: r.dvt, buy: r.sl })) : buyItems().map((i) => ({ name: i.name, kind: goodsName(i.goods), uom: i.uom, buy: i.buy })))
+      .map((i, k) => `<tr><td class="c">${k + 1}</td><td>${esc(i.name)}</td><td>${esc(i.kind)}</td><td class="c">${esc(i.uom)}</td><td class="r">${i.buy}</td></tr>`).join('')}</table>`;
+
+  /* BM-01 Tờ trình thẩm định, phê duyệt ĐXMS (≥ 160 tỷ) / BM-09 Tờ trình ĐXMS ký trực tiếp (< 160 tỷ, P-19): mục 1–6 của mẫu, lấy từ eForm bước 11 / 12. */
+  function docTt() {
+    const v = of({ task: draftTask() }), ci = Flow.ci(), s = small() ? bm09Signs() : null, total = U().tongTt != null ? U().tongTt : ci.total;
+    const nec = U().necessity || aiFinal((v.aiSuCanThiet || [])[0]) || (Flow.taskStatus(draftTask()) !== 'todo' ? (R().doc || {}).necessity : '');
+    const name = esc(ci.title), unit = esc(ci.unit || ''), boss = 'Tổng Giám đốc';
+    /* Review nhi 06/11 #36: Tờ trình theo Phụ lục chi phí đã sửa ở bước lập dự thảo (đang nhập hoặc đã lưu). */
+    const costs = Object.entries((U().phuLucEd || []).length
+      ? U().phuLucEd.reduce((o, r) => { const k = COST_LBL[r.loai] || 'Chi phí khác'; o[k] = (o[k] || 0) + (r.sl || 0) * (r.donGia || 0); return o; }, {})
+      : buyItems().reduce((o, i) => { const k = COST_LBL[i.cost] || 'Chi phí khác'; o[k] = (o[k] || 0) + (i.amount || 0); return o; }, {}));
+    const hp = (n, t) => `<p class="h">${n}. ${t}</p>`, sp = (n, t) => `<p class="h2">${n}) ${t}</p>`, li = (x) => `<p class="li">- ${x}</p>`;
+    const ap = s ? Flow.lastOf(60) : null;
+    const approve = s ? `<div class="dh-ap"><div class="b">PHÊ DUYỆT</div><div class="i">${ap && ap.who ? vnDate(ap.t) : 'Ngày … tháng … năm 20…'}</div>
+      <div class="sg-st">${stamp(s.tgd)}</div><div class="b">TỔNG GIÁM ĐỐC</div><div class="b">${esc(pname('tgd'))}</div></div>` : '';
+    const title = small() ? `<p class="c b">TỜ TRÌNH</p><p class="c b">V/v phê duyệt ${adj() ? 'điều chỉnh ' : ''}đề xuất mua sắm ${name}</p>`
+      : `<p class="c b">TỜ TRÌNH</p><p class="c b">Thẩm định, phê duyệt ${adj() ? 'điều chỉnh ' : ''}Đề xuất mua sắm <i>${name}</i></p>`;
+    const kinhTrinh = small() ? `kính trình ${boss} phê duyệt đề xuất mua sắm <i>${name}</i>` : `kính trình ${boss} tổ chức thẩm định, phê duyệt đề xuất mua sắm <i>${name}</i>`;
+    const signs = s ? `<table class="dsg3"><tr><td colspan="3">${signBox('PHÓ TỔNG GIÁM ĐỐC PHỤ TRÁCH', 'binh', s.ptgd)}</td></tr>
+        <tr><td>${signBox('CQCM CÓ LIÊN QUAN', null, null, '(nếu có)')}</td><td>${signBox('CƠ QUAN CHUYÊN MÔN VỀ TCKT', null, null)}</td><td>${signBox('CƠ QUAN CHUYÊN MÔN VỀ ĐTXD', 'lan', s.ttms)}</td></tr></table>`
+      + docFoot(signBox('ĐƠN VỊ ĐỀ XUẤT MUA SẮM', 'hai', signOf(13), 'GIÁM ĐỐC'))
+      : docFoot(signBox('ĐẠI DIỆN ĐƠN VỊ ĐỀ XUẤT', 'hai', signOf(13), 'GIÁM ĐỐC'));
+    return `<div class="doc paper a4" data-doc="${tt()}">${docHead({ no: ttNo(), at: doneAt(13), approve })}${title}
+      <p class="c kg">Kính gửi: ${boss}.</p>
+      ${legalLines().map((l) => `<p class="ind">${esc(l)}</p>`).join('')}<p class="ind">${basisLine()}</p>
+      <p class="ind">Trên cơ sở ${basisName()} đã được phê duyệt, ${unit} ${kinhTrinh} với các nội dung chính sau:</p>
+      ${adj() ? docAdj() : ''}
+      ${hp(1, 'Mục đích')}${li(T_(v.mucDich))}
+      ${hp(2, 'Phạm vi, quy mô đề xuất mua sắm')}${sp('a', 'Sự cần thiết phải mua sắm')}${nec ? li(T_(nec)) : '<p class="li missing">- Chưa có nội dung (mục bắt buộc).</p>'}
+      ${v.cauTonKho ? li(`Hiện trạng tồn kho: ${T_(v.cauTonKho)}`) : ''}
+      ${sp('b', 'Danh mục hàng hóa, dịch vụ')}${li(T_(v.phamVi))}${goodsTable()}
+      ${hp(3, 'Giá trị của đề xuất mua sắm')}${li(`Tổng kinh phí đề xuất: <b>${vnd(total)} VNĐ (đã bao gồm VAT)</b>`)}<p class="ind2"><i>(Bằng chữ: ${esc(window.UI.inWords(total))}./.)</i></p>
+      ${costs.length > 1 ? `<p class="ind2">Trong đó:</p>${costs.map(([k, a]) => li(`${esc(k)}: ${vnd(a)} VNĐ`)).join('')}` : ''}<p class="ind2">(Chi tiết bảng tính chi phí theo Phụ lục)</p>
+      ${li(`Phương pháp tính toán, cơ sở xác định đơn giá: ${T_(v.phuongPhap)}`)}
+      ${li(`Quan điểm thực hiện (nếu có): ${T_(v.quanDiem)}`)}
+      ${li(`Phương án kỹ thuật – công nghệ (đối với hàng hóa), giải pháp triển khai (đối với dịch vụ): ${T_(v.phuongAn)}`)}
+      ${hp(4, 'Nguồn vốn và thời gian thực hiện')}${sp('a', 'Nguồn vốn')}${li(`Nguồn vốn: ${T_(v.nguonVonTt)}`)}${li(`Nguồn ngân sách: ${T_(v.nguonNganSach)}`)}
+      ${sp('b', `Thời gian thực hiện mua sắm: ${v.thoiGianTh ? esc(v.thoiGianTh) : period2(ci.period)}`)}
+      ${hp(5, 'Đánh giá hiệu quả của ĐXMS (nếu cần thiết)')}${li(T_(v.hieuQua))}
+      ${hp(6, 'Biện pháp và kế hoạch tổ chức thực hiện')}${li(`Biện pháp thực hiện: ${T_(v.bienPhap)}`)}${li(`Kế hoạch tổ chức thực hiện: ${T_(v.keHoach)}`)}
+      ${adj() ? '' : `<div data-doc-pl><p class="h">Hồ sơ kèm theo</p>${plList().length ? plList().map((n) => li(esc(n))).join('') : li('Không có phụ lục kèm theo.')}</div>`}
+      <p class="ind">${unit} ${small() ? `kính trình ${boss} phê duyệt đề xuất mua sắm` : `kính trình ${boss} xem xét, tổ chức thẩm định và phê duyệt đề xuất mua sắm`} làm cơ sở để các đơn vị thực hiện các thủ tục tiếp theo theo đúng quy định của pháp luật và Tập đoàn./.</p>
+      ${signs}</div>`;
+  }
+
+  /* BM-03 Công văn đề nghị góp ý dự thảo hồ sơ ĐXMS — eForm bước 16 (CQCM, hạn góp ý, đầu mối), chỉ huy ĐVĐX duyệt ở bước 16.1. */
   function docBm03() {
-    const cs = Flow.cqcmSel();
-    return `<div class="doc paper"><p class="c"><b>PHIẾU YÊU CẦU THẨM ĐỊNH</b><br>Số: ……/PYC-TTVT · Ngày ${Flow.dateOf(Flow.state.clock)}</p>
-      <p>Kính gửi: ${esc(cs.map(cqcmUnit).join('; ')) || '<i>chưa chọn</i>'}.</p><p>${esc(D.caseInfo.unit)} đề nghị thẩm định hồ sơ <b>${esc(Flow.ci().code)}</b> — ${esc(Flow.ci().title)}, giá trị ${ty(D.caseInfo.total)} tỷ đồng.</p>
-      <p>Hạn gửi ý kiến (BM-04): ${esc(U().hanGopY || Flow.dateOf(Flow.state.clock + 5))}.</p><p class="r">GIÁM ĐỐC TRUNG TÂM<br><br><i>${esc(pname('hai'))}</i></p></div>`;
+    const ci = Flow.ci(), cs = Flow.cqcmSel(), u = U(), name = esc(ci.title), unit = esc(ci.unit || '');
+    const han = u.hanGopY || Flow.dateOf(Flow.state.clock + 5), dm = D.contactParts(u.dauMoi || 'minh') || {};
+    const legal0 = legalLines()[0];
+    /* Review nhi 06/11 #15: trường của eForm bước 16 (trích yếu, căn cứ, nội dung, ĐT / email đầu mối, nơi nhận) — chưa nhập thì theo câu chữ mẫu. */
+    const vv16 = u.bm03Vv ? esc(u.bm03Vv).replace(/^V\/v /, '') : null;
+    const canCu = u.bm03CanCu ? u.bm03CanCu.split('\n').filter((x) => x.trim()).map((x) => `<p class="ind">${esc(x)}</p>`).join('') : null;
+    const noiDung = u.bm03NoiDung ? `<p class="ind">${esc(u.bm03NoiDung).replace(/trước ngày hạn góp ý\.?$/, `trước ngày <b>${esc(han)}</b>.`)}</p>` : null;
+    const dmTel = u.dmDienThoai || dm.dienThoai, dmMail = u.dmEmail || dm.email;
+    return `<div class="doc paper a4" data-doc="BM-03">${docHead({ no: `……/${unitSign(ci.unit)}`, at: doneAt('16.1'), vv: vv16 ? `V/v ${vv16}` : `V/v đề nghị góp ý dự thảo hồ sơ ĐXMS <i>${name}</i>` })}
+      <table class="kgt"><tr><td class="kgt-l">Kính gửi:</td><td>${cs.length ? cs.map((c) => `<div>- ${esc(cqcmUnit(c))};</div>`).join('') : `<div>${PH('[Các cơ quan chuyên môn]')}</div>`}</td></tr></table>
+      ${canCu || `${legal0 ? `<p class="ind">${esc(legal0)}</p>` : ''}<p class="ind">${basisLine().replace(/;$/, ',')}</p>`}
+      ${noiDung || `<p class="ind">Trên cơ sở ${basisName()} đã được phê duyệt, ${unit} đã hoàn thành dự thảo Hồ sơ đề xuất mua sắm <i>${name}</i>. Nhằm đảm bảo ĐXMS được lập, thẩm định đúng quy định, đáp ứng tiến độ mua sắm, ${unit} kính đề nghị các CQCM phối hợp góp ý dự thảo hồ sơ ĐXMS theo chức năng, nhiệm vụ và gửi ý kiến nhận xét, góp ý để hoàn chỉnh nội dung ĐXMS trước ngày <b>${esc(han)}</b>.</p>`}
+      <p class="ind">(*) Đầu mối tiếp nhận phản hồi, góp ý nội dung ĐXMS:</p>
+      <p class="ind">Đ/c ${esc(dm.ten || '…')} – ĐT: ${esc(dmTel || '…')} – Email: ${esc(dmMail || '…')}</p>
+      <p class="ind">Trân trọng!</p>
+      ${u.bm03NoiNhan ? docFoot(signBox('ĐẠI DIỆN ĐƠN VỊ ĐỀ XUẤT', 'hai', signOf('16.1'), 'GIÁM ĐỐC')).replace(/<b><i>Nơi nhận:<\/i><\/b><br>[\s\S]*?<\/td>/, `<b><i>Nơi nhận:</i></b><br>${u.bm03NoiNhan.split(';').map((x) => x.trim()).filter(Boolean).map((x) => `- ${esc(x)}`).join(';<br>')}</td>`)
+        : docFoot(signBox('ĐẠI DIỆN ĐƠN VỊ ĐỀ XUẤT', 'hai', signOf('16.1'), 'GIÁM ĐỐC'))}</div>`;
+  }
+
+  /* Checklist số 01 (≥ 160 tỷ) / số 02 (< 160 tỷ) — phần kết luận kiểm tra + bảng danh mục hồ sơ đúng cột của mẫu
+     (TT · Danh mục hồ sơ · Số văn bản · Ngày văn bản · Người ký · Tình trạng · Yêu cầu · Ghi chú). Mẫu: không xoá dòng; thiếu / không áp dụng ghi ở Ghi chú.
+     Tình trạng suy từ trạng thái luồng (bước đã xong), tệp phụ lục đã tải lên, căn cứ chọn ở bước 1. */
+  function clRows() {
+    const b = basisDoc(), big = !small(), signed = (t) => signOf(t).st === 'Đã ký';
+    const st = (ok, yes, no) => (ok ? yes || 'Đủ' : no || 'Thiếu');
+    const draft = Flow.taskStatus(draftTask()) !== 'todo' || Flow.state.tokens.some((t) => t.task === draftTask());
+    const r = (tt, muc, o) => Object.assign({ tt, muc }, o || {});
+    const grp = (tt, muc, o) => r(tt, muc, Object.assign({ grp: true }, o || {}));
+    const inRow = (tt, muc, type) => r(tt, muc, b && b.type === type ? { so: b.no, ngay: b.date, ky: b.group ? 'Tổng Giám đốc Tập đoàn' : 'Tổng Giám đốc', tinhTrang: 'Đủ', input: true } : {});
+    const sel = Flow.cqcmSel();
+    const signedBm04 = sel.filter((c) => Flow.state.history.some((h) => h.task === 20 && h.cqcm === c && h.who && /^Đồng ý/.test(h.action))).length;
+    const gt = Flow.doneCount(26) > 0, pls = D.phuLuc.filter(([k]) => plOn(k)), plDone = pls.filter(([k]) => U()[k]).length;
+    const inputs = (n) => [grp(n, 'Tài liệu đầu vào', { yeuCau: 'Bắt buộc', note: 1, tinhTrang: b ? 'Đủ' : 'Thiếu', count: true }),
+      inRow(`${n}.1`, 'Kế hoạch SXKD năm…', 'khsx'), inRow(`${n}.2`, 'Phương án kinh doanh', 'pakd'), inRow(`${n}.3`, 'Tờ trình kinh phí', 'ttkp'),
+      inRow(`${n}.4`, 'Quyết định phê duyệt nhiệm vụ KHCN', 'khcn'), inRow(`${n}.5`, 'Văn bản kết luận, chính sách, chủ trương, chỉ đạo khác', 'khac')];
+    const quoted = Flow.taskStatus(10) === 'done';
+    const basis = (n) => [grp(n, 'Sở cứ lập ĐXMS', { yeuCau: 'Bắt buộc' }),
+      r(`${n}.1`, 'Sở cứ giá (gồm hợp đồng tương tự, báo giá, dự toán chi tiết...)', { so: `${D.quotes.length} báo giá`, ky: D.quotes.map((q) => nccName(q.ncc)).join(', '),
+        tinhTrang: st(quoted), yeuCau: 'Bắt buộc', note: 2, count: true }),
+      r(`${n}.2`, 'Tài liệu khác về Hồ sơ, báo cáo khảo sát, thiết kế...', { opt: true, so: [R().ebom, R().rstk].filter(Boolean).join('; '),
+        tinhTrang: st(Flow.taskStatus(7) === 'done', 'Đủ', 'Chưa có'), yeuCau: 'Tùy chọn', ghiChu: pls.length ? `Phụ lục: ${plDone}/${pls.length} đã tải lên` : 'eBOM, kết quả rà soát tồn kho' }),
+      r(`${n}.3`, 'Tài liệu khác về kế hoạch, chủ trương, định hướng của Nhà nước và Tập đoàn (nếu có)', { opt: true, yeuCau: 'Tùy chọn', ghiChu: 'Không có' })];
+    const sign = { merge: 'Văn bản trình ký' };
+    const head = [r(1, `${big ? 'Tờ trình thẩm định, phê duyệt ĐXMS (BM-01)' : 'Tờ trình ĐXMS (ký trực tiếp) (BM-09)'} và các Phụ lục`,
+        Object.assign({ b: true, tinhTrang: draft ? `Dự thảo v${version()}` : 'Chưa lập', yeuCau: 'Bắt buộc', ghiChu: plList().length ? `${plList().length} phụ lục kèm theo` : '', count: true, ok: draft }, sign)),
+      r(2, 'Phiếu trình giải quyết công việc (BM-02)', Object.assign({ opt: true, tinhTrang: gt ? 'Đủ' : '', yeuCau: 'Tùy chọn', ghiChu: gt ? 'Giải trình ý kiến CQCM' : 'Không sử dụng' }, sign)),
+      r(3, big ? 'Checklist số 01' : 'Checklist số 02', Object.assign({ b: true, tinhTrang: 'Bản này', yeuCau: 'Bắt buộc' }, sign))];
+    if (!big) return [grp('I', 'VĂN BẢN TRÌNH KÝ', { sec: true }), ...head, grp('II', 'VĂN BẢN ĐÍNH KÈM', { sec: true }), ...inputs(1), ...basis(2)];
+    const cq = { merge: 'CQ chủ trì thẩm định soạn thảo', mergeAll: true };
+    return [grp('I', 'HỒ SƠ ĐXMS', { sec: true }), ...head, grp('II', 'TÀI LIỆU ĐÍNH KÈM', { sec: true }), ...inputs(1),
+      grp(2, 'Hồ sơ thẩm định của CQCM (nếu có)', { opt: true, yeuCau: 'Tùy chọn' }),
+      r('2.1', 'Công văn đề nghị góp ý dự thảo hồ sơ ĐXMS (BM-03)', { opt: true, ngay: signed('16.1') ? signOf('16.1').at : '', ky: signed('16.1') ? pname('hai') : '', tinhTrang: signed('16.1') ? 'Đã ký' : '', yeuCau: 'Nếu có' }),
+      r('2.2', 'Văn bản thẩm định dự thảo ĐXMS của CQCM (BM-04)', { opt: true, so: sel.length ? `${sel.length} phiếu nhận xét` : '', tinhTrang: sel.length ? `${signedBm04}/${sel.length} đã ký` : '', yeuCau: 'Nếu có' }),
+      ...basis(3),
+      grp('III', 'HỒ SƠ TRÌNH PHÊ DUYỆT ĐXMS CỦA CQCM CHỦ TRÌ THẨM ĐỊNH', { sec: true }),
+      r(1, 'Báo cáo kết quả thẩm định ĐXMS (BM-05)', Object.assign({ b: true, yeuCau: 'Bắt buộc' }, cq)),
+      r(2, 'Công văn về việc báo cáo Tổng Giám đốc Tập đoàn nội dung ĐXMS trước khi phê duyệt (BM-06)', Object.assign({ opt: true, yeuCau: 'Tùy chọn' }, cq)),
+      r(3, 'Báo cáo gửi Tổng Giám đốc Tập đoàn về nội dung ĐXMS (BM-07)', Object.assign({ opt: true, yeuCau: 'Tùy chọn' }, cq, { merge: 'Ban ĐTXD soạn thảo' })),
+      r(4, 'Quyết định phê duyệt ĐXMS (BM-08)', Object.assign({ b: true, yeuCau: 'Bắt buộc', note: 3 }, cq))];
+  }
+  const CL_NOTES = { 1: 'Chỉ điền thông tin của tài liệu đầu vào là căn cứ lập ĐXMS. Các căn cứ khác bỏ trống.',
+    2: 'Trường hợp ĐXMS thực hiện hàng năm thì bổ sung bảng so sánh đơn giá của hợp đồng đã ký trong vòng 3 năm gần nhất.',
+    3: 'Nếu không thuộc trường hợp phải báo cáo Tổng Giám đốc Tập đoàn theo quy định thì CQCM chủ trì có thể trình ký đồng thời Báo cáo thẩm định và Quyết định phê duyệt ĐXMS.' };
+  function docCl() {
+    const ci = Flow.ci(), no = small() ? '02' : '01', rows = clRows(), name = esc(ci.title);
+    /* Tài liệu bắt buộc do đơn vị lập hồ sơ nộp (không tính phần CQCM chủ trì soạn thảo, không tính chính Checklist). */
+    const need = rows.filter((x) => x.count), miss = need.filter((x) => (x.ok != null ? !x.ok : x.tinhTrang !== 'Đủ'));
+    const notes = [...new Set(rows.filter((x) => x.note).map((x) => x.note))];
+    const cell = (s) => (s ? esc(s) : '');
+    const tr = (x) => {
+      const cls = [x.sec ? 'sec' : '', x.grp || x.b ? 'b' : '', x.opt ? 'i' : ''].filter(Boolean).join(' ');
+      const sup = x.note ? `<sup>(${notes.indexOf(x.note) + 1})</sup>` : '';
+      if (x.sec) return `<tr class="${cls}"><td class="c">${x.tt}</td><td colspan="7">${esc(x.muc)}</td></tr>`;
+      const stc = x.tinhTrang === 'Thiếu' || x.tinhTrang === 'Chưa lập' ? ' miss' : '';
+      const mid = x.merge ? `<td colspan="${x.mergeAll ? 4 : 2}" class="c">${esc(x.merge)}</td>${x.mergeAll ? '' : `<td>${cell(x.ky)}</td><td class="c${stc}">${cell(x.tinhTrang)}</td>`}`
+        : `<td>${cell(x.so)}</td><td class="c">${cell(x.ngay)}</td><td>${cell(x.ky)}</td><td class="c${stc}">${cell(x.tinhTrang)}</td>`;
+      return `<tr class="${cls}"><td class="c">${x.tt}</td><td>${esc(x.muc)}${sup}</td>${mid}<td class="c">${cell(x.yeuCau)}</td><td>${cell(x.ghiChu)}</td></tr>`;
+    };
+    return `<div class="doc paper a4 land" data-doc="CL${no}">${docHead({ no: '……', at: doneAt(36), unit: ci.unit })}
+      <p class="c b">CHECKLIST SỐ ${no}</p><p class="c b">Kiểm tra hồ sơ trình phê duyệt ĐXMS có giá trị ${small() ? 'dưới 160 tỷ đồng' : 'từ 160 tỷ đồng trở lên'}</p>
+      <p class="c kg">Kính gửi: Tổng Giám đốc.</p>
+      <p class="ind">Căn cứ Quy trình QT.CNVTQĐ.ĐTXD.10.2.1 và Hướng dẫn về biểu mẫu hồ sơ trình thẩm định, phê duyệt ĐXMS của Tập đoàn;</p>
+      <p class="ind">1. Đại diện đơn vị kiểm tra:</p><p class="ind2">- Ông/bà: ${PH()} - Chức vụ: ${PH()}</p>
+      <p class="ind">2. Đại diện đơn vị lập hồ sơ:</p><p class="ind2">- Ông/bà: ${esc(pname('minh'))} - Chức vụ: ${esc(persona('minh').role)}, ${esc(ci.unit || '')}</p>
+      <p class="ind">${PH('[Tên cá nhân/đơn vị kiểm tra]')} đã tiến hành kiểm tra tính đầy đủ, hợp lệ của Hồ sơ trình thẩm định, phê duyệt ĐXMS <i>${name}</i> theo quy định. Kết quả kiểm tra như sau:</p>
+      <p class="h">I. NỘI DUNG, KẾT QUẢ KIỂM TRA</p>
+      <p class="li">- Kiểm tra tính đầy đủ của danh mục hồ sơ: ${need.length - miss.length}/${need.length} tài liệu bắt buộc đã có${miss.length ? `; còn thiếu: ${miss.map((x) => esc(x.muc)).join('; ')}` : ''}.</p>
+      <p class="li">- Kiểm tra tính hợp lệ về quy cách hồ sơ: ${PH()}</p><p class="ind"><i>(Chi tiết nội dung kiểm tra theo checklist đi kèm)</i></p>
+      <p class="h">II. KẾT LUẬN</p>
+      <p class="li">- Hồ sơ ${miss.length ? '<b>không đủ điều kiện</b>' : '<b>đảm bảo đủ điều kiện</b>'} trình thẩm định.</p>
+      <table class="dsg2"><tr><td>${signBox('ĐƠN VỊ LẬP HỒ SƠ', 'minh', null)}</td><td>${signBox('ĐƠN VỊ KIỂM TRA', null, signOf(36))}</td></tr></table>
+      <p class="c b cl-h">CHECKLIST<br>BỘ HỒ SƠ TRÌNH THẨM ĐỊNH, PHÊ DUYỆT ĐỀ XUẤT MUA SẮM</p>
+      <div class="dt-wrap"><table class="dt cl"><colgroup><col style="width:40px"><col><col style="width:110px"><col style="width:84px"><col style="width:110px"><col style="width:84px"><col style="width:70px"><col style="width:130px"></colgroup>
+        <tr><th>TT</th><th>Danh mục hồ sơ</th><th>Số văn bản</th><th>Ngày văn bản</th><th>Người ký</th><th>Tình trạng</th><th>Yêu cầu</th><th>Ghi chú</th></tr>
+        ${rows.map(tr).join('')}</table></div>
+      ${notes.length ? `<div class="fn">${notes.map((n, k) => `<p>(${k + 1}) ${esc(CL_NOTES[n])}</p>`).join('')}</div>` : ''}</div>`;
   }
   const docBm05 = () => { const v = of({ task: 42 }); return `<div class="doc paper"><p class="c"><b>BÁO CÁO KẾT QUẢ THẨM ĐỊNH (BM-05)</b><br>${esc(Flow.ci().title)} · hồ sơ v${version()}</p>${v.bm05View.map((r) => docSec(r.muc, '', P(r.noiDung)).replace('. </h4>', '</h4>')).join('')}</div>`; };
   const docBm06 = () => `<div class="doc paper"><p>Kính gửi: Tổng Giám đốc Tập đoàn (qua Ban Đầu tư - Xây dựng)</p><p>VHT báo cáo đề xuất mua sắm <b>${esc(Flow.ci().title)}</b>, giá trị ${ty(D.caseInfo.total)} tỷ đồng, căn cứ ${esc((basisDoc() || {}).no || '')} (${(basisDoc() || {}).group ? 'đã' : 'chưa'} được CT/TGĐ Tập đoàn phê duyệt), đã được thẩm định theo BM-05.</p>
@@ -977,14 +1254,16 @@
     'BM-01': () => (kdt() ? { name: 'Tờ trình chủ trương KĐT', html: docBm01K() } : { name: adj() ? 'Tờ trình điều chỉnh ĐXMS' : 'Tờ trình đề xuất mua sắm', html: docTt() }),
     'BM-09': () => ({ name: adj() ? 'Tờ trình điều chỉnh ĐXMS' : 'Tờ trình đề xuất mua sắm', html: docTt() }),
     'BM-02': () => ({ name: 'Thuyết minh ĐXMS', html: docBm02() }),
-    'BM-03': () => (kdt() ? { name: 'Tờ trình thẩm định, phê duyệt KĐT', html: docBm03K() } : { name: 'Phiếu yêu cầu thẩm định', html: docBm03() }),
+    'BM-03': () => (kdt() ? { name: 'Tờ trình thẩm định, phê duyệt KĐT', html: docBm03K() } : { name: 'Công văn đề nghị góp ý dự thảo hồ sơ ĐXMS', html: docBm03() }),
+    CL01: () => (kdt() ? null : { name: 'Checklist 01 — danh mục hồ sơ', html: docCl() }),
+    CL02: () => (kdt() ? null : { name: 'Checklist 02 — danh mục hồ sơ', html: docCl() }),
     'PL-TM': () => ({ name: 'Phụ lục thuyết minh KĐT', html: docAnnex() }),
     'BM-05': () => ({ name: 'Báo cáo kết quả thẩm định', html: docBm05() }),
     'BM-06': () => (kdt() ? { name: 'Báo cáo giải trình, tiếp thu ý kiến Tập đoàn', html: docBm06K() } : { name: 'Công văn báo cáo TGĐ Tập đoàn', html: docBm06() }),
     'CV-TD': () => ({ name: 'Công văn trình Tập đoàn', html: docCvTd() }),
     'BM-08': () => ({ name: adj() ? 'Quyết định phê duyệt điều chỉnh ĐXMS' : 'Quyết định phê duyệt ĐXMS', html: docBm08() }),
     'BM-00': () => ({ name: 'Hồ sơ gộp chủ trương và KĐT', html: docBm00() }),
-    PYC: () => ({ name: 'Phiếu yêu cầu thẩm định', html: docBm03() }),
+    PYC: () => ({ name: 'Công văn đề nghị góp ý dự thảo hồ sơ ĐXMS', html: docBm03() }),
     'BM-14': () => ({ name: 'Báo cáo kết quả thẩm định KĐT', html: docBm14() }),
     'BM-18': () => ({ name: 'Quyết định phê duyệt KĐT', html: docBm18() }),
   };
@@ -1006,7 +1285,11 @@
     if (!kdt() && String(tok.task) === '10') (U().nccSel || nccDefault()).forEach((c) => list.push({ key: quoteKey(c), name: `Báo giá — ${nccName(c)}`, have: !!U()[quoteKey(c)], only: /^Báo giá đạt/ }));
     if (kdt() && String(tok.task) === '78') list.push({ key: kyScanKey(), name: `Bản scan ${(Flow.state.vars.ky || {}).doc || 'văn bản'} đã ký`, have: !!U()[kyScanKey()] });
     /* T29 F7, B17 (HT-DXMS-NOTE màn 8, P-212): phụ lục của Tờ trình chọn Có thì bắt buộc tải lên ở bước lập dự thảo; chọn Không thì không hiện. */
-    if (!kdt() && !adj() && String(tok.task) === String(draftTask())) D.phuLuc.filter(([key]) => plOn(key, vals)).forEach(([key, name]) => list.push({ key, name, have: !!U()[key] }));
+    /* Review nhi 06/11 #4, #5: phụ lục chọn / tải ngay trên bảng Checklist của form (inForm — không lặp ở mục Tài liệu đính kèm). */
+    if (!kdt() && !adj() && String(tok.task) === String(draftTask())) {
+      const pv = vals && vals.checklistDs ? Object.assign({}, vals, plFromForm(vals)) : vals;
+      D.phuLuc.filter(([key]) => plOn(key, pv)).forEach(([key, name]) => list.push({ key, name, have: !!U()[key] || !!formFile(vals, key), inForm: true }));
+    }
     /* T31 B3 (K4b, IA-DXMS dòng 18): hồ sơ kèm theo Tờ trình BM-03 — phụ lục theo Loại tài liệu, không bắt buộc. */
     if (kdt() && String(tok.task) === '50') D.phuLuc.forEach(([key, name]) => list.push({ key: 'k' + key, name, opt: true, have: !!U()['k' + key] }));
     if (!kdt() && tok.task === 60 && !small() && Flow.state.vars.reportTD) list.push({ key: 'tdReviewFile', name: 'Phiếu nhận xét của Tập đoàn', have: !!U().tdReviewFile, opt: true });
@@ -1015,13 +1298,22 @@
   function check(tok, choice, vals) {
     const n = tok.task, lbl = choice ? choice.label : '';
     const miss = reqDocs(tok, vals).find((x) => !x.have && !x.opt && (!x.only || x.only.test(lbl)));
-    if (miss && !(kdt() && n === 32 && /^Chưa/.test(lbl))) return `Bạn cần tải lên ${miss.name} ở Danh sách tài liệu.`;
+    if (miss && miss.inForm) return `Bạn cần tải lên ${miss.name} (bảng ${clName()} của form hoặc Danh sách tài liệu), hoặc chọn Không kèm theo.`;
+    if (miss && !(kdt() && n === 32 && /^Chưa/.test(lbl))) return `Bạn cần tải lên ${miss.name} (mục Tài liệu đính kèm hoặc Danh sách tài liệu).`;
     if (Flow.state.parent) return window.EForms.hd.check(tok, choice, vals);
     if (!vals) return null;
     if (n === 1 && vals.basisDoc !== undefined && (of(tok).basisDocOptions.find((o) => o.value === vals.basisDoc) || {}).type !== vals.basisType) return 'Văn bản căn cứ không thuộc loại căn cứ đã chọn.';
     if (n === 1 && (vals.basisMore || []).includes(vals.basisDoc)) return 'Văn bản căn cứ bổ sung trùng văn bản căn cứ chính.';
     if (n === 5 && (lbl.startsWith('Xác nhận') || lbl === 'Gửi rà soát tồn kho') && (vals.bocTach || []).some((r) => !r.bo && r.remain != null && r.prop > r.remain)) return 'Có dòng vượt số lượng còn lại sau trừ lùi.';
     if (n === 5 && !kdt() && (vals.bocTach || []).every((r) => r.bo) && !(vals.hangMucThem || []).some((r) => r.line)) return 'ĐXMS cần ít nhất một hạng mục.';
+    /* Review nhi 06/11 #23: phiếu YCBG phải còn ít nhất một hàng hoá. #27: dòng Bắt buộc phải có; chọn Có thì phải có tệp (trừ phụ lục — kiểm ở reqDocs). */
+    if (!kdt() && n === 8 && vals.ycbgHang && !vals.ycbgHang.length) return 'Yêu cầu báo giá cần ít nhất một hàng hoá.';
+    if (!kdt() && !adj() && n === draftTask() && vals.checklistDs) {
+      const miss1 = vals.checklistDs.find((r) => !r.gen && !r.pl && r.batBuoc === 'Bắt buộc' && r.kemTheo !== 'Có');
+      if (miss1) return `${miss1.muc}: danh mục bắt buộc, Tình trạng phải là Có.`;
+      const miss2 = vals.checklistDs.find((r) => !r.gen && !r.pl && r.kemTheo === 'Có' && r.noFile && !r.tepMoi);
+      if (miss2) return `${miss2.muc}: chọn Có thì cần tải tệp lên.`;
+    }
     if (!kdt() && n === 16 && small() && !(vals.cqcmSel || []).includes('TC')) return 'Hồ sơ dưới 160 tỷ: CQCM Tài chính bắt buộc (QT B8.2).';
     if (kdt() && n === 12 && lbl === 'Xác nhận OK' && (vals.yeuTo || []).some((r) => !r.dung)) return 'Có yếu tố chưa đúng — chọn “Không OK” và nhập lý do.';
     /* T29 B3b (BR-DXMS-04-11): Báo giá đạt — đủ trường báo giá, mỗi hạng mục có báo giá còn hiệu lực, chọn khác giá thấp nhất có lý do. */
@@ -1033,16 +1325,23 @@
     /* Comment #8: chỉ duyệt tổng thể khi mọi phần Đạt; Không đồng ý cần ít nhất một phần Không đạt. */
     if (!kdt() && n === 13 && vals.duyetPhan) {
       const bad = vals.duyetPhan.filter((r) => r.ketQua === 'Không đạt').length;
-      if (lbl === 'Đồng ý' && bad) return `Còn ${bad} phần Không đạt — chưa duyệt tổng thể được. Chọn “Không đồng ý” để trả lại người soạn.`;
-      if (lbl === 'Không đồng ý' && !bad) return 'Chọn Không đạt cho ít nhất một phần và nhập lý do, chỉ đạo.';
+      if (lbl === 'Đồng ý' && bad) return `Còn ${bad} phần Không đạt — chưa duyệt tổng thể được. Chọn “Từ chối” để trả lại người soạn.`;
+      if (lbl === 'Không đồng ý' && !bad) return 'Chọn Không đạt cho ít nhất một phần.';
     }
     return null;
   }
 
+  /* Xem trước văn bản với giá trị form đang soạn (chưa lưu): vals chồng lên biến hồ sơ trong lúc dựng văn bản (LIVE), rồi bỏ. */
+  function docLive(code, tok, vals) {
+    const e = window.EForms.MS01 && !kdt() && !Flow.state.parent ? window.EForms.MS01(tok, window.EVars.h) : null;
+    const out = vals ? Object.assign({}, vals, e && e.write ? e.write(vals, tok, window.EVars.h) : {}) : null;
+    LIVE = out;
+    try { return doc(code); } finally { LIVE = null; }
+  }
   window.EVars = {
-    of, doc, check, reqDocs,
-    /* T29 B17: Xuất file Word Tờ trình (BM-01 / BM-09) theo mẫu HT-DXMS-TT; null nếu không phải Tờ trình ĐXMS. */
-    word: (code) => (!Flow.state.parent && !kdt() && !adj() && (code === 'BM-01' || code === 'BM-09') ? wordTt() : null),
+    of, doc, docLive, check, reqDocs,
+    /* Review nhi 06/11 #37: Xuất file Word Tờ trình (BM-01 / BM-09) đúng văn bản đang xem trước, theo mẫu BM-10.2.1; null nếu không phải Tờ trình ĐXMS. */
+    word: (code, html) => (!Flow.state.parent && !kdt() && !adj() && (code === 'BM-01' || code === 'BM-09') ? wordOf(html) : null),
     h: { tdk, kdt, small, tt, clName, draftTask, proc, procOf, condOf, version, kdtVer, basisDoc, basisSel, quoteFail, quoteAttempt, nok, respOf, selCqcm, stg, tdKey,
       needHost, hostOf, kNeed, kd, catName, signOf, returnedFrom, aiFinal, aiOf, buyItems, rvIdx, fixOf, HOSTS, pname, lineRemain, propOf, bm04Round,
       adj, adjTh, adjBranch, adjLan, adjCross, adjRows, reviewRows, opinionsOf },

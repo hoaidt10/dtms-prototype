@@ -142,6 +142,8 @@
     if (a === 'ho-so-kdt' && b) return S.kdtCaseDetail(decodeURIComponent(b), c);
     if (a === 'ho-so') return S.caseDetail(b);
     if (a === 'task' && c === 'bpmn') return S.taskBpmn(b);
+    /* T29 B19 (DX-11): việc bước 01 / 04 / 05 của hồ sơ MS01 mở màn Lập đề xuất mua sắm (bước 1–5 trên một màn), không mở popup eForm. */
+    if (a === 'task' && window.Luong.isLap(window.Flow.token(b))) return window.Luong.lapScreen(window.Flow.token(b));
     if (a === 'task') return S.taskScreen(b);
     if (a === 'tong-quan') return window.BaoCao.tongQuan();
     if (a === 'cho-chot') return S.choChot();
@@ -245,11 +247,16 @@
   async function act(tokenId, idx) {
     const tok = Flow.token(tokenId);
     if (!tok) return;
-    const choice = idx >= 0 ? Flow.choices(tok.task)[idx] : null;
+    let choice = idx >= 0 ? Flow.choices(tok.task)[idx] : null;
     if (choice && choice.lockWhen && choice.lockWhen(Flow.state.vars)) return;
+    /* Review nhi 06/11 #21, #31: bước làm trên màn riêng (f.page, vd bước 7 → SCR-105): nút mở màn, Gửi trên màn mới hoàn thành bước. */
+    const f0 = Flow.def()[tok.task] || {};
+    if (!choice && f0.page && window.RaSoatKho && window.RaSoatKho.inFlow()) { location.hash = '#/' + f0.page; return; }
     /* Nút → eForm của task (dialog) hoặc dialog nhận xét (nút từ chối, G6) → trình ký → hoàn thành (task-forms.js). */
     const r = await window.TaskForms.run(tok, choice);
     if (!r) return;
+    /* Review nhi 06/11 #38: kết luận Từ chối trong màn phê duyệt → nhánh có lý do của BPMN. */
+    if (r.choice) choice = r.choice;
     let reason = r.reason || null;
     if (choice && choice.reason && !reason) { reason = await askReason(choice.label); if (!reason) return; }
     let sg = null;

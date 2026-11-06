@@ -88,7 +88,7 @@ test('SCR-96 (D-75): Nhân sự thực hiện — Vai trò thực hiện + Ngư�
 test('D-30 / D-75: thiếu tệp của loại căn cứ bắt buộc / chưa chọn loại / dòng chỉ định thiếu vai trò hoặc người → không Lưu được', async ({ page }) => {
   await gop(page, '#/luong/create');
   await fillGeneral(page);
-  await page.locator('#lf-save').click();
+  await page.locator('#lf-draft').click();
   await expect(page.locator('[data-lf-basis] .lf-err')).toContainText('Thiếu tài liệu căn cứ bắt buộc');
   // Lỗi nằm cuối form: Lưu cuộn tới lỗi đầu tiên + toast, không để người dùng tưởng nút không chạy.
   await expect(page.locator('[data-lf-basis] .lf-err')).toBeInViewport();
@@ -99,12 +99,12 @@ test('D-30 / D-75: thiếu tệp của loại căn cứ bắt buộc / chưa ch�
   await expect(page.locator('[data-lf-basis] .lf-err')).toContainText('Kế hoạch mua sắm năm');
   await expect(page.locator('[data-lf-basis]')).not.toContainText('Loại bắt buộc');
   await upload(page, ['QD-1482-VHT.pdf']);
-  await page.locator('#lf-save').click();
+  await page.locator('#lf-draft').click();
   await expect(page.locator('[data-lf-basis] .lf-err')).toContainText('Bạn cần chọn Loại tài liệu căn cứ');
   await pick(page, 'lf-type-1', 'QD_NV');
   await addRow(page, null, null);
   await addRow(page, 'R-DVDX-CH', null);
-  await page.locator('#lf-save').click();
+  await page.locator('#lf-draft').click();
   await expect(page.locator('[data-lf-basis] .lf-err')).toContainText('Kế hoạch mua sắm năm');
   await expect(page.locator('[data-lf-basis] .lf-err')).not.toContainText('QĐ giao nhiệm vụ');
   await expect(page.locator('[data-row-role] .msg')).toContainText('Bạn cần chọn Vai trò thực hiện');
@@ -125,7 +125,7 @@ test('D-26 / D-75: Lưu tạo ĐXMS + hồ sơ Phê duyệt + start; task 01 m�
   // Chuyên viên TTMS → Mai (mọi bước của vai trò, vd 17, 42); Chuyên quản ĐVĐX → Ngọc (bước 01…).
   await addRow(page, 'R-TTMS', 'mai');
   await addRow(page, 'R-DVDX-CQ', 'ngoc');
-  await page.locator('#lf-save').click();
+  await page.locator('#lf-draft').click();
   await expect(page).toHaveURL(/#\/task\/k\d+$/);
   expect(await lastToast(page)).toContain('Đã tạo luồng');
   const st = await page.evaluate(() => {
@@ -180,7 +180,7 @@ async function newLuong(page) {
   await pick(page, 'lf-type-1', 'QD_NV');
   await pick(page, 'lf-type-2', 'KH_NAM');
   await addRow(page, 'R-TTMS', 'mai');
-  await page.locator('#lf-save').click();
+  await page.locator('#lf-draft').click();
   await expect(page).toHaveURL(/#\/task\/k\d+$/);
   return page.evaluate(() => Flow.state.dxms);
 }
@@ -204,6 +204,8 @@ const umPick = async (page, id, values) => {
   // Escape đóng cả hộp thoại (vht-modal) → bấm tiêu đề để đóng danh sách chọn.
   await page.locator('.vmodal-h h3').click();
 };
+
+const roleOf = (page, step) => page.evaluate((k) => Luong.rolesOf(Flow.state.vars.process).find((r) => r.tasks.includes(k)), step);
 
 test('SCR-97: Chi tiết luồng 6 tab; Nhân sự thực hiện theo bước — chỉ định / theo vai trò, trạng thái bước, bước đã xong khoá (D-28)', async ({ page }) => {
   const code = await newLuong(page);
@@ -235,34 +237,38 @@ test('SCR-97: Chi tiết luồng 6 tab; Nhân sự thực hiện theo bước �
   expect(page.errors).toEqual([]);
 });
 
-test('SCR-98: Thay người ở bước chưa tới — bắt buộc chọn người, ảnh hưởng, lịch sử; luồng tới bước giao người mới', async ({ page }) => {
+test('SCR-98: chọn Vai trò thực hiện (D-75), không chọn Bước; Thay người — bắt buộc chọn người, ảnh hưởng, lịch sử; luồng tới bước giao người mới', async ({ page }) => {
   const code = await newLuong(page);
   await openTab(page, code, 'nhan-su');
   await stepRow(page, '13').locator('[data-um-open]').click();
   await expect(page.locator('.vmodal')).toContainText('Cập nhật nhân sự');
-  await expect(page.locator('.vmodal [data-vsel="um-step"] .vsel-label')).toContainText('13');
+  // Nút ở dòng bước 13 mở sẵn vai trò của bước 13; popup không còn trường Bước.
+  const r13 = await roleOf(page, '13');
+  await expect(page.locator('.vmodal [data-vsel="um-step"]')).toHaveCount(0);
+  await expect(page.locator('.vmodal [data-vsel="um-role"] .vsel-label')).toContainText(r13.name);
+  await expect(page.locator('#um-cur')).toHaveValue('Trần Đức Hải (theo vai trò)');
   await page.locator('#um-ok').click();
   await expect(page.locator('.vmodal')).toContainText('Bạn cần chọn người bị thay.');
   await expect(page.locator('.vmodal')).toContainText('Bạn cần chọn người thay thế.');
   await umPick(page, 'um-drop', ['hai']);
   await umPick(page, 'um-add', ['son']);
-  await expect(page.locator('[data-um-impact]')).toContainText('Không có — luồng chưa tới bước này');
+  await expect(page.locator('[data-um-impact]')).toContainText('Bước áp dụng');
   await expect(page.locator('[data-um-impact]')).toContainText('Lý Văn Sơn');
   await page.locator('#um-file').setInputFiles({ name: 'QD-dieu-dong-123.pdf', mimeType: 'application/pdf', buffer: Buffer.alloc(8) });
   await page.locator('#um-reason').fill('Đi công tác');
   await page.locator('#um-ok').click();
   await expect(page.locator('.vmodal')).toHaveCount(0);
-  expect(await lastToast(page)).toContain('Đã thay người ở bước 13');
+  expect(await lastToast(page)).toContain(`Đã thay người cho vai trò ${r13.name}`);
   await expect(stepRow(page, '13')).toContainText('Lý Văn Sơn');
   await expect(stepRow(page, '13')).not.toContainText('theo vai trò');
   await page.locator('[data-ltab="lich-su"]').click();
   const row = page.locator('.vtable tbody tr').first();
   await expect(row).toContainText('Thay người');
+  await expect(row).toContainText(r13.name);
   await expect(row).toContainText('Trần Đức Hải');
   await expect(row).toContainText('Lý Văn Sơn');
   await expect(row).toContainText('QD-dieu-dong-123.pdf');
   await expect(row).toContainText('Đi công tác');
-  await expect(row).toContainText('Chưa tới bước');
   // Luồng tới bước 13: giao Sơn, ĐXMS lưu nhân sự mới.
   await runTo(page, 13);
   const st = await page.evaluate((c) => ({ who: Flow.state.tokens.find((t) => String(t.task) === '13').who, hai: Flow.tokensFor('hai').length, m: Flow.findDxms(c).members['13'] }), code);
@@ -272,10 +278,11 @@ test('SCR-98: Thay người ở bước chưa tới — bắt buộc chọn ngư
 
 test('SCR-98 từ màn xử lý task: Thay người task đang mở chuyển ngay; Bổ sung thêm candidate', async ({ page }) => {
   await newLuong(page);
-  await page.locator('.task-acts [data-um-open]').click();
-  await page.locator('.vmodal [data-vsel="um-step"]').click();
-  await expect(page.locator('.vsel-panel [data-opt="1"]')).toContainText('Đang xử lý');
-  await page.locator('.vsel-panel [data-opt="1"]').click();
+  // T29 B19: việc bước 1 là màn Lập ĐXMS — nút Cập nhật nhân sự ở đầu màn.
+  await page.locator('[data-luong-form] [data-um-open]').click();
+  const r1 = await roleOf(page, '1');
+  await page.locator('.vmodal [data-vsel="um-role"]').click();
+  await page.locator(`.vsel-panel [data-opt="${r1.code}"]`).click();
   await umPick(page, 'um-drop', ['minh']);
   await umPick(page, 'um-add', ['ngoc']);
   await expect(page.locator('[data-um-impact]')).toContainText('Nguyễn Văn Minh → Phan Thị Ngọc');
@@ -289,7 +296,7 @@ test('SCR-98 từ màn xử lý task: Thay người task đang mở chuyển nga
   await umPick(page, 'um-add', ['lan']);
   await expect(page.locator('[data-um-impact]')).toContainText('Không ảnh hưởng (Bổ sung)');
   await page.locator('#um-ok').click();
-  expect(await lastToast(page)).toContain('Đã bổ sung người ở bước 17');
+  expect(await lastToast(page)).toContain(`Đã bổ sung người cho vai trò ${(await roleOf(page, '17')).name}`);
   expect(await lastToast(page)).toContain('Đinh Thị Mai, Phạm Thị Lan');
   await runTo(page, 17);
   const t17 = await page.evaluate(() => Flow.state.tokens.find((t) => String(t.task) === '17').cands);
@@ -299,26 +306,32 @@ test('SCR-98 từ màn xử lý task: Thay người task đang mở chuyển nga
 
 test('D-29 (3): thay người đã ký — văn bản đã ký giữ nguyên; tab Văn bản & ký duyệt; bước đã xong không chọn được', async ({ page }) => {
   const code = await newLuong(page);
-  expect(await runTo(page, 42)).toBe(true);
+  expect(await runTo(page, 48)).toBe(true);
   await openTab(page, code, 'van-ban');
-  // Bước 17 ký hai lần (vòng giải trình quay lại 13 → 17) — lần đầu.
+  // P-225: bước 18 hệ thống trình Chỉ huy ĐVĐX (người duyệt 16.1) ký BM-03 — TTMS không còn là người ký BM-03.
   const bm03 = page.locator('.vtable tbody tr', { hasText: 'BM-03' }).first();
-  await expect(bm03).toContainText('Đinh Thị Mai');
+  const signer = await page.evaluate(() => D.personas.find((p) => p.id === Flow.state.history.find((h) => h.signDoc === 'BM-03').signer).name);
+  await expect(bm03).toContainText(signer);
+  await expect(bm03).not.toContainText('Đinh Thị Mai');
   await expect(bm03).toContainText('Đã ký');
+  const bm05 = page.locator('.vtable tbody tr', { hasText: 'BM-05' }).first();
+  await expect(bm05).toContainText('Đinh Thị Mai');
+  await expect(bm05).toContainText('Đã ký');
   await expect(page.locator('.vtable tbody tr', { hasText: 'Đang trình ký' })).toHaveCount(0);
-  // Bước 17 đã xong → không có trong danh sách bước. Bước 42 (vai trò Chuyên viên TTMS đã chỉ định Mai, D-75) thay bằng Lan.
+  // Bước 43 đã xong → không chọn được. Bước 48 (vai trò Chuyên viên TTMS đã chỉ định Mai, D-75) thay bằng Lan.
   await page.evaluate((c) => Luong.membersDialog(c, null), code);
-  await page.locator('.vmodal [data-vsel="um-step"]').click();
-  await expect(page.locator('.vsel-panel [data-opt="17"]')).toHaveCount(0);
-  await page.locator('.vsel-panel [data-opt="42"]').click();
-  // Mai đã ký BM-03 ở bước 17 → BM-03 giữ nguyên.
+  const r48 = await roleOf(page, '48');
+  await page.locator('.vmodal [data-vsel="um-role"]').click();
+  await page.locator(`.vsel-panel [data-opt="${r48.code}"]`).click();
+  await expect(page.locator('[data-um-impact]')).toContainText('đã xong giữ nguyên');
+  // Mai đã ký BM-05 ở bước 43 → BM-05 giữ nguyên.
   await umPick(page, 'um-drop', ['mai']);
   await umPick(page, 'um-add', ['lan']);
-  await expect(page.locator('[data-um-impact]')).toContainText('BM-03 (Đinh Thị Mai');
+  await expect(page.locator('[data-um-impact]')).toContainText('BM-05 (Đinh Thị Mai');
   await expect(page.locator('[data-um-impact]')).toContainText('giữ nguyên');
   await page.locator('#um-ok').click();
-  await expect(bm03).toContainText('Đinh Thị Mai');
-  await expect(bm03).toContainText('Đã ký');
-  expect(await page.evaluate(() => Flow.state.tokens.find((t) => String(t.task) === '42').who)).toBe('lan');
+  await expect(bm05).toContainText('Đinh Thị Mai');
+  await expect(bm05).toContainText('Đã ký');
+  expect(await page.evaluate(() => Flow.state.tokens.find((t) => String(t.task) === '48').who)).toBe('lan');
   expect(page.errors).toEqual([]);
 });

@@ -598,6 +598,8 @@ body:not(.cap) .actionbar { padding-right: 84px; }
 .vmodal-h h3 { margin: 0; font-size: 20px; font-weight: 600; line-height: 28px; color: #2D3036; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .vmodal-x { display: flex; align-items: center; justify-content: center; width: 28px; height: 28px; padding: 0; border: 0; border-radius: 8px; background: transparent; color: #5D5E61; cursor: pointer; }
 .vmodal-x:hover { background: rgba(0,0,0,.05); }
+.vmodal-max { display: flex; align-items: center; justify-content: center; width: 28px; height: 28px; padding: 0; border: 0; border-radius: 8px; background: transparent; color: #5D5E61; cursor: pointer; }
+.vmodal-max:hover { background: rgba(0,0,0,.05); }
 .vmodal-b { display: flex; flex-direction: column; gap: 16px; padding: 20px 24px 24px; overflow: auto; }
 .vmodal-acts { display: flex; justify-content: flex-end; gap: 12px; }
 .vctl.ta { height: auto; min-height: 72px; resize: vertical; }
@@ -962,6 +964,22 @@ body:not(.cap) .actionbar { padding-right: 84px; }
 
 /* ---------- eForm của màn xử lý task (B0.4 (2), eform-run.js) — my-task-eform-dialog: 85vw, vùng cuộn riêng, nút ngoài vùng cuộn ---------- */
 .vmodal.ef { width: 85vw; max-width: 85vw; }
+.vmodal-hb { display: flex; align-items: center; gap: 4px; flex: none; }
+/* Toàn màn hình (T29 B18): phủ kín cửa sổ, vùng cuộn eForm cao theo màn hình. */
+.overlay:has(> .vmodal.ef.max) { padding: 0; }
+.vmodal.ef.max { width: 100vw; max-width: 100vw; height: 100dvh; max-height: 100dvh; border-radius: 0; }
+.vmodal.ef.max .vmodal-b { flex: 1; min-height: 0; }
+.vmodal.ef.max .ef-scroll { flex: 1; max-height: none; min-height: 0; }
+/* Chừa chỗ cho nút comment review nổi góc phải dưới (review.js) — không che Xác nhận. */
+.vmodal.ef.max .vmodal-acts { padding-right: 112px; }
+/* Toàn màn hình cho hộp thoại bảng khác (T29 B19 — Cập nhật kết quả rà soát tồn kho, UI.vMaximize). */
+.overlay:has(> .vmodal.max) { padding: 0; }
+.vmodal.max { width: 100vw; max-width: 100vw; height: 100dvh; max-height: 100dvh; border-radius: 0; }
+.vmodal.max .vmodal-b { flex: 1; min-height: 0; }
+.vmodal.lg.max .vmodal-acts { margin-top: auto; padding-right: 112px; }
+/* SCR-105: vùng tải tệp kết quả đặt trên bảng — tệp Excel theo mẫu BM-RSTK thì hệ thống đọc và điền bảng. */
+.rsk-up { display: flex; flex-direction: column; gap: 8px; padding: 12px 16px; border: 1px dashed #CFD4DC; border-radius: 12px; background: #FAFAFB; }
+.rsk-up .cap { margin: 0; }
 .ef-scroll { max-height: min(65dvh, calc(90dvh - 180px)); overflow-y: auto; margin-right: -24px; padding: 0 24px 4px 0; }
 .ef-grid { display: grid; grid-template-columns: repeat(16, minmax(0, 1fr)); gap: 16px; align-items: start; }
 .ef-grid > * { grid-column: span 16; min-width: 0; }
@@ -973,6 +991,12 @@ body:not(.cap) .actionbar { padding-right: 84px; }
 .ef-html > .banner-bad, .ef-html > .banner-moved, .ef-html > .banner-info { margin: 0; }
 .ef-gh, .ef-lbl { font-size: 14px; font-weight: 600; line-height: 20px; color: #1A1C1E; margin-bottom: 8px; }
 .ef-group { padding-top: 4px; }
+.ef-gh-ai { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+/* Review nhi 06/11 #34: hộp thoại tiến trình AI chạy nền. */
+.ef-ai-wait { display: flex; align-items: flex-start; gap: 12px; padding: 8px 0; }
+.ef-ai-wait .cap { margin: 4px 0 0; }
+.ef-spin { flex: 0 0 auto; width: 20px; height: 20px; border-radius: 50%; border: 2px solid #D9D6FE; border-top-color: #5925DC; animation: ef-spin 0.9s linear infinite; }
+@keyframes ef-spin { to { transform: rotate(360deg); } }
 .ef-group > .ef-gh { font-size: 16px; line-height: 24px; padding-bottom: 8px; border-bottom: 1px solid #EAECF0; margin-bottom: 16px; }
 .ef-list { display: flex; flex-direction: column; gap: 12px; }
 .ef-row { border: 1px solid #EAECF0; border-radius: 12px; padding: 12px; display: flex; flex-direction: column; gap: 8px; }
@@ -983,6 +1007,10 @@ body:not(.cap) .actionbar { padding-right: 84px; }
 /* Văn bản đầu ra: xem trước PDF (mẫu Word + dữ liệu eForm) */
 .pdf-view { background: #F2F4F7; border-radius: 12px; padding: 16px; max-height: min(65dvh, calc(90dvh - 220px)); overflow: auto; }
 .doc-req { color: #B54708; }
+.ef-docs:not(:empty) { margin-top: 16px; padding-top: 16px; border-top: 1px solid #E5E7EB; display: grid; gap: 10px; }
+.ef-docs-h { font-size: 14px; font-weight: 600; color: #1E2939; }
+.ef-doc { display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 14px; }
+.ef-doc .req { color: #EE0033; }
 pre.json { margin: 0; max-height: min(60vh, 560px); overflow: auto; background: #F9FAFB; border: 1px solid #EAECF0; border-radius: 8px; padding: 12px; font-size: 12px; line-height: 18px; white-space: pre; }
 
 /* ---------- T16 B1: tab Chi tiết ĐXMS, Yêu cầu báo giá ---------- */
@@ -1224,3 +1252,82 @@ body.cap .tour-btn, body.cap .tour-layer, body.rv-mode .tour-layer { display: no
 .demo-panel .check.sm { font-size: 12px; margin-left: 8px; }
 
 .ginfo-sub { margin: 20px 0 8px; font-size: 14px; font-weight: 600; color: var(--heading); }
+/* T29 B18 — SCR-106: lưu ý bảo mật, bảng con dưới ô chọn nhiều. */
+.yc-note { margin: 0; }
+.yc-sub { margin-top: -4px; }
+.yc-bad { color: var(--danger); font-weight: 500; }
+
+/* T29 B19 (DX-11) — màn Lập đề xuất mua sắm: nhãn bước BPMN, gợi ý AI ngay trên màn. */
+.lf-step { display: inline-block; margin-right: 8px; padding: 1px 8px; border-radius: 999px; background: #EFF4FF; color: #1849A9; font-size: 12px; font-weight: 600; vertical-align: middle; }
+.lf-steps { margin: 0 0 12px; }
+.lf-ai-tag { display: inline-block; margin-left: 4px; padding: 0 6px; border-radius: 999px; background: #F4F3FF; color: #5925DC; font-size: 11px; font-weight: 600; }
+.lf-ai2 { margin-top: 12px; padding: 10px 12px; border: 1px solid #D9D6FE; border-radius: var(--radius); background: #FAFAFF; font-size: 13px; }
+.lf-ai2 b { color: #5925DC; }
+.lf-ai-go { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.lf-ai-go b.t-warn { color: var(--warn, #B54708); }
+.lf-ai-sug { color: #3E1C96; }
+.lf-dec { display: flex; gap: 6px; flex-wrap: wrap; }
+.lf-dec .vbtn { min-width: 0; padding: 4px 10px; height: auto; }
+.t-warn { color: #B54708; font-size: 12px; }
+.lf-add { margin-top: 12px; }
+.lf-sub { margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--border, #E4E7EC); }
+.lf-pop-h { margin: 0; font-size: 14px; font-weight: 600; color: #5925DC; }
+.lf-sub-h h4 { margin: 0 0 8px; font-size: 14px; font-weight: 600; }
+.lf-sub.invalid { border-top-color: #F04438; }
+.lf-ai-btn { color: #5925DC; border-color: #D9D6FE; background: #FAFAFF; }
+
+/* ---------- Xem trước văn bản đầu ra theo bộ biểu mẫu BM-10.2.1 (BM-01, BM-09, BM-03, Checklist 01/02) ----------
+   Hộp thoại docv: thanh thông tin một dòng + trang A4 trên nền xám như trình xem PDF; nút Toàn màn hình. */
+.vmodal.docv { width: min(980px, 100%); }
+.vmodal.docv .vmodal-acts { position: sticky; bottom: -24px; margin: 0 -24px -24px; padding: 12px 24px 24px; background: #fff; border-top: 1px solid #EAECF0; }
+.vmodal.docv.max .vmodal-acts { margin-top: auto; padding-right: 112px; }
+.dp { display: flex; flex-direction: column; gap: 12px; min-height: 0; }
+.vmodal.max .dp { flex: 1; }
+.dp-meta { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 13px; line-height: 20px; color: #1A1C1E; background: #F9FAFB; border: 1px solid #EAECF0; border-radius: 8px; padding: 8px 12px; }
+.dp-meta .dp-k { color: #76777A; } .dp-meta .dp-sep { width: 1px; height: 14px; background: #DCDEE0; margin: 0 4px; }
+.dp-meta .dp-name { flex: 1; min-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+.pdf-view.dp-view { background: #E4E7EC; border-radius: 8px; padding: 24px 16px; max-height: calc(100dvh - 260px); }
+.vmodal.max .pdf-view.dp-view { max-height: none; flex: 1; min-height: 0; }
+.dp-empty { display: flex; gap: 12px; align-items: center; padding: 16px; border: 1px dashed #DCDEE0; border-radius: 8px; color: #5D5E61; }
+.dp-empty .cap { font-size: 13px; color: #76777A; }
+
+.doc.paper.a4 { max-width: 794px; margin: 0 auto; padding: 44px 52px 52px 68px; border: 0; border-radius: 2px; font-size: 14.5px; line-height: 1.5; color: #101828;
+  box-shadow: 0 1px 2px rgba(16, 24, 40, .10), 0 8px 24px rgba(16, 24, 40, .10); }
+.doc.a4 p { margin: 0 0 6px; text-align: justify; }
+.doc.a4 .c { text-align: center; } .doc.a4 .b { font-weight: 700; } .doc.a4 .i { font-style: italic; }
+.doc.a4 .ind { text-indent: 28px; } .doc.a4 .ind2 { padding-left: 28px; } .doc.a4 .li { padding-left: 28px; text-indent: -10px; }
+.doc.a4 .h { font-weight: 700; margin-top: 10px; } .doc.a4 .h2 { font-weight: 700; padding-left: 14px; margin-top: 4px; }
+.doc.a4 .kg { margin: 10px 0 12px; text-align: center; }
+.doc.a4 .ph { color: #98A2B3; font-style: italic; }
+.doc.a4 .missing { color: #D92D20; }
+.doc.a4 table { border-collapse: collapse; }
+.doc.a4 table.dh { width: 100%; margin-bottom: 20px; }
+.doc.a4 .dh td { vertical-align: top; text-align: center; padding: 0 4px; font-size: 13.5px; line-height: 1.4; }
+.doc.a4 .dh .dh-l { width: 46%; } .doc.a4 .dh .dh-l > div:first-child { white-space: nowrap; font-size: 12.5px; } .doc.a4 .dh-rule { width: 96px; border-top: 1px solid #101828; margin: 2px auto 6px; }
+.doc.a4 .dh-vv { font-size: 12.5px; margin-top: 2px; }
+.doc.a4 .dh-ap { margin-top: 14px; }
+.doc.a4 table.kgt { margin: 10px 0 12px 22%; } .doc.a4 .kgt td { vertical-align: top; padding: 0 6px 0 0; } .doc.a4 .kgt-l { white-space: nowrap; }
+.doc.a4 table.df, .doc.a4 table.dsg2, .doc.a4 table.dsg3 { width: 100%; margin-top: 18px; }
+.doc.a4 .df td, .doc.a4 .dsg2 td, .doc.a4 .dsg3 td { vertical-align: top; padding: 0 4px; }
+.doc.a4 .df .df-l { width: 42%; font-size: 12.5px; line-height: 1.45; }
+.doc.a4 .dsg2 td, .doc.a4 .dsg3 td { width: 33%; } .doc.a4 .dsg2 td { width: 50%; }
+.doc.a4 .sg { text-align: center; } .doc.a4 .sg .i { font-weight: 700; font-style: normal; }
+.doc.a4 .sg-st { min-height: 64px; display: flex; align-items: center; justify-content: center; }
+.doc.a4 .stamp { display: inline-block; border: 1.5px solid #D92D20; color: #D92D20; border-radius: 4px; padding: 1px 8px; font: 600 11px/18px Inter, system-ui, sans-serif; transform: rotate(-4deg); }
+.doc.a4 table.dt { width: 100%; margin: 6px 0 10px; font-size: 13px; line-height: 1.35; }
+.doc.a4 .dt th, .doc.a4 .dt td { border: 1px solid #475467; padding: 4px 6px; vertical-align: top; text-align: left; }
+.doc.a4 .dt th { background: #F2F4F7; text-align: center; font-weight: 700; }
+.doc.a4 .dt .c { text-align: center; } .doc.a4 .dt .r { text-align: right; }
+.doc.a4 .dt-wrap { overflow-x: auto; }
+.doc.a4 .dt.cl { table-layout: fixed; font-size: 12.5px; } .doc.a4 .dt.cl td { overflow-wrap: anywhere; }
+.doc.a4 .dt.cl tr.sec td { background: #F2F4F7; font-weight: 700; }
+.doc.a4 .dt.cl tr.b td { font-weight: 700; } .doc.a4 .dt.cl tr.i td { font-style: italic; }
+.doc.a4 .dt.cl td.miss { color: #D92D20; }
+.doc.a4 .cl-h { margin-top: 24px; }
+.doc.a4 .fn { border-top: 1px solid #98A2B3; width: 40%; min-width: 260px; margin-top: 12px; padding-top: 6px; }
+.doc.a4 .fn p { font-size: 12px; margin: 0 0 2px; text-align: left; }
+.doc.a4 sup { font-size: 10px; }
+/* Checklist 01/02: bảng 8 cột của mẫu cần khổ ngang (A4 landscape). */
+.vmodal.docv.wide { width: min(1240px, 100%); }
+.doc.paper.a4.land { max-width: 1123px; padding: 40px 48px 48px 56px; }
+.doc.a4 .dsg3 tr + tr td { padding-top: 16px; }

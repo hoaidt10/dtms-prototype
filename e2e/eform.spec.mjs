@@ -70,7 +70,7 @@ test('SCR-49: lọc Trạng thái áp ngay; ô tìm lọc ngay khi gõ theo mã,
   await expect(page.locator('#ef-kw')).toBeFocused();
   await page.locator('#ef-kw').fill('');
   await expect(rows(page)).toHaveCount(12);
-  await page.locator('#ef-kw').fill('Phiếu');
+  await page.locator('#ef-kw').fill('Công văn');
   await expect(rows(page)).toHaveCount(2);
   await page.locator('#ef-kw').fill('');
   await page.locator('[data-vsel="ef-st"]').click();

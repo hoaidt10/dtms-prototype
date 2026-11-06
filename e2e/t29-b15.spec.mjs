@@ -35,16 +35,42 @@ test('#1 bước 19: mục OK vẫn hiện Nội dung nhận xét và bắt bu�
   expect(page.errors).toEqual([]);
 });
 
-test('#32 bước 17: Danh sách đúng, đủ cũng bắt buộc Nhận xét', async ({ page }) => {
+test('#32, P-225 bước 17: một nút Xác nhận danh sách CQCM; Đồng ý bắt buộc Nhận xét, không có hộp thoại Trình ký; bước 18 hệ thống trình Chỉ huy ĐVĐX ký BM-03', async ({ page }) => {
   await fresh(page);
   await jump(page, 17);
-  await page.locator('.task-acts [data-act]', { hasText: 'Danh sách đúng, đủ' }).click();
+  await expect(page.locator('.task-acts [data-act]')).toHaveCount(1);
+  await page.locator('.task-acts [data-act]', { hasText: 'Xác nhận danh sách CQCM' }).click();
   const f = form(page);
+  await expect(f).toContainText('hệ thống trình Đại diện đơn vị đề xuất ký BM-03');
   await f.locator('#ok').click();
   await expect(f.locator('[data-ef-field="nhanXetDs"]')).toHaveClass(/invalid/);
   await f.locator('[data-ef-field="nhanXetDs"] textarea').fill('Đủ CQCM bắt buộc: Tài chính, Pháp chế, Chất lượng.');
   await f.locator('#ok').click();
   await expect(f).toHaveCount(0);
+  await expect(page.locator('.overlay #go')).toHaveCount(0);
+  await expect.poll(() => page.evaluate(() => Flow.state.tokens.map((t) => String(t.task)))).toContain('19');
+  const sys = await page.evaluate(() => Flow.state.history.find((h) => h.signDoc === 'BM-03'));
+  expect(sys.system).toBe(true);
+  expect(String(sys.task)).toBe('18');
+  expect(sys.action).toContain('Trần Đức Hải');
+  expect(page.errors).toEqual([]);
+});
+
+test('P-225 bước 17: Từ chối bắt buộc Nhận xét, về bước 16 và không trình ký BM-03', async ({ page }) => {
+  await fresh(page);
+  await jump(page, 17);
+  await page.locator('.task-acts [data-act]', { hasText: 'Xác nhận danh sách CQCM' }).click();
+  const f = form(page);
+  await f.locator('#ef-no').click();
+  await expect(f).toBeVisible();
+  await f.locator('[data-ef-field="nhanXetDs"] textarea').fill('Thiếu Ban Pháp chế.');
+  await f.locator('#ef-no').click();
+  await expect(f).toHaveCount(0);
+  await expect.poll(() => page.evaluate(() => Flow.state.tokens.map((t) => String(t.task)))).toContain('16');
+  const out = await page.evaluate(() => ({ h: Flow.state.history.filter((x) => String(x.task) === '17').pop(), signed: Flow.state.history.some((x) => x.signDoc) }));
+  expect(out.h.action).toBe('Từ chối');
+  expect(out.h.reason).toBe('Thiếu Ban Pháp chế.');
+  expect(out.signed).toBe(false);
   expect(page.errors).toEqual([]);
 });
 

@@ -33,13 +33,13 @@
     return src.map((o) => ({ muc: o.sec, ok: !!o.ok, text: o.text || '' }));
   }
 
-  /* Khu 2 — sự kiện theo lần thẩm định. Lần tăng khi TTMS xác nhận danh sách CQCM và gửi yêu cầu (bước 17, BM-03). */
+  /* Khu 2 — sự kiện theo lần thẩm định. Lần tăng khi TTMS Đồng ý danh sách CQCM (bước 17), hệ thống gửi yêu cầu (bước 18, BM-03). Nhãn cũ giữ cho bản chụp hồ sơ đã lưu. */
   function events(tok) {
     const me = tok.cqcm, out = [], seen = {};
     let lan = 0;
     Flow.state.history.forEach((h) => {
       const k = String(h.task);
-      if (k === '17' && /^Danh sách đúng/.test(h.action || '')) { lan += 1; out.push({ lan, t: h.t, who: h.who, title: 'TTMS gửi yêu cầu thẩm định (BM-03)', tone: 'info' }); return; }
+      if (k === '17' && /^(Đồng ý|Danh sách đúng)/.test(h.action || '')) { lan += 1; out.push({ lan, t: h.t, who: h.who, title: 'TTMS xác nhận danh sách CQCM, hệ thống gửi yêu cầu thẩm định (BM-03)', tone: 'info' }); return; }
       if (!lan) return;
       if ((k === '19' || k === '20') && h.cqcm) {
         const own = h.cqcm === me, key = `${h.cqcm}:${lan}`;

@@ -173,7 +173,8 @@ test('B5: Việc của tôi theo my-tasks — không tab, cột, lọc Trạng t
   await expect(page.locator('#my-kw')).toHaveAttribute('placeholder', /Tìm kiếm theo tên công việc/);
   const first = page.locator('.vtable tbody tr').first();
   await expect(first.locator('.vbadge')).toHaveText(/Chưa xử lý|Quá hạn/);
-  await expect(first).toContainText(await page.evaluate(() => BPMN_TASKS['5'].name));
+  // T29 B19 (DX-11): việc bước 5 của MS01 hiện tên việc gộp bước 1–5.
+  await expect(first).toContainText(await page.evaluate(() => Luong.LAP_NAME));
 
   await page.locator('[data-m="adv"]').click();
   await expect(page.locator('#my-kw')).toHaveCount(0);
@@ -261,7 +262,9 @@ for (const [task, who, proc, dxms] of TASKS_T6) {
     await openTask(page, task, who, proc, dxms);
     await expect(page.locator('.pg-title .info-i')).toBeVisible();
     expect(await mainText(page)).not.toMatch(/SCR-\d|UC-\d|task \d|Prototype|minh hoạ|giả lập|BBLV|❓/i);
-    await expect(page.locator('.tmain .ginfo').first()).toContainText(dxms);
+    // T29 B19: task 1 của MS01 là màn Lập ĐXMS — Mã ĐXMS ở ô chỉ đọc.
+    if (await page.locator('[data-luong-form]').count()) await expect(page.locator('[data-luong-form] input[disabled]').first()).toHaveValue(dxms);
+    else await expect(page.locator('.tmain .ginfo').first()).toContainText(dxms);
     expect(page.errors).toEqual([]);
   });
 }

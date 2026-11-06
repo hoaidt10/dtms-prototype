@@ -37,14 +37,13 @@ test('Bước duyệt mới: tác nhân, card chỉ xem, hộp thoại Duyệt c
   await expect(page.locator('[data-rsk-card]')).toBeVisible();
   await expect(page.locator('[data-rsk-card] [data-rsk-open]')).toHaveCount(0);
 
-  // 8, 10 Thầu TTMS; 10.1 Chỉ huy Thầu xem card báo giá chỉ xem.
+  // 8, 10 Thầu TTMS; 10.1 Chỉ huy Thầu (review nhi 06/11 #2, #7: card báo giá tạm ẩn; Đồng ý / Từ chối).
   expect((await jump(page, 8)).who).toBe('thau');
   const k101 = await jump(page, '10.1');
   expect(k101.who).toBe('thauch');
-  await expect(page.locator('[data-bg-card]')).toBeVisible();
-  await expect(page.locator('[data-bg-card] input:not([disabled])')).toHaveCount(0);
-  // Trả lại bắt buộc lý do → về bước 10.
-  await page.locator('.task-acts [data-act]', { hasText: 'Trả lại' }).click();
+  await expect(page.locator('[data-bg-card]')).toHaveCount(0);
+  // Từ chối bắt buộc lý do → về bước 10.
+  await page.locator('.task-acts [data-act]', { hasText: 'Từ chối' }).click();
   await expect(page.locator('.vmodal')).toBeVisible();
   await page.locator('.vmodal [data-close]').first().click();
   await expect(page.locator('.vmodal')).toHaveCount(0);
@@ -74,7 +73,7 @@ test('DX-10 (b): Chỉ huy ĐVĐX tạo luồng → bỏ qua bước xác nhận
   await page.locator('#lf-file').setInputFiles(['a.pdf', 'b.pdf'].map((name) => ({ name, mimeType: 'application/pdf', buffer: Buffer.alloc(8) })));
   await pick('lf-type-1', 'QD_NV');
   await pick('lf-type-2', 'KH_NAM');
-  await page.locator('#lf-save').click();
+  await page.locator('#lf-draft').click();
   await expect(page).toHaveURL(/#\/task\//);
   expect(await page.evaluate(() => Flow.state.vars.creatorCh)).toBe(true);
   const r = await page.evaluate(() => {

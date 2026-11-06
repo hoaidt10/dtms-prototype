@@ -46,6 +46,8 @@
   const modalOpen = () => !!document.querySelector('.overlay .vmodal.ef');
   const route = (re) => () => re.test(location.hash);
   const click = (sel) => () => { const e = find(sel); if (e) e.click(); };
+  /* Màn Lập ĐXMS: bấm ✦ Gợi ý từ AI của khối rồi Áp dụng popup (popup đang mở thì chỉ Áp dụng). */
+  const aiDo = (sec) => () => { if (!find('[data-lf-ai-apply]')) click(`[data-lf-ai-sec="${sec}"]`)(); click('[data-lf-ai-apply]')(); };
 
   /* ---------- 7 tour ---------- */
   const TOURS = [
@@ -54,46 +56,43 @@
         sel: '.sb-nav [data-go="luong"]', title: 'Luồng mua sắm', text: 'Mỗi luồng mua sắm là một ĐXMS. Danh sách luồng nằm ở menu <b>Quản lý đề xuất mua sắm &gt; Luồng mua sắm</b>.' },
       { sel: '[data-go="luong/create"]', title: 'Thêm mới', text: '<b>Bấm vào đây</b> để tạo luồng mua sắm mới.', wait: route(/#\/luong\/create$/), do: () => go('#/luong/create') },
       { sel: '#lf-title', title: 'Thông tin chung', text: 'Nhập Tên luồng mua sắm. Các trường có dấu <b>*</b> là bắt buộc.' },
-      { sel: '[data-vsel="lf-nv"]', title: 'Đề tài / dự án', text: 'Chọn đề tài / dự án. Khung <b>Thông tin dự án / đề tài</b> bên dưới hiện dự toán để bóc tách khoản mục vào luồng.' },
-      { sel: '#lf-save', title: 'Lưu', text: 'Nhập đủ rồi <b>bấm Lưu</b>: hệ thống tạo luồng (mã ĐXMS tự sinh), hồ sơ Phê duyệt và mở ngay việc bước 1. Bấm <i>Làm hộ</i> để dùng hồ sơ mẫu.',
+      { sel: '[data-vsel="lf-nv"]', title: 'Bước 1 — Đề tài / dự án', text: 'Chọn đề tài / dự án và văn bản căn cứ. Chọn xong, mỗi khối hiện nút <b>✦ Gợi ý từ AI</b> — AI chỉ chạy khi bấm. Bước 1 đến 5 làm trên cùng màn này.' },
+      { sel: '#lf-draft', title: 'Lưu nháp', text: '<b>Bấm Lưu nháp</b>: hệ thống tạo luồng (mã ĐXMS tự sinh), hồ sơ Phê duyệt và giữ việc <b>Lập đề xuất mua sắm</b> để làm tiếp. Bấm <i>Làm hộ</i> để dùng hồ sơ mẫu.',
         wait: route(/#\/task\//), do: () => goTask(1) },
-      { enter: () => { if (!tokOf(1)) goTask(1); }, sel: '[data-basis-avail]', title: 'Bước 1 — Xác nhận căn cứ',
-        text: 'Căn cứ đã chọn khi tạo luồng. Bảng hiện Giá trị, Đã dùng ở ĐXMS khác, Còn có thể sử dụng — chỉ xem.' },
-      { sel: actPrimary, title: 'Hoàn thành', text: '<b>Bấm Hoàn thành</b> để xác nhận căn cứ. Giá trị vượt căn cứ bị chặn khi chốt báo giá.', wait: modalOpen, do: click(actPrimary) },
-      { enter: () => { closeModals(); goTask(5); }, sel: act('Gửi rà soát tồn kho'), title: 'Bước 5 — Bóc tách',
-        text: 'Lập hạng mục theo căn cứ (bước 2–4 hệ thống lấy dữ liệu, AI gợi ý, ĐVĐX xác nhận). Xong thì <b>Gửi rà soát tồn kho</b> — Phòng Quản lý tài sản nhận việc (tour 2).' }] },
+      { enter: () => { if (!tokOf(1)) goTask(1); }, sel: '[data-lf-ai-sec="boc"]', title: 'Bước 2, 6 — Gợi ý từ AI: Bóc tách và đối chiếu',
+        text: 'Mỗi khối có nút <b>✦ Gợi ý từ AI</b> riêng. <b>Bấm vào đây</b>: popup hiện dữ liệu căn cứ AI đã lấy (bước 2) và bảng bóc tách, đối chiếu (bước 6). Chọn hạng mục, chỉnh SL rồi <b>Áp dụng vào màn</b>.',
+        wait: () => !!find('[data-lf-boc] [data-lf-ai2]'), do: aiDo('boc') },
+      { sel: '[data-lf-boc]', title: 'Bước 5 — Bóc tách và đối chiếu', text: 'Áp dụng xong, AI ghép hàng hoá vào khoản mục dự toán và điền <b>bảng Loại chi phí</b> ở trên; ở đây chỉ còn dòng tóm tắt. Muốn xem / sửa danh mục bóc tách (SL, bỏ hạng mục) thì bấm <b>✦ Gợi ý lại</b>.' },
+      /* Review nhi 06/11 #1: bỏ khối Thông tin cơ bản — Nhóm mục đích, Nguồn vốn ở Thông tin chung. */
+      { sel: '[data-lf-chung]', title: 'Bước 3, 4 — Thông tin chung', text: '<b>Nhóm mục đích mua sắm</b> và <b>Nguồn vốn</b> điền sẵn theo đề tài / dự án, sửa được; nút <b>✦ Gợi ý từ AI</b> của khối gợi ý cả Tên luồng, Giá trị dự kiến, Thời gian thực hiện. Nội dung các mục Tờ trình nhập ở bước lập dự thảo (tour 4).' },
+      { sel: '#lf-save', title: 'Gửi', text: '<b>Bấm Gửi</b>: hoàn thành bước 1–5, hồ sơ chuyển <b>Chỉ huy ĐVĐX xác nhận khởi tạo</b>, rồi Phòng Quản lý tài sản rà soát tồn kho (tour 2).',
+        wait: route(/#\/viec-cua-toi$/), do: click('#lf-save') }] },
 
     { n: 2, name: 'Thủ kho rà soát tồn kho', who: 'Phòng Quản lý tài sản / Thủ kho', steps: [
-      { enter: () => { Flow.jumpToScene('1b', SET); go('#/ra-soat-kho'); }, sel: '[data-rsk]', title: 'Việc Rà soát tồn kho',
-        text: 'Vai <b>Hà Văn Tiến — Phòng Quản lý tài sản</b>. Danh mục là các hạng mục ĐVĐX đã bóc tách ở bước 5.' },
-      { sel: '[data-rsk-open]', title: 'Cập nhật kết quả', text: '<b>Bấm vào đây</b> để nhập kết quả rà soát.', wait: () => !!find('.rsk-dlg'), do: click('[data-rsk-open]') },
-      { sel: '.rsk-dlg', title: 'Kết quả rà soát', text: 'Nhập <b>một lần</b> theo biên bản rà soát: Mã hàng trong kho, SL tồn kho, SL xuất kho (không vượt tồn khả dụng), SL điều chuyển, hợp đồng đầu vào, vị trí; SL cần mua tự tính. Tải Tệp kết quả (bắt buộc) — hệ thống sinh Biên bản rà soát.' },
-      { enter: () => { closeModals(); Flow.jumpTo(7, 'minh'); window.RaSoatKho.fillSample(); const t = tokOf(7); Flow.setPersona(t.who); go('#/task/' + t.id); },
-        sel: actPrimary, title: 'Bước 7 — Kho hoàn thành', text: 'Kho đã nhập kết quả (dữ liệu mẫu). <b>Dùng từ kho</b> mặc định bằng SL xuất kho; phần còn lại là <b>Còn phải mua</b>, đầu vào của yêu cầu báo giá. Hoàn thành thì chuyển <b>Chỉ huy Kho duyệt</b>.' },
+      { enter: () => { Flow.jumpToScene('1b', SET); const t = tokOf(7); if (t) go('#/task/' + t.id); }, sel: actPrimary, title: 'Việc Rà soát tồn kho',
+        text: 'Vai <b>Hà Văn Tiến — Phòng Quản lý tài sản</b>. <b>Bấm Cập nhật kết quả rà soát</b> để mở màn nhập kết quả; danh mục là các hạng mục ĐVĐX đã bóc tách ở bước 5.', wait: () => !!find('[data-rsk-ed]'), do: click(actPrimary) },
+      { sel: '[data-rsk-ed]', title: 'Kết quả rà soát', text: 'Nhập <b>một lần</b> theo biên bản rà soát: Mã hàng trong kho, SL tồn kho, SL xuất kho (không vượt tồn khả dụng), SL điều chuyển, hợp đồng đầu vào, vị trí; SL cần mua tự tính. Tải Tệp kết quả (bắt buộc, ở trên bảng) — tệp Excel theo mẫu thì hệ thống điền sẵn bảng; nút Toàn màn hình để xem đủ cột. Lưu xong hệ thống sinh Biên bản rà soát.' },
+      { sel: '[data-rsk-save]', title: 'Gửi Chỉ huy Kho', text: 'Nhập xong bấm <b>Gửi Chỉ huy Kho</b>: hệ thống lưu kết quả, sinh biên bản và chuyển <b>Chỉ huy Kho duyệt</b>. Phần còn phải mua là đầu vào của yêu cầu báo giá.' },
       { enter: () => { closeModals(); goTask('7.1'); }, sel: act('Duyệt'), title: 'Chỉ huy Kho duyệt', text: 'Vai <b>Lưu Văn Thắng</b>. Xem kết quả rà soát và biên bản; <b>Duyệt</b> thì Thầu TTMS lấy báo giá, <b>Trả lại</b> (có lý do) thì Kho rà soát lại.' }] },
 
     { n: 3, name: 'Tổng hợp yêu cầu báo giá', who: 'Thầu Trung tâm Mua sắm', steps: [
       { enter: () => goTask(8), sel: actPrimary, title: 'Bước 8 — Khởi tạo YCBG', text: '<b>Bấm Hoàn thành</b> để mở phiếu yêu cầu báo giá.', wait: modalOpen, do: click(actPrimary) },
       { sel: '.vmodal.ef [data-ef-field="nccSel"]', title: 'Nhà cung cấp nhận YCBG', text: 'Danh sách lọc theo ngành hàng của hạng mục; nhà cung cấp bị cấm không hiện. Thêm được nhà cung cấp mới.' },
       { sel: '.vmodal.ef [data-ef-field="dkThanhToan"]', title: 'Điều khoản trên phiếu', text: 'Điều kiện thanh toán, Địa điểm giao hàng, Đầu mối tiếp nhận báo giá, Các yêu cầu khác — in trên phiếu và email gửi nhà cung cấp.' },
-      { enter: () => { closeModals(); goTask(10); }, sel: '[data-bg-card]', title: 'Bước 10 — Đánh giá báo giá',
-        text: 'Hệ thống đã gửi email (bước 9). Nhập Ngày báo giá, Hiệu lực đến, Loại tiền, Tỷ giá, đơn giá theo hạng mục; đánh dấu nhà cung cấp Không phản hồi.' },
-      { sel: '[data-vsel^="bg-base-"]', title: 'Cơ sở giá', text: 'Mặc định giá thấp nhất còn hiệu lực. Chọn nhà cung cấp khác thì bắt buộc lý do. Tổng theo cơ sở giá là giá trị của hồ sơ.' },
-      { sel: '[data-bg-basis]', title: 'Đối chiếu phần căn cứ', text: 'Mỗi văn bản căn cứ còn lại bao nhiêu sau khi trừ Thành tiền các hạng mục liên kết.' },
-      { enter: () => { const b = branch('Báo giá vượt phần căn cứ'); Flow.jumpTo(b.task, b.who, b.vars, b.process, b.dxms, b.ui, b.settle, b.pre); const t = tokOf(10); Flow.setPersona(t.who); go('#/task/' + t.id); },
-        sel: '[data-bg-over]', title: 'Vượt phần căn cứ', text: 'Chọn báo giá đắt hơn làm văn bản căn cứ bị âm: câu đỏ, và <b>Báo giá đạt</b> không xác nhận được. Chọn lại cơ sở giá hoặc Không đạt — tạo YCBG mới.' },
-      { sel: act('Báo giá đạt'), title: 'Kết quả bước 10', text: 'Báo giá đạt: <b>Chỉ huy Thầu TTMS duyệt</b>, rồi hệ thống rẽ theo tổng giá trị — dưới 160 tỷ sang bước 11, từ 160 tỷ sang bước 12.' },
-      { enter: () => { closeModals(); goTask('10.1'); }, sel: '[data-bg-card]', title: 'Chỉ huy Thầu TTMS duyệt', text: 'Vai <b>Phí Đức Long</b>. Xem báo giá tổng hợp, cơ sở giá (chỉ xem); <b>Duyệt</b> hoặc <b>Trả lại</b> kèm lý do.' }] },
+      /* Review nhi 06/11 #2, #3, #7: không so sánh báo giá trên hệ thống — Thầu tải tệp báo giá, nhập giá trị cuối cùng; Chỉ huy Thầu Đồng ý / Từ chối. */
+      { enter: () => { closeModals(); goTask(10); }, sel: act('Báo giá đạt'), title: 'Bước 10 — Tổng hợp báo giá',
+        text: 'Hệ thống đã gửi email (bước 9). Thầu so sánh, đánh giá báo giá ngoài hệ thống. <b>Báo giá đạt</b>: tải tệp báo giá của từng nhà cung cấp và nhập giá trị báo giá cuối cùng; <b>Không đạt — tạo YCBG mới</b> kèm lý do.' },
+      { enter: () => { closeModals(); goTask('10.1'); }, sel: act('Đồng ý'), title: 'Chỉ huy Thầu TTMS phê duyệt', text: 'Vai <b>Phí Đức Long</b>. Xem tệp báo giá và giá trị cuối cùng; <b>Đồng ý</b> thì hệ thống rẽ theo tổng giá trị (dưới 160 tỷ sang bước 11, từ 160 tỷ sang bước 12), <b>Từ chối</b> kèm lý do thì về bước 10.' }] },
 
     { n: 4, name: 'Soạn thảo hồ sơ ĐXMS', who: 'Chuyên quản, Chỉ huy ĐVĐX', steps: [
-      { enter: () => goTask(12), sel: act('Gửi chỉ huy duyệt'), title: 'Bước 12 — Hoàn thiện dự thảo', text: 'Hoàn thiện tờ trình, phụ lục theo mẫu (điền sẵn từ các bước trước), tải tài liệu bắt buộc rồi <b>Gửi chỉ huy duyệt</b>.' },
+      { enter: () => goTask(12), sel: act('Soạn thảo tờ trình ĐXMS'), title: 'Bước 12 — Soạn thảo tờ trình', text: 'Hoàn thiện tờ trình, phụ lục theo mẫu (điền sẵn từ các bước trước), tải tài liệu bắt buộc rồi <b>Gửi chỉ huy duyệt</b>.' },
       { sel: ['.vcard', 'Lịch sử hồ sơ'], title: 'Lịch sử hồ sơ', text: 'Các bước đã xử lý, ai xử lý, khi nào.' },
-      { enter: () => goTask(13), sel: act('Đồng ý'), title: 'Bước 13 — Chỉ huy ĐVĐX duyệt', text: 'Vai <b>Trần Đức Hải</b>. Duyệt từng phần: mọi phần Đạt thì Đồng ý; có phần Không đạt thì <b>Không đồng ý</b> kèm lý do, hồ sơ về bước 12.' },
-      { enter: () => goTask(16), sel: actPrimary, title: 'Bước 16 — Phiếu yêu cầu thẩm định', text: 'Chọn cơ quan chuyên môn thẩm định, hạn góp ý, đầu mối tiếp nhận; phiếu trình <b>Chỉ huy ĐVĐX duyệt BM-03</b> trước khi chuyển TTMS (tour 5).' },
-      { enter: () => goTask('16.1'), sel: act('Đồng ý BM-03'), title: 'Chỉ huy ĐVĐX duyệt BM-03', text: 'Vai <b>Trần Đức Hải</b>. Duyệt phiếu và các bên thẩm định; Trả lại thì về bước 16.' }] },
+      { enter: () => goTask(13), sel: act('Phê duyệt'), title: 'Bước 13 — Chỉ huy ĐVĐX duyệt', text: 'Vai <b>Trần Đức Hải</b>. Duyệt từng phần: mọi phần Đạt thì Đồng ý; có phần Không đạt thì <b>Không đồng ý</b> kèm lý do, hồ sơ về bước 12.' },
+      { enter: () => goTask(16), sel: actPrimary, title: 'Bước 16 — Phiếu yêu cầu thẩm định', text: 'Chọn cơ quan chuyên môn thẩm định, hạn góp ý, đầu mối tiếp nhận; bấm <b>Lập phiếu yêu cầu thẩm định</b>, điền nội dung BM-03 (xem trước được) rồi trình Chỉ huy ĐVĐX phê duyệt trước khi chuyển TTMS (tour 5).' },
+      { enter: () => goTask('16.1'), sel: act('Phê duyệt phiếu yêu cầu thẩm định'), title: 'Chỉ huy ĐVĐX phê duyệt phiếu', text: 'Vai <b>Trần Đức Hải</b>. Phê duyệt phiếu yêu cầu thẩm định và các bên thẩm định; Trả lại thì về bước 16.' }] },
 
     { n: 5, name: 'TTMS rà soát', who: 'Chuyên viên TTMS', steps: [
-      { enter: () => goTask(17), sel: act('Danh sách đúng, đủ'), title: 'Bước 17 — Danh sách CQCM', text: 'Vai <b>Phạm Thị Lan</b>. Đúng, đủ thì gửi yêu cầu thẩm định; sai thì <b>Chưa đúng/đủ — trả lại</b> về bước 16.' },
+      { enter: () => goTask(17), sel: act('Xác nhận danh sách CQCM'), title: 'Bước 17 — Xác nhận danh sách CQCM', text: 'Vai <b>Phạm Thị Lan</b>. Kiểm danh sách rồi nhập nhận xét: <b>Đồng ý</b> thì hệ thống tự gửi yêu cầu thẩm định và trình ký BM-03; <b>Từ chối</b> thì về bước 16.' },
       { enter: () => goTask(42), sel: act('Hoàn tất rà soát BM-05'), title: 'Bước 42 — Rà soát BM-05', text: 'Sau thẩm định: rà soát Báo cáo kết quả thẩm định (BM-05) do AI soạn từ ý kiến các CQCM.' },
       { enter: () => goTask(43), sel: actPrimary, title: 'Bước 43 — Đủ điều kiện', text: 'Xác nhận hồ sơ đủ điều kiện và ký BM-05 — sang trình ký (tour 7).' }] },
 

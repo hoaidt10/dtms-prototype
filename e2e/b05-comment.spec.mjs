@@ -66,13 +66,11 @@ test('#24: Chọn mẫu tài liệu theo bước + quy trình; Văn bản đầu
   expect(page.errors).toEqual([]);
 });
 
-test('#3, #4 task 08: thêm NCC mới (bảng lặp), Đối soát ĐXMS', async ({ page }) => {
+test('#3 task 08: thêm NCC mới (bảng lặp); review nhi 06/11 #24: không còn Đối soát ĐXMS', async ({ page }) => {
   await fresh(page);
   await jump(page, 8);
   const f = await openForm(page);
-  await expect(f.locator('.ef-table', { hasText: 'Đối soát ĐXMS' })).toContainText('Khớp');
-  await expect(f.locator('.ef-table', { hasText: 'Đối soát ĐXMS' })).toContainText('Không có trong nguồn');
-  await expect(f).toContainText('MBOM + dự toán nhiệm vụ KHCN');
+  await expect(f).not.toContainText('Đối soát ĐXMS');
   const dl = f.locator('.ef-dl', { hasText: 'Nhà cung cấp mới' });
   await dl.locator('[data-ef-add]').click();
   await dl.locator('[data-ef="nccMoi::0::ten"]').fill('Công ty TNHH Đo kiểm Delta');
@@ -106,22 +104,26 @@ test('#6–10 task 13: duyệt từng phần, Đồng ý chỉ khi mọi phần 
   await jump(page, 13);
   let f = await openForm(page, 'Đồng ý');
   await expect(f.locator('.ef-dl', { hasText: 'Duyệt từng phần' }).locator('.ef-row')).toHaveCount(8);
-  const row = f.locator('.ef-row', { hasText: '9–10. Biện pháp' });
+  const row = f.locator('.ef-row', { hasText: '6. Biện pháp' });
+  // Góp ý 06/11: Đạt hay Không đạt đều có ô Lý do, hướng dẫn / chỉ đạo, không bắt buộc.
+  await expect(row.locator('textarea')).toHaveCount(1);
+  await expect(f.locator('.ef-dl', { hasText: 'Duyệt từng phần' }).locator('textarea')).toHaveCount(8);
   await row.locator('[data-ef-radio$="ketQua"]', { hasText: 'Không đạt' }).click();
+  await expect(row.locator('textarea')).toHaveCount(1);
   await f.locator('#ok').click();
-  await expect(f.locator('.vfield.invalid .msg')).toHaveText(['Bạn cần nhập lý do, hướng dẫn / chỉ đạo']);
-  await f.locator('.ef-row', { hasText: '9–10. Biện pháp' }).locator('textarea').fill('Bổ sung mốc giao hàng từng lô.');
+  await expect(f.locator('.vfield.invalid')).toHaveCount(0);
+  await f.locator('.ef-row', { hasText: '6. Biện pháp' }).locator('textarea').fill('Bổ sung mốc giao hàng từng lô.');
   await f.locator('#ok').click();
   expect(await lastToast(page)).toContain('chưa duyệt tổng thể được');
   await closeForm(page);
   f = await openForm(page, 'Không đồng ý');
-  await f.locator('#ok').click();
+  await f.locator('#ef-no').click();
   expect(await lastToast(page)).toContain('ít nhất một phần');
-  await f.locator('.ef-row', { hasText: '9–10. Biện pháp' }).locator('[data-ef-radio$="ketQua"]', { hasText: 'Không đạt' }).click();
-  await f.locator('.ef-row', { hasText: '9–10. Biện pháp' }).locator('textarea').fill('Bổ sung mốc giao hàng từng lô.');
-  await f.locator('#ok').click();
+  await f.locator('.ef-row', { hasText: '6. Biện pháp' }).locator('[data-ef-radio$="ketQua"]', { hasText: 'Không đạt' }).click();
+  await f.locator('.ef-row', { hasText: '6. Biện pháp' }).locator('textarea').fill('Bổ sung mốc giao hàng từng lô.');
+  await f.locator('#ef-no').click();
   await expect.poll(() => page.evaluate(() => Flow.state.tokens.map((t) => t.task))).toEqual([12]);
-  expect(await page.evaluate(() => Flow.lastOf(13).reason)).toBe('9–10. Biện pháp, kế hoạch thực hiện: Bổ sung mốc giao hàng từng lô.');
+  expect(await page.evaluate(() => Flow.lastOf(13).reason)).toBe('6. Biện pháp, kế hoạch thực hiện: Bổ sung mốc giao hàng từng lô.');
   // Task 12: phản hồi chỉ đạo — Không sửa thì giải trình bắt buộc.
   await page.evaluate(() => { Flow.setPersona('minh'); location.hash = '#/task/' + Flow.state.tokens[0].id; });
   f = await openForm(page);
@@ -137,7 +139,7 @@ test('#6–10 task 13: duyệt từng phần, Đồng ý chỉ khi mọi phần 
   // Task 13 lần 2: giải trình hiện ở dòng của phần; lịch sử chỉnh sửa + AI tóm tắt.
   await page.evaluate(() => { Flow.setPersona('hai'); location.hash = '#/task/' + Flow.state.tokens[0].id; });
   f = await openForm(page, 'Đồng ý');
-  await expect(f.locator('.ef-row', { hasText: '9–10. Biện pháp' })).toContainText('Người soạn giải trình: Mốc giao hàng đã có ở phụ lục tiến độ.');
+  await expect(f.locator('.ef-row', { hasText: '6. Biện pháp' })).toContainText('Người soạn giải trình: Mốc giao hàng đã có ở phụ lục tiến độ.');
   await expect(f.locator('.ef-table', { hasText: 'Lịch sử chỉnh sửa theo phần' })).toContainText('Không sửa — giải trình');
   await expect(f.locator('.ai-box', { hasText: 'tóm tắt thay đổi' })).toContainText('1 phần giữ nguyên có giải trình');
   await f.locator('#ok').click();
@@ -153,7 +155,26 @@ test('#14, #13/#15, #17 (B): phiếu BM-04 riêng; AI đồng bộ ý kiến ở
   await closeForm(page);
   await jump(page, 26);
   f = await openForm(page);
-  await expect(f.locator('.ai-box', { hasText: 'đồng bộ ý kiến' })).toContainText('Nguồn vốn');
+  // Góp ý 06/11: nút ✦ Gợi ý từ AI → popup (kết quả AI bước 24, 25 + gợi ý từng ý kiến) → Áp dụng điền vào form.
+  await expect(f.locator('.ai-box')).toHaveCount(0);
+  await f.locator('[data-ef-ai="quyetDinhYKien"]').click();
+  const pop = page.locator('[data-ef-ai-pop]');
+  await expect(pop.locator('.lf-ai2')).toContainText('Nguồn vốn');
+  await expect(pop.locator('.lf-ai2')).toContainText('Không có xung đột');
+  await expect(pop.locator('tr[data-ai-row]')).toHaveCount(2);
+  // Ý kiến Ban Tài chính: AI gợi ý Không đồng ý + dự thảo giải trình; bỏ chọn ý kiến đầu → giữ nguyên trên form.
+  const tc = pop.locator('tr[data-ai-row]', { hasText: 'Nguồn vốn' });
+  await expect(tc.locator('.vradio-opt.on')).toHaveText('Không đồng ý');
+  await expect(tc.locator('textarea')).toHaveValue(/TSCĐ/);
+  await tc.locator('textarea').fill('Giải trình đã sửa trong popup');
+  await pop.locator('tr[data-ai-row]', { hasText: 'Biện pháp' }).locator('[data-ai-on]').uncheck();
+  await page.locator('[data-ef-ai-apply]').click();
+  await expect(pop).toHaveCount(0);
+  const row = f.locator('.ef-row', { hasText: 'Nguồn vốn' });
+  await expect(row.locator('[data-ef-radio$="quyetDinh"].on')).toHaveText('Không đồng ý');
+  await expect(row.locator('textarea')).toHaveValue('Giải trình đã sửa trong popup');
+  await expect(f.locator('.ef-row', { hasText: 'Biện pháp' }).locator('textarea')).toHaveValue('');
+  await expect(f.locator('[data-ef-ai="quyetDinhYKien"]')).toHaveText('✦ Gợi ý lại');
   await closeForm(page);
   await jump(page, 36);
   f = await openForm(page);
@@ -178,10 +199,10 @@ test('#18–21 task 46: thời điểm trình ký / ký, lý do từ chối, KPI
 
 test('#11: ký cứng bắt buộc lý do, ghi lại để thống kê', async ({ page }) => {
   await fresh(page);
-  await jump(page, 17);
+  await jump(page, 43); // Bước 17 không còn hộp thoại Trình ký (P-225): dùng bước ký BM-05 của TTMS.
   await page.locator('.task-acts [data-act].primary').click();
-  await page.locator('.vmodal.ef [data-ef-field="nhanXetDs"] textarea').fill('Danh sách đúng, đủ.'); // T29 B15 #32
-  await page.locator('.vmodal.ef #ok').click();
+  const ef = page.locator('.vmodal.ef');
+  if (await ef.count()) await ef.locator('#ok').click();
   await page.locator('.overlay [data-mode="hard"]').click();
   await page.locator('#go').click();
   expect(await lastToast(page)).toContain('lý do ký cứng');

@@ -2,7 +2,12 @@
 // prototype-T29-review-huylx4-0511.md): Đề tài lên đầu (#11, Huylx4 #2, #10), Lý do ưu tiên (#1), Ngày tạo một trường (#2), Hình thức trình ký (D-74),
 // bỏ Mục đích (#7), menu Quản lý hồ sơ (D-78), ẩn Thầu / Hợp đồng (D-76).
 import { test, expect } from '@playwright/test';
-import { fresh } from './helpers.mjs';
+import { fresh, aiApply } from './helpers.mjs';
+
+const pickSel = async (page, id, value) => {
+  await page.locator(`[data-vsel="${id}"]`).click();
+  await page.locator(`.vsel-panel [data-opt="${value}"]`).click();
+};
 
 const gop = async (page, hash = '#/luong') => {
   await fresh(page, '#/viec-cua-toi');
@@ -19,7 +24,9 @@ const pick = async (page, id, value) => {
 test('SCR-96: Đề tài / dự án và khối bóc tách đứng đầu; Căn cứ pháp lý; Khẩn / Thượng khẩn bắt buộc Lý do ưu tiên', async ({ page }) => {
   await gop(page, '#/luong/create');
   const cards = await page.locator('form[data-luong-form] > section.vcard h3').allInnerTexts();
-  expect(cards.slice(0, 2)).toEqual(['Thông tin dự án / đề tài', 'Thông tin chung']);
+  // T29 B19: thẻ đầu là bước 1 (Căn cứ và nội dung mua sắm — Thông tin dự án / đề tài).
+  expect(cards[0]).toContain('Thông tin dự án / đề tài');
+  expect(cards[1]).toBe('Thông tin chung');
   expect(cards).toContain('Căn cứ pháp lý');
   expect(cards).not.toContain('Căn cứ đầu vào');
   expect(cards).not.toContain('Danh sách người thẩm định');
@@ -31,7 +38,7 @@ test('SCR-96: Đề tài / dự án và khối bóc tách đứng đầu; Căn c
   await pick(page, 'lf-nv', 'NV-KHCN-2026-014');
   await pick(page, 'lf-pri', 'Khẩn');
   await expect(page.locator('#lf-priReason')).toBeVisible();
-  await page.locator('#lf-save').click();
+  await page.locator('#lf-draft').click();
   await expect(page.locator('.vfield', { has: page.locator('#lf-priReason') }).locator('.msg')).toHaveText('Bạn cần nhập Lý do ưu tiên.');
   await pick(page, 'lf-pri', 'Thường');
   await expect(page.locator('#lf-priReason')).toHaveCount(0);
@@ -41,11 +48,29 @@ test('SCR-96: Đề tài / dự án và khối bóc tách đứng đầu; Căn c
   await up(['QD-1482-VHT.pdf', 'KH-mua-sam-2026.pdf']);
   await pick(page, 'lf-type-1', 'QD_NV');
   await pick(page, 'lf-type-2', 'KH_NAM');
-  await page.locator('#lf-save').click();
+  await page.locator('#lf-draft').click();
   await expect(page).toHaveURL(/#\/task\/k\d+$/);
   const x = await page.evaluate(() => { const d = Flow.findDxms(Flow.state.dxms); return { code: d.code, pr: d.priReason, sign: d.sign }; });
   expect(x.pr).toContain('thử nghiệm hiện trường');
   expect(x.sign).toBe('VOffice');
+  // T29 B19: bước 1–5 trên màn Lập ĐXMS — Gửi rồi xem màn xử lý bước 5.1 (Chỉ huy ĐVĐX).
+  await aiApply(page);
+  await page.locator('#lf-save').click();
+  await expect(page).toHaveURL(/#\/viec-cua-toi$/);
+  await page.evaluate(() => { const t = Flow.state.tokens[0]; Flow.setPersona(t.who); location.hash = '#/task/' + t.id; });
+  // Màn xử lý việc: Thông tin chung mang lại các trường đã nhập khi tạo luồng.
+  const gi = page.locator('.tmain .ginfo').first();
+  const val = (k) => gi.locator(':scope > div', { has: page.locator('.k', { hasText: new RegExp('^' + k + '$') }) }).locator('.v');
+  await expect(val('Đề tài / dự án')).toContainText('NV-KHCN-2026-014');
+  await expect(val('Lý do ưu tiên')).toContainText('thử nghiệm hiện trường');
+  await expect(val('Hình thức trình ký')).toHaveText('VOffice');
+  await expect(val('Căn cứ đã được phê duyệt')).toHaveText('Chưa phê duyệt');
+  await expect(val('Người tạo')).not.toHaveText('-');
+  await expect(val('Nội dung căn cứ pháp lý')).not.toHaveText('');
+  // Khối Nhân sự thực hiện (chỉ xem): mỗi vai trò của quy trình một dòng, chưa chỉ định thì theo vai trò.
+  const ns = page.locator('[data-members-info] tbody tr');
+  expect(await ns.count()).toBeGreaterThan(1);
+  await expect(page.locator('[data-members-info]')).toContainText('(theo vai trò)');
   // Chi tiết luồng: Lý do ưu tiên, Hình thức trình ký; không còn Mục đích.
   await page.evaluate((c) => { location.hash = '#/luong/' + encodeURIComponent(c); }, x.code);
   await expect(page.locator('main .gen')).toContainText('Lý do ưu tiên');
@@ -125,19 +150,25 @@ async function jump(page, task) {
 }
 const form = (page) => page.locator('.vmodal.ef');
 
-test('D-81, #4: bước 1 chỉ xác nhận, căn cứ + phần khả dụng ở Thông tin chung; Tổng giá trị trống tới khi chốt báo giá', async ({ page }) => {
+test('D-81, #4 + B19: bước 1 mở màn Lập ĐXMS (không popup), căn cứ + phần khả dụng trên màn; Tổng giá trị trống tới khi chốt báo giá', async ({ page }) => {
   await fresh(page);
   await jump(page, 1);
+  // T29 B19 (DX-11): việc bước 1 của hồ sơ MS01 mở màn Lập ĐXMS — không còn hộp thoại "Xác nhận căn cứ".
+  await expect(page.locator('[data-luong-form]')).toHaveCount(1);
+  await expect(page.locator('.task-acts [data-act]')).toHaveCount(0);
+  await expect(page.locator('[data-basis-avail]')).toContainText('Còn có thể sử dụng');
+  // P-216 (chốt 06/11): AI chạy khi bấm nút Gợi ý từ AI.
+  await expect(page.locator('[data-lf-ai-sec="boc"]')).toHaveText('✦ Gợi ý từ AI');
+  await aiApply(page);
+  await expect(page.locator('[data-lf-ai2]')).toContainText('AI đã lấy dữ liệu căn cứ');
+  await page.locator('#lf-save').click();
+  await expect(page).toHaveURL(/#\/viec-cua-toi$/);
+  // Bước 5.1 (Chỉ huy ĐVĐX): Thông tin chung có Giá trị dự kiến, Tổng giá trị trống, phần khả dụng.
+  await jump(page, '5.1');
   const gi = page.locator('.tmain .ginfo').first();
   await expect(gi).toContainText('Giá trị dự kiến');
   await expect(gi.locator('div', { has: page.locator('.k', { hasText: /^Tổng giá trị/ }) }).locator('.v')).toHaveText('-');
   await expect(page.locator('[data-basis-avail]')).toContainText('Còn có thể sử dụng');
-  await page.locator('.task-acts [data-act].primary').click();
-  const f = form(page);
-  await expect(f).toContainText('Xác nhận căn cứ của hồ sơ');
-  await expect(f.locator('[data-vsel], [data-ef-list], .ef-table')).toHaveCount(0);
-  await f.locator('#ok').click();
-  await expect(f).toHaveCount(0);
   // Sau bước 10 (đã chốt báo giá) có Tổng giá trị.
   await jump(page, 13);
   await expect(page.locator('.tmain .ginfo').first()).not.toContainText('Giá trị dự kiến');
@@ -145,23 +176,26 @@ test('D-81, #4: bước 1 chỉ xác nhận, căn cứ + phần khả dụng ở
   expect(page.errors).toEqual([]);
 });
 
-test('#20: bước 5 bớt hạng mục, thêm hạng mục từ dự toán → rà soát tồn kho / YCBG dùng danh sách mới', async ({ page }) => {
+test('#20 + B19: bóc tách trên màn Lập ĐXMS — bớt hạng mục, thêm hạng mục từ dự toán → rà soát tồn kho / YCBG dùng danh sách mới', async ({ page }) => {
   await fresh(page);
   await jump(page, 5);
-  await page.locator('.task-acts [data-act].primary').click();
-  const f = form(page);
-  const row = f.locator('.ef-row', { hasText: 'Dịch vụ đào tạo, chuyển giao' });
-  await row.locator('[data-ef-chk$="bo"]').check();
-  await expect(row.locator('[data-ef$="prop"]')).toHaveCount(0);
-  await f.locator('[data-ef-add="hangMucThem"]').click();
-  const add = f.locator('[data-ef-field^="hangMucThem::0::line"]');
-  await add.locator('[data-vsel]').click();
-  const opt = page.locator('.vsel-panel .vsel-opt').first();
-  await expect(opt).toContainText('ĐVT');
-  await opt.click();
-  await f.locator('[data-ef="hangMucThem::0::sl"]').fill('3');
-  await f.locator('#ok').click();
-  await expect(f).toHaveCount(0);
+  await expect(page.locator('[data-luong-form]')).toHaveCount(1);
+  // Góp ý 06/11: bóc tách sửa trong popup (✦ Gợi ý lại) — bỏ hạng mục 5; thêm hạng mục từ dự toán = tự thêm khoản mục vào bảng Loại chi phí.
+  await page.evaluate(() => { D.bocHide = false; }); // Review nhi 06/11 #18: bảng tạm ẩn — bật lại để kiểm.
+  await page.locator('[data-lf-ai-sec="boc"]').click();
+  await page.locator('[data-lf-pop-ion="5"]').uncheck();
+  await page.locator('[data-lf-ai-apply]').click();
+  await expect(page.locator('[data-lf-boc-sum]')).toContainText('4 / 5');
+  await pickSel(page, 'lf-ctype', 'PL2');
+  await page.locator('[data-vsel="lf-cline"]').click();
+  await page.locator('.vsel-panel .vsel-opt').first().click();
+  await page.locator('[data-lf-cadd]').click();
+  const cid = await page.locator('[data-lf-cqty]').last().getAttribute('data-lf-cqty');
+  await page.locator(`[data-lf-cqty="${cid}"]`).fill('3');
+  await page.locator(`[data-lf-cval="${cid}"]`).fill('1.000.000');
+  await aiApply(page, ['basic']);
+  await page.locator('#lf-save').click();
+  await expect(page).toHaveURL(/#\/viec-cua-toi$/);
   const it = await page.evaluate(() => D.items.map((i) => [i.n, i.buy]));
   expect(it.map((x) => x[0])).not.toContain(5);
   expect(it.find((x) => x[0] === 101)).toEqual([101, 3]);

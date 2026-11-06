@@ -50,7 +50,8 @@ try {
   const t1 = await page.evaluate(() => { localStorage.clear(); Flow.reset(); Flow.jumpTo(1, 'minh'); return Flow.state.tokens.some((t) => t.task === 1); });
   t1 ? ok('Tua hồ sơ demo tới bước 1') : bad('Không tua được tới bước 1');
   await page.evaluate(() => { location.hash = '#/task/' + Flow.state.tokens.find((t) => t.task === 1).id; });
-  await page.waitForSelector('.task-acts [data-act]', { timeout: 10000 });
+  // Bước 1 nay là màn Lập ĐXMS toàn trang (#lf-save); các bước khác vẫn dùng .task-acts.
+  await page.waitForSelector('.task-acts [data-act], #lf-save', { timeout: 10000 });
   ok('Mở màn việc bước 1');
   if (fs.existsSync(path.join(root, 'HUONG-DAN.html'))) {
     await page.goto(pathToFileURL(path.join(root, 'HUONG-DAN.html')).href);
