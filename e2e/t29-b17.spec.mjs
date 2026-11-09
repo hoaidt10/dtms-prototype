@@ -41,11 +41,11 @@ test('SCR-96: căn cứ pháp lý điền sẵn; review nhi 06/11 #20: không c�
   await page.locator('#lf-save').click();
   await expect(page).toHaveURL(/#\/viec-cua-toi$/);
   await page.evaluate(() => { const t = Flow.state.tokens[0]; Flow.setPersona(t.who); location.hash = '#/task/' + t.id; });
-  // Màn xử lý việc: chưa có khối Phụ lục; Danh sách tài liệu có tệp căn cứ gắn ĐXMS, cột Loại tài liệu / Gắn với.
+  // Màn xử lý việc: chưa có khối Phụ lục; Danh sách tài liệu có tệp căn cứ gắn ĐXMS, cột Loại tài liệu / Bước (D-95).
   await expect(page.locator('[data-phu-luc]')).toHaveCount(0);
   const docs = page.locator('.vcard', { has: page.locator('h3', { hasText: 'Danh sách tài liệu' }) });
-  await expect(docs.locator('thead')).toContainText('Gắn với');
-  await expect(docs.locator('tbody tr', { hasText: 'QD-1482-VHT.pdf' })).toContainText('ĐXMS');
+  await expect(docs.locator('thead')).toContainText('Bước');
+  await expect(docs.locator('tbody tr', { hasText: 'QD-1482-VHT.pdf' })).toContainText('Lập đề xuất mua sắm');
   expect(r.pl).toMatchObject({ plCtkt: 'Không', plBanVe: 'Không', plMuaSam: 'Không' });
   expect(r.legal).toContain('12868');
   expect(r.req).toEqual([]);
@@ -92,7 +92,8 @@ test('Bước lập dự thảo: phụ lục Có thiếu tệp thì chặn gửi
   expect(page.errors).toEqual([]);
 });
 
-test('Bước 1: văn bản căn cứ chính theo Đề tài / dự án chọn khi tạo luồng', async ({ page }) => {
+// T37 (RV-PROTO-0911 #4): bỏ khối Văn bản căn cứ và giá trị còn khả dụng — kiểm khối không còn trên màn bước 1.
+test('Bước 1: không còn khối Văn bản căn cứ và giá trị còn khả dụng (T37)', async ({ page }) => {
   await gop(page, '#/luong/create');
   await page.locator('#lf-title').fill('Luồng mua sắm anten Ka');
   await pick(page, 'lf-nv', 'NV-KHCN-2026-006');
@@ -101,9 +102,8 @@ test('Bước 1: văn bản căn cứ chính theo Đề tài / dự án chọn k
   await pick(page, 'lf-type-2', 'KH_NAM');
   await page.locator('#lf-draft').click();
   await expect(page).toHaveURL(/#\/task\/k\d+$/);
-  const av = page.locator('[data-basis-avail]');
-  await expect(av).toContainText('Văn bản căn cứ và giá trị còn khả dụng');
-  await expect(av).toContainText('0917/QĐ-VHT');
-  await expect(av).not.toContainText('1482/QĐ-VHT');
+  await expect(page.locator('[data-luong-form]')).toHaveCount(1);
+  await expect(page.locator('[data-basis-avail]')).toHaveCount(0);
+  await expect(page.locator('main')).not.toContainText('Văn bản căn cứ và giá trị còn khả dụng');
   expect(page.errors).toEqual([]);
 });

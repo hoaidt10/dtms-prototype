@@ -3,13 +3,13 @@
 import { test, expect } from '@playwright/test';
 import { fresh, state, openForm, closeForm } from './helpers.mjs';
 
-// SCR-25: ĐXMS đã phê duyệt → loại Điều chỉnh chọn sẵn, quy trình MS02 → Lưu mở bước 1.
+// T34 (D-91): Thêm mới điều chỉnh ĐXMS (khuôn Lập ĐXMS): chọn ĐXMS đã phê duyệt, nhập lý do → Lưu tạo ĐXMS mới + hồ sơ MS02, mở bước 1.
 async function createAdj(page, dxms) {
-  await fresh(page, '#/ho-so-dxms/create');
-  await page.locator('[data-vsel="c-dxms"]').click();
+  await fresh(page, '#/dieu-chinh-dxms/create');
+  await page.locator('[data-vsel="lf-adj-from"]').click();
   await page.locator(`.vsel-panel [data-opt="${dxms}"]`).click();
-  await expect(page.locator('[data-vsel="c-kind"]')).toHaveText('Điều chỉnh ĐXMS');
-  await page.locator('#c-save').click();
+  await page.locator('#lf-adjReason').fill('Điều chỉnh thử');
+  await page.locator('#lf-save').click();
   await expect(page).toHaveURL(/#\/task\/k\d+$/);
 }
 
@@ -127,24 +127,27 @@ test('B2 — ĐXMS-2026-0103 giảm còn 150 tỷ: bước 1 ĐXMS cũ chỉ xem
   expect(seen).toEqual(expect.arrayContaining(['11', '38', '39', '60']));
   expect((await state(page)).s).toBe('approved');
 
-  // Chi tiết hồ sơ: so sánh trước – sau, văn bản đầu ra bản điều chỉnh.
-  await page.evaluate(() => { location.hash = '#/ho-so-dxms/HS-2026-0127'; });
-  const cmp = page.locator('[data-adj-compare]');
-  await expect(cmp).toContainText('HS-2026-0103');
-  await expect(cmp).toContainText('210,50 tỷ đồng');
-  await expect(cmp).toContainText('150,00 tỷ đồng');
+  // Chi tiết: T37 (RV-PROTO-0911 #3) bỏ So sánh trước – sau; văn bản đầu ra bản điều chỉnh.
+  await page.evaluate(() => { location.hash = '#/luong/' + encodeURIComponent('ĐXMS-2026-0127'); });
+  await expect(page.locator('.gen .ginfo')).toContainText('Điều chỉnh từ');
+  await expect(page.locator('[data-adj-compare]')).toHaveCount(0);
+  await page.evaluate(() => { location.hash = '#/luong/' + encodeURIComponent('ĐXMS-2026-0127') + '/tai-lieu'; }); // T34 v0.2: văn bản ở tab Tài liệu & văn bản
   await page.locator('[data-preview-doc^="BM-09 Tờ trình điều chỉnh ĐXMS"]').click();
   await expect(page.locator('.vmodal')).toContainText('NỘI DUNG ĐIỀU CHỈNH');
   await expect(page.locator('.vmodal')).toContainText('Giảm 02 cụm mô phỏng');
   await page.locator('.vmodal [data-close]').first().click();
 
-  // D-40: ĐXMS giữ mã, giá trị hiệu lực = giá trị sau điều chỉnh, trạng thái "Đã phê duyệt (điều chỉnh lần 1)", chuỗi hồ sơ.
-  await page.evaluate(() => { location.hash = '#/dxms/' + encodeURIComponent('ĐXMS-2026-0103'); });
+  // T34 (D-85): điều chỉnh là ĐXMS mới 0127 — giá trị hiệu lực = giá trị sau điều chỉnh, "Đã phê duyệt (điều chỉnh lần 1)", Điều chỉnh từ 0103.
+  await page.evaluate(() => { location.hash = '#/luong/' + encodeURIComponent('ĐXMS-2026-0127'); }); // T34 (D-90): Chi tiết luồng (SCR-97)
   await expect(page.locator('.ginfo')).toContainText('Giá trị hiệu lực (gồm VAT)150,00 tỷ đồng');
   await expect(page.locator('.ginfo')).toContainText('Đã phê duyệt (điều chỉnh lần 1)');
-  const row = page.locator('[data-dxms-profiles] tr', { hasText: 'HS-2026-0127' });
-  await expect(row).toContainText('Điều chỉnh ĐXMS');
-  await expect(row).toContainText('HS-2026-0103');
+  await expect(page.locator('.ginfo')).toContainText('Điều chỉnh từĐXMS-2026-0103');
+  await expect(page.locator('[data-dxms-chain] tbody tr')).toHaveCount(2);
+  await expect(page.locator('[data-dxms-chain] tbody tr').nth(1)).toContainText('HS-2026-0127');
+  // ĐXMS cũ hết hiệu lực.
+  await page.evaluate(() => { location.hash = '#/luong/' + encodeURIComponent('ĐXMS-2026-0103'); });
+  await expect(page.locator('.ginfo')).toContainText('Đã được điều chỉnh');
+  await expect(page.locator('.ginfo')).toContainText('Được điều chỉnh bởiĐXMS-2026-0127');
   expect(page.errors).toEqual([]);
 });
 
@@ -162,13 +165,18 @@ test('B2 — MS02.02: Quyết định BM-08 điều chỉnh; Việc của tôi g
 });
 
 // ---------- T21 B3: bộ demo MS02 ở Công cụ demo (cảnh A1–A10, nhánh phụ) ----------
-test('B3 — Công cụ demo bộ MS02: A1 mở SCR-25 loại Điều chỉnh, A7 chuyển ngưỡng có cảnh báo, A6 ĐXMS điều chỉnh lần 1', async ({ page }) => {
+test('B3 — Công cụ demo bộ MS02: A1 mở Thêm mới điều chỉnh ĐXMS, A7 chuyển ngưỡng có cảnh báo, A6 ĐXMS điều chỉnh lần 1', async ({ page }) => {
   await fresh(page, '#/viec-cua-toi');
   await page.locator('#demo').click();
   await page.locator('[data-demo-set="MS02"]').click();
-  await expect(page).toHaveURL(/#\/ho-so-dxms\/create\//);
-  await expect(page.locator('[data-vsel="c-kind"]')).toHaveText('Điều chỉnh ĐXMS');
-  await page.locator('#c-save').click();
+  // T34 (D-91): A1 mở Thêm mới điều chỉnh ĐXMS (khuôn Lập ĐXMS), ĐXMS cần điều chỉnh khoá theo bộ demo; Lý do bắt buộc.
+  await expect(page).toHaveURL(/#\/dieu-chinh-dxms\/create\//);
+  await expect(page.locator('.pg-title')).toHaveText('Thêm mới điều chỉnh ĐXMS');
+  await expect(page.locator('[data-vsel="lf-adj-from"]')).toHaveClass(/dis/);
+  await page.locator('#lf-save').click();
+  await expect(page.locator('.vfield.invalid .msg')).toContainText(['Bạn cần nhập Lý do điều chỉnh.']);
+  await page.locator('#lf-adjReason').fill('Điều chỉnh thử');
+  await page.locator('#lf-save').click();
   await expect(page.locator('body')).toContainText('Chọn ĐXMS đã được phê duyệt cần điều chỉnh');
 
   await page.locator('#demo').click();
@@ -181,7 +189,7 @@ test('B3 — Công cụ demo bộ MS02: A1 mở SCR-25 loại Điều chỉnh, A
 
   await page.locator('#demo').click();
   await page.locator('.demo-panel [data-scene="A9"]').click();
-  expect(await page.evaluate(() => [Flow.ci().dxms, Flow.ci().branch, Flow.state.tokens[0].task])).toEqual(['ĐXMS-2026-0072', 'MS02.01', 12]);
+  expect(await page.evaluate(() => [Flow.ci().adjFrom, Flow.ci().branch, Flow.state.tokens[0].task])).toEqual(['ĐXMS-2026-0072', 'MS02.01', 12]);
 
   await page.locator('#demo').click();
   await page.locator('.demo-panel [data-scene="A6"]').click();

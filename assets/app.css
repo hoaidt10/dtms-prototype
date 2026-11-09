@@ -879,6 +879,9 @@ body:not(.cap) .actionbar { padding-right: 84px; }
 /* Tiêu đề khối có vạch đỏ 4px (workflow-management: text-xl font-medium #0F1110). */
 .blk-t { margin: 0; display: flex; align-items: center; gap: 8px; font-size: 20px; line-height: 28px; font-weight: 500; color: #0F1110; }
 .blk-t .bar { width: 4px; height: 24px; border-left: 4px solid #EE0033; border-radius: 0 8px 8px 0; box-sizing: border-box; }
+/* my-tasks (repo-khcn-dtms-fe): "border-l-4 border-[#EE0033] pl-2 text-base font-semibold text-[#2D3036]". */
+.blk-t.sm { font-size: 16px; line-height: 24px; font-weight: 600; color: #2D3036; border-left: 4px solid #EE0033; padding-left: 8px; gap: 0; }
+.vtable td.due-over { color: #EE0033; }
 /* vht-tree-table: như vht-table; toggler p-treeTableToggler (28px, chevron) trong cột showToggler, dòng con thụt 16px mỗi cấp. */
 .vtt td { overflow: hidden; }
 .vtt-inl { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; vertical-align: middle; }
@@ -1331,3 +1334,26 @@ body.cap .tour-btn, body.cap .tour-layer, body.rv-mode .tour-layer { display: no
 .vmodal.docv.wide { width: min(1240px, 100%); }
 .doc.paper.a4.land { max-width: 1123px; padding: 40px 48px 48px 56px; }
 .doc.a4 .dsg3 tr + tr td { padding-top: 16px; }
+
+/* T34 v0.2: thanh trạng thái màn việc (my-task-status-bar, QĐ05) — Xử lý: nền #FFF5F4, viền #FFC6C4, vạch trái #EE0033, sticky;
+   Xem: nền #EDFFF1, vạch trái #008E50, không nút. */
+.sbar { position: sticky; top: 0; z-index: 9; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px;
+  border: 1px solid #FFC6C4; border-left: 4px solid #EE0033; border-radius: 12px; background: #FFF5F4; padding: 12px 16px; }
+.sbar.view { position: static; border: 0; border-left: 4px solid #008E50; background: #EDFFF1; justify-content: flex-start; }
+.sbar-l { display: flex; align-items: center; gap: 12px; }
+.sbar.view { gap: 12px; }
+.sbar-ic { width: 44px; height: 44px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; border-radius: 50%; background: #FFE0E6; color: #EE0033; }
+.sbar.view .sbar-ic { background: #D5F3E0; color: #008E50; }
+.sbar-ic svg { width: 24px; height: 24px; }
+.sbar-t { display: flex; flex-direction: column; gap: 2px; }
+.sbar-h { font-size: 14px; font-weight: 600; color: #EE0033; }
+.sbar.view .sbar-h { color: #008E50; }
+.sbar-s { font-size: 14px; color: #2D3036; }
+.sbar-late { font-weight: 600; color: #EE0033; }
+.sbar-acts { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.dx-body { display: flex; flex-direction: column; gap: 20px; }
+/* T36: nút Đồng bộ đề tài / dự án ▾ (menu xổ theo .more-pop của Thao tác khác). */
+.dt-sync { position: relative; display: inline-flex; }
+.dt-sync .vbtn svg { width: 16px; height: 16px; }
+.dt-sync .more-pop { min-width: 220px; }
+.dt-sync .more-pop .vbtn[disabled] { color: #A6A8AB; cursor: not-allowed; }

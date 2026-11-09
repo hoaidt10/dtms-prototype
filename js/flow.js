@@ -57,11 +57,11 @@
     return new Set(D.otherCases.map((c) => c.code).concat(S.adj.map((c) => c.code), S.archived.map((c) => c.code), S.code ? [S.code] : [], D.caseCodes.slice(1),
       D.kdtCases.map((c) => c.code), S.kdtCases.map((c) => c.code)));
   }
-  /* parent = mã ĐXMS hoặc mã KĐT; hồ sơ Phê duyệt đầu tiên giữ 4 số của đối tượng cha. */
-  function nextCaseCode(parent, kind) {
+  /* parent = mã ĐXMS hoặc mã KĐT. T34 (D-85): mỗi ĐXMS / KĐT một hồ sơ → hồ sơ giữ 4 số của đối tượng cha; trùng thì lấy số trống từ 0127. */
+  function nextCaseCode(parent) {
     const used = usedCodes();
     const own = 'HS-2026-' + parent.slice(-4);
-    if (kind === 'PD' && !used.has(own)) return own;
+    if (!used.has(own)) return own;
     for (let n = 127; ; n++) { const c = 'HS-2026-' + String(n).padStart(4, '0'); if (!used.has(c)) return c; }
   }
   function nextKdtCode() {
@@ -69,9 +69,10 @@
     if (!used.has(D.kdtCode0)) return D.kdtCode0;
     for (let n = 34; ; n++) { const c = 'KĐT-2026-' + String(n).padStart(4, '0'); if (!used.has(c)) return c; }
   }
-  function nextDxmsCode() {
+  /* adj: ĐXMS điều chỉnh không lấy mã 0117 của luồng demo Phê duyệt. */
+  function nextDxmsCode(adj) {
     const used = new Set(D.dxmsList.map((x) => x.code).concat(S.dxmsUser.map((x) => x.code)));
-    if (!used.has(D.dxmsCode0)) return D.dxmsCode0;
+    if (!adj && !used.has(D.dxmsCode0)) return D.dxmsCode0;
     for (let n = 127; ; n++) { const c = 'ĐXMS-2026-' + String(n).padStart(4, '0'); if (!used.has(c)) return c; }
   }
 
@@ -84,7 +85,7 @@
     S.dxms = opts.dxms || D.dxmsCode0;
     D.useCase(S.dxms);
     if (!Flow.findDxms(S.dxms)) S.dxmsUser.push(demoDxms());
-    S.code = opts.code || nextCaseCode(S.dxms, 'PD');
+    S.code = opts.code || nextCaseCode(S.dxms);
     S.name = opts.name || null;
     S.status = 'running';
     S.persona = 'minh';
@@ -98,9 +99,11 @@
 
   /* Hồ sơ đã hoàn thành của ĐXMS (mới nhất trước): hồ sơ tạo trên prototype rồi tới hồ sơ mẫu. last = căn cứ của hồ sơ Điều chỉnh (giá trị trước
      điều chỉnh), pd = hồ sơ Phê duyệt — quy trình MS01.02 nghĩa là căn cứ đã được CT/TGĐ Tập đoàn duyệt (D-39). */
+  /* T34: last = hồ sơ (Hoàn thành) của chính ĐXMS được điều chỉnh, pd = hồ sơ Phê duyệt của ĐXMS gốc trong chuỗi. */
   function adjBase(dxms) {
-    const done = S.adj.concat(D.otherCases).filter((c) => c.dxms === dxms && c.st === 'done');
-    return { last: done[0] || null, pd: done.find((c) => c.kind === 'PD') || null };
+    const done = S.adj.concat(D.otherCases), of = (code) => done.find((c) => c.dxms === code && c.st === 'done') || null;
+    const chain = Flow.dxmsChain(dxms);
+    return { last: of(dxms), pd: chain.length ? of(chain[0].code) : null };
   }
   /* Giá trị sau điều chỉnh là giá trị của hồ sơ (màn, văn bản đọc D.caseInfo.total). Gọi lại sau mỗi lần D.useCase. */
   function useAdj() {
@@ -119,16 +122,27 @@
   }
   /* Hồ sơ Điều chỉnh (T21, D-36): Lưu ở SCR-25 = start instance MS02, bước 1 giao người tạo. vars.adj giữ hồ sơ cũ làm căn cứ
      (from, before) và giá trị sau điều chỉnh (total — lúc tạo bằng giá trị hiệu lực, sửa ở bước 4); big / basisTD theo D-39. */
+  /* T34 (D-85…D-89): opts.dxms = ĐXMS được điều chỉnh (Đã phê duyệt). Lưu = tạo ĐXMS mới (mã mới, adjFrom, adjN, root; dữ liệu và
+     căn cứ đang giữ chép từ ĐXMS cũ — D-89) + hồ sơ Điều chỉnh của ĐXMS mới. opts.newDxms: mã ĐXMS mới đã có (chạy lại luồng). */
   function startAdj(opts) {
-    S.dxms = opts.dxms;
-    D.useCase(S.dxms);
-    const b = adjBase(S.dxms), before = opts.before != null ? opts.before : b.last ? b.last.total : D.caseInfo.total;
+    const old = Flow.findDxms(opts.dxms) || { code: opts.dxms };
+    D.useCase(old.code);
+    const b = adjBase(old.code), before = opts.before != null ? opts.before : b.last ? b.last.total : D.caseInfo.total;
     const total = opts.total != null ? opts.total : before;
-    S.vars.adj = { from: b.last ? b.last.code : null, fromFlow: b.last ? b.last.flow : null, before, total, reason: opts.reason || '' };
+    const code = opts.newDxms || nextDxmsCode(true), now = Flow.dateOf(S.clock);
+    if (!Flow.findDxms(code)) {
+      const copy = Object.assign({}, old);
+      ['viewers', 'luong'].forEach((k) => delete copy[k]);
+      /* T34 (D-91): dữ liệu người dùng sửa trên màn Thêm mới điều chỉnh ĐXMS ghi đè bản chép. */
+      S.dxmsUser.unshift(Object.assign(copy, opts.data || {}, { code, adjFrom: old.code, adjN: (old.adjN || 0) + 1, root: old.root || old.code, est: total, reason: opts.reason || '',
+        creator: (D.personas.find((p) => p.id === S.persona) || D.personas[0]).name, created: now, updated: now }));
+    }
+    S.dxms = code;
+    S.vars.adj = { from: b.last ? b.last.code : null, fromDxms: old.code, fromFlow: b.last ? b.last.flow : null, before, total, reason: opts.reason || '' };
     S.vars.basisTD = !!(b.pd && b.pd.flow === 'MS01.02');
     S.vars.big = !D.inRange('MS01.03', total, S.vars.th);
     useAdj();
-    S.code = opts.code || nextCaseCode(S.dxms, 'DC');
+    S.code = opts.code || nextCaseCode(S.dxms);
     S.name = opts.name || null;
     S.creator = (D.personas.find((p) => p.id === S.persona) || D.personas[0]).name;
     S.status = 'running';
@@ -150,7 +164,7 @@
     S.creator = (D.personas.find((p) => p.id === S.persona) || D.personas[0]).name;
     /* KĐT mẫu đang có hồ sơ xử lý (KĐT-2026-0031, cảnh K9): chạy lại đúng hồ sơ đó — danh sách hồ sơ bỏ bản ghi mẫu trùng mã. */
     const sample = D.kdtCases.find((c) => c.kdt === S.kdt && c.st === 'processing');
-    S.code = opts.code || (sample ? sample.code : nextCaseCode(S.kdt, 'PD'));
+    S.code = opts.code || (sample ? sample.code : nextCaseCode(S.kdt));
     S.name = opts.name || k.title || D.caseInfo.title;
     S.status = 'running';
     S.persona = 'minh';
@@ -668,7 +682,7 @@
   /* Bộ demo (D.demoSets): theo ĐXMS của hồ sơ đang chạy; chưa có hồ sơ thì theo bộ vừa chọn ở công cụ demo. */
   const setOf = (key) => D.demoSets.find((d) => d.key === key) || D.demoSets[0];
   const demoSet = () => (S.parent && MAIN && MAIN.demoKey && setOf(MAIN.demoKey).hd === S.parent && setOf(MAIN.demoKey)) || (S.parent && D.demoSets.find((d) => d.hd === S.parent && d.key === fam())) || (S.demoKey && setOf(S.demoKey).hd && setOf(S.demoKey))
-    || (S.dxms && D.demoSets.find((d) => d.dxms === S.dxms || (d.also || []).includes(S.dxms)))
+    || (S.dxms && D.demoSets.find((d) => [S.dxms, S.vars.adj && S.vars.adj.fromDxms].some((c) => c && (d.dxms === c || (d.also || []).includes(c)))))
     || (S.kdt && D.demoSets.find((d) => d.kdt === S.kdt || (d.also || []).includes(S.kdt))) || setOf(S.demoKey);
 
   /* Tua nhanh từ đầu theo nhánh chính cho tới khi có token ở task `target` (hoặc kết thúc).
@@ -776,8 +790,10 @@
        Task 01 giao người tạo nếu người tạo thuộc vai trò Chuyên quản đã chọn. Trả về mã ĐXMS. */
     createLuong(data, opts) {
       toMain();
-      const creator = S.persona, code = nextDxmsCode(), now = Flow.dateOf(S.clock);
-      S.dxmsUser.unshift(Object.assign({ creator: window.D.personas.find((p) => p.id === creator).name, created: now }, data, { code, updated: now, luong: true }));
+      /* T34: opts.dxms = ĐXMS đã có, chưa có hồ sơ (mẫu / Sao chép) → cập nhật ĐXMS đó, không sinh mã mới. */
+      const creator = S.persona, code = opts.dxms || nextDxmsCode(), now = Flow.dateOf(S.clock);
+      if (opts.dxms) Flow.updateDxms(code, Object.assign({}, data, { luong: true, lapOwn: true }));
+      else S.dxmsUser.unshift(Object.assign({ creator: window.D.personas.find((p) => p.id === creator).name, created: now }, data, { code, updated: now, luong: true }));
       S = carry(S, fresh(opts.process));
       if (opts.vars) Object.assign(S.vars, opts.vars);
       start({ dxms: code, name: opts.name });
@@ -867,6 +883,29 @@
       return S.dxmsUser.concat(D.dxmsList.filter((x) => !S.dxmsDel.includes(x.code)).map((x) => Object.assign({}, x, S.dxmsEdit[x.code] || {})));
     },
     findDxms(code) { return Flow.dxmsAll().find((x) => x.code === code) || null; },
+    /* T34: chuỗi điều chỉnh chứa `code`, từ ĐXMS gốc tới bản mới nhất (theo adjFrom). */
+    dxmsChain(code) {
+      const all = Flow.dxmsAll(), by = (c) => all.find((x) => x.code === c);
+      let x = by(code);
+      if (!x) return [];
+      for (let g = 0; x.adjFrom && by(x.adjFrom) && g < 50; g++) x = by(x.adjFrom);
+      const out = [x];
+      for (let g = 0; g < 50; g++) { const nx = all.filter((o) => o.adjFrom === out[out.length - 1].code); if (!nx.length) break; out.push(...nx.slice(0, 1)); }
+      return out;
+    },
+    /* T34 (GIẢ LẬP P-226): ĐXMS Dừng xử lý không tạo lại hồ sơ — Sao chép thành ĐXMS mới (chưa có hồ sơ), copyFrom = ĐXMS cũ. Trả về mã mới. */
+    copyDxms(code) {
+      const x = Flow.findDxms(code);
+      if (!x) return null;
+      const now = Flow.dateOf(S.clock), copy = Object.assign({}, x);
+      ['adjFrom', 'adjN', 'root', 'reason', 'viewers', 'luong', 'copyFrom'].forEach((k) => delete copy[k]);
+      const nc = nextDxmsCode(true);
+      S.dxmsUser.unshift(Object.assign(copy, { code: nc, copyFrom: code, creator: (D.personas.find((p) => p.id === S.persona) || D.personas[0]).name, created: now, updated: now }));
+      emit();
+      return nc;
+    },
+    /* ĐXMS điều chỉnh (con trực tiếp) của `code` — mới nhất trước. */
+    dxmsAdjOf(code) { return Flow.dxmsAll().filter((x) => x.adjFrom === code); },
     /* KĐT (SCR-55): tạo / sửa / xoá như ĐXMS — không start quy trình (D-12). */
     createKdt(data) {
       const code = nextKdtCode(), now = Flow.dateOf(S.clock);
@@ -923,6 +962,7 @@
       S = carry(S, fresh('MS02'));
       S.persona = who;
       start(opts);
+      if (opts.caseFiles) S.ui.uploads = opts.caseFiles.map((f) => Object.assign({ at: Flow.dateOf(S.clock) }, f));
       emit();
       return S.code;
     },
@@ -933,7 +973,7 @@
       useAdj();
       emit();
     },
-    nextCaseCode: (dxms, kind) => nextCaseCode(dxms, kind),
+    nextCaseCode: (dxms) => nextCaseCode(dxms),
     /* Sau 10b: mở hồ sơ mới của cùng ĐXMS theo quy trình đúng. Mặc định P-26: hồ sơ mới làm lại từ task 1 với dữ liệu đã sao chép sẵn. */
     openReplacement() {
       if (S.status !== 'moved') return;
@@ -1008,7 +1048,7 @@
       const title = x.title || D.caseInfo.title;
       const a = S.vars.adj;
       return Object.assign({}, D.caseInfo, { code: S.code || '—', dxms: S.dxms || '—', kind: a ? 'DC' : 'PD', title, name: S.name || title, flow: S.vars.process || '—', total: !a && S.vars.totalQ != null ? S.vars.totalQ : D.caseInfo.total, flowLabel: (a ? S.vars.process : D.flowLabel(S.vars)) || '—',
-        before: a ? a.before : null, reason: a ? a.reason : null, from: a ? a.from : null, branch: a ? D.adjBranch(S.vars) : null,
+        before: a ? a.before : null, reason: a ? a.reason : null, from: a ? a.from : null, adjFrom: x.adjFrom || null, branch: a ? D.adjBranch(S.vars) : null,
         unit: x.unit || D.caseInfo.unit, priority: x.priority || D.caseInfo.priority, secret: !!x.secret, period: x.period || D.caseInfo.period });
     },
     matchCheck,

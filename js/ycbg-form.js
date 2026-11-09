@@ -3,7 +3,8 @@
    Điều kiện thanh toán…). Khuôn task-create (form 3 cột + card bảng) như SCR-96.
    - YCBG tạo trực tiếp (ngoài hồ sơ): khảo sát giá khi chưa có hồ sơ (vd lấy giá dự tính cho luồng mua sắm) — GIẢ LẬP P-205: SRS-DXMS chỉ có YCBG trong hồ sơ
      (bước 8–10, BR-DXMS-04-01); mục đích và liên kết với hồ sơ sau này hỏi BA.
-   - Nháp: sửa được (Cập nhật). Lưu và gửi: hệ thống gửi email thay TTMS như bước 9 (BR-DXMS-04-06), trạng thái Đang chờ báo giá, không sửa nữa (BR-DXMS-04-01).
+   - Nháp: sửa được (Cập nhật). Lưu (T37, trước: Lưu và gửi — hệ thống gửi email thay TTMS, BR-DXMS-04-06): trạng thái Đang chờ báo giá, không sửa nữa (BR-DXMS-04-01);
+     chưa gửi email, TTMS xuất công văn và gửi ngoài hệ thống.
    - Mã YCBG-YYYY-NNNN (không gắn ĐXMS; YCBG trong hồ sơ giữ YCBG-{số ĐXMS}-{lần}).
    T29 B18 (plan §3.11 Y1–Y12, đủ 3 ảnh màn cũ + BM-YCKT, cùng mẫu với eForm bước 8): lưu ý bảo mật; bảng Dự án có Nguồn vốn; bảng đối tác có Email
    (thiếu email chặn Gửi); Model / Mã NSX tham khảo; Nhập từ Excel (.csv); Tải mẫu BM-YCKT; Thời hạn tiếp nhận báo giá; Đầu mối chọn nhiều người → bảng;
@@ -29,7 +30,7 @@
   const contactIds = (c) => (Array.isArray(c) ? c : []);
   const contactText = (c) => (Array.isArray(c) ? D.contactOf(c) : c || '');
   const nvFund = (n) => D.fundNames[n.fund] || '';
-  const ACT = { create: 'Tạo mới (lưu nháp)', update: 'Cập nhật', send: 'Lưu và gửi' };
+  const ACT = { create: 'Tạo mới (lưu nháp)', update: 'Cập nhật', send: 'Lưu' };
 
   /* Dạng chung với YCBG của hồ sơ (ycbg.js ycbgOf) để dùng danh sách / chi tiết SCR-73, SCR-74. */
   function toY(u) {
@@ -77,11 +78,12 @@
         '<b>T29 B18 (HT-DXMS-IMG đủ 3 ảnh, BM-YCKT; cùng mẫu với eForm bước 8):</b> lưu ý bảo mật đầu form; Dự án / Đề tài → bảng Mã, Tên, Loại, <b>Nguồn vốn</b> (SCR-104); Đối tác → bảng Mã, Tên, <b>Email nhận yêu cầu báo giá</b>, Email CC (danh mục Nhà cung cấp SCR-31) — đối tác thiếu email thì không Gửi được; <b>Thời hạn tiếp nhận báo giá</b> (ngày, dùng nhắc hạn); Model → Model / Mã NSX tham khảo; <b>Đầu mối tiếp nhận báo giá</b> chọn nhiều người dùng (mặc định người tạo) → bảng Họ tên, Đơn vị, Điện thoại, Email; Bảo hành tối thiểu, Năm sản xuất từ.',
         '<b>Danh mục hàng hoá</b> giữ bảng theo dòng (cần cho so sánh báo giá theo dòng, BR-DXMS-04-09) thay ô soạn văn bản của hệ thống cũ. <b>Nhập từ Excel</b>: prototype đọc tệp .csv theo mẫu tải về (cột Hàng hoá / dịch vụ, Model / Mã NSX tham khảo, ĐVT, Số lượng, Chỉ tiêu kỹ thuật), thêm vào cuối bảng; bản thật đọc .xlsx phía BE — cần dev riêng.',
         '<b>GIẢ LẬP P-213 — Đặt giá trị mặc định:</b> điền Điều kiện thanh toán, Địa điểm giao hàng, Các yêu cầu khác, Bảo hành, Năm sản xuất từ một bộ giá trị mẫu (D.ycbgTerms0). Giá trị mặc định cấu hình theo toàn hệ thống / đơn vị / loại hàng: hỏi BA.',
-        '<b>GIẢ LẬP P-215 — Soạn thảo công văn:</b> xuất .doc theo mẫu BM-YCBG (công văn + Phụ lục Mẫu báo giá), điền Danh mục hàng hoá, điều khoản, thời hạn và đầu mối từ form. Email gửi đối tác khi Lưu và gửi không chờ công văn ký; công văn TGĐ ký có bắt buộc kèm không: hỏi BA.',
+        '<b>GIẢ LẬP P-215 — Soạn thảo công văn:</b> xuất .doc theo mẫu BM-YCBG (công văn + Phụ lục Mẫu báo giá), điền Danh mục hàng hoá, điều khoản, thời hạn và đầu mối từ form. Đối tác nhận công văn do TTMS gửi (hệ thống chưa gửi email, T37); công văn TGĐ ký có bắt buộc kèm không: hỏi BA.',
         '<b>GIẢ LẬP P-214:</b> Bảo hành tối thiểu (tháng) và Năm sản xuất từ là trường chung của phiếu, áp cho mọi dòng hàng (BM-YCKT bắt buộc nêu).',
-        '<b>Xem lịch sử</b> (= Xem Logs của màn cũ, chỉ ở chế độ Cập nhật): Tạo mới, Cập nhật, Lưu và gửi — người, thời điểm. Điều kiện thanh toán, Các yêu cầu khác: prototype dùng ô văn bản; bản thật dùng ô soạn có định dạng, nội dung HTML đưa vào email.',
+        '<b>Xem lịch sử</b> (= Xem Logs của màn cũ, chỉ ở chế độ Cập nhật): Tạo mới, Cập nhật, Lưu — người, thời điểm. Điều kiện thanh toán, Các yêu cầu khác: prototype dùng ô văn bản; bản thật dùng ô soạn có định dạng, nội dung HTML đưa vào email.',
         '<b>GIẢ LẬP P-205:</b> SRS-DXMS chỉ có YCBG trong hồ sơ (bước 8–10). YCBG tạo trực tiếp dùng khảo sát giá trước khi có hồ sơ; khi hồ sơ tới bước 8 hệ thống vẫn sinh YCBG riêng của hồ sơ. Mục đích, liên kết với hồ sơ: hỏi BA.',
-        '<b>Lưu nháp</b> = sửa được về sau (nút Cập nhật ở danh sách / chi tiết). <b>Lưu và gửi</b> = hệ thống gửi email thay TTMS tới đối tác kèm phiếu theo mẫu BM-YCBG (BR-DXMS-04-06), trạng thái Đang chờ báo giá; yêu cầu đã gửi không sửa (BR-DXMS-04-01). Mã YCBG-YYYY-NNNN, không gắn ĐXMS.',
+        '<b>T37 (RV-PROTO-0911 #6):</b> phạm vi hiện tại chỉ soạn thảo và xuất, <b>chưa tự gửi email</b> — nút <b>Lưu và gửi</b> đổi thành <b>Lưu</b>, không bắt Email đối tác. Lệch BR-DXMS-04-06 (email thay TTMS).',
+        '<b>Lưu nháp</b> = sửa được về sau (nút Cập nhật ở danh sách / chi tiết). <b>Lưu</b> = chốt yêu cầu, trạng thái Đang chờ báo giá; TTMS xuất công văn (Soạn thảo công văn) và gửi đối tác ngoài hệ thống; yêu cầu đã Lưu không sửa (BR-DXMS-04-01). Mã YCBG-YYYY-NNNN, không gắn ĐXMS.',
       ],
       q: ['P-205', 'P-188', 'P-213', 'P-214', 'P-215'], src: 'task-management/components/task-create (khuôn form) · HT-DXMS-IMG Yêu cầu báo giá / Cập nhật · BM-YCKT · BM-YCBG',
     };
@@ -100,8 +102,8 @@
     const back = edit ? `ycbg/${encodeURIComponent(F.code)}` : 'ycbg';
     return `<form class="pg" data-yc-form>
       ${S().head({ title: edit ? 'Cập nhật yêu cầu báo giá' : 'Thêm mới yêu cầu báo giá', back, lg: true, info,
-        right: `${edit ? `<button type="button" class="vbtn secondary" data-yc-log>Xem lịch sử</button>` : ''}<button type="button" class="vbtn secondary" data-yc-word>${icon('download')} Soạn thảo công văn</button><button type="button" class="vbtn secondary grey" data-go="${back}">Huỷ</button><button type="button" class="vbtn secondary" data-yc-save="draft">Lưu nháp</button><button type="button" class="vbtn primary" data-yc-save="send">Lưu và gửi</button>` })}
-      <div class="banner-info yc-note" data-yc-note><b>Lưu ý:</b> Khi ấn Lưu và gửi, hệ thống tự động gửi yêu cầu báo giá cho đối tác, nên người soạn thảo chú ý đáp ứng yêu cầu bảo mật — nội dung cần bảo mật theo yêu cầu của VHT không nêu tên cụ thể.</div>
+        right: `${edit ? `<button type="button" class="vbtn secondary" data-yc-log>Xem lịch sử</button>` : ''}<button type="button" class="vbtn secondary" data-yc-word>${icon('download')} Soạn thảo công văn</button><button type="button" class="vbtn secondary grey" data-go="${back}">Huỷ</button><button type="button" class="vbtn secondary" data-yc-save="draft">Lưu nháp</button><button type="button" class="vbtn primary" data-yc-save="send">Lưu</button>` })}
+      <div class="banner-info yc-note" data-yc-note><b>Lưu ý:</b> Hệ thống chưa tự gửi email — sau khi Lưu, dùng Soạn thảo công văn để xuất yêu cầu báo giá và gửi đối tác. Người soạn thảo chú ý đáp ứng yêu cầu bảo mật — nội dung cần bảo mật theo yêu cầu của VHT không nêu tên cụ thể.</div>
       <section class="vcard"><h3>Thông tin chung</h3><div class="grid3">
         ${field('Mã yêu cầu báo giá', `<input class="vctl" value="${esc(F.code || '')}" placeholder="Hệ thống tự sinh" disabled>`)}
         ${field('Tên yêu cầu báo giá', txt('title', 'Nhập tên (tiêu đề email gửi đối tác)', 500), { req: true, err: err.title, cls: 'span2' })}
@@ -144,7 +146,7 @@
     if (String(t.year).trim() && (!/^\d{4}$/.test(String(t.year).trim()) || Number(t.year) > yearNow())) err.year = 'Năm sản xuất không đúng định dạng.';
     if (send) {
       if (!v.ncc.length) err.ncc = 'Bạn cần chọn ít nhất một đối tác.';
-      else { const no = v.ncc.filter((c) => !nccOf(c).email); if (no.length) err.ncc = `Đối tác ${no.join(', ')} chưa có Email nhận yêu cầu báo giá — cập nhật ở danh mục Nhà cung cấp.`; }
+      /* [T37 RV-PROTO-0911 #6] chưa gửi email nên không bắt Email đối tác — trước: đối tác thiếu Email chặn Lưu và gửi. */
       if (!t.contact.length) err.contact = 'Bạn cần chọn đầu mối tiếp nhận báo giá.';
       const rows = v.items.filter((it) => Object.values(it).some((x) => String(x).trim()));
       if (!rows.length) err.items = 'Bạn cần nhập ít nhất một hàng hoá.';
@@ -176,7 +178,7 @@
     const code = v.code;
     F.code = null; F.v = null;
     Flow.setUi('_ycbgTouch', Date.now());
-    toast(mode === 'send' ? `<b>Thành công</b><br>Đã gửi yêu cầu báo giá ${esc(code)} tới ${v.ncc.length} đối tác.` : `<b>Thành công</b><br>Đã lưu nháp yêu cầu báo giá ${esc(code)}.`);
+    toast(mode === 'send' ? `<b>Thành công</b><br>Đã lưu yêu cầu báo giá ${esc(code)} (${v.ncc.length} đối tác nhận).` : `<b>Thành công</b><br>Đã lưu nháp yêu cầu báo giá ${esc(code)}.`);
     location.hash = `#/ycbg/${encodeURIComponent(code)}`;
   }
 

@@ -16,35 +16,30 @@
  "luong-danh-sach": {
   "who": "minh",
   "persona": "Nguyễn Văn Minh — Chuyên quản ĐVĐX",
-  "title": "Danh sách luồng mua sắm",
+  "title": "Danh sách đề xuất mua sắm",
   "acts": [],
   "formTitle": ""
  },
  "luong-them-moi": {
   "who": "minh",
   "persona": "Nguyễn Văn Minh — Chuyên quản ĐVĐX",
-  "title": "Thêm mới luồng mua sắm",
+  "title": "Lập đề xuất mua sắm",
   "acts": [],
   "formTitle": ""
  },
  "t01-can-cu": {
   "who": "minh",
   "persona": "Nguyễn Văn Minh — Chuyên quản ĐVĐX",
-  "title": "Xem chi tiết hồ sơ",
-  "acts": [
-   "Hoàn thành"
-  ],
-  "formTitle": "Hoàn thành"
+  "title": "Lập đề xuất mua sắm",
+  "acts": [],
+  "formTitle": ""
  },
  "t05-boc-tach": {
   "who": "minh",
   "persona": "Nguyễn Văn Minh — Chuyên quản ĐVĐX",
-  "title": "Xem chi tiết hồ sơ",
-  "acts": [
-   "Gửi rà soát tồn kho",
-   "Thiếu thông tin căn cứ"
-  ],
-  "formTitle": "Gửi rà soát tồn kho"
+  "title": "Lập đề xuất mua sắm",
+  "acts": [],
+  "formTitle": ""
  },
  "kho-ra-soat": {
   "who": "qlts",
@@ -53,77 +48,76 @@
   "acts": [],
   "formTitle": ""
  },
- "t07-ton-kho": {
-  "who": "minh",
-  "persona": "Nguyễn Văn Minh — Chuyên quản ĐVĐX",
-  "title": "Xem chi tiết hồ sơ",
+ "t07-1-chi-huy-kho": {
+  "who": "khoch",
+  "persona": "Lưu Văn Thắng — Chỉ huy Kho (Trưởng phòng Quản lý tài sản)",
+  "title": "Xử lý đề xuất mua sắm",
   "acts": [
-   "Hoàn thành"
-  ],
-  "formTitle": "Hoàn thành"
- },
- "t08-ycbg": {
-  "who": "minh",
-  "persona": "Nguyễn Văn Minh — Chuyên quản ĐVĐX",
-  "title": "Xem chi tiết hồ sơ",
-  "acts": [
-   "Hoàn thành"
-  ],
-  "formTitle": "Hoàn thành"
- },
- "t10-bao-gia": {
-  "who": "minh",
-  "persona": "Nguyễn Văn Minh — Chuyên quản ĐVĐX",
-  "title": "Xem chi tiết hồ sơ",
-  "acts": [
-   "Báo giá đạt",
-   "Không đạt — gửi lại YCBG"
+   "Duyệt",
+   "Trả lại"
   ],
   "formTitle": ""
  },
- "t10-vuot-can-cu": {
-  "who": "minh",
-  "persona": "Nguyễn Văn Minh — Chuyên quản ĐVĐX",
-  "title": "Xem chi tiết hồ sơ",
+ "t08-ycbg": {
+  "who": "thau",
+  "persona": "Ninh Thị Hồng — Chuyên viên Thầu TTMS",
+  "title": "Xử lý đề xuất mua sắm",
+  "acts": [
+   "Tạo yêu cầu báo giá"
+  ],
+  "formTitle": "Yêu cầu báo giá"
+ },
+ "t10-bao-gia": {
+  "who": "thau",
+  "persona": "Ninh Thị Hồng — Chuyên viên Thầu TTMS",
+  "title": "Xử lý đề xuất mua sắm",
   "acts": [
    "Báo giá đạt",
-   "Không đạt — gửi lại YCBG"
+   "Không đạt — tạo YCBG mới"
+  ],
+  "formTitle": "Báo giá đạt"
+ },
+ "t10-1-chi-huy-thau": {
+  "who": "thauch",
+  "persona": "Phí Đức Long — Chỉ huy Thầu TTMS",
+  "title": "Xử lý đề xuất mua sắm",
+  "acts": [
+   "Đồng ý",
+   "Từ chối"
   ],
   "formTitle": ""
  },
  "t12-du-thao": {
   "who": "minh",
   "persona": "Nguyễn Văn Minh — Chuyên quản ĐVĐX",
-  "title": "Xem chi tiết hồ sơ",
+  "title": "Xử lý đề xuất mua sắm",
   "acts": [
-   "Gửi chỉ huy duyệt"
+   "Soạn thảo tờ trình ĐXMS"
   ],
   "formTitle": ""
  },
  "t13-chi-huy": {
   "who": "hai",
   "persona": "Trần Đức Hải — Chỉ huy ĐVĐX",
-  "title": "Xem chi tiết hồ sơ",
+  "title": "Xử lý đề xuất mua sắm",
   "acts": [
-   "Đồng ý",
-   "Không đồng ý"
+   "Phê duyệt"
   ],
   "formTitle": ""
  },
  "t17-ttms-cqcm": {
   "who": "lan",
   "persona": "Phạm Thị Lan — Chuyên viên TTMS",
-  "title": "Xem chi tiết hồ sơ",
+  "title": "Xử lý đề xuất mua sắm",
   "acts": [
-   "Danh sách đúng, đủ — gửi yêu cầu thẩm định",
-   "Chưa đúng/đủ — trả lại"
+   "Xác nhận danh sách CQCM"
   ],
   "formTitle": ""
  },
  "t19-tham-dinh": {
   "who": "hoa",
   "persona": "Lê Thanh Hòa — Chuyên viên CQCM",
-  "title": "Xem chi tiết hồ sơ",
+  "title": "Xử lý đề xuất mua sắm",
   "acts": [
    "Hoàn thành phiếu, trình chỉ huy"
   ],
@@ -132,7 +126,7 @@
  "t28-giai-trinh": {
   "who": "minh",
   "persona": "Nguyễn Văn Minh — Chuyên quản ĐVĐX",
-  "title": "Xem chi tiết hồ sơ",
+  "title": "Xử lý đề xuất mua sắm",
   "acts": [
    "Gửi giải trình"
   ],
@@ -141,7 +135,7 @@
  "t42-bm05": {
   "who": "lan",
   "persona": "Phạm Thị Lan — Chuyên viên TTMS",
-  "title": "Xem chi tiết hồ sơ",
+  "title": "Xử lý đề xuất mua sắm",
   "acts": [
    "Hoàn tất rà soát BM-05",
    "Hồ sơ chưa đạt — trả đơn vị"
@@ -151,7 +145,17 @@
  "t60-phe-duyet": {
   "who": "tgd",
   "persona": "Ngô Đình Khôi — Tổng Giám đốc VHT",
-  "title": "Xem chi tiết hồ sơ",
+  "title": "Xử lý đề xuất mua sắm",
+  "acts": [
+   "Phê duyệt",
+   "Yêu cầu hoàn chỉnh"
+  ],
+  "formTitle": ""
+ },
+ "t60-tai-lieu": {
+  "who": "tgd",
+  "persona": "Ngô Đình Khôi — Tổng Giám đốc VHT",
+  "title": "Xử lý đề xuất mua sắm",
   "acts": [
    "Phê duyệt",
    "Yêu cầu hoàn chỉnh"
@@ -159,22 +163,22 @@
   "formTitle": ""
  },
  "bpmn": {
-  "who": "minh",
-  "persona": "Nguyễn Văn Minh — Chuyên quản ĐVĐX",
-  "title": "Xem chi tiết hồ sơ",
+  "who": "thau",
+  "persona": "Ninh Thị Hồng — Chuyên viên Thầu TTMS",
+  "title": "Xử lý đề xuất mua sắm",
   "acts": [
    "Báo giá đạt",
-   "Không đạt — gửi lại YCBG"
+   "Không đạt — tạo YCBG mới"
   ],
   "formTitle": ""
  },
  "tour": {
-  "who": "minh",
-  "persona": "Nguyễn Văn Minh — Chuyên quản ĐVĐX",
-  "title": "Xem chi tiết hồ sơ",
+  "who": "thau",
+  "persona": "Ninh Thị Hồng — Chuyên viên Thầu TTMS",
+  "title": "Xử lý đề xuất mua sắm",
   "acts": [
    "Báo giá đạt",
-   "Không đạt — gửi lại YCBG"
+   "Không đạt — tạo YCBG mới"
   ],
   "formTitle": ""
  }

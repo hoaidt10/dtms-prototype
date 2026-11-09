@@ -122,7 +122,7 @@ test('Báo giá: theo NCC (Không phản hồi, hiệu lực, loại tiền); c�
 
 // T29 B3b — SCR-73 tìm theo Dự án / Đề tài, từ khoá + bộ lọc đồng thời; SCR-106 Thêm mới / Cập nhật YCBG (RV-PROTO-0511 #9, #10).
 const pickV = async (page, id, value) => { await page.locator(`[data-vsel="${id}"]`).click(); await page.locator(`.vsel-panel [data-opt="${value}"]`).click(); };
-test('YCBG: Thêm mới (Lưu nháp → Cập nhật → Lưu và gửi), không sửa sau khi gửi; danh sách lọc theo Dự án / Đề tài cùng từ khoá', async ({ page }) => {
+test('YCBG: Thêm mới (Lưu nháp → Cập nhật → Lưu — T37), không sửa sau khi Lưu; danh sách lọc theo Dự án / Đề tài cùng từ khoá', async ({ page }) => {
   await fresh(page, '#/ycbg');
   await expect(page.locator('main .vtable th')).toContainText(['Dự án / Đề tài']);
   await page.locator('main .pg-head .r [data-go="ycbg/create"]').click();
@@ -137,7 +137,7 @@ test('YCBG: Thêm mới (Lưu nháp → Cập nhật → Lưu và gửi), không
   await expect(page).toHaveURL(/#\/ycbg\/YCBG-2026-0001$/);
   await expect(page.locator('.ginfo').first()).toContainText('Nháp');
   await expect(page.locator('.ginfo').first()).toContainText('NV-KHCN-2026-014');
-  // Cập nhật bản nháp: thêm hàng hoá, nhà cung cấp, điều khoản; Lưu và gửi.
+  // Cập nhật bản nháp: thêm hàng hoá, nhà cung cấp, điều khoản; Lưu (T37: trước Lưu và gửi).
   await page.locator('main .pg-head .r [data-go$="/edit"]').click();
   await expect(page.locator('.pg-title')).toHaveText('Cập nhật yêu cầu báo giá');
   await expect(page.locator('[data-yc-in="title"]')).toHaveValue('Khảo sát giá máy đo phổ cho đề tài 014');
@@ -174,25 +174,24 @@ test('Căn cứ: căn cứ bổ sung; khối chỉ xem có Đã dùng / Đang gi
   await fresh(page, '#/viec-cua-toi');
   const id = await page.evaluate(() => { Flow.jumpTo(1, 'minh'); return Flow.state.tokens.find((t) => t.task === 1).id; });
   await page.evaluate((i) => { location.hash = '#/task/' + i; }, id);
-  const chosen = page.locator('[data-basis-avail] .vtable').first();
-  await expect(chosen.locator('tbody tr')).toHaveCount(1);
-  await expect(chosen.locator('tbody tr').first()).toContainText('Chính');
+  // T37 (RV-PROTO-0911 #4): bỏ khối chỉ xem Văn bản căn cứ và giá trị còn khả dụng; căn cứ bổ sung vẫn lưu ở Flow.ui.basisMore.
+  await expect(page.locator('[data-basis-avail]')).toHaveCount(0);
   await page.evaluate(() => { const v = EVars.of(Flow.state.tokens[0]); Flow.setUi('basisMore', [v.basisMoreOptions.find((o) => o.value !== v.basisDoc).value]); App.render(); });
-  await expect(chosen.locator('tbody tr')).toHaveCount(2);
-  await expect(chosen.locator('tbody tr').nth(1)).toContainText('Bổ sung');
-  await expect(chosen.locator('thead')).toContainText('Còn có thể sử dụng');
   // T29 B19 (DX-11): bước 1 là màn Lập ĐXMS — Gửi (Chấp nhận mọi gợi ý AI) giữ căn cứ bổ sung.
   await aiApply(page);
   await page.locator('#lf-save').click();
   await expect(page).toHaveURL(/#\/viec-cua-toi$/);
   expect(await page.evaluate(() => (Flow.ui.basisMore || []).length)).toBe(1);
-  await page.evaluate(() => { location.hash = '#/dxms/' + encodeURIComponent(Flow.state.dxms); });
-  await page.locator('[data-dtab="can-cu"]').click();
-  await expect(page.locator('main .vcard', { hasText: 'Căn cứ mua sắm' }).locator('tbody tr')).toHaveCount(2);
+  // T34: tab Căn cứ & hạng mục chuyển sang Chi tiết luồng mua sắm (SCR-97).
+  await page.evaluate(() => { location.hash = '#/luong/' + encodeURIComponent(Flow.state.dxms); });
+  await page.locator('[data-ltab="can-cu"]').click();
+  // T37 #3: tab chỉ còn Căn cứ pháp lý + Thông tin dự án / đề tài.
+  await expect(page.locator('main .vcard', { hasText: 'Căn cứ pháp lý' })).toHaveCount(1);
+  await expect(page.locator('main .vcard', { hasText: 'Căn cứ mua sắm' })).toHaveCount(0);
   expect(page.errors).toEqual([]);
 });
 
-test('Cập nhật kết quả rà soát: Hợp đồng đầu vào là nhóm con của Kết quả rà soát; Tệp kết quả trên bảng, tệp Excel điền sẵn bảng; Gửi chuyển 7.1', async ({ page }) => {
+test('Cập nhật kết quả rà soát: Hợp đồng đầu vào là nhóm con của Kết quả rà soát; Tệp kết quả trên bảng, chỉ đính kèm (T37 — không đọc Excel); Gửi chuyển 7.1', async ({ page }) => {
   await fresh(page, '#/viec-cua-toi');
   await page.locator('#demo').click();
   await page.locator('[data-scene="1b"]').click();
@@ -210,11 +209,13 @@ test('Cập nhật kết quả rà soát: Hợp đồng đầu vào là nhóm co
   // Tệp kết quả nằm trên bảng.
   const yUp = (await box.locator('.rsk-up').boundingBox()).y, yTb = (await box.locator('table').boundingBox()).y;
   expect(yUp).toBeLessThan(yTb);
-  // Tệp Excel → điền bảng (GIẢ LẬP số mẫu), gửi được ngay.
+  // T37 (RV-PROTO-0911 #5): tệp Excel chỉ đính kèm — bảng không tự điền; người nhập gõ số (test điền số mẫu) rồi gửi.
   await page.locator('#rsk-file').setInputFiles({ name: 'Ket-qua-ra-soat.xlsx', mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', buffer: Buffer.alloc(16) });
-  await expect(box.locator('[data-rsk-imported]')).toContainText('Ket-qua-ra-soat.xlsx');
-  await expect(cell(page, 4, 'contract')).toHaveValue(/^HĐ-2025-/);
-  await expect(cell(page, 4, 'out')).not.toHaveValue('');
+  await expect(box.locator('.rsk-file')).toHaveText('Ket-qua-ra-soat.xlsx');
+  await expect(box.locator('[data-rsk-imported]')).toHaveCount(0);
+  await expect(cell(page, 4, 'out')).toHaveValue('');
+  await page.evaluate(() => D.rstkSample(D.items, Flow.state.clock).kq.rows.forEach((r) => Object.keys(r).forEach((k) => {
+    const el = document.querySelector(`[data-rsk-in="${r.n}:${k}"]`); if (el) el.value = r[k] == null ? '' : String(r[k]); })));
   await page.locator('[data-rsk-save]').click();
   await expect(page).toHaveURL(/#\/viec-cua-toi$/);
   expect(await page.evaluate(() => RaSoatKho.done())).toBe(true);

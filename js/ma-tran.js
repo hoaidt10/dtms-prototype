@@ -236,7 +236,9 @@
     if (!MS01.includes(proc)) return { show: true, label };
     const rows = reconRows(proc).filter((x) => x.task === String(task));
     const row = rows.find((x) => x.label === label);
-    if (!row) return { show: true, label };
+    /* T39 B1 (fail-closed, DT-GOI 0112 X1): bước đã có nhánh đối soát mà nút không khớp nhánh nào → không có luật → không hiện.
+       GIẢ LẬP: bước chưa có nhánh đối soát (rows rỗng) và quy trình ngoài MS01 vẫn giữ nút — dữ liệu mẫu chưa seed luật cho các bước đó. */
+    if (!row) return { show: !rows.length, label };
     const r = row.rule;
     if (!r || !r.active || r.screen !== 'TASK') return { show: false, label };
     const mine = row.roles.concat(D.roleOf(pid) || []);

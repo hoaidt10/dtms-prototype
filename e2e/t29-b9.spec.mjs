@@ -66,11 +66,9 @@ test('SCR-96 S8: bóc tách từ dự toán vào ĐXMS → bước 01 có dòng 
   const st = await page.evaluate(() => { const x = Flow.findDxms(Flow.state.dxms); return { code: x.code, cost: x.cost }; });
   expect(st.cost.map((r) => [r.line, r.qty, r.value])).toEqual([[`${DT}-6`, 9, 0.3], [`${DT}-1`, 2, 50]]);
 
-  // Bước 01 (D-81): bảng chỉ xem dòng dự toán đã bóc tách ở Thông tin chung.
-  const av = page.locator('[data-basis-avail]');
-  await expect(av).toContainText('Dòng dự toán đề tài / dự án đã bóc tách khi tạo luồng');
-  await expect(av).toContainText('Máy tính xách tay cấu hình cao');
-  await expect(av).toContainText('Thiết bị, máy đo chuyên dụng');
+  // Bước 01: T37 (RV-PROTO-0911 #4) bỏ khối căn cứ khả dụng; dòng đã bóc tách vẫn ở bảng Thông tin dự án / đề tài của màn Lập.
+  await expect(page.locator('[data-basis-avail]')).toHaveCount(0);
+  await expect(page.locator('[data-lf-cost]')).toContainText('Thiết bị, máy đo chuyên dụng');
 
   // SCR-104: khoản mục 6 có đợt của ĐXMS vừa tạo (đang phê duyệt = đang giữ).
   await go(page, '#/de-tai/' + encodeURIComponent(DT));

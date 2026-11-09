@@ -105,8 +105,9 @@
     <figure><img src="huong-dan/viec-cua-toi.jpg" alt="Màn Việc của tôi" loading="lazy"><figcaption>Việc của tôi — danh sách việc của vai đang chọn; bấm mã hồ sơ để mở việc.</figcaption></figure>
 
     <h3>Xử lý một việc</h3>
-    <p>Mở việc &gt; các nút hành động nằm ở góc trên bên phải (ví dụ <span class="btn">Hoàn thành</span>, <span class="btn">Báo giá đạt</span>) &gt; biểu mẫu mở ra &gt; nhập rồi bấm <span class="btn">Xác nhận</span>.
-      Việc chuyển sang người kế tiếp theo quy trình. Nút <span class="btn">Xem BPMN</span> mở sơ đồ quy trình, tô bước đang xử lý.</p>
+    <p>Mở việc &gt; màn <b>Xử lý đề xuất mua sắm</b>: thanh <b>Đang chờ bạn xử lý</b> ghi bước, hạn xử lý và chứa các nút hành động (ví dụ <span class="btn">Báo giá đạt</span>, <span class="btn">Phê duyệt</span>) &gt; biểu mẫu mở ra &gt; nhập rồi bấm <span class="btn">Xác nhận</span>.
+      Việc chuyển sang người kế tiếp theo quy trình. Thân màn là chi tiết ĐXMS theo tab (Thông tin chung, Tiến trình, Căn cứ &amp; hạng mục, Rà soát tồn kho, Yêu cầu báo giá, Tài liệu &amp; văn bản, Nhân sự thực hiện).
+      Nút <span class="btn">Xem BPMN</span> mở sơ đồ quy trình, tô bước đang xử lý.</p>
 
     <h3>Công cụ demo</h3>
     <p>Nút tròn màu đỏ ở góc dưới bên phải. Công cụ này <b>không thuộc giao diện hệ thống</b>, chỉ để xem nhanh:</p>
@@ -173,60 +174,59 @@
 
     <article class="task" id="tv1">
       <h3><span class="num">1</span>Khởi tạo luồng và hồ sơ</h3>
-      <dl class="meta"><dt>Ai làm</dt><dd>Chuyên quản ĐVĐX (Nguyễn Văn Minh)</dd><dt>Bước quy trình</dt><dd>Tạo luồng mua sắm; bước 1 Chọn căn cứ và nội dung mua sắm, 4 Rà soát và xác nhận thông tin cơ bản, 5 Chọn/bóc tách căn cứ mua sắm (bước 2, 3 hệ thống chạy)</dd>
-        <dt>Vào bằng</dt><dd>Cảnh 1 "Tạo luồng / ĐXMS, tạo hồ sơ, bóc tách", hoặc menu <b>Quản lý đề xuất mua sắm &gt; Luồng mua sắm</b></dd></dl>
+      <dl class="meta"><dt>Ai làm</dt><dd>Chuyên quản ĐVĐX (Nguyễn Văn Minh)</dd><dt>Bước quy trình</dt><dd>Lập đề xuất mua sắm: bước 1 Chọn căn cứ và nội dung mua sắm đến bước 5 Chọn/bóc tách căn cứ mua sắm, làm trên cùng một màn (bước 2, 6 do AI chạy khi bấm Gợi ý từ AI)</dd>
+        <dt>Vào bằng</dt><dd>Cảnh 1 "Tạo luồng / ĐXMS, tạo hồ sơ, bóc tách", hoặc menu <b>Quản lý đề xuất mua sắm &gt; Đề xuất mua sắm</b></dd></dl>
       <a class="tour" href="index.html?tour=1">Mở tour tác vụ này trong prototype</a>
       <ol class="steps">
-        <li><b>Luồng mua sắm &gt; Thêm mới</b>: nhập Tên luồng mua sắm, chọn Đề tài / dự án, Căn cứ đã được phê duyệt, Đơn vị đề xuất, Mức ưu tiên, Mật; phần dưới chọn khoản mục bóc tách từ dự toán của đề tài / dự án, nhân sự thực hiện, tài liệu đính kèm. Bấm <span class="btn">Lưu</span>.</li>
-        <li>Hệ thống tạo luồng (mã ĐXMS tự sinh) và hồ sơ Phê duyệt, khởi động quy trình, mở ngay việc <b>bước 1</b>.</li>
-        <li>Bước 1: chọn Loại căn cứ, Văn bản căn cứ đã phê duyệt; thêm văn bản căn cứ bổ sung nếu có. Bảng "Văn bản căn cứ đã chọn" hiện Giá trị, Đã dùng, Còn lại. Bấm <span class="btn">Hoàn thành</span>.</li>
-        <li>Bước 4: kiểm tra thông tin cơ bản AI gợi ý (mục đích, nguồn vốn, mức ưu tiên…), sửa nếu cần.</li>
-        <li>Bước 5: lập hạng mục mua sắm, liên kết dòng căn cứ; số lượng đề xuất vượt phần còn lại thì không xác nhận được. Bấm <span class="btn">Gửi rà soát tồn kho</span> (hoặc <span class="btn">Thiếu thông tin căn cứ</span> để trả về bước 4).</li>
+        <li><b>Đề xuất mua sắm &gt; Thêm mới</b> mở màn <b>Lập đề xuất mua sắm</b>. Chọn <b>Đề tài / dự án</b>: bảng Văn bản căn cứ hiện Giá trị, Đã dùng ở ĐXMS khác, Còn có thể sử dụng.</li>
+        <li>Chọn Loại chi phí, Khoản mục chi phí rồi <span class="btn">Thêm vào ĐXMS</span>; số lượng đề xuất vượt phần còn được dùng thì không gửi được.</li>
+        <li>Mỗi khối có nút <span class="btn">✦ Gợi ý từ AI</span> — AI chỉ chạy khi bấm. Ở khối <b>Bóc tách</b>, AI lấy dữ liệu căn cứ (bước 2), bóc tách danh mục hàng hoá và đối chiếu (bước 6); chọn hạng mục, chỉnh số lượng rồi Áp dụng.</li>
+        <li><b>Thông tin chung</b>: Tên đề xuất mua sắm, Nhóm mục đích mua sắm, Nguồn vốn (điền sẵn theo đề tài / dự án, sửa được), Đơn vị đề xuất, Mức ưu tiên, Mật, Hình thức trình ký…; khối Căn cứ pháp lý để tải văn bản.</li>
+        <li><span class="btn">Lưu nháp</span> tạo ĐXMS (mã tự sinh) và giữ việc để làm tiếp; <span class="btn">Gửi</span> hoàn thành bước 1–5, hồ sơ chuyển Chỉ huy ĐVĐX xác nhận khởi tạo.</li>
       </ol>
-      <p><b>Kết quả:</b> hồ sơ có căn cứ và danh mục hạng mục; Phòng Quản lý tài sản nhận việc Rà soát tồn kho (tác vụ 2).</p>
-      <figure><img src="huong-dan/luong-them-moi.jpg" alt="Thêm mới luồng mua sắm" loading="lazy"><figcaption>Thêm mới luồng mua sắm.</figcaption></figure>
-      <figure><img src="huong-dan/t01-can-cu.jpg" alt="Bước 1 chọn căn cứ" loading="lazy"><figcaption>Bước 1 — biểu mẫu chọn căn cứ.</figcaption></figure>
-      <figure><img src="huong-dan/t05-boc-tach.jpg" alt="Bước 5 bóc tách" loading="lazy"><figcaption>Bước 5 — bóc tách hạng mục theo căn cứ.</figcaption></figure>
+      <p><b>Kết quả:</b> hồ sơ có căn cứ và danh mục hạng mục; sau khi Chỉ huy ĐVĐX xác nhận, Phòng Quản lý tài sản nhận việc Rà soát tồn kho (tác vụ 2).</p>
+      <figure><img src="huong-dan/luong-them-moi.jpg" alt="Thêm mới đề xuất mua sắm" loading="lazy"><figcaption>Thêm mới đề xuất mua sắm.</figcaption></figure>
+      <figure><img src="huong-dan/t01-can-cu.jpg" alt="Lập đề xuất mua sắm" loading="lazy"><figcaption>Lập đề xuất mua sắm — đề tài / dự án, văn bản căn cứ và khoản mục chi phí.</figcaption></figure>
+      <figure><img src="huong-dan/t05-boc-tach.jpg" alt="Khối Bóc tách" loading="lazy"><figcaption>Cùng màn, phần dưới — khối Bóc tách (✦ Gợi ý từ AI) và Thông tin chung.</figcaption></figure>
       <div class="gl"><b>Giả lập:</b> danh sách đề tài / dự án và dự toán là dữ liệu mẫu nhập tại ĐTMS (chưa liên thông phân hệ KHCN); văn bản căn cứ lấy từ danh sách mẫu; AI gợi ý thông tin cơ bản là kết quả dựng sẵn.</div>
     </article>
 
     <article class="task" id="tv2">
       <h3><span class="num">2</span>Thủ kho rà soát tồn kho</h3>
-      <dl class="meta"><dt>Ai làm</dt><dd>Phòng Quản lý tài sản / Thủ kho (Hà Văn Tiến); sau đó Chuyên quản ĐVĐX xác nhận</dd><dt>Bước quy trình</dt><dd>Việc <b>Rà soát tồn kho</b> (giao cho Kho, không phải một bước trên sơ đồ); bước 7 Nhận thông tin rà soát tồn kho khả dụng</dd>
+      <dl class="meta"><dt>Ai làm</dt><dd>Phòng Quản lý tài sản / Thủ kho (Hà Văn Tiến); Chỉ huy Kho (Lưu Văn Thắng) duyệt</dd><dt>Bước quy trình</dt><dd>Bước 7 Nhận thông tin rà soát tồn kho khả dụng; Chỉ huy Kho duyệt kết quả rà soát</dd>
         <dt>Vào bằng</dt><dd>Cảnh 1b "Kho rà soát tồn kho (Phòng QLTS)" — mở thẳng màn Rà soát tồn kho với vai Tiến; hoặc Việc của tôi của vai Tiến</dd></dl>
       <a class="tour" href="index.html?tour=2">Mở tour tác vụ này trong prototype</a>
       <ol class="steps">
-        <li>Màn <b>Rà soát tồn kho</b> liệt kê hạng mục ĐVĐX đã bóc tách ở bước 5. Bấm <span class="btn">Cập nhật kết quả rà soát</span>.</li>
-        <li><b>Lần 1 — Sổ sách</b>: nhập Mã hàng trong kho, Tồn sổ sách; tải lên Tệp kết quả (bắt buộc). Lưu.</li>
-        <li><b>Lần 2 — Thực tế</b>: nhập Số đủ điều kiện xuất kho (không lớn hơn tồn sổ sách), chất lượng. Lưu: việc của Kho hoàn thành.</li>
-        <li>ĐVĐX mở <b>bước 7</b>: thấy tồn khả dụng = số đủ điều kiện − hàng đang giữ cho ĐXMS khác; chọn số Dùng từ kho cho từng hạng mục; bấm <span class="btn">Hoàn thành</span>.</li>
+        <li>Mở việc bước 7, bấm <span class="btn">Cập nhật kết quả rà soát</span>: màn <b>Rà soát tồn kho</b> liệt kê hạng mục ĐVĐX đã bóc tách ở bước 5.</li>
+        <li>Nhập <b>một lần</b> theo biên bản rà soát: Mã hàng trong kho, SL tồn kho, SL xuất kho (không vượt tồn khả dụng), SL điều chuyển, hợp đồng đầu vào, vị trí; SL cần mua tự tính.
+          Tải <b>Tệp kết quả</b> (bắt buộc) — tệp Excel theo mẫu thì hệ thống điền sẵn bảng.</li>
+        <li>Bấm <span class="btn">Gửi Chỉ huy Kho</span>: hệ thống lưu kết quả, sinh Biên bản rà soát và chuyển Chỉ huy Kho.</li>
+        <li><b>Chỉ huy Kho</b> xem kết quả và biên bản: <span class="btn">Duyệt</span> thì Thầu TTMS lấy báo giá; <span class="btn">Trả lại</span> (có lý do) thì Kho rà soát lại.</li>
       </ol>
-      <p><b>Kết quả:</b> có "Còn phải mua" cho từng hạng mục — đầu vào của yêu cầu báo giá. Bước 7 không xác nhận được khi Kho chưa nhập lần 2, hoặc khi mọi hạng mục đều lấy hết từ kho.</p>
+      <p><b>Kết quả:</b> có SL cần mua cho từng hạng mục — đầu vào của yêu cầu báo giá.</p>
       <figure><img src="huong-dan/kho-ra-soat.jpg" alt="Màn Rà soát tồn kho của Kho" loading="lazy"><figcaption>Rà soát tồn kho — việc của Phòng Quản lý tài sản.</figcaption></figure>
-      <figure><img src="huong-dan/t07-ton-kho.jpg" alt="Bước 7" loading="lazy"><figcaption>Bước 7 — ĐVĐX xác nhận số dùng từ kho.</figcaption></figure>
+      <figure><img src="huong-dan/t07-1-chi-huy-kho.jpg" alt="Chỉ huy Kho duyệt" loading="lazy"><figcaption>Chỉ huy Kho duyệt kết quả rà soát.</figcaption></figure>
       <div class="gl"><b>Giả lập:</b> Kho nhập tay kết quả, chưa liên thông phần mềm quản lý kho. Biên bản kết quả rà soát tồn kho (theo mẫu biên bản thật) chưa có trên bản này.</div>
     </article>
 
     <article class="task" id="tv3">
       <h3><span class="num">3</span>Tổng hợp yêu cầu báo giá</h3>
-      <dl class="meta"><dt>Ai làm</dt><dd>Chuyên quản ĐVĐX (Nguyễn Văn Minh)</dd><dt>Bước quy trình</dt><dd>8 Khởi tạo yêu cầu báo giá; 9 Gửi yêu cầu báo giá thay TTMS (hệ thống); 10 Tổng hợp và kiểm tra báo giá</dd>
-        <dt>Vào bằng</dt><dd>Cảnh 2 "Báo giá"; nhánh phụ "Báo giá vượt phần căn cứ — chặn Báo giá đạt"</dd></dl>
+      <dl class="meta"><dt>Ai làm</dt><dd>Chuyên quản ĐVĐX (Nguyễn Văn Minh)</dd><dt>Bước quy trình</dt><dd>8 Khởi tạo yêu cầu báo giá; 9 Gửi yêu cầu báo giá thay TTMS (hệ thống); 10 Tổng hợp và kiểm tra báo giá (Thầu TTMS); Chỉ huy Thầu TTMS duyệt kết quả báo giá</dd>
+        <dt>Vào bằng</dt><dd>Cảnh 2 "Báo giá"</dd></dl>
       <a class="tour" href="index.html?tour=3">Mở tour tác vụ này trong prototype</a>
       <ol class="steps">
         <li><b>Bước 8</b> — bấm <span class="btn">Hoàn thành</span>: biểu mẫu chia hạng mục còn phải mua theo nhóm, chọn <b>Nhà cung cấp nhận YCBG</b> (lọc theo ngành hàng; nhà cung cấp bị cấm không hiện), thêm nhà cung cấp mới, <b>Hạn trả lời</b>,
           và <b>Điều khoản trên phiếu</b>: Điều kiện thanh toán, Địa điểm giao hàng, Đầu mối tiếp nhận báo giá, Các yêu cầu khác. Bảng Đối soát so số đề xuất với căn cứ. Xác nhận.</li>
         <li><b>Bước 9</b> — hệ thống gửi email yêu cầu báo giá kèm phiếu cho từng nhà cung cấp, tạo yêu cầu <b>YCBG-…</b> (xem ở menu <i>Yêu cầu báo giá ĐXMS</i>).</li>
-        <li><b>Bước 10</b> — tải tệp báo giá của từng nhà cung cấp ở <i>Danh sách tài liệu</i>. Trong khung <b>Đánh giá báo giá và cơ sở giá</b>: đánh dấu nhà cung cấp Không phản hồi; nhập Ngày báo giá, Hiệu lực đến, Loại tiền, Tỷ giá; đơn giá từng hạng mục.
-          Hệ thống chọn sẵn <b>cơ sở giá</b> là giá thấp nhất còn hiệu lực; chọn nhà cung cấp khác thì bắt buộc lý do. Tổng giá trị theo cơ sở giá là giá trị của hồ sơ.</li>
-        <li>Bảng <b>Đối chiếu phần căn cứ</b>: mỗi văn bản căn cứ còn lại bao nhiêu sau khi trừ Thành tiền các hạng mục liên kết. Âm thì hiện chữ đỏ và <b>không bấm được Báo giá đạt</b> — chọn lại cơ sở giá hoặc <span class="btn">Không đạt — gửi lại YCBG</span>.</li>
-        <li>Bấm <span class="btn">Báo giá đạt</span>. Hệ thống rẽ theo tổng giá trị: dưới 160 tỷ sang bước 11, từ 160 tỷ sang bước 12.</li>
+        <li><b>Bước 10</b> (Thầu TTMS) — so sánh, đánh giá báo giá ngoài hệ thống. Bấm <span class="btn">Báo giá đạt</span>: tải tệp báo giá của từng nhà cung cấp và nhập <b>Giá trị báo giá cuối cùng</b> (đồng, gồm VAT) — đây là giá trị của hồ sơ.
+          Chưa đạt thì <span class="btn">Không đạt — tạo YCBG mới</span> kèm lý do.</li>
+        <li><b>Chỉ huy Thầu TTMS</b> (Phí Đức Long) xem tệp báo giá và giá trị cuối cùng: <span class="btn">Đồng ý</span> thì hệ thống rẽ theo tổng giá trị (dưới 160 tỷ sang bước 11, từ 160 tỷ sang bước 12); <span class="btn">Từ chối</span> kèm lý do thì về bước 10.</li>
       </ol>
-      <p><b>Kết quả:</b> hồ sơ có giá trị theo báo giá; yêu cầu báo giá ở trạng thái Báo giá đạt.
-        <span class="muted">Trên hồ sơ mẫu, lần gửi đầu có một nhà cung cấp gửi báo giá hết hiệu lực nên AI kiểm tra kết luận không đạt và hồ sơ quay lại gửi YCBG lần 2.</span></p>
+      <p><b>Kết quả:</b> hồ sơ có giá trị theo báo giá cuối cùng; yêu cầu báo giá ở trạng thái Báo giá đạt.</p>
       <figure><img src="huong-dan/t08-ycbg.jpg" alt="Bước 8 điều khoản phiếu" loading="lazy"><figcaption>Bước 8 — nhóm Điều khoản trên phiếu yêu cầu báo giá.</figcaption></figure>
-      <figure><img src="huong-dan/t10-bao-gia.jpg" alt="Bước 10 đánh giá báo giá" loading="lazy"><figcaption>Bước 10 — đánh giá báo giá, cơ sở giá theo hạng mục, đối chiếu phần căn cứ.</figcaption></figure>
-      <figure><img src="huong-dan/t10-vuot-can-cu.jpg" alt="Vượt phần căn cứ" loading="lazy"><figcaption>Nhánh "Báo giá vượt phần căn cứ": chọn báo giá đắt hơn làm văn bản căn cứ bị âm — câu đỏ, không xác nhận được Báo giá đạt.</figcaption></figure>
-      <div class="gl"><b>Giả lập:</b> không gửi email thật; AI đọc tệp báo giá và kiểm tra là kết quả dựng sẵn; số điện thoại, email của đầu mối tiếp nhận là dữ liệu mẫu.</div>
+      <figure><img src="huong-dan/t10-bao-gia.jpg" alt="Bước 10 Báo giá đạt" loading="lazy"><figcaption>Bước 10 — hộp thoại Báo giá đạt: giá trị báo giá cuối cùng và tệp báo giá của từng nhà cung cấp.</figcaption></figure>
+      <figure><img src="huong-dan/t10-1-chi-huy-thau.jpg" alt="Chỉ huy Thầu duyệt" loading="lazy"><figcaption>Chỉ huy Thầu TTMS duyệt kết quả báo giá — Đồng ý / Từ chối trên thanh trạng thái.</figcaption></figure>
+      <div class="gl"><b>Giả lập:</b> không gửi email thật; số điện thoại, email của đầu mối tiếp nhận là dữ liệu mẫu. Bản này không so sánh, đánh giá báo giá trên hệ thống — chờ chốt phạm vi (câu hỏi P-219).</div>
       <div class="q"><b>Câu hỏi còn mở:</b> "Thầu tổng hợp YCBG" là bộ phận nào? Bản này để ĐVĐX tổng hợp như quy trình hiện có. Phiếu yêu cầu báo giá mẫu đề nghị báo đơn giá chưa thuế, còn prototype nhập đơn giá gồm thuế GTGT — cần thống nhất.</div>
     </article>
 
@@ -241,7 +241,7 @@
         <li><b>Bước 16</b>: lập phiếu yêu cầu thẩm định, chọn các CQCM thẩm định, hạn góp ý, đầu mối tiếp nhận.</li>
       </ol>
       <p><b>Kết quả:</b> dự thảo đã được chỉ huy đơn vị duyệt, phiếu yêu cầu thẩm định chuyển TTMS (tác vụ 5).</p>
-      <figure><img src="huong-dan/t12-du-thao.jpg" alt="Bước 12" loading="lazy"><figcaption>Bước 12 — hoàn thiện dự thảo; bên phải là Lịch sử hồ sơ.</figcaption></figure>
+      <figure><img src="huong-dan/t12-du-thao.jpg" alt="Bước 12" loading="lazy"><figcaption>Bước 12 — hoàn thiện dự thảo; nút hành động ở thanh "Đang chờ bạn xử lý", Lịch sử xử lý ở tab Tiến trình.</figcaption></figure>
       <figure><img src="huong-dan/t13-chi-huy.jpg" alt="Bước 13" loading="lazy"><figcaption>Bước 13 — Chỉ huy ĐVĐX duyệt.</figcaption></figure>
       <div class="gl"><b>Giả lập:</b> dự thảo sinh từ mẫu Word và dữ liệu biểu mẫu; kết quả AI kiểm tra, AI tóm tắt là nội dung dựng sẵn.</div>
     </article>
@@ -294,6 +294,10 @@
       </ol>
       <p><b>Kết quả:</b> hồ sơ Hoàn thành, ĐXMS được phê duyệt; xem lại toàn bộ ở cảnh 9 "Tổng kết" và màn chi tiết luồng mua sắm.</p>
       <figure><img src="huong-dan/t60-phe-duyet.jpg" alt="Bước 60" loading="lazy"><figcaption>Bước 60 — Tổng Giám đốc VHT phê duyệt.</figcaption></figure>
+      <p><b>Tài liệu và văn bản của hồ sơ:</b> ở mọi việc, tab <b>Tài liệu &amp; văn bản</b> có hai khối.
+        <b>Danh sách tài liệu</b> — tệp tải lên và tài liệu căn cứ, mỗi tệp ghi Loại tài liệu và Bước tạo ra; bấm <span class="btn">Tải file lên</span> để thêm tệp cho bước đang xử lý.
+        <b>Văn bản đầu ra</b> — mỗi văn bản (Tờ trình, BM-03 … BM-08) một dòng: bước sinh ra, phiên bản (Tờ trình bấm số phiên bản để xem lịch sử và so sánh), trạng thái (Hoàn thành → Đang trình ký → Đã ký n/n → Đang hiệu lực / Đã thay thế) và người ký.</p>
+      <figure><img src="huong-dan/t60-tai-lieu.jpg" alt="Tab Tài liệu và văn bản" loading="lazy"><figcaption>Tab Tài liệu &amp; văn bản ở bước 60 — Danh sách tài liệu và Văn bản đầu ra.</figcaption></figure>
       <div class="gl"><b>Giả lập:</b> ký số và VOffice là mô phỏng; các bước của Tập đoàn (Ban ĐTXD, TGĐ Tập đoàn) do một vai giả lập.</div>
     </article>
   </section>

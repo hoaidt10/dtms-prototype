@@ -16,7 +16,7 @@ const as = async (page, who, hash) => {
   await expect(page.locator('main')).not.toBeEmpty();
 };
 const go = (page, hash) => page.evaluate((h) => { location.hash = h; }, hash);
-const tab = (page, label) => page.locator('.dx-tabs [data-dtab]', { hasText: label }).click();
+const tab = (page, label) => page.locator('.dx-tabs [data-dtab], .dx-tabs [data-ltab]', { hasText: label }).first().click();
 const card = (page, title) => page.locator('main section.vcard', { has: page.locator('h3', { hasText: title }) });
 
 test('DMDC: 6 danh mục mới theo Backlog — tiêu đề, dữ liệu mẫu, số trên Tổng quan', async ({ page }) => {
@@ -123,63 +123,72 @@ test('SCR-41: Tìm kiếm nâng cao — ẩn ô tìm và ô Trạng thái; lọc
   expect(page.errors).toEqual([]);
 });
 
-test('SCR-27: Tìm kiếm nâng cao ĐXMS — Trạng thái, Nhiệm vụ / Đề tài', async ({ page }) => {
-  await fresh(page, '#/dxms');
-  await page.locator('[data-xl="adv"]').click();
-  await expect(page.locator('#dxms-kw')).toHaveCount(0);
-  await page.locator('[data-vsel="xf-st"]').click();
-  await page.locator('.vsel-panel [data-opt="OK"]').click();
-  await page.keyboard.press('Escape');
-  await page.locator('[data-xadv] button[type="submit"]').click();
-  const rows = page.locator('main .vtable tbody tr');
-  expect(await rows.count()).toBeGreaterThan(0);
-  // T21 D-40: ĐXMS đã có hồ sơ Điều chỉnh hoàn thành ghi thêm số lần điều chỉnh.
-  for (const t of await rows.locator('td:nth-child(3)').allInnerTexts()) expect(t).toMatch(/^Đã phê duyệt( \(điều chỉnh lần \d+\))?$/);
-  await page.locator('[data-xl="reset"]').click();
-  await page.locator('[data-vsel="xf-nv"]').click();
-  await page.locator('.vsel-panel [data-opt="DA-2026-002"]').click();
-  await page.locator('[data-xadv] button[type="submit"]').click();
-  await expect(rows).toHaveCount(2);
-  expect(page.errors).toEqual([]);
-});
+// T34 (D-90): SCR-27 Danh sách ĐXMS — comment cùng màn Tách.
+// [T34 bỏ Tách] test('SCR-27: Tìm kiếm nâng cao ĐXMS — Trạng thái, Nhiệm vụ / Đề tài', async ({ page }) => {
+// [T34 bỏ Tách]   await fresh(page, '#/dxms');
+// [T34 bỏ Tách]   await page.locator('[data-xl="adv"]').click();
+// [T34 bỏ Tách]   await expect(page.locator('#dxms-kw')).toHaveCount(0);
+// [T34 bỏ Tách]   await page.locator('[data-vsel="xf-st"]').click();
+// [T34 bỏ Tách]   await page.locator('.vsel-panel [data-opt="OK"]').click();
+// [T34 bỏ Tách]   await page.keyboard.press('Escape');
+// [T34 bỏ Tách]   await page.locator('[data-xadv] button[type="submit"]').click();
+// [T34 bỏ Tách]   const rows = page.locator('main .vtable tbody tr');
+// [T34 bỏ Tách]   expect(await rows.count()).toBeGreaterThan(0);
+// [T34 bỏ Tách]   // T21 D-40: ĐXMS đã có hồ sơ Điều chỉnh hoàn thành ghi thêm số lần điều chỉnh.
+// [T34 bỏ Tách]   for (const t of await rows.locator('td:nth-child(3)').allInnerTexts()) expect(t).toMatch(/^Đã phê duyệt( \(điều chỉnh lần \d+\))?$/);
+// [T34 bỏ Tách]   await page.locator('[data-xl="reset"]').click();
+// [T34 bỏ Tách]   await page.locator('[data-vsel="xf-nv"]').click();
+// [T34 bỏ Tách]   await page.locator('.vsel-panel [data-opt="DA-2026-002"]').click();
+// [T34 bỏ Tách]   await page.locator('[data-xadv] button[type="submit"]').click();
+// [T34 bỏ Tách]   await expect(rows).toHaveCount(3); // T34: 0124, 0077 và ĐXMS điều chỉnh 0126
+// [T34 bỏ Tách]   expect(page.errors).toEqual([]);
+// [T34 bỏ Tách] });
 
-test('SCR-29: tab Chi tiết ĐXMS — ĐXMS đã phê duyệt có điều chỉnh: căn cứ, tồn kho 2 lần rà soát, YCBG, phiên bản, kết quả', async ({ page }) => {
-  await fresh(page, '#/dxms/' + encodeURIComponent('ĐXMS-2026-0077'));
+// T34: các tab của Chi tiết ĐXMS cũ (SCR-29) chuyển sang Chi tiết luồng mua sắm (SCR-97).
+test('SCR-97 (tab chuyển từ SCR-29): ĐXMS đã phê duyệt có điều chỉnh: căn cứ, tồn kho 2 lần rà soát, YCBG, phiên bản, kết quả', async ({ page }) => {
+  await fresh(page, '#/luong/' + encodeURIComponent('ĐXMS-2026-0077'));
   await expect(page.locator('.dx-tabs .tab.on')).toHaveText('Thông tin chung');
-  await expect(card(page, 'Danh sách hồ sơ')).toBeVisible();
+  await expect(page.locator('[data-dxms-chain] tbody tr')).toHaveCount(2);
+  // T37 (RV-PROTO-0911 #3): tab Căn cứ & hạng mục chỉ còn Căn cứ pháp lý + Thông tin dự án / đề tài.
   await tab(page, 'Căn cứ & hạng mục');
-  await expect(card(page, 'Căn cứ mua sắm')).toContainText('1876/QĐ-TĐ');
-  await expect(card(page, 'Hạng mục mua sắm').locator('tbody tr')).toHaveCount(3);
+  await expect(card(page, 'Căn cứ pháp lý')).toBeVisible();
+  await expect(card(page, 'Thông tin dự án / đề tài')).toBeVisible();
+  await expect(page.locator('main .vcard', { hasText: 'Căn cứ mua sắm' })).toHaveCount(0);
+  await expect(page.locator('main .vcard', { hasText: 'Hạng mục mua sắm' })).toHaveCount(0);
   await tab(page, 'Rà soát tồn kho');
   await expect(card(page, 'Lịch sử rà soát tồn kho').locator('tbody tr')).toHaveCount(2);
   await expect(card(page, 'Lịch sử rà soát tồn kho').locator('tbody tr').first()).toContainText('HS-2026-0126');
   await tab(page, 'Yêu cầu báo giá');
   await expect(card(page, 'Danh sách yêu cầu báo giá').locator('tbody tr')).toHaveCount(1);
   await expect(card(page, 'Danh sách yêu cầu báo giá')).toContainText('Báo giá đạt');
-  await expect(card(page, 'So sánh báo giá và cơ sở giá')).toContainText('Tổng giá trị theo cơ sở giá');
-  await tab(page, 'Lịch sử phiên bản');
-  await expect(card(page, 'Lịch sử phiên bản hồ sơ').locator('tbody tr')).toHaveCount(2);
-  await expect(page.locator('[data-dxms-cmp]')).toContainText('Phiên bản v2');
-  await tab(page, 'Kết quả & văn bản phê duyệt');
-  const kq = card(page, 'Kết quả & văn bản phê duyệt');
-  await expect(kq.locator('tbody tr')).toHaveCount(1);
+  // T37 #3: bỏ So sánh báo giá và cơ sở giá; cột Tổng giá trị theo cơ sở giá trong Danh sách.
+  await expect(card(page, 'Danh sách yêu cầu báo giá').locator('thead')).toContainText('Tổng giá trị theo cơ sở giá (tỷ đồng)');
+  await expect(page.locator('main [data-ycbg-total]').first()).not.toHaveText('-');
+  await expect(page.locator('main .vcard', { hasText: 'So sánh báo giá' })).toHaveCount(0);
+  // D-95: Văn bản đầu ra gộp Kết quả & văn bản phê duyệt (dòng đầu, Đang hiệu lực) và Lịch sử phiên bản (bấm phiên bản Tờ trình).
+  await tab(page, 'Tài liệu & văn bản');
+  const kq = page.locator('[data-dx-docs] tbody tr').first();
   await expect(kq).toContainText('BM-08 Quyết định phê duyệt ĐXMS');
   await expect(kq).toContainText('Đang hiệu lực');
+  // T37 #3: không theo dõi / so sánh phiên bản — không còn cột Phiên bản.
+  await expect(page.locator('[data-dx-docs] thead')).not.toContainText('Phiên bản');
+  await expect(page.locator('[data-dx-docs] [data-dx-ver]')).toHaveCount(0);
   expect(await mainText(page)).not.toMatch(BA);
   expect(page.errors).toEqual([]);
 });
 
-test('SCR-29: ĐXMS chưa có hồ sơ — các tab báo chưa có dữ liệu; hồ sơ đang ở bước đầu chưa có YCBG', async ({ page }) => {
-  await fresh(page, '#/dxms/' + encodeURIComponent('ĐXMS-2026-0124'));
-  for (const [t, msg] of [['Căn cứ & hạng mục', 'ĐXMS chưa có hồ sơ'], ['Rà soát tồn kho', 'Chưa có kết quả rà soát tồn kho'], ['Yêu cầu báo giá', 'Chưa có yêu cầu báo giá'],
-    ['Lịch sử phiên bản', 'Chưa có phiên bản hồ sơ'], ['Kết quả & văn bản phê duyệt', 'ĐXMS chưa có hồ sơ được phê duyệt']]) {
+// T34: các tab của Chi tiết ĐXMS cũ (SCR-29) chuyển sang Chi tiết luồng mua sắm (SCR-97).
+test('SCR-97 (tab chuyển từ SCR-29): ĐXMS chưa có hồ sơ — các tab báo chưa có dữ liệu; hồ sơ đang ở bước đầu chưa có YCBG', async ({ page }) => {
+  await fresh(page, '#/luong/' + encodeURIComponent('ĐXMS-2026-0124'));
+  for (const [t, msg] of [['Rà soát tồn kho', 'Chưa có kết quả rà soát tồn kho'], ['Yêu cầu báo giá', 'Chưa có yêu cầu báo giá'],
+  ]) {
     await tab(page, t);
     await expect(page.locator('main .empty-t')).toContainText(msg);
   }
-  await go(page, '#/dxms/' + encodeURIComponent('ĐXMS-2026-0121'));
+  await go(page, '#/luong/' + encodeURIComponent('ĐXMS-2026-0121'));
   await tab(page, 'Căn cứ & hạng mục');
-  await expect(card(page, 'Căn cứ mua sắm').locator('tbody tr')).toHaveCount(1);
-  await expect(card(page, 'Hạng mục mua sắm')).toContainText('Chưa có dữ liệu');
+  await expect(card(page, 'Căn cứ pháp lý')).toBeVisible(); // T37 #3: không còn Căn cứ mua sắm / Hạng mục mua sắm
+  await expect(page.locator('main .vcard', { hasText: 'Hạng mục mua sắm' })).toHaveCount(0);
   await tab(page, 'Yêu cầu báo giá');
   await expect(page.locator('main .empty-t')).toContainText('Chưa có yêu cầu báo giá');
   expect(page.errors).toEqual([]);
@@ -216,15 +225,16 @@ test('SCR-73/74: Danh sách yêu cầu báo giá — tìm kiếm nâng cao, mở
   expect((await dl).suggestedFilename()).toBe(codes[0] + '.csv');
   await go(page, '#/ycbg');
   await rows.first().locator('td:nth-child(5) a').click();
-  await expect(page).toHaveURL(/#\/dxms\//);
+  await expect(page).toHaveURL(/#\/luong\//); // T34: liên kết ĐXMS mở Chi tiết luồng (SCR-97)
   expect(page.errors).toEqual([]);
 });
 
+// T34: các tab của Chi tiết ĐXMS cũ (SCR-29) chuyển sang Chi tiết luồng mua sắm (SCR-97).
 test('Hồ sơ chạy luồng: qua task 10 thì ĐXMS có YCBG đạt và tab Rà soát tồn kho có kết quả', async ({ page }) => {
   await fresh(page, '#/viec-cua-toi');
   await page.evaluate(() => { Flow.jumpTo(12, 'minh', {}, 'MS01.01', undefined, null, false); });
   const code = await page.evaluate(() => Flow.state.dxms);
-  await go(page, '#/dxms/' + encodeURIComponent(code));
+  await go(page, '#/luong/' + encodeURIComponent(code));
   await tab(page, 'Rà soát tồn kho');
   await expect(card(page, 'Kết quả rà soát tồn kho').locator('tbody tr')).toHaveCount(5);
   await tab(page, 'Yêu cầu báo giá');

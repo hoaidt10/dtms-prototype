@@ -39,7 +39,7 @@ test('ghim comment trên phần tử, chặn click vào app, ghim theo phần t�
 });
 
 test('JSON xuất ra tự đủ nghĩa: màn, vai, phần tử, ngữ cảnh, ảnh chụp dữ liệu', async ({ page }) => {
-  await fresh(page, '#/dxms');
+  await fresh(page, '#/luong'); // T34 (D-90): Danh sách ĐXMS (SCR-27) bỏ cùng phương án Tách
   await addComment(page, page.locator('.main h1').first(), 'Tiêu đề nên ghi rõ "Danh sách đề xuất mua sắm".', 'Nghiệp vụ');
   const out = await page.evaluate(() => window.Review.exportJson());
   expect(out.format).toBe('dtms-prototype-review');
@@ -47,7 +47,7 @@ test('JSON xuất ra tự đủ nghĩa: màn, vai, phần tử, ngữ cảnh, �
   expect(out.reviewer).toBe('Nguyễn Văn Review');
   const c = out.comments[0];
   expect(c).toMatchObject({ no: 1, type: 'Nghiệp vụ', status: 'open', author: 'Nguyễn Văn Review' });
-  expect(c.where.route).toBe('#/dxms');
+  expect(c.where.route).toBe('#/luong');
   expect(c.where.screen.scr).toMatch(/^SCR-/);
   expect(c.where.title).not.toBe('');
   expect(c.where.persona.name).toBeTruthy();

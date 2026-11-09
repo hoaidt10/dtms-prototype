@@ -596,19 +596,19 @@ const setDxms150 = async (page) => {
 test('B5 §5.4: ngưỡng phân luồng là biến cổng của MS01 (T29 B1); hồ sơ đã tạo giữ ngưỡng lúc tạo (P-34)', async ({ page }) => {
   await asAdmin(page, '#/viec-cua-toi');
   // ĐXMS-2026-0119 chưa có hồ sơ → loại Phê duyệt chọn sẵn, Quy trình MS01 chỉ đọc (D-54).
-  await page.evaluate(() => { Flow.setPersona('minh'); location.hash = '#/ho-so-dxms/create/%C4%90XMS-2026-0119'; });
-  await expect(page.locator('#c-proc')).toHaveValue('MS01 — Phê duyệt đề xuất mua sắm');
+  // T34 (D-90): Lập ĐXMS trên ĐXMS-2026-0119 (chưa có hồ sơ) thay SCR-25.
+  await page.evaluate(() => { Flow.setPersona('minh'); location.hash = '#/luong/create/%C4%90XMS-2026-0119'; });
+  await page.locator('[data-luong-form]').waitFor();
   // Hồ sơ tạo trước khi đổi ngưỡng.
-  await page.locator('#c-name').fill('Hồ sơ tạo trước khi đổi ngưỡng');
-  await page.locator('#c-save').click();
+  await page.locator('#lf-draft').click();
   await expect(page).toHaveURL(/#\/task\//);
   await page.evaluate(() => Flow.setPersona('qt'));
   await setDxms150(page);
   expect(await page.evaluate(() => Flow.condOf('MS01.03'))).toBe('< 160 tỷ · mọi loại căn cứ');
   // Hồ sơ mới thấy nhãn đổi theo ngưỡng.
-  await page.evaluate(() => { Flow.setPersona('minh'); const c = Flow.createDxms({ title: 'ĐXMS thử ngưỡng' }); location.hash = '#/ho-so-dxms/create/' + encodeURIComponent(c); });
-  await page.locator('#c-name').fill('Hồ sơ tạo sau khi đổi ngưỡng');
-  await page.locator('#c-save').click();
+  await page.evaluate(() => { Flow.setPersona('minh'); const c = Flow.createDxms({ title: 'ĐXMS thử ngưỡng', nv: 'NV-KHCN-2026-014', unit: 'Trung tâm Vô tuyến', priority: 'Thường' }); /* T34: Lập ĐXMS bắt Đề tài / dự án, Đơn vị */ location.hash = '#/luong/create/' + encodeURIComponent(c); });
+  await page.locator('[data-luong-form]').waitFor();
+  await page.locator('#lf-draft').click();
   await expect(page).toHaveURL(/#\/task\//);
   expect(await page.evaluate(() => [Flow.condOf('MS01.01'), Flow.inRange('MS01.01', 155)])).toEqual(['≥ 150 tỷ · căn cứ chưa được CT/TGĐ TĐ duyệt', true]);
   expect(page.errors).toEqual([]);

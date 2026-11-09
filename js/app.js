@@ -97,6 +97,11 @@
     'ph/hop-dong': 'hop-dong', 'ph/po': 'thoa-thuan-khung', 'ph/mau-thong-bao': 'mau-thong-bao', 'ph/kenh-thong-bao': 'kenh-thong-bao', 'ph/trigger-thong-bao': 'trigger-thong-bao',
     'ph/bao-cao': 'bao-cao/tong-hop', 'ph/bao-cao-dxms': 'bao-cao/dxms', 'ph/bao-cao-kdt': 'bao-cao/kdt', 'ph/bao-cao-lcnt': 'bao-cao/lcnt', 'ph/bao-cao-hop-dong': 'bao-cao/hop-dong', 'ph/bao-cao-tien-do': 'bao-cao/tien-do', 'bao-cao': 'bao-cao/tong-hop' };
 
+  /* T34: route cũ của phương án Tách → thay hash (không thêm lịch sử), render lại theo route mới. */
+  function redirect(h) {
+    setTimeout(() => location.replace(h), 0);
+    return '<div class="pg"></div>';
+  }
   function content(r) {
     const [a, b, c] = r.split('/');
     if (a === 'phan-he') return window.PhanHe.page();
@@ -114,10 +119,12 @@
     /* T29 B12 (D-78): SCR-107 Quản lý hồ sơ — biểu mẫu / văn bản đã sinh của mọi luồng. */
     if (a === 'quan-ly-ho-so') return window.QuanLyHoSo.page();
     /* ĐXMS (cha): SCR-27 danh sách, SCR-28 thêm mới / chỉnh sửa, SCR-29 chi tiết — theo task-management. */
-    if (a === 'dxms' && b === 'create') return S.dxmsForm();
-    if (a === 'dxms' && b && c === 'edit') return S.dxmsForm();
-    if (a === 'dxms' && b) return S.dxmsDetail(decodeURIComponent(b));
-    if (a === 'dxms') return S.dxmsList();
+    /* T34 (D-90): bỏ phương án Tách — SCR-27 / 28 / 29 comment; route cũ chuyển sang Luồng mua sắm (SCR-95 / 96 / 97). */
+    // [T34 bỏ Tách] if (a === 'dxms' && b === 'create') return S.dxmsForm();
+    // [T34 bỏ Tách] if (a === 'dxms' && b && c === 'edit') return S.dxmsForm();
+    // [T34 bỏ Tách] if (a === 'dxms' && b) return S.dxmsDetail(decodeURIComponent(b));
+    // [T34 bỏ Tách] if (a === 'dxms') return S.dxmsList();
+    if (a === 'dxms') return redirect(b === 'create' ? '#/luong/create' : b ? '#/luong/' + b : '#/luong');
     /* Yêu cầu báo giá ĐXMS (T16 B1): SCR-73 danh sách, SCR-74 chi tiết. */
     /* T29 B3b: SCR-106 Thêm mới / Cập nhật yêu cầu báo giá (ycbg/create, ycbg/<mã>/edit). */
     if (a === 'ycbg' && b === 'create') return window.YcbgForm.form(null);
@@ -135,11 +142,24 @@
     if (a === 'mau-thong-bao' || a === 'kenh-thong-bao') return window.ThongBao.route(r.split('/'));
     if (a === 'bao-cao' && b) return window.BaoCao.report(b);
     /* Hồ sơ (con): SCR-02 danh sách, SCR-25 thêm mới [/<mã ĐXMS>], SCR-20 chi tiết hồ sơ mẫu — theo profile-management. */
-    if (a === 'ho-so-dxms' && b === 'create') return S.profileCreate();
-    if (a === 'ho-so-dxms' && b) return S.sampleDetail(decodeURIComponent(b), c);
-    if (a === 'ho-so-dxms') return S.profileList();
+    // [T34 bỏ Tách] if (a === 'ho-so-dxms' && b === 'create') return S.profileCreate();
+    if (a === 'ho-so-dxms' && b === 'create') return redirect('#/luong/create' + (c ? '/' + c : ''));
+    /* T34: SCR-108 Điều chỉnh đề xuất mua sắm — danh sách ĐXMS điều chỉnh; Thêm mới theo khuôn Lập ĐXMS (luong.js, D-91). */
+    if (a === 'dieu-chinh-dxms' && b === 'create') return window.Luong.route(['luong', 'create']);
+    if (a === 'dieu-chinh-dxms') return S.adjList();
+    /* T34 v0.2 (D-92): hồ sơ ĐXMS không còn màn riêng — #/ho-so-dxms/<mã hồ sơ>[/bpmn] → Chi tiết đề xuất mua sắm (tab Tiến trình / BPMN). */
+    if (a === 'ho-so-dxms' && b) {
+      const hc = S.allCases().find((x) => x.code === decodeURIComponent(b));
+      if (hc && hc.dxms) return redirect(`#/luong/${encodeURIComponent(hc.dxms)}/${c === 'bpmn' ? 'bpmn' : 'tien-trinh'}`);
+      return S.sampleDetail(decodeURIComponent(b), c);
+    }
+    // [T34 bỏ Tách] if (a === 'ho-so-dxms') return S.profileList();
+    if (a === 'ho-so-dxms') return redirect('#/luong');
     /* Hồ sơ KĐT (SCR-20 dùng lại, B5): #/ho-so-kdt/<mã>[/bpmn]; #/ho-so khi đang chạy hồ sơ KĐT cũng mở khuôn này. */
     if (a === 'ho-so-kdt' && b) return S.kdtCaseDetail(decodeURIComponent(b), c);
+    if (a === 'ho-so' && !window.Flow.state.kdt && !window.Flow.state.parent && window.Flow.state.status !== 'new' && window.Flow.state.dxms) {
+      return redirect(`#/luong/${encodeURIComponent(window.Flow.state.dxms)}/${b === 'bpmn' ? 'bpmn' : 'tien-trinh'}`);
+    }
     if (a === 'ho-so') return S.caseDetail(b);
     if (a === 'task' && c === 'bpmn') return S.taskBpmn(b);
     /* T29 B19 (DX-11): việc bước 01 / 04 / 05 của hồ sơ MS01 mở màn Lập đề xuất mua sắm (bước 1–5 trên một màn), không mở popup eForm. */
@@ -168,8 +188,8 @@
         <h4>Công cụ demo (không thuộc giao diện app)</h4>
         <div class="row"><a class="btn sm secondary" href="#/chon-vai">Chọn vai</a></div>
         ${window.Tour ? window.Tour.demoRow() : ''}
-        <h4>Phương án menu ĐXMS (T17)</h4>
-        <div class="row"><button class="btn sm ${window.Luong.isGop() ? 'secondary' : 'primary'}" data-luong-mode="tach">Tách: ĐXMS · Hồ sơ</button><button class="btn sm ${window.Luong.isGop() ? 'primary' : 'secondary'}" data-luong-mode="gop">Gộp: Luồng mua sắm</button></div>
+        ${/* [T34 bỏ Tách] <h4>Phương án menu ĐXMS (T17)</h4> + nút Tách / Gộp (data-luong-mode) */ ''}
+        ${/* [T34 bỏ Tách] <div class="row"><button class="btn sm ${window.Luong.isGop() ? 'secondary' : 'primary'}" data-luong-mode="tach">Tách: ĐXMS · Hồ sơ</button><button class="btn sm ${window.Luong.isGop() ? 'primary' : 'secondary'}" data-luong-mode="gop">Gộp: Luồng mua sắm</button></div> */ ''}
         <h4>Đồng bộ từ Camunda</h4>
         <div class="row">${window.QuyTrinh.syncDemo()}</div>
         <h4>Hồ sơ demo</h4>
@@ -183,7 +203,7 @@
         ${set.events ? `<h4>Sự kiện theo dõi hợp đồng</h4>
         <div class="scene-list">${set.events.map((v, i) => (v.hidden ? '' : `<button data-hd-event="${i}"><span class="n">↯</span>${esc(v.label)}<span class="tk">${v.tasks}</span></button>`)).join('')}</div>` : ''}
         <h4>Hồ sơ</h4>
-        <div class="row"><button class="btn sm secondary" id="reset">Reset luồng</button><a class="btn sm secondary" href="#/ho-so">Chi tiết hồ sơ</a><a class="btn sm secondary" href="#/cho-chot">Điểm ❓ (${Object.keys(st.qNotes).length}/${Object.keys(D.openPoints).length})</a></div>
+        <div class="row"><button class="btn sm secondary" id="reset">Reset luồng</button><a class="btn sm secondary" href="#/ho-so">${window.Flow.state.kdt || window.Flow.state.parent ? 'Chi tiết hồ sơ' : 'Chi tiết ĐXMS'}</a><a class="btn sm secondary" href="#/cho-chot">Điểm ❓ (${Object.keys(st.qNotes).length}/${Object.keys(D.openPoints).length})</a></div>
         <div class="row"><button class="btn sm secondary" id="reset-eform">Khôi phục dữ liệu mẫu</button></div>
         <div class="faint" style="font-size:12px;margin-top:8px">Đổi hồ sơ demo hoặc nhảy cảnh sẽ chạy lại từ đầu theo nhánh chính và giữ nguyên ý kiến ❓ đã ghi.</div>
       </div>` : ''}</div>`;
@@ -194,10 +214,12 @@
     /* Bộ Hợp đồng: cảnh 1 mở Chi tiết hợp đồng, tab Thương thảo & ký kết có nút Tạo hồ sơ. */
     if (set.hd) { window.HopDong.openTab(set.hd, set.tab || 'tt'); return; }
     if (set.dxms === D.dxmsCode0) { openCreate('dxms'); return; }
+    /* T34 (D-90, D-91): ĐXMS mẫu chưa có hồ sơ → Lập ĐXMS trên chính ĐXMS đó; bộ MS02 → Thêm mới điều chỉnh ĐXMS. */
     /* Bộ KĐT: cảnh 1 bắt đầu từ Thêm mới KĐT (SCR-55). */
     if (set.kdt) { if (location.hash === '#/kdt/create') { window.Kdt.enter(['create']); render(); } else location.hash = '#/kdt/create'; return; }
-    const h = '#/ho-so-dxms/create/' + encodeURIComponent(set.dxms);
-    if (location.hash === h) { S.enter(h.slice(2)); render(); } else location.hash = h;
+    // [T34 bỏ Tách] const h = '#/ho-so-dxms/create/' + encodeURIComponent(set.dxms);
+    const h = (set.key === 'MS02' ? '#/dieu-chinh-dxms/create/' : '#/luong/create/') + encodeURIComponent(set.dxms);
+    if (location.hash === h) { window.Luong.enter(h.slice(2).split('/')); render(); } else location.hash = h;
   }
 
   /* Màn mở Chi tiết hồ sơ mẫu (#/ho-so-dxms/<mã>…): Giám sát tiến trình, Chi tiết/Chỉnh sửa ĐXMS thì nút quay lại về đó, còn lại về Danh sách hồ sơ. */
@@ -228,8 +250,9 @@
 
   /* Trang Thêm mới (rule B6) luôn mở với form trống: 'dxms' = SCR-28 Thêm mới ĐXMS, 'hs' = SCR-25 Thêm mới hồ sơ. */
   function openCreate(what) {
-    const h = what === 'hs' ? '#/ho-so-dxms/create' : '#/dxms/create';
-    if (location.hash === h) { S.enter(h.slice(2)); render(); } else location.hash = h;
+    // [T34 bỏ Tách] const h = what === 'hs' ? '#/ho-so-dxms/create' : '#/dxms/create';
+    const h = '#/luong/create';
+    if (location.hash === h) { window.Luong.enter(h.slice(2).split('/')); render(); } else location.hash = h;
   }
 
   function openReplacement() {
@@ -246,9 +269,12 @@
 
   async function act(tokenId, idx) {
     const tok = Flow.token(tokenId);
-    if (!tok) return;
+    /* T39 B1 (D-99): việc giao nhiều người — người khác đã xử lý trước thì BE trả 409, màn báo và giữ nguyên. */
+    if (!tok) { window.Vct.stale(); return; }
     let choice = idx >= 0 ? Flow.choices(tok.task)[idx] : null;
-    if (choice && choice.lockWhen && choice.lockWhen(Flow.state.vars)) return;
+    /* Rule A4 / D1: nút luôn hiện; điều kiện dữ liệu (lockWhen trả lý do) kiểm tra khi bấm và chặn kèm thông báo. */
+    const lock = choice && choice.lockWhen && choice.lockWhen(Flow.state.vars);
+    if (lock) { toast(esc(typeof lock === 'string' ? lock : 'Chưa đủ điều kiện thực hiện hành động này.'), 'warn'); return; }
     /* Review nhi 06/11 #21, #31: bước làm trên màn riêng (f.page, vd bước 7 → SCR-105): nút mở màn, Gửi trên màn mới hoàn thành bước. */
     const f0 = Flow.def()[tok.task] || {};
     if (!choice && f0.page && window.RaSoatKho && window.RaSoatKho.inFlow()) { location.hash = '#/' + f0.page; return; }
@@ -352,16 +378,16 @@
     if (t.closest('[data-create]')) { e.preventDefault(); openCreate(t.closest('[data-create]').dataset.create); return; }
     if (t.closest('[data-open-new]')) { e.preventDefault(); openReplacement(); return; }
     if (t.closest('[data-back]')) { e.preventDefault(); if (history.length > 1) history.back(); else location.hash = '#/viec-cua-toi'; return; }
-    /* T17 D-25: công tắc phương án menu ĐXMS (Tách / Gộp). */
-    const lm = t.closest('[data-luong-mode]');
-    if (lm) {
-      window.Luong.setMode(lm.dataset.luongMode);
-      demoOpen = false;
-      toast(window.Luong.isGop() ? 'Phương án <b>Gộp</b>: menu Luồng mua sắm.' : 'Phương án <b>Tách</b>: menu Đề xuất mua sắm và Hồ sơ đề xuất mua sắm.', 'info');
-      const h = window.Luong.isGop() ? '#/luong' : '#/dxms';
-      if (location.hash === h) render(); else location.hash = h;
-      return;
-    }
+// [T34 bỏ Tách]     /* T17 D-25: công tắc phương án menu ĐXMS (Tách / Gộp). */
+// [T34 bỏ Tách]     const lm = t.closest('[data-luong-mode]');
+// [T34 bỏ Tách]     if (lm) {
+// [T34 bỏ Tách]       window.Luong.setMode(lm.dataset.luongMode);
+// [T34 bỏ Tách]       demoOpen = false;
+// [T34 bỏ Tách]       toast(window.Luong.isGop() ? 'Phương án <b>Gộp</b>: menu Luồng mua sắm.' : 'Phương án <b>Tách</b>: menu Đề xuất mua sắm và Hồ sơ đề xuất mua sắm.', 'info');
+// [T34 bỏ Tách]       const h = window.Luong.isGop() ? '#/luong' : '#/dxms';
+// [T34 bỏ Tách]       if (location.hash === h) render(); else location.hash = h;
+// [T34 bỏ Tách]       return;
+// [T34 bỏ Tách]     }
     const ds = t.closest('[data-demo-set]');
     if (ds) {
       const set = D.demoSets.find((d) => d.key === ds.dataset.demoSet);

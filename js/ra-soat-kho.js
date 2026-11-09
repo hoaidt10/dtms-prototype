@@ -91,6 +91,7 @@
         '<b>T29 B5 — D-82 (review Huylx4 #21–24):</b> nhập kết quả <b>một lần</b>, bảng theo cột của biên bản thật <b>BM-RSTK</b>: Yêu cầu (Mô tả, ĐVT, Số lượng) · Kết quả rà soát (Mã hàng trong kho, Nhà sản xuất, SL tồn kho, SL xuất kho, SL điều chuyển, SL cần mua = Số lượng − SL xuất kho như công thức E − K của BM-RSTK) · Hợp đồng đầu vào (Nguyên giá, Thuế GTGT, Số hợp đồng, Nguồn gốc Đề tài / Dự án, Đơn giá nhận) · Ghi chú vị trí. Bỏ lựa chọn Lần rà soát Sổ sách / Thực tế. <b>Lệch</b> BR-DXMS-03-01, DTMS_CN_0142 và BPMN bước 7 ("RSTK theo sổ sách và RSTK thực tế") — đã ghi câu hỏi BA DTMS_Q_0143 và thay-doi.tsv SRS-DXMS.',
         '<b>Tồn khả dụng</b> = SL tồn kho − Đang giữ cho ĐXMS khác, không âm (BR-DXMS-03-02); SL xuất kho không vượt Tồn khả dụng và Số lượng yêu cầu. Bỏ trống Mã hàng = hạng mục không quản lý tồn (dịch vụ). Bước 7 của ĐVĐX chỉ xác nhận được khi Kho đã nhập kết quả.',
         '<b>Biên bản rà soát vật tư, linh kiện tồn kho</b> (C1, D-56): hệ thống sinh theo mẫu BM-RSTK từ kết quả (số …/BBRS-MS, thành phần TTMS + đơn vị đề xuất, căn cứ phiếu yêu cầu, câu hiệu lực giữ hàng 30 ngày), đưa vào Danh sách tài liệu của hồ sơ. Chân ký <b>GIẢ LẬP P-187</b> (Thủ kho → Chỉ huy bộ phận QLTS → GĐ TTMS, theo đề xuất trong ghi âm; biên bản thật chỉ có NV QLTS và GĐ TTMS); bước ký chờ DX-07. <b>Phiếu yêu cầu rà soát</b> (C2): hệ thống sinh khi gửi yêu cầu ở bước 6 — GIẢ LẬP P-186.',
+        '<b>T37 (RV-PROTO-0911 #5):</b> tệp kết quả chỉ đính kèm, hệ thống <b>không đọc Excel</b> để điền bảng (trước: tải .xlsx theo mẫu BM-RSTK thì điền sẵn); vẫn có link Tải mẫu Excel.',
         '<b>Tệp kết quả</b> (biên bản kiểm đếm có ký) bắt buộc. <b>GIẢ LẬP P-196:</b> số tồn do Kho nhập tay (BM-RSTK cho thấy kho dùng sổ Excel); khi có tích hợp WMS / QLTS thì điền sẵn (DTMS_Q_0080).',
         '<b>T29 B19 (góp ý 06/11):</b> hộp thoại Cập nhật kết quả có nút <b>Toàn màn hình</b> (bảng 16 cột); <b>Hợp đồng đầu vào</b> là nhóm con của <b>Kết quả rà soát</b> (tiêu đề ba tầng). Ô <b>Tệp kết quả</b> đặt trên bảng: tải tệp Excel theo mẫu BM-RSTK thì hệ thống đọc và điền bảng, người nhập sửa lại trước khi Lưu. <b>GIẢ LẬP</b>: prototype điền số mẫu khi tệp là .xlsx / .xls / .csv; thật — BE đọc theo cột cố định của mẫu, khớp dòng theo STT, trả lỗi từng ô; tệp PDF / ảnh chỉ đính kèm.',
       ],
@@ -162,12 +163,11 @@
     const R = rows();
     const inp = (n, k, ph, dis, w) => `<input class="vctl ${DL.err[n + k] ? 'invalid' : ''}" data-rsk-in="${n}:${k}" value="${esc(DL.vals[n][k])}" placeholder="${ph}" ${dis ? 'disabled' : ''} style="min-width:${w || 90}px">${DL.err[n + k] ? `<p class="msg" role="alert">${esc(DL.err[n + k])}</p>` : ''}`;
     return `<div class="rsk-dlg">
-      <div class="vfield rsk-up ${DL.err.file ? 'invalid' : ''}"><div class="lr"><label>Tệp kết quả (biên bản kiểm đếm có ký hoặc tệp Excel theo mẫu BM-RSTK)</label><span class="req" aria-hidden="true">*</span></div>
+      <div class="vfield rsk-up ${DL.err.file ? 'invalid' : ''}"><div class="lr"><label>Tệp kết quả (biên bản kiểm đếm có ký)</label><span class="req" aria-hidden="true">*</span></div>
         <div class="row"><button type="button" class="vbtn secondary" data-rsk-up>${icon('upload')} Tải tệp lên</button><input type="file" id="rsk-file" accept=".pdf,.xlsx,.xls,.csv,.jpg,.png" hidden>
           <a class="link-red" href="#" data-dl="Mau-ket-qua-ra-soat-ton-kho_BM-RSTK.xlsx">Tải mẫu Excel</a>
           ${DL.file ? `<span class="rsk-file">${esc(DL.file)}</span>` : ''}</div>
-        <p class="cap">Tải tệp Excel theo mẫu: hệ thống đọc và điền sẵn bảng bên dưới, người nhập kiểm tra và sửa lại trước khi gửi.</p>
-        ${DL.imported ? `<p class="cap" data-rsk-imported>Đã đọc ${DL.imported} dòng từ tệp ${esc(DL.file)} và điền vào bảng.</p>` : ''}
+        <p class="cap">Tệp chỉ đính kèm làm căn cứ, hệ thống không đọc nội dung — nhập kết quả vào bảng bên dưới.</p>
         ${DL.err.file ? `<p class="msg" role="alert">${esc(DL.err.file)}</p>` : ''}</div>
       ${table2(GROUPS, COLS, R, (r) => { const v = DL.vals[r.n], m = !!(v.code || '').trim(), c = (k, ph, w) => `<td><div class="vfield">${inp(r.n, k, ph, !m, w)}</div></td>`;
         const out = numOf(v.out);
@@ -187,6 +187,8 @@
   }
   /* Tệp Excel theo mẫu BM-RSTK → điền bảng. GIẢ LẬP: điền số mẫu (D.rstkSample) theo hạng mục của hồ sơ.
      Khi phát triển thật: BE đọc tệp theo cột cố định của mẫu (khớp dòng theo STT / Mô tả), trả về danh sách dòng + lỗi từng ô; FE điền vào bảng, chưa lưu. */
+  /* [T37 RV-PROTO-0911 #5] chỉ upload, không đọc Excel: tải tệp không còn gọi importSheet (trước: if (isSheet(DL.file)) importSheet()),
+     bỏ dòng "Đã đọc n dòng…" (data-rsk-imported). Giữ hàm, không còn nơi gọi. */
   const isSheet = (name) => /\.(xlsx|xls|csv)$/i.test(name || '');
   function importSheet() {
     const rs = D.rstkSample(D.items, Flow.state.clock).kq.rows;
@@ -253,7 +255,7 @@
   });
   /* SL cần mua cập nhật tại chỗ khi rời ô SL xuất kho. */
   document.addEventListener('change', (e) => {
-    if (e.target.id === 'rsk-file' && e.target.files.length) { readInputs(); DL.file = e.target.files[0].name; DL.imported = 0; if (isSheet(DL.file)) importSheet(); delete DL.err.file; draw(); return; }
+    if (e.target.id === 'rsk-file' && e.target.files.length) { readInputs(); DL.file = e.target.files[0].name; DL.imported = 0; delete DL.err.file; draw(); return; }
     const k = e.target.dataset && e.target.dataset.rskIn;
     if (!k || !/:out$|:code$/.test(k)) return;
     readInputs();

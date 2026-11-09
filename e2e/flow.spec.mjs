@@ -4,99 +4,101 @@
 import { test, expect } from '@playwright/test';
 import { fresh, primary, lastToast, state, createDxms, createCase, openForm, aiDecide, closeForm, uploadReq, aiApply } from './helpers.mjs';
 
-test('SCR-28 → SCR-25: tạo ĐXMS không start quy trình; Tạo hồ sơ khoá ĐXMS, chọn sẵn loại Phê duyệt; Quy trình MS01 chỉ đọc; Lưu là start task 01', async ({ page }) => {
-  await fresh(page, '#/dxms');
-  expect((await state(page)).s).toBe('new');
-  await page.locator('[data-create="dxms"]').click();
-  await expect(page.locator('.pg-title')).toContainText('Thêm mới ĐXMS');
-  await expect(page.locator('input[placeholder="Hệ thống tự sinh"]')).toBeDisabled();
-  await page.locator('#x-save').click();
-  await expect(page.locator('.vfield.invalid .msg')).toHaveText(['Bạn cần nhập Tên ĐXMS.', 'Bạn cần chọn Đề tài / dự án.']);
-  await page.locator('[data-vsel="x-nv"]').click();
-  await page.locator('.vsel-panel [data-opt="NV-KHCN-2026-014"]').click();
-  await page.locator('#x-est').fill('abc');
-  await page.locator('#x-title').fill('Mua sắm thiết bị đo kiểm phục vụ phát triển trạm gNodeB thế hệ 2');
-  await page.locator('#x-save').click();
-  await expect(page.locator('.vfield.invalid .msg')).toHaveText(['Giá trị dự kiến không đúng định dạng.']);
-  await page.locator('#x-est').fill('183');
-  await page.locator('#x-save').click();
-  await expect(page).toHaveURL(/#\/dxms$/);
-  expect(await lastToast(page)).toContain('Thêm mới ĐXMS thành công!');
-  expect((await state(page)).s, 'tạo ĐXMS không start quy trình (D-11)').toBe('new');
-  const row = page.locator('tr[data-code="ĐXMS-2026-0117"]');
-  await expect(row).toContainText('Chưa có hồ sơ');
-  await expect(row).toContainText('183,00');
-  await expect(row.locator('[data-del-dxms]')).toHaveCount(1);
+// T34 (D-90): SCR-28, SCR-25 — comment cùng màn Tách.
+// [T34 bỏ Tách] test('SCR-28 → SCR-25: tạo ĐXMS không start quy trình; Tạo hồ sơ khoá ĐXMS, chọn sẵn loại Phê duyệt; Quy trình MS01 chỉ đọc; Lưu là start task 01', async ({ page }) => {
+// [T34 bỏ Tách]   await fresh(page, '#/dxms');
+// [T34 bỏ Tách]   expect((await state(page)).s).toBe('new');
+// [T34 bỏ Tách]   await page.locator('[data-create="dxms"]').click();
+// [T34 bỏ Tách]   await expect(page.locator('.pg-title')).toContainText('Thêm mới ĐXMS');
+// [T34 bỏ Tách]   await expect(page.locator('input[placeholder="Hệ thống tự sinh"]')).toBeDisabled();
+// [T34 bỏ Tách]   await page.locator('#x-save').click();
+// [T34 bỏ Tách]   await expect(page.locator('.vfield.invalid .msg')).toHaveText(['Bạn cần nhập Tên ĐXMS.', 'Bạn cần chọn Đề tài / dự án.']);
+// [T34 bỏ Tách]   await page.locator('[data-vsel="x-nv"]').click();
+// [T34 bỏ Tách]   await page.locator('.vsel-panel [data-opt="NV-KHCN-2026-014"]').click();
+// [T34 bỏ Tách]   await page.locator('#x-est').fill('abc');
+// [T34 bỏ Tách]   await page.locator('#x-title').fill('Mua sắm thiết bị đo kiểm phục vụ phát triển trạm gNodeB thế hệ 2');
+// [T34 bỏ Tách]   await page.locator('#x-save').click();
+// [T34 bỏ Tách]   await expect(page.locator('.vfield.invalid .msg')).toHaveText(['Giá trị dự kiến không đúng định dạng.']);
+// [T34 bỏ Tách]   await page.locator('#x-est').fill('183');
+// [T34 bỏ Tách]   await page.locator('#x-save').click();
+// [T34 bỏ Tách]   await expect(page).toHaveURL(/#\/dxms$/);
+// [T34 bỏ Tách]   expect(await lastToast(page)).toContain('Thêm mới ĐXMS thành công!');
+// [T34 bỏ Tách]   expect((await state(page)).s, 'tạo ĐXMS không start quy trình (D-11)').toBe('new');
+// [T34 bỏ Tách]   const row = page.locator('tr[data-code="ĐXMS-2026-0117"]');
+// [T34 bỏ Tách]   await expect(row).toContainText('Chưa có hồ sơ');
+// [T34 bỏ Tách]   await expect(row).toContainText('183,00');
+// [T34 bỏ Tách]   await expect(row.locator('[data-del-dxms]')).toHaveCount(1);
+// [T34 bỏ Tách] 
+// [T34 bỏ Tách]   // Chi tiết ĐXMS: không có Tạo hồ sơ (như source); Chỉnh sửa → Danh sách hồ sơ → Tạo hồ sơ.
+// [T34 bỏ Tách]   await row.locator('.link').click();
+// [T34 bỏ Tách]   await expect(page.locator('.pg-title')).toContainText('Xem chi tiết ĐXMS');
+// [T34 bỏ Tách]   await expect(page.locator('[data-dxms-profiles] .vcard-h .vbtn')).toHaveCount(0);
+// [T34 bỏ Tách]   await page.locator('.pg-head .r [data-go$="/edit"]').click();
+// [T34 bỏ Tách]   await page.locator('[data-dxms-profiles] .vcard-h .vbtn').click();
+// [T34 bỏ Tách]   await expect(page).toHaveURL(/#\/ho-so-dxms\/create\/%C4%90XMS-2026-0117$/);
+// [T34 bỏ Tách]   await expect(page.locator('.pg-title')).toContainText('Thêm mới hồ sơ');
+// [T34 bỏ Tách]   await expect(page.locator('[data-vsel="c-dxms"]')).toHaveClass(/dis/);
+// [T34 bỏ Tách]   await expect(page.locator('[data-vsel="c-kind"]')).toHaveText('Phê duyệt ĐXMS');
+// [T34 bỏ Tách]   await expect(page.locator('#c-name')).toHaveValue('Mua sắm thiết bị đo kiểm phục vụ phát triển trạm gNodeB thế hệ 2');
+// [T34 bỏ Tách]   await expect(page.locator('#c-proc')).toBeDisabled();
+// [T34 bỏ Tách]   await expect(page.locator('#c-proc')).toHaveValue('MS01 — Phê duyệt đề xuất mua sắm');
+// [T34 bỏ Tách]   await page.locator('#c-save').click();
+// [T34 bỏ Tách]   await expect(page).toHaveURL(/#\/task\//);
+// [T34 bỏ Tách]   expect(await lastToast(page)).toContain('Thêm mới thành công');
+// [T34 bỏ Tách]   // Task 1 (T29 B19, DX-11): việc bước 1 mở màn Lập ĐXMS (bước 1–5), không mở hộp thoại; căn cứ và phần còn khả dụng hiện ở phần bước 1.
+// [T34 bỏ Tách]   await expect(page.locator('[data-luong-form]')).toHaveCount(1);
+// [T34 bỏ Tách]   await expect(page.locator('[data-luong-form] input[disabled]').first()).toHaveValue('ĐXMS-2026-0117');
+// [T34 bỏ Tách]   await expect(page.locator('.vmodal.ef')).toHaveCount(0);
+// [T34 bỏ Tách]   await expect(page.locator('[data-basis-avail] tbody').first()).toContainText('1482/QĐ-VHT');
+// [T34 bỏ Tách]   const s = await page.evaluate(() => ({ code: Flow.ci().code, dxms: Flow.ci().dxms, flow: Flow.ci().flow, tok: Flow.state.tokens.map((t) => [t.task, t.who]) }));
+// [T34 bỏ Tách]   expect(s).toEqual({ code: 'HS-2026-0117', dxms: 'ĐXMS-2026-0117', flow: 'MS01.01', tok: [[1, 'minh']] });
+// [T34 bỏ Tách]   // ĐXMS giờ Đang phê duyệt, không xoá được; Danh sách hồ sơ của ĐXMS có hồ sơ vừa tạo.
+// [T34 bỏ Tách]   await page.evaluate(() => { location.hash = '#/dxms'; });
+// [T34 bỏ Tách]   await expect(page.locator('tr[data-code="ĐXMS-2026-0117"]')).toContainText('Đang phê duyệt');
+// [T34 bỏ Tách]   await expect(page.locator('tr[data-code="ĐXMS-2026-0117"] [data-del-dxms]')).toHaveCount(0);
+// [T34 bỏ Tách]   await page.locator('tr[data-code="ĐXMS-2026-0117"] .link').click();
+// [T34 bỏ Tách]   await expect(page.locator('[data-dxms-profiles] tbody')).toContainText('HS-2026-0117');
+// [T34 bỏ Tách]   expect(page.errors).toEqual([]);
+// [T34 bỏ Tách] });
 
-  // Chi tiết ĐXMS: không có Tạo hồ sơ (như source); Chỉnh sửa → Danh sách hồ sơ → Tạo hồ sơ.
-  await row.locator('.link').click();
-  await expect(page.locator('.pg-title')).toContainText('Xem chi tiết ĐXMS');
-  await expect(page.locator('[data-dxms-profiles] .vcard-h .vbtn')).toHaveCount(0);
-  await page.locator('.pg-head .r [data-go$="/edit"]').click();
-  await page.locator('[data-dxms-profiles] .vcard-h .vbtn').click();
-  await expect(page).toHaveURL(/#\/ho-so-dxms\/create\/%C4%90XMS-2026-0117$/);
-  await expect(page.locator('.pg-title')).toContainText('Thêm mới hồ sơ');
-  await expect(page.locator('[data-vsel="c-dxms"]')).toHaveClass(/dis/);
-  await expect(page.locator('[data-vsel="c-kind"]')).toHaveText('Phê duyệt ĐXMS');
-  await expect(page.locator('#c-name')).toHaveValue('Mua sắm thiết bị đo kiểm phục vụ phát triển trạm gNodeB thế hệ 2');
-  await expect(page.locator('#c-proc')).toBeDisabled();
-  await expect(page.locator('#c-proc')).toHaveValue('MS01 — Phê duyệt đề xuất mua sắm');
-  await page.locator('#c-save').click();
-  await expect(page).toHaveURL(/#\/task\//);
-  expect(await lastToast(page)).toContain('Thêm mới thành công');
-  // Task 1 (T29 B19, DX-11): việc bước 1 mở màn Lập ĐXMS (bước 1–5), không mở hộp thoại; căn cứ và phần còn khả dụng hiện ở phần bước 1.
-  await expect(page.locator('[data-luong-form]')).toHaveCount(1);
-  await expect(page.locator('[data-luong-form] input[disabled]').first()).toHaveValue('ĐXMS-2026-0117');
-  await expect(page.locator('.vmodal.ef')).toHaveCount(0);
-  await expect(page.locator('[data-basis-avail] tbody').first()).toContainText('1482/QĐ-VHT');
-  const s = await page.evaluate(() => ({ code: Flow.ci().code, dxms: Flow.ci().dxms, flow: Flow.ci().flow, tok: Flow.state.tokens.map((t) => [t.task, t.who]) }));
-  expect(s).toEqual({ code: 'HS-2026-0117', dxms: 'ĐXMS-2026-0117', flow: 'MS01.01', tok: [[1, 'minh']] });
-  // ĐXMS giờ Đang phê duyệt, không xoá được; Danh sách hồ sơ của ĐXMS có hồ sơ vừa tạo.
-  await page.evaluate(() => { location.hash = '#/dxms'; });
-  await expect(page.locator('tr[data-code="ĐXMS-2026-0117"]')).toContainText('Đang phê duyệt');
-  await expect(page.locator('tr[data-code="ĐXMS-2026-0117"] [data-del-dxms]')).toHaveCount(0);
-  await page.locator('tr[data-code="ĐXMS-2026-0117"] .link').click();
-  await expect(page.locator('[data-dxms-profiles] tbody')).toContainText('HS-2026-0117');
-  expect(page.errors).toEqual([]);
-});
-
-test('SCR-25 luật R1–R3: ĐXMS đã phê duyệt chỉ tạo được Điều chỉnh; đang có hồ sơ xử lý thì chặn; hồ sơ Điều chỉnh khởi tạo luồng MS02', async ({ page }) => {
-  await fresh(page, '#/ho-so-dxms');
-  await page.locator('[data-create="hs"]').click();
-  await expect(page).toHaveURL(/#\/ho-so-dxms\/create$/);
-  await page.locator('#c-save').click();
-  await expect(page.locator('.vfield.invalid .msg')).toHaveText(['Bạn cần nhập Tên hồ sơ.', 'Bạn cần chọn Loại hồ sơ.', 'Bạn cần chọn ĐXMS.']);
-  // ĐXMS-2026-0103 đã phê duyệt: chọn Phê duyệt bị chặn.
-  await page.locator('[data-vsel="c-dxms"]').click();
-  await page.locator('.vsel-panel [data-opt="ĐXMS-2026-0103"]').click();
-  await expect(page.locator('[data-vsel="c-kind"]')).toHaveText('Điều chỉnh ĐXMS');
-  await expect(page.locator('#c-proc')).toHaveValue(/^MS02 — /);
-  await expect(page.locator('#c-name')).toHaveValue('Điều chỉnh lần 1 — Mua sắm hệ thống mô phỏng mạng lõi 5G');
-  await page.locator('[data-vsel="c-kind"]').click();
-  await page.locator('.vsel-panel [data-opt="PD"]').click();
-  await page.locator('#c-save').click();
-  await expect(page.locator('.vfield.invalid .msg')).toHaveText(['ĐXMS đã được phê duyệt. Chọn loại hồ sơ Điều chỉnh ĐXMS.']);
-  // ĐXMS-2026-0077 đang có hồ sơ Điều chỉnh xử lý: chặn mọi loại.
-  await page.locator('[data-vsel="c-dxms"]').click();
-  await page.locator('.vsel-panel [data-opt="ĐXMS-2026-0077"]').click();
-  await page.locator('[data-vsel="c-kind"]').click();
-  await page.locator('.vsel-panel [data-opt="DC"]').click();
-  await page.locator('#c-save').click();
-  await expect(page.locator('.vfield.invalid .msg')).toHaveText(['ĐXMS đang có hồ sơ đang xử lý.']);
-  // ĐXMS-2026-0103: tạo hồ sơ Điều chỉnh → khởi tạo luồng MS02 (T21 D-36), mở bước 1; ĐXMS chuyển Đang điều chỉnh.
-  await page.locator('[data-vsel="c-dxms"]').click();
-  await page.locator('.vsel-panel [data-opt="ĐXMS-2026-0103"]').click();
-  await page.locator('#c-save').click();
-  await expect(page).toHaveURL(/#\/task\/k\d+$/);
-  expect((await state(page)).s, 'hồ sơ Điều chỉnh chạy luồng').toBe('running');
-  await page.evaluate(() => { location.hash = '#/ho-so-dxms/HS-2026-0127'; });
-  await expect(page.locator('.ginfo')).toContainText('Loại hồ sơĐiều chỉnh ĐXMS');
-  await expect(page.locator('.ginfo')).toContainText('MS02 — Điều chỉnh đề xuất mua sắm');
-  await expect(page.locator('.ginfo')).toContainText('Giá trị sau điều chỉnh (gồm VAT)210,50 tỷ đồng');
-  await page.evaluate(() => { location.hash = '#/dxms'; });
-  await expect(page.locator('tr[data-code="ĐXMS-2026-0103"]')).toContainText('Đang điều chỉnh');
-  expect(page.errors).toEqual([]);
-});
+// T34 (D-90): SCR-25 (luật thay bằng t34-mot-ho-so) — comment cùng màn Tách.
+// [T34 bỏ Tách] test('SCR-25 luật R1–R3: ĐXMS đã phê duyệt chỉ tạo được Điều chỉnh; đang có hồ sơ xử lý thì chặn; hồ sơ Điều chỉnh khởi tạo luồng MS02', async ({ page }) => {
+// [T34 bỏ Tách]   await fresh(page, '#/ho-so-dxms');
+// [T34 bỏ Tách]   await page.locator('[data-create="hs"]').click();
+// [T34 bỏ Tách]   await expect(page).toHaveURL(/#\/ho-so-dxms\/create$/);
+// [T34 bỏ Tách]   await page.locator('#c-save').click();
+// [T34 bỏ Tách]   await expect(page.locator('.vfield.invalid .msg')).toHaveText(['Bạn cần nhập Tên hồ sơ.', 'Bạn cần chọn Loại hồ sơ.', 'Bạn cần chọn ĐXMS.']);
+// [T34 bỏ Tách]   // ĐXMS-2026-0103 đã phê duyệt: chọn Phê duyệt bị chặn.
+// [T34 bỏ Tách]   await page.locator('[data-vsel="c-dxms"]').click();
+// [T34 bỏ Tách]   await page.locator('.vsel-panel [data-opt="ĐXMS-2026-0103"]').click();
+// [T34 bỏ Tách]   await expect(page.locator('[data-vsel="c-kind"]')).toHaveText('Điều chỉnh ĐXMS');
+// [T34 bỏ Tách]   await expect(page.locator('#c-proc')).toHaveValue(/^MS02 — /);
+// [T34 bỏ Tách]   await expect(page.locator('#c-name')).toHaveValue('Điều chỉnh lần 1 — Mua sắm hệ thống mô phỏng mạng lõi 5G');
+// [T34 bỏ Tách]   await page.locator('[data-vsel="c-kind"]').click();
+// [T34 bỏ Tách]   await page.locator('.vsel-panel [data-opt="PD"]').click();
+// [T34 bỏ Tách]   await page.locator('#c-save').click();
+// [T34 bỏ Tách]   await expect(page.locator('.vfield.invalid .msg')).toHaveText(['ĐXMS đã được phê duyệt. Chọn loại hồ sơ Điều chỉnh ĐXMS.']);
+// [T34 bỏ Tách]   // ĐXMS-2026-0077 đang có hồ sơ Điều chỉnh xử lý: chặn mọi loại.
+// [T34 bỏ Tách]   await page.locator('[data-vsel="c-dxms"]').click();
+// [T34 bỏ Tách]   await page.locator('.vsel-panel [data-opt="ĐXMS-2026-0077"]').click();
+// [T34 bỏ Tách]   await page.locator('[data-vsel="c-kind"]').click();
+// [T34 bỏ Tách]   await page.locator('.vsel-panel [data-opt="DC"]').click();
+// [T34 bỏ Tách]   await page.locator('#c-save').click();
+// [T34 bỏ Tách]   await expect(page.locator('.vfield.invalid .msg')).toHaveText(['ĐXMS đang được điều chỉnh (ĐXMS-2026-0126).']);
+// [T34 bỏ Tách]   // ĐXMS-2026-0103: tạo hồ sơ Điều chỉnh → khởi tạo luồng MS02 (T21 D-36), mở bước 1; ĐXMS chuyển Đang điều chỉnh.
+// [T34 bỏ Tách]   await page.locator('[data-vsel="c-dxms"]').click();
+// [T34 bỏ Tách]   await page.locator('.vsel-panel [data-opt="ĐXMS-2026-0103"]').click();
+// [T34 bỏ Tách]   await page.locator('#c-save').click();
+// [T34 bỏ Tách]   await expect(page).toHaveURL(/#\/task\/k\d+$/);
+// [T34 bỏ Tách]   expect((await state(page)).s, 'hồ sơ Điều chỉnh chạy luồng').toBe('running');
+// [T34 bỏ Tách]   await page.evaluate(() => { location.hash = '#/ho-so-dxms/HS-2026-0127'; });
+// [T34 bỏ Tách]   await expect(page.locator('.ginfo')).toContainText('Loại hồ sơĐiều chỉnh ĐXMS');
+// [T34 bỏ Tách]   await expect(page.locator('.ginfo')).toContainText('MS02 — Điều chỉnh đề xuất mua sắm');
+// [T34 bỏ Tách]   await expect(page.locator('.ginfo')).toContainText('Giá trị sau điều chỉnh (gồm VAT)210,50 tỷ đồng');
+// [T34 bỏ Tách]   await page.evaluate(() => { location.hash = '#/dxms'; });
+// [T34 bỏ Tách]   await expect(page.locator('tr[data-code="ĐXMS-2026-0103"]')).toContainText('Đang điều chỉnh');
+// [T34 bỏ Tách]   expect(page.errors).toEqual([]);
+// [T34 bỏ Tách] });
 
 test('luồng chính tới phê duyệt', async ({ page }) => {
   test.setTimeout(120_000);

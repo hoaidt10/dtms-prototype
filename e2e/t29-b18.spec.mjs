@@ -169,7 +169,8 @@ test('B18: SCR-106 lưu ý bảo mật, bảng dự án / đối tác / đầu m
   if (noMail) {
     await pickV(page, 'yc-ncc', noMail);
     await main.locator('[data-yc-save="send"]').click();
-    await expect(main.locator('.vfield.invalid .msg').first()).toContainText('chưa có Email');
+    // T37 (RV-PROTO-0911 #6): chưa gửi email nên đối tác thiếu Email không chặn Lưu.
+    await expect(page.locator('.vfield.invalid .msg', { hasText: 'chưa có Email' })).toHaveCount(0);
   }
   expect(page.errors).toEqual([]);
 });

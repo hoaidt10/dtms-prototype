@@ -53,9 +53,9 @@
   const TOURS = [
     { n: 1, name: 'Khởi tạo luồng và hồ sơ', who: 'Chuyên quản ĐVĐX', steps: [
       { enter: () => { Flow.jumpToScene(1, SET); if (!window.Luong.isGop()) window.Luong.setMode('gop'); Flow.setPersona('minh'); go('#/luong'); },
-        sel: '.sb-nav [data-go="luong"]', title: 'Luồng mua sắm', text: 'Mỗi luồng mua sắm là một ĐXMS. Danh sách luồng nằm ở menu <b>Quản lý đề xuất mua sắm &gt; Luồng mua sắm</b>.' },
-      { sel: '[data-go="luong/create"]', title: 'Thêm mới', text: '<b>Bấm vào đây</b> để tạo luồng mua sắm mới.', wait: route(/#\/luong\/create$/), do: () => go('#/luong/create') },
-      { sel: '#lf-title', title: 'Thông tin chung', text: 'Nhập Tên luồng mua sắm. Các trường có dấu <b>*</b> là bắt buộc.' },
+        sel: '.sb-nav [data-go="luong"]', title: 'Đề xuất mua sắm', text: 'Danh sách đề xuất mua sắm (ĐXMS) nằm ở menu <b>Quản lý đề xuất mua sắm &gt; Đề xuất mua sắm</b>.' },
+      { sel: '[data-go="luong/create"]', title: 'Thêm mới', text: '<b>Bấm vào đây</b> để lập đề xuất mua sắm mới.', wait: route(/#\/luong\/create$/), do: () => go('#/luong/create') },
+      { sel: '#lf-title', title: 'Thông tin chung', text: 'Nhập Tên đề xuất mua sắm. Các trường có dấu <b>*</b> là bắt buộc.' },
       { sel: '[data-vsel="lf-nv"]', title: 'Bước 1 — Đề tài / dự án', text: 'Chọn đề tài / dự án và văn bản căn cứ. Chọn xong, mỗi khối hiện nút <b>✦ Gợi ý từ AI</b> — AI chỉ chạy khi bấm. Bước 1 đến 5 làm trên cùng màn này.' },
       { sel: '#lf-draft', title: 'Lưu nháp', text: '<b>Bấm Lưu nháp</b>: hệ thống tạo luồng (mã ĐXMS tự sinh), hồ sơ Phê duyệt và giữ việc <b>Lập đề xuất mua sắm</b> để làm tiếp. Bấm <i>Làm hộ</i> để dùng hồ sơ mẫu.',
         wait: route(/#\/task\//), do: () => goTask(1) },
@@ -86,7 +86,8 @@
 
     { n: 4, name: 'Soạn thảo hồ sơ ĐXMS', who: 'Chuyên quản, Chỉ huy ĐVĐX', steps: [
       { enter: () => goTask(12), sel: act('Soạn thảo tờ trình ĐXMS'), title: 'Bước 12 — Soạn thảo tờ trình', text: 'Hoàn thiện tờ trình, phụ lục theo mẫu (điền sẵn từ các bước trước), tải tài liệu bắt buộc rồi <b>Gửi chỉ huy duyệt</b>.' },
-      { sel: ['.vcard', 'Lịch sử hồ sơ'], title: 'Lịch sử hồ sơ', text: 'Các bước đã xử lý, ai xử lý, khi nào.' },
+      /* T34 v0.2 (D-92): lịch sử nằm ở tab Tiến trình, khối "Lịch sử xử lý". */
+      { enter: () => { const tb = find('[data-ltab="tien-trinh"]'); if (tb) tb.click(); }, sel: ['.vcard', 'Lịch sử xử lý'], title: 'Lịch sử xử lý', text: 'Tab <b>Tiến trình</b>: các bước đã xử lý, ai xử lý, khi nào.' },
       { enter: () => goTask(13), sel: act('Phê duyệt'), title: 'Bước 13 — Chỉ huy ĐVĐX duyệt', text: 'Vai <b>Trần Đức Hải</b>. Duyệt từng phần: mọi phần Đạt thì Đồng ý; có phần Không đạt thì <b>Không đồng ý</b> kèm lý do, hồ sơ về bước 12.' },
       { enter: () => goTask(16), sel: actPrimary, title: 'Bước 16 — Phiếu yêu cầu thẩm định', text: 'Chọn cơ quan chuyên môn thẩm định, hạn góp ý, đầu mối tiếp nhận; bấm <b>Lập phiếu yêu cầu thẩm định</b>, điền nội dung BM-03 (xem trước được) rồi trình Chỉ huy ĐVĐX phê duyệt trước khi chuyển TTMS (tour 5).' },
       { enter: () => goTask('16.1'), sel: act('Phê duyệt phiếu yêu cầu thẩm định'), title: 'Chỉ huy ĐVĐX phê duyệt phiếu', text: 'Vai <b>Trần Đức Hải</b>. Phê duyệt phiếu yêu cầu thẩm định và các bên thẩm định; Trả lại thì về bước 16.' }] },

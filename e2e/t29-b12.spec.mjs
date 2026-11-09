@@ -106,7 +106,7 @@ test('D-76, D-78: menu ẩn Quản lý thầu / hợp đồng (route giữ); Qu�
     for (; n && n.classList.contains('child'); n = n.nextElementSibling) out.push(n.querySelector('.l').textContent);
     return out;
   });
-  expect(kids).toEqual(['Đề tài / dự án', 'Luồng mua sắm', 'Quản lý hồ sơ', 'Yêu cầu báo giá ĐXMS']);
+  expect(kids).toEqual(['Luồng mua sắm', 'Điều chỉnh đề xuất mua sắm', 'Quản lý hồ sơ', 'Yêu cầu báo giá ĐXMS']);
   // Route Thầu vẫn mở.
   await page.evaluate(() => { location.hash = '#/goi-thau'; });
   await expect(page.locator('.pg-title')).toHaveText('Danh sách gói thầu');
@@ -156,7 +156,7 @@ test('D-81, #4 + B19: bước 1 mở màn Lập ĐXMS (không popup), căn cứ 
   // T29 B19 (DX-11): việc bước 1 của hồ sơ MS01 mở màn Lập ĐXMS — không còn hộp thoại "Xác nhận căn cứ".
   await expect(page.locator('[data-luong-form]')).toHaveCount(1);
   await expect(page.locator('.task-acts [data-act]')).toHaveCount(0);
-  await expect(page.locator('[data-basis-avail]')).toContainText('Còn có thể sử dụng');
+  await expect(page.locator('[data-basis-avail]')).toHaveCount(0); // T37 (RV-PROTO-0911 #4): bỏ khối căn cứ khả dụng
   // P-216 (chốt 06/11): AI chạy khi bấm nút Gợi ý từ AI.
   await expect(page.locator('[data-lf-ai-sec="boc"]')).toHaveText('✦ Gợi ý từ AI');
   await aiApply(page);
@@ -168,7 +168,7 @@ test('D-81, #4 + B19: bước 1 mở màn Lập ĐXMS (không popup), căn cứ 
   const gi = page.locator('.tmain .ginfo').first();
   await expect(gi).toContainText('Giá trị dự kiến');
   await expect(gi.locator('div', { has: page.locator('.k', { hasText: /^Tổng giá trị/ }) }).locator('.v')).toHaveText('-');
-  await expect(page.locator('[data-basis-avail]')).toContainText('Còn có thể sử dụng');
+  await expect(page.locator('[data-basis-avail]')).toHaveCount(0); // T37 #4
   // Sau bước 10 (đã chốt báo giá) có Tổng giá trị.
   await jump(page, 13);
   await expect(page.locator('.tmain .ginfo').first()).not.toContainText('Giá trị dự kiến');

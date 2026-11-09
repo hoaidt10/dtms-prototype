@@ -23,28 +23,19 @@ export async function fresh(page, hash) {
 }
 
 // SCR-28 Thêm mới ĐXMS (#/dxms → Thêm mới): nhập tên rồi Lưu — chỉ tạo ĐXMS, không start quy trình (D-11). Trả về mã ĐXMS.
+// T34 (D-90): SCR-28 bỏ cùng phương án Tách — tạo ĐXMS chưa có hồ sơ bằng engine (như dữ liệu mẫu), trả về mã.
 export async function createDxms(page, title = 'Mua sắm thiết bị đo kiểm phục vụ phát triển trạm gNodeB thế hệ 2') {
-  await page.evaluate(() => { location.hash = '#/dxms'; });
-  await page.locator('[data-create="dxms"]').click();
-  await expect(page).toHaveURL(/#\/dxms\/create$/);
-  await page.locator('#x-title').fill(title);
-  // Comment Figma #1: ĐXMS bắt buộc chọn nhiệm vụ / đề tài, dự án.
-  await page.locator('[data-vsel="x-nv"]').click();
-  await page.locator('.vsel-panel [data-opt="NV-KHCN-2026-014"]').click();
-  await page.locator('#x-save').click();
-  await expect(page).toHaveURL(/#\/dxms$/);
-  return page.evaluate(() => Flow.dxmsAll()[0].code);
+  return page.evaluate((t) => Flow.createDxms({ title: t, nv: 'NV-KHCN-2026-014', unit: 'Trung tâm Vô tuyến', priority: 'Thường', est: null }), title);
 }
 
 // Chỉnh sửa ĐXMS → Danh sách hồ sơ → Tạo hồ sơ (SCR-25, ô ĐXMS khoá, loại Phê duyệt chọn sẵn) → Lưu: start ngay, mở task 01.
 // T29 B1 (D-54): không chọn quy trình — Quy trình chỉ đọc (MS01); luồng con dự kiến kiểm ở `proc`.
+// T34 (D-90): Lập ĐXMS trên ĐXMS chưa có hồ sơ (#/luong/create/<mã>) → Lưu nháp = tạo hồ sơ + khởi tạo MS01, mở việc Lập ĐXMS.
 export async function createCase(page, proc, dxms) {
   const code = dxms || (await createDxms(page));
-  await page.evaluate((c) => { location.hash = `#/dxms/${encodeURIComponent(c)}/edit`; }, code);
-  await page.locator('[data-dxms-profiles] .vcard-h [data-go^="ho-so-dxms/create/"]').click();
-  await expect(page).toHaveURL(/#\/ho-so-dxms\/create\//);
-  await expect(page.locator('#c-proc')).toHaveValue(/^MS01 — /);
-  await page.locator('#c-save').click();
+  await page.evaluate((c) => { location.hash = '#/luong/create/' + encodeURIComponent(c); }, code);
+  await page.locator('[data-luong-form]').waitFor();
+  await page.locator('#lf-draft').click();
   await expect(page).toHaveURL(/#\/task\//);
   if (proc) expect(await page.evaluate(() => Flow.state.vars.process)).toBe(proc);
   return code;
@@ -98,11 +89,18 @@ export async function aiFill(page) {
   await expect(page.locator('.vmodal.ef [data-ef-aifill]')).toBeEnabled();
 }
 
-// Review nhi 06/11 #21, #31–33: nhập kết quả rà soát trên màn SCR-105 (tệp Excel theo mẫu điền sẵn bảng) rồi Gửi Chỉ huy Kho.
+// Review nhi 06/11 #21, #31–33: nhập kết quả rà soát trên màn SCR-105 rồi Gửi Chỉ huy Kho.
+// T37 (RV-PROTO-0911 #5): tệp chỉ đính kèm, hệ thống không đọc Excel — test nhập bảng bằng số mẫu (D.rstkSample) như người dùng gõ tay.
 export async function fillRsk(page, send = true) {
   await page.locator('[data-rsk-ed]').waitFor();
   await page.locator('#rsk-file').setInputFiles({ name: 'Ket-qua-ra-soat.xlsx', mimeType: 'application/vnd.ms-excel', buffer: Buffer.alloc(16) });
-  await expect(page.locator('[data-rsk-imported]')).toBeVisible();
+  await expect(page.locator('.rsk-file')).toHaveText('Ket-qua-ra-soat.xlsx');
+  await page.evaluate(() => {
+    D.rstkSample(D.items, Flow.state.clock).kq.rows.forEach((r) => Object.keys(r).forEach((k) => {
+      const el = document.querySelector(`[data-rsk-in="${r.n}:${k}"]`);
+      if (el) el.value = r[k] == null ? '' : String(r[k]);
+    }));
+  });
   if (send) { await page.locator('[data-rsk-save]').click(); await expect(page).toHaveURL(/#\/viec-cua-toi$/); }
 }
 

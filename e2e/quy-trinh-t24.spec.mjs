@@ -83,10 +83,12 @@ test('Q1: luật sang màn khác hoặc vai khác thì ẩn nút; tài khoản t
 test('Q1: luồng con MS01.0x dùng luật của MS01; quy trình chưa có luật (MS13) giữ nguyên nút', async ({ page }) => {
   await fresh(page, '#/viec-cua-toi');
   const r = await page.evaluate(() => ({
-    a: MaTran.allowed('MS01.03', '11', 'Gửi chỉ huy duyệt', 'minh').show,
+    a: MaTran.allowed('MS01.03', '11', 'Soạn thảo tờ trình ĐXMS', 'minh').show,
+    // T39 B1 (fail-closed): bước đã có nhánh đối soát, nhãn không khớp luật nào → không hiện.
+    x: MaTran.allowed('MS01.03', '11', 'Gửi chỉ huy duyệt', 'minh').show,
     k: MaTran.allowed('MS13', '10', 'Bất kỳ', 'minh').show,
   }));
-  expect(r).toEqual({ a: true, k: true });
+  expect(r).toEqual({ a: true, x: false, k: true });
 });
 
 test('Q2: đồng bộ thêm phiên bản, chuyển Dừng hoạt động, sinh luật còn thiếu; lần sau không đổi', async ({ page }) => {

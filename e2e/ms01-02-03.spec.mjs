@@ -7,11 +7,10 @@ import { fresh, primary, lastToast, state, openForm, aiDecide, closeForm, upload
 async function startDemo(page, key) {
   await page.locator('#demo').click();
   await page.locator(`[data-demo-set="${key}"]`).click();
-  await expect(page).toHaveURL(/#\/ho-so-dxms\/create\//);
-  await expect(page.locator('[data-vsel="c-dxms"]')).toHaveClass(/dis/);
-  await expect(page.locator('[data-vsel="c-kind"]')).toHaveText('Phê duyệt ĐXMS');
-  await expect(page.locator('#c-proc')).toHaveValue(/^MS01 — /);
-  await page.locator('#c-save').click();
+  // T34 (D-90): Lập ĐXMS trên chính ĐXMS mẫu (chưa có hồ sơ) — Lưu nháp tạo hồ sơ, khởi tạo MS01.
+  await expect(page).toHaveURL(/#\/luong\/create\//);
+  await page.locator('[data-luong-form]').waitFor();
+  await page.locator('#lf-draft').click();
   await expect(page).toHaveURL(/#\/task\//);
   expect(await page.evaluate(() => Flow.state.vars.process), 'luồng con dự kiến theo giá trị / căn cứ của ĐXMS').toBe(key);
 }
@@ -63,8 +62,8 @@ test('MS01.02 (ĐXMS-2026-0124): chỉ căn cứ đã được TĐ duyệt; ≥ 
   test.setTimeout(120_000);
   await fresh(page, '#/viec-cua-toi');
   await startDemo(page, 'MS01.02');
-  // Task 01 (D-81): căn cứ của hồ sơ MS01.02 — 1876/QĐ-TĐ (đã duyệt) ở khối chỉ xem Thông tin chung.
-  await expect(page.locator('[data-basis-avail] tbody').first()).toContainText('1876/QĐ-TĐ');
+  // Task 01 (D-81): T37 (RV-PROTO-0911 #4) bỏ khối Văn bản căn cứ và giá trị còn khả dụng.
+  await expect(page.locator('[data-basis-avail]')).toHaveCount(0);
 
   const seen = await runMain(page, async (tok) => {
     if (tok.task === 10) {
@@ -91,7 +90,7 @@ test('MS01.03 (ĐXMS-2026-0098): BM-09 + Checklist 02, Ban Tài chính bắt bu�
   test.setTimeout(120_000);
   await fresh(page, '#/viec-cua-toi');
   await startDemo(page, 'MS01.03');
-  await expect(page.locator('[data-basis-avail] tbody').first()).toContainText('0412/QĐ-VHT');
+  await expect(page.locator('[data-basis-avail]')).toHaveCount(0); // T37 #4
 
   const seen = await runMain(page, async (tok) => {
     if (tok.task === 11) {
@@ -191,7 +190,7 @@ test('công cụ demo: cảnh của bộ đang chọn; đổi bộ thì đặt l
   await closeForm(page);
   await page.locator('#demo').click();
   await page.locator('[data-demo-set="MS01.02"]').click();
-  await expect(page).toHaveURL(/#\/ho-so-dxms\/create\/%C4%90XMS-2026-0124$/);
+  await expect(page).toHaveURL(/#\/luong\/create\/%C4%90XMS-2026-0124$/);
   expect(await page.evaluate(() => [Flow.state.status, Flow.state.qNotes['P-20']])).toEqual(['new', 'ý kiến thử']);
   expect(await lastToast(page)).toContain('ĐXMS-2026-0124');
   expect(page.errors).toEqual([]);

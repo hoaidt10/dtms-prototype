@@ -18,12 +18,14 @@ const SHOTS = [
   { id: 'luong-danh-sach', hash: '#/luong', who: 'minh' },
   { id: 'luong-them-moi', hash: '#/luong/create', who: 'minh' },
   { id: 't01-can-cu', task: 1, form: true },
-  { id: 't05-boc-tach', task: 5, form: true },
+  { id: 't05-boc-tach', task: 5, form: true, scrollText: ['.lf-sub-h h4', 'Bóc tách'] },
   { id: 'kho-ra-soat', scene: '1b', after: '#/ra-soat-kho' },
-  { id: 't07-ton-kho', task: 7, form: true },
+  /* Review nhi 06/11 #21: bước 7 mở thẳng màn Rà soát tồn kho (= ảnh kho-ra-soat) → chụp việc Chỉ huy Kho duyệt (7.1). */
+  { id: 't07-1-chi-huy-kho', task: '7.1' },
   { id: 't08-ycbg', task: 8, form: true, scrollTo: '[data-ef-field="dkThanhToan"]' },
-  { id: 't10-bao-gia', task: 10, el: '[data-bg-card]' },
-  { id: 't10-vuot-can-cu', branch: 'Báo giá vượt phần căn cứ', el: '[data-bg-card]' },
+  /* Review nhi 06/11 #2, #3 (P-219, D.quoteManual): bỏ card Đánh giá báo giá — chụp hộp thoại Báo giá đạt và việc Chỉ huy Thầu duyệt (10.1). */
+  { id: 't10-bao-gia', task: 10, form: true },
+  { id: 't10-1-chi-huy-thau', task: '10.1' },
   { id: 't12-du-thao', task: 12 },
   { id: 't13-chi-huy', task: 13 },
   { id: 't17-ttms-cqcm', task: 17 },
@@ -31,9 +33,11 @@ const SHOTS = [
   { id: 't28-giai-trinh', task: 28, form: true },
   { id: 't42-bm05', task: 42 },
   { id: 't60-phe-duyet', task: 60 },
+  /* T34 D-95: tab Tài liệu & văn bản (Danh sách tài liệu + Văn bản đầu ra) của màn việc. */
+  { id: 't60-tai-lieu', task: 60, tab: 'tai-lieu', full: true },
   { id: 'bpmn', task: 10, bpmnBtn: true },
-  /* T33 B2: tour 3 ở bước Vượt phần căn cứ (không ở ?capture=1 vì capture ẩn tour). */
-  { id: 'tour', nocap: true, tour: [3, 7] },
+  /* T33 B2: tour 3 ở bước 10 Tổng hợp báo giá (không ở ?capture=1 vì capture ẩn tour). */
+  { id: 'tour', nocap: true, tour: [3, 4] },
 ];
 
 const b = await chromium.launch();
@@ -73,17 +77,22 @@ for (const s of SHOTS) {
   }
   await page.waitForTimeout(300);
   if (s.click) await page.locator(s.click).click();
+  if (s.tab) { await page.locator(`[data-ltab="${s.tab}"]`).click(); await page.waitForTimeout(300); }
   const acts = await page.locator('.task-acts [data-act]').allTextContents();
   const title = (await page.locator('.pg-title').first().textContent().catch(() => '')) || '';
-  if (s.form) { await page.locator('.task-acts [data-act].primary').first().click(); await page.waitForSelector('.vmodal.ef'); }
-  if (s.scrollTo) await page.locator(s.form ? `.vmodal.ef ${s.scrollTo}` : s.scrollTo).first().scrollIntoViewIfNeeded().catch(() => {});
-  if (s.scrollTo && !s.form) await page.evaluate((q) => { const el = document.querySelector(q); if (el) el.scrollIntoView({ block: 'start' }); }, s.scrollTo);
+  /* Bước có form ngay trên màn (Lập / bóc tách ĐXMS, v0.2) không có nút [data-act] mở hộp thoại → chụp nguyên màn. */
+  const modal = s.form && (await page.locator('.task-acts [data-act].primary').count()) > 0;
+  /* Nút chính có thể mở hộp thoại eForm hoặc chuyển sang màn riêng (bước 7 → Rà soát kho). */
+  if (modal) { await page.locator('.task-acts [data-act].primary').first().click(); await page.waitForSelector('.vmodal.ef', { timeout: 3000 }).catch(() => {}); await page.waitForTimeout(300); }
+  if (s.scrollTo) await page.locator(modal ? `.vmodal.ef ${s.scrollTo}` : s.scrollTo).first().scrollIntoViewIfNeeded().catch(() => {});
+  if (s.scrollTo && !modal) await page.evaluate((q) => { const el = document.querySelector(q); if (el) el.scrollIntoView({ block: 'start' }); }, s.scrollTo);
+  if (s.scrollText) await page.evaluate(([q, t]) => { const el = [...document.querySelectorAll(q)].find((e) => e.textContent.trim().startsWith(t) || e.textContent.includes(t)); if (el) el.closest('.lf-sub-h').scrollIntoView({ block: 'center' }); }, s.scrollText);
   await page.waitForTimeout(200);
-  const formTitle = s.form ? (await page.locator('.vmodal.ef .modal-h, .vmodal.ef h3').first().textContent().catch(() => '')) : '';
+  const formTitle = modal ? (await page.locator('.vmodal.ef .modal-h, .vmodal.ef h3').first().textContent().catch(() => '')) : '';
   if (s.bpmnBtn) { await page.locator('button, a', { hasText: 'Xem BPMN' }).first().click(); await page.waitForTimeout(800); }
   if (s.el) await page.addStyleTag({ content: '.topbar{visibility:hidden!important}' });
   if (s.el) await page.locator(s.el).first().screenshot({ path: path.join(OUT, s.id + '.jpg'), type: 'jpeg', quality: 72 });
-  else await page.screenshot({ path: path.join(OUT, s.id + '.jpg'), type: 'jpeg', quality: 72 });
+  else await page.screenshot({ path: path.join(OUT, s.id + '.jpg'), type: 'jpeg', quality: 72, fullPage: !!s.full });
   info[s.id] = { who, persona: await page.evaluate((w) => { const p = UI.persona(w); return `${p.name} — ${p.role}`; }, who), title: title.trim(), acts: acts.map((a) => a.trim()), formTitle: (formTitle || '').trim() };
 }
 await b.close();

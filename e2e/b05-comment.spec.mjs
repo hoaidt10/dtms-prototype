@@ -14,30 +14,31 @@ async function jump(page, task, vars = {}, proc = 'MS01.01') {
 const docs = (page) => page.locator('section.vcard', { hasText: 'Danh sách tài liệu' });
 const outs = (page) => page.locator('section.vcard', { hasText: 'Văn bản đầu ra' });
 
-test('#1, #12 SCR-28: Nhiệm vụ / Đề tài bắt buộc; Mật → AI kiểm tra quy tắc bảo mật', async ({ page }) => {
-  await fresh(page, '#/dxms/create');
-  await page.locator('#x-title').fill('Mua sắm anten băng Ka');
-  await page.locator('#x-save').click();
-  await expect(page.locator('.vfield.invalid .msg')).toHaveText(['Bạn cần chọn Đề tài / dự án.']);
-  await expect(page.locator('[data-sec-check]')).toHaveCount(0);
-  await page.locator('[data-vsel="x-nv"]').click();
-  await page.locator('.vsel-panel [data-opt="NV-KHCN-2026-006"]').click();
-  await expect(page.locator('input[value="Nhiệm vụ KHCN"]')).toHaveCount(1);
-  await page.locator('[data-vsel="x-sec"]').click();
-  await page.locator('.vsel-panel [data-opt="Có"]').click();
-  const card = page.locator('[data-sec-check]');
-  await expect(card).toContainText('AI kiểm tra quy tắc bảo mật');
-  await expect(card.locator('tr', { hasText: 'Tên ĐXMS' }).locator('.vbadge')).toHaveText('Không đạt');
-  await page.locator('#x-title').fill('Mua sắm thiết bị đo kiểm');
-  await page.locator('#x-title').blur();
-  await expect(page.locator('[data-sec-check] tr', { hasText: 'Tên ĐXMS' }).locator('.vbadge')).toHaveText('Đạt');
-  await page.locator('#x-save').click();
-  await expect(page).toHaveURL(/#\/dxms$/);
-  const code = await page.evaluate(() => Flow.dxmsAll()[0].code);
-  await page.evaluate((c) => { location.hash = '#/dxms/' + encodeURIComponent(c); }, code);
-  await expect(page.locator('.ginfo')).toContainText('NV-KHCN-2026-006 — Anten mảng pha băng Ka');
-  expect(page.errors).toEqual([]);
-});
+// T34 (D-90): SCR-28 Thêm mới ĐXMS — comment cùng màn Tách.
+// [T34 bỏ Tách] test('#1, #12 SCR-28: Nhiệm vụ / Đề tài bắt buộc; Mật → AI kiểm tra quy tắc bảo mật', async ({ page }) => {
+// [T34 bỏ Tách]   await fresh(page, '#/dxms/create');
+// [T34 bỏ Tách]   await page.locator('#x-title').fill('Mua sắm anten băng Ka');
+// [T34 bỏ Tách]   await page.locator('#x-save').click();
+// [T34 bỏ Tách]   await expect(page.locator('.vfield.invalid .msg')).toHaveText(['Bạn cần chọn Đề tài / dự án.']);
+// [T34 bỏ Tách]   await expect(page.locator('[data-sec-check]')).toHaveCount(0);
+// [T34 bỏ Tách]   await page.locator('[data-vsel="x-nv"]').click();
+// [T34 bỏ Tách]   await page.locator('.vsel-panel [data-opt="NV-KHCN-2026-006"]').click();
+// [T34 bỏ Tách]   await expect(page.locator('input[value="Nhiệm vụ KHCN"]')).toHaveCount(1);
+// [T34 bỏ Tách]   await page.locator('[data-vsel="x-sec"]').click();
+// [T34 bỏ Tách]   await page.locator('.vsel-panel [data-opt="Có"]').click();
+// [T34 bỏ Tách]   const card = page.locator('[data-sec-check]');
+// [T34 bỏ Tách]   await expect(card).toContainText('AI kiểm tra quy tắc bảo mật');
+// [T34 bỏ Tách]   await expect(card.locator('tr', { hasText: 'Tên ĐXMS' }).locator('.vbadge')).toHaveText('Không đạt');
+// [T34 bỏ Tách]   await page.locator('#x-title').fill('Mua sắm thiết bị đo kiểm');
+// [T34 bỏ Tách]   await page.locator('#x-title').blur();
+// [T34 bỏ Tách]   await expect(page.locator('[data-sec-check] tr', { hasText: 'Tên ĐXMS' }).locator('.vbadge')).toHaveText('Đạt');
+// [T34 bỏ Tách]   await page.locator('#x-save').click();
+// [T34 bỏ Tách]   await expect(page).toHaveURL(/#\/dxms$/);
+// [T34 bỏ Tách]   const code = await page.evaluate(() => Flow.dxmsAll()[0].code);
+// [T34 bỏ Tách]   await page.evaluate((c) => { location.hash = '#/dxms/' + encodeURIComponent(c); }, code);
+// [T34 bỏ Tách]   await expect(page.locator('.ginfo')).toContainText('NV-KHCN-2026-006 — Anten mảng pha băng Ka');
+// [T34 bỏ Tách]   expect(page.errors).toEqual([]);
+// [T34 bỏ Tách] });
 
 test('#24: Chọn mẫu tài liệu theo bước + quy trình; Văn bản đầu ra có Trạng thái', async ({ page }) => {
   await fresh(page);

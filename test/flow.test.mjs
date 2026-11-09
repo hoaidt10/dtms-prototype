@@ -277,6 +277,10 @@ test('ĐXMS: mã tự sinh, sửa/xoá; hồ sơ Phê duyệt giữ số của �
   assert.equal(Flow.findDxms('ĐXMS-2026-0119'), null);
   // Hồ sơ Điều chỉnh của ĐXMS-2026-0103 (đã phê duyệt): số trống đầu tiên từ 0127; ĐXMS và hồ sơ đã tạo được giữ khi tạo hồ sơ Phê duyệt khác.
   assert.equal(Flow.createAdj({ dxms: 'ĐXMS-2026-0103', name: 'Điều chỉnh lần 1', process: 'MS02', total: 220 }), 'HS-2026-0127');
+  // T34 (D-85): Điều chỉnh tạo ĐXMS mới (mã mới, không lấy 0117), hồ sơ giữ 4 số của ĐXMS mới; chuỗi 0103 → 0127.
+  assert.equal(Flow.ci().dxms, 'ĐXMS-2026-0127');
+  assert.deepEqual(plain([Flow.findDxms('ĐXMS-2026-0127').adjFrom, Flow.findDxms('ĐXMS-2026-0127').adjN, Flow.findDxms('ĐXMS-2026-0127').root]), ['ĐXMS-2026-0103', 1, 'ĐXMS-2026-0103']);
+  assert.deepEqual(plain(Flow.dxmsChain('ĐXMS-2026-0127').map((x) => x.code)), ['ĐXMS-2026-0103', 'ĐXMS-2026-0127']);
   Flow.create('MS01.03', { dxms: 'ĐXMS-2026-0117' });
   assert.equal(Flow.ci().code, 'HS-2026-0117');
   assert.equal(Flow.state.adj[0].code, 'HS-2026-0127');
@@ -474,7 +478,9 @@ test('bộ demo: mỗi cảnh của ba hồ sơ demo đặt đúng task, vai và
       assert.equal(Flow.demoSet().key, set.key, `cảnh ${s.n}: bộ demo`);
       if (s.start === 'NEW') { assert.equal(Flow.state.status, 'new'); continue; }
       if (s.start === 'END') { assert.equal(Flow.state.status, 'approved', `cảnh ${s.n}`); continue; }
-      assert.equal(Flow.ci().dxms, s.kdt || s.dxms || set.dxms || set.kdt);
+      // T34 (D-85): hồ sơ Điều chỉnh thuộc ĐXMS mới, Điều chỉnh từ = ĐXMS của cảnh.
+      const want = s.kdt || s.dxms || set.dxms || set.kdt;
+      assert.equal(Flow.ci().kind === 'DC' ? Flow.ci().adjFrom : Flow.ci().dxms, want, `cảnh ${s.n}: ĐXMS`);
       assert.equal(Flow.state.vars.process === set.key || Flow.ci().flow === set.key, true, `cảnh ${s.n}: quy trình`);
       // T29 B3a: cảnh Kho (việc ngoài sơ đồ) — token bước 7 thuộc ĐVĐX, Kho làm SCR-105.
       if (s.go === 'ra-soat-kho') { assert.ok(Flow.state.tokens.find((t) => String(t.task) === '7'), `cảnh ${s.n}: hồ sơ ở bước 7`); continue; }

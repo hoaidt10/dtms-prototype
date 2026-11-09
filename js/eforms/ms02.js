@@ -10,7 +10,7 @@
   const pick = (vals, keys) => keys.reduce((o, k) => { if (vals[k] !== undefined) o[k] = vals[k]; return o; }, {});
 
   /* Dòng đầu mọi form MS02 + banner chuyển ngưỡng (D-39). */
-  const head = () => txt('**Điều chỉnh lần {{adj.lan}}** · ĐXMS {{adj.dxms}} · căn cứ hồ sơ {{adj.from}} · giá trị đã phê duyệt **{{adj.before}} tỷ** → sau điều chỉnh **{{adj.total}} tỷ** ({{adj.chenhLech}}) · luồng {{adj.nhanh}}');
+  const head = () => txt('**Điều chỉnh lần {{adj.lan}}** · ĐXMS {{adj.moi}} điều chỉnh {{adj.dxms}} · căn cứ hồ sơ {{adj.from}} · giá trị đã phê duyệt **{{adj.before}} tỷ** → sau điều chỉnh **{{adj.total}} tỷ** ({{adj.chenhLech}}) · luồng {{adj.nhanh}}');
   const cross = () => banner('{{adj.cross}}', '=adj.cross = ""', 'moved');
   const LY_DO = opts(['Thay đổi giá thị trường', 'Thay đổi quy mô, số lượng', 'Thay đổi yêu cầu kỹ thuật', 'Thay đổi nguồn vốn, thời gian', 'Khác']);
   const PHAM_VI = opts(['Giá trị', 'Danh mục hàng hoá / số lượng', 'Thời gian thực hiện', 'Nguồn vốn', 'Nội dung kỹ thuật']);

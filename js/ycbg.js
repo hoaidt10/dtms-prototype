@@ -55,11 +55,13 @@
     const kdt = isKdt(code);
     const x = kdt ? Flow.findKdt(code) : Flow.findDxms(code);
     if (!x) return null;
-    const cases = kdt ? Flow.kdtCases().filter((c) => c.kdt === code) : S.allCases().filter((c) => c.dxms === code);
+    /* T34: ĐXMS điều chỉnh / ĐXMS cũ xem dữ liệu của cả chuỗi điều chỉnh (căn cứ, tồn kho, báo giá, phiên bản gốc ở hồ sơ Phê duyệt của ĐXMS gốc). */
+    const chain = kdt ? [] : Flow.dxmsChain(code).map((o) => o.code);
+    const cases = kdt ? Flow.kdtCases().filter((c) => c.kdt === code) : S.allCases().filter((c) => (chain.length ? chain : [code]).includes(c.dxms));
     const pd = kdt ? (cases.find((c) => c.st !== 'moved') || cases[0] || null)
       : cases.find((c) => c.kind === 'PD' && c.st !== 'moved') || cases.find((c) => c.kind === 'PD') || null;
     const live = !!(pd && pd.live && (!kdt || Flow.state.kdt === code));
-    const demo = D.demoCases[code] || (live ? D.demoCases[kdt ? D.kdtCode0 : D.dxmsCode0] : null);
+    const demo = D.demoCases[code] || (chain.length && D.demoCases[chain[0]]) || (live ? D.demoCases[kdt ? D.kdtCode0 : D.dxmsCode0] : null);
     /* Hồ sơ KĐT chuyển sang MS14 mang theo căn cứ, tồn kho, báo giá của hồ sơ MS13 → coi như đã qua các bước đó. */
     const reached = !pd ? 0 : live ? null : pd.st === 'processing' && pd.flow !== 'MS14' ? (pd.task || 1) : pd.st === 'stopped' && !kdt ? 11 : 99;
     const did = (n) => (live ? Flow.doneCount(n) > 0 : reached > n);
@@ -265,7 +267,7 @@
     const o = K[y.kdt ? 'kdt' : 'dxms'];
     const NST = (n) => (!n.got ? badge('Chưa phản hồi', 'default') : n.expired ? badge('Hết hiệu lực', 'error') : badge('Đã nhận báo giá', 'success'));
     const qFile = (n) => `Bao-gia-${String(n.short || n.code).replace(/^NCC /, '')}${y.lan > 1 ? '-lan-' + y.lan : ''}.pdf`;
-    const hist = [{ at: y.sent, who: y.creator, act: 'Khởi tạo yêu cầu báo giá' }, { at: y.sent, who: 'Hệ thống ĐTMS', act: `Gửi email yêu cầu báo giá tới ${y.ncc.length} nhà cung cấp` }]
+    const hist = [{ at: y.sent, who: y.creator, act: 'Khởi tạo yêu cầu báo giá' }, { at: y.sent, who: y.creator, act: `Lưu yêu cầu báo giá — ${y.ncc.length} nhà cung cấp nhận (T37: chưa gửi email)` }]
       .concat(y.ncc.filter((n) => n.got).map((n) => ({ at: n.date, who: y.creator, act: `Ghi nhận báo giá của ${n.name}` })))
       .concat(y.status === 'OK' || y.status === 'FAIL' ? [{ at: addDays(y.sent, 6), who: y.creator, act: YST[y.status][0] }] : y.status === 'CANCEL' ? [{ at: addDays(y.sent, 3), who: 'Hệ thống ĐTMS', act: 'Huỷ do hồ sơ kết thúc' }] : []);
     return `<div class="pg">
@@ -274,7 +276,7 @@
         ${kv('Mã yêu cầu báo giá', esc(y.code))}${kv('Lần gửi', String(y.lan))}${kv('Trạng thái', badge(...YST[y.status]))}
         ${kv('Mã ' + o.obj, y.dxms ? `<a class="link-red" href="#/${o.objHref(y.dxms)}">${esc(y.dxms)}</a>` : '')}${kv(y.user ? 'Tên yêu cầu báo giá' : 'Tên ' + o.obj, esc(y.title), 'span2')}
         ${kv('Mã hồ sơ', y.hs ? `<a class="link-red" href="#/${y.hsHref}">${esc(y.hs)}</a>` : '')}${kv('Đơn vị đề xuất', esc(y.unit))}${kv('Người tạo', esc(y.creator))}
-        ${kv('Ngày gửi', esc(y.sent))}${kv('Hạn báo giá', esc(y.due))}${kv('Kênh gửi', y.status === 'DRAFT' ? '' : 'Email hệ thống (thay TTMS)')}
+        ${kv('Ngày gửi', esc(y.sent))}${kv('Hạn báo giá', esc(y.due))}${kv('Kênh gửi', y.status === 'DRAFT' ? '' : 'Công văn TTMS gửi (hệ thống chưa gửi email)')}
         ${y.kdt ? '' : kv('Dự án / Đề tài', esc(y.nvText), 'span3')}</div></section>
       ${y.terms ? `<section class="vcard pad24"><h3>Điều khoản trên phiếu yêu cầu báo giá</h3><div class="ginfo c3">${kv('Điều kiện thanh toán', esc(y.terms.payment), 'span3')}${kv('Địa điểm giao hàng', esc(y.terms.place))}${kv('Bảo hành tối thiểu', y.terms.warranty != null && y.terms.warranty !== '' ? esc(y.terms.warranty + ' tháng') : dash)}${kv('Năm sản xuất từ', y.terms.year ? esc(y.terms.year) : dash)}${kv('Đầu mối tiếp nhận báo giá', esc(y.terms.contact), 'span3')}${kv('Các yêu cầu khác', esc(y.terms.other), 'span3')}</div></section>` : ''}
       <section class="vcard pad24"><h3>Hạng mục yêu cầu báo giá</h3>
@@ -338,6 +340,15 @@
     if (!ys.length) return emptyCard('Yêu cầu báo giá', 'Chưa có yêu cầu báo giá. Yêu cầu báo giá được khởi tạo từ phần nhu cầu còn phải mua sau rà soát tồn kho.');
     const last = ys[ys.length - 1];
     const totals = ys.filter((y) => y.ncc.some((n) => n.got)).map((y) => ({ y, total: basisOf(y).reduce((s, b) => s + (b.amount || 0), 0) }));
+    /* [T37 RV-PROTO-0911 #3] ĐXMS: bỏ So sánh báo giá và cơ sở giá + Lịch sử cơ sở giá; Danh sách thêm cột Tổng giá trị theo cơ sở giá
+       (YCBG chưa nhận báo giá: -). KĐT giữ như cũ. */
+    if (!g.kdt) {
+      const tot = (y) => { const r = totals.find((t) => t.y === y); return r ? ty(r.total, 2) : '-'; };
+      return `<section class="vcard pad24" data-ycbg-list><h3>Danh sách yêu cầu báo giá</h3>
+      ${table([['Trạng thái', 169, 'c'], ['Mã yêu cầu báo giá', 180], ['Lần', 60, 'c'], ['Nhà cung cấp nhận', 320], ['Số báo giá đã nhận', 140, 'c'], ['Tổng giá trị theo cơ sở giá (tỷ đồng)', 200, 'r'], ['Ngày gửi', 120], ['Hạn báo giá', 120]], ys,
+        (y, i) => `${ord(i)}<td class="c">${badge(...YST[y.status])}</td><td><a class="link" data-go="${yHref(y)}">${esc(y.code)}</a></td><td class="c">${y.lan}</td>
+          <td>${clamp(y.ncc.map((n) => n.name).join('; '))}</td><td class="c">${y.ncc.filter((n) => n.got).length}</td><td class="r num" data-ycbg-total>${tot(y)}</td><td class="num">${esc(y.sent)}</td><td class="num">${esc(y.due)}</td>`)}</section>`;
+    }
     return `<section class="vcard pad24"><h3>Danh sách yêu cầu báo giá</h3>
       ${table([['Trạng thái', 169, 'c'], ['Mã yêu cầu báo giá', 180], ['Lần', 60, 'c'], ['Nhà cung cấp nhận', 360], ['Số báo giá đã nhận', 140, 'c'], ['Ngày gửi', 120], ['Hạn báo giá', 120]], ys,
         (y, i) => `${ord(i)}<td class="c">${badge(...YST[y.status])}</td><td><a class="link" data-go="${yHref(y)}">${esc(y.code)}</a></td><td class="c">${y.lan}</td>
@@ -365,20 +376,24 @@
   ];
   function tabPhienBan(g) {
     const vs = versionsOf(g);
-    if (!vs.length) return emptyCard('Lịch sử phiên bản', 'Chưa có phiên bản hồ sơ. Phiên bản đầu được tạo khi lập dự thảo hồ sơ ĐXMS.');
+    if (!vs.length) return emptyCard('Lịch sử phiên bản', 'Chưa có phiên bản Tờ trình. Phiên bản đầu được tạo khi lập dự thảo Tờ trình ĐXMS.');
     const cur = vs.find((v) => v.cur);
     const cmp = vs.length > 1 ? `<section class="vcard pad24" data-dxms-cmp><div class="vcard-h"><h3>So sánh phiên bản</h3><span class="cap">v1 → v2 · thay đổi sau khi CQCM yêu cầu sửa</span></div>
       ${table([['Nội dung', 280], ['Phiên bản v1', 380], ['Phiên bản v2', 380]], (g.demo && g.demo.versionDiff) || GENERIC_DIFF,
         (d, i) => `${ord(i)}<td>${clamp(d.field)}</td><td><span class="diff-old">${esc(d.from)}</span></td><td><span class="diff-new">${esc(d.to)}</span></td>`)}</section>` : '';
-    return `<section class="vcard pad24"><div class="vcard-h"><h3>Lịch sử phiên bản hồ sơ</h3><span class="cap">Phiên bản hiện tại: ${esc(cur.v)} · ${esc(g.pd.code)}</span></div>
+    return `<section class="vcard pad24"><div class="vcard-h"><h3>Lịch sử phiên bản Tờ trình</h3><span class="cap">Phiên bản hiện tại: ${esc(cur.v)}</span></div>
       ${table([['Phiên bản', 110], ['Thời điểm', 130], ['Người cập nhật', 200], ['Nội dung', 300], ['BM-04 đã ký / CQCM', 200], ['Hiện tại', 130, 'c']], vs,
         (v, i) => `${ord(i)}<td>${esc(v.v)}</td><td class="num">${esc(v.at || '')}</td><td>${esc(v.who)}</td><td>${clamp(v.why)}</td><td>${esc(v.bm04)}</td><td class="c">${v.cur ? badge('Hiện tại', 'success') : dash}</td>`)}</section>${cmp}`;
   }
-  function tabKetQua(g) {
+  /* Văn bản phê duyệt của các hồ sơ Hoàn thành (mới nhất = đang hiệu lực). Dùng ở tab Kết quả cũ và bảng Văn bản đầu ra của SCR-97 (D-95). */
+  function resultRows(g) {
     const done = g.cases.filter((c) => c.st === 'done').sort((a, b) => dkey(b.updated).localeCompare(dkey(a.updated)));
-    if (!done.length) return emptyCard('Kết quả & văn bản phê duyệt', 'ĐXMS chưa có hồ sơ được phê duyệt.');
-    const doc = (c) => (c.kind === 'DC' ? ['QĐ điều chỉnh ĐXMS', 'QĐ-VHT'] : c.flow === 'MS01.03' ? ['BM-09 Tờ trình ĐXMS (đã phê duyệt)', 'TTr-VHT'] : ['BM-08 Quyết định phê duyệt ĐXMS', c.flow === 'MS01.01' ? 'QĐ-TĐ' : 'QĐ-VHT']);
-    const rows = done.map((c, i) => ({ c, doc: doc(c), no: `${String(1000 + (Number(c.code.slice(-4)) * 7) % 900).padStart(4, '0')}/${doc(c)[1]}`, cur: i === 0 }));
+    const doc = (c) => (c.kind === 'DC' ? ['QĐ điều chỉnh ĐXMS', 'QĐ-VHT', 'BM-08'] : c.flow === 'MS01.03' ? ['BM-09 Tờ trình ĐXMS (đã phê duyệt)', 'TTr-VHT', 'BM-09'] : ['BM-08 Quyết định phê duyệt ĐXMS', c.flow === 'MS01.01' ? 'QĐ-TĐ' : 'QĐ-VHT', 'BM-08']);
+    return done.map((c, i) => ({ c, doc: doc(c), code: doc(c)[2], no: `${String(1000 + (Number(c.code.slice(-4)) * 7) % 900).padStart(4, '0')}/${doc(c)[1]}`, cur: i === 0 }));
+  }
+  function tabKetQua(g) {
+    const rows = resultRows(g);
+    if (!rows.length) return emptyCard('Kết quả & văn bản phê duyệt', 'ĐXMS chưa có hồ sơ được phê duyệt.');
     return `<section class="vcard pad24"><h3>Kết quả & văn bản phê duyệt</h3>
       ${table([['Hồ sơ', 150], ['Loại hồ sơ', 150], ['Quy trình', 100], ['Văn bản phê duyệt', 280], ['Số văn bản', 140], ['Ngày ký', 120], ['Giá trị phê duyệt (tỷ đồng)', 190, 'r'], ['Hiệu lực', 150, 'c'], ['Tệp', 80, 'c']], rows,
         (r, i) => `${ord(i)}<td><a class="link" data-go="${S.caseHref(r.c)}">${esc(r.c.code)}</a></td><td>${esc(D.kinds[r.c.kind].label)}</td><td>${esc(r.c.flow)}</td><td>${clamp(r.doc[0])}</td>
@@ -450,5 +465,14 @@
     if (k) { k.focus(); k.setSelectionRange(k.value.length, k.value.length); }
   });
 
-  window.Ycbg = { list, detail, tabs, ycbgOf, allYcbg, dataOf, basisOf, TAB_INFO, YST, table, ord, emptyCard, addDays, dkey, csv };
+  /* T34 (người dùng 09/11): một tab của Chi tiết ĐXMS cũ (SCR-29, bỏ cùng phương án Tách) vẽ trong Chi tiết luồng mua sắm (SCR-97). */
+  function tabBody(code, key) {
+    const g = dataOf(code);
+    if (!g) return '';
+    return { 'can-cu': tabCanCu, 'ton-kho': tabTonKho, ycbg: tabYcbg, 'phien-ban': tabPhienBan, 'ket-qua': tabKetQua }[key](g);
+  }
+  /* D-95: dữ liệu cho bảng Văn bản đầu ra gộp của SCR-97 — phiên bản Tờ trình và văn bản phê duyệt. */
+  const versions = (code) => { const g = dataOf(code); return g ? versionsOf(g) : []; };
+  const results = (code) => { const g = dataOf(code); return g ? resultRows(g) : []; };
+  window.Ycbg = { list, detail, tabs, tabBody, versions, results, ycbgOf, allYcbg, dataOf, basisOf, TAB_INFO, YST, table, ord, emptyCard, addDays, dkey, csv };
 })();

@@ -295,8 +295,8 @@
   const adjBranch = () => { const a = adj(); return a ? D.adjBranch(Object.assign({}, Flow.state.vars, { big: a.total >= adjTh() })) : null; };
   const adjCases = () => (Flow.state.adj || []).concat(D.otherCases);
   const adjFrom = () => { const a = adj(); return (a && a.from && adjCases().find((c) => c.code === a.from)) || null; };
-  /* Lần điều chỉnh = số hồ sơ Điều chỉnh đã hoàn thành của ĐXMS + 1. */
-  const adjLan = () => 1 + adjCases().filter((c) => c.dxms === Flow.state.dxms && c.kind === 'DC' && c.st === 'done' && c.code !== Flow.state.code).length;
+  /* Lần điều chỉnh = adjN của ĐXMS điều chỉnh (T34: mỗi lần điều chỉnh là một ĐXMS mới). */
+  const adjLan = () => (Flow.findDxms(Flow.state.dxms) || {}).adjN || 1;
   const adjCross = () => { const a = adj(), th = adjTh(); return !!a && (a.before >= th) !== (a.total >= th); };
   /* Bảng so sánh trước – sau (bước 4 sửa cột Sau; dòng giá trị lấy từ ô Giá trị sau điều chỉnh). */
   function adjRows() {
@@ -312,7 +312,7 @@
   function adjDone() {
     const T = window.Thau, H = window.HopDong, rows = [];
     if (!T) return rows;
-    T.khAll().filter((k) => k.src[0] === 'DXMS' && k.src[1] === Flow.state.dxms).forEach((k) => {
+    T.khAll().filter((k) => k.src[0] === 'DXMS' && Flow.dxmsChain(Flow.state.dxms).some((x) => x.code === k.src[1])).forEach((k) => {
       rows.push({ loai: 'KHLCNT', ma: k.code, noiDung: k.title, trangThai: (T.KH_ST[k.st] || [k.st])[0] });
       T.pkgsOf(k).forEach((p) => {
         rows.push({ loai: 'Gói thầu', ma: p.code, noiDung: p.title || p.name || '', trangThai: (T.PK_ST[p.st] || [p.st])[0] });
@@ -333,7 +333,7 @@
     const a = adj();
     if (a) {
       const th = adjTh(), fc = adjFrom() || {}, br = adjBranch(), cross = adjCross();
-      v.adj = { dxms: ci.dxms, from: a.from || '-', fromFlow: a.fromFlow || '-', fromAt: fc.updated || '-', before: ty(a.before), total: ty(a.total), lan: pad2(adjLan()),
+      v.adj = { dxms: a.fromDxms || ci.dxms, moi: ci.dxms, from: a.from || '-', fromFlow: a.fromFlow || '-', fromAt: fc.updated || '-', before: ty(a.before), total: ty(a.total), lan: pad2(adjLan()),
         reason: a.reason || '', chenhLech: (a.total >= a.before ? '+' : '') + ty(a.total - a.before), nhanh: br, nguong: th,
         boVanBan: br === 'MS02.03' ? 'Tờ trình BM-09 + Checklist 02, ký thẩm định trực tiếp' : br === 'MS02.01' ? 'BM-01 + Checklist 01, BM-05, báo cáo Tập đoàn, Quyết định BM-08' : 'BM-01 + Checklist 01, BM-05, Quyết định BM-08',
         cross: cross ? `Hồ sơ chuyển ngưỡng: giá trị sau điều chỉnh ${ty(a.total)} tỷ ${a.total >= th ? '≥' : '<'} ${th} tỷ, ĐXMS cũ ${ty(a.before)} tỷ — luồng ${br}.` : '' };

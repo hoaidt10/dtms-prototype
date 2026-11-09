@@ -236,6 +236,7 @@
     '16.1': approve('hai', 'SCR-10', 17, 16, 'Phê duyệt phiếu yêu cầu thẩm định'),
     /* BPMN v1.1: bước 17 TTMS chỉ kết luận danh sách CQCM (Đồng ý → 18, Từ chối → 16); gửi yêu cầu + trình ký BM-03 là service task 18 của hệ thống (P-225). */
     17: approve('lan', 'SCR-22', 18, 16, 'Đồng ý', 'Từ chối'),
+    /* DX-12 (D-100, duyệt tạm 09/11, chờ BA): 19–22 chạy riêng từng CQCM (multi-instance), 23 gộp khi đủ BM-04 đã ký. */
     18: { fork: 'cqcm', to: 19, kpiStart: true, sysSign: 'BM-03' },
     19: { who: 'cqcm:doer', scr: 'SCR-11', next: 20, nlv: 1, actionLabel: 'Hoàn thành phiếu, trình chỉ huy' },
     20: { who: 'cqcm:signer', scr: 'SCR-11', nlv: 0.5, choices: [
@@ -261,7 +262,9 @@
     33: { who: 'lan', scr: 'SCR-14', next: 34, nlv: 0.25 },
     34: { who: 'tgd', scr: 'SCR-14', nlv: 1, choices: [
       { label: 'Thống nhất phương án', to: 27, main: true, reason: true },
+      /* DX-15 (D-100): về 14 rồi rẽ 11 / 12 theo giá trị (bản vẽ v1.1 luôn về 12). */
       { label: 'Yêu cầu xử lý lại', to: 14, kind: 'secondary', reason: true }] },
+    /* DX-13 (D-100): 35–37 theo từng CQCM; một CQCM Chưa đạt hủy cả lượt (cancelGroup) → 27. */
     fork35: { gw: true, fork: 'cqcm', to: 35 },
     35: { who: 'cqcm:doer', scr: 'SCR-15', nlv: 0.5, choices: [
       { label: 'Đạt', to: 36, main: true },
@@ -270,7 +273,8 @@
       { label: 'Xác nhận ký BM-04 & Checklist 01', to: 37, main: true, sign: 'BM-04 + Checklist 01',
         small: { label: 'Xác nhận ký BM-04 & Checklist 02', sign: 'BM-04 + Checklist 02' } }] },
     37: { join: 'cqcm', varGate: { big: { true: 41, false: 'fork38' } } },
-    /* Nhánh < 160 tỷ (MS01.03): TTMS ‖ Phó TGĐ ký thẳng trên BM-09 (SCR-23), chờ đủ hai kết quả ở task 40 (P-20). */
+    /* Nhánh < 160 tỷ (MS01.03): TTMS ‖ Phó TGĐ ký thẳng trên BM-09 (SCR-23), chờ đủ hai kết quả ở task 40 (P-20).
+       DX-14 (D-100, GIẢ LẬP Q03): một bên Không đồng ý → trả về 25 ngay, hủy việc ký còn lại (cancelGroup); 46 ‖ 47 cũng vậy. */
     fork38: { gw: true, forkTo: [{ task: 38, who: 'lan' }, { task: 39, who: 'binh' }], group: 'bm09' },
     38: { who: 'lan', scr: 'SCR-23', nlv: 1, choices: [
       { label: 'Ký thẩm định BM-09', to: 40, main: true, sign: 'BM-09' },
@@ -887,7 +891,7 @@
     'SCR-14': { name: 'Xét giải trình, họp', step: 3 }, 'SCR-15': { name: 'Kiểm tra lại & ký Checklist 01', step: 3 },
     'SCR-16': { name: 'BM-05 & kiểm tra song song', step: 3 }, 'SCR-17': { name: 'Ký BM-05', step: 3 },
     'SCR-18': { name: 'Báo cáo Tập đoàn', step: 4 }, 'SCR-19': { name: 'Quyết định phê duyệt BM-08', step: 4 },
-    'SCR-20': { name: 'Chi tiết hồ sơ', step: 1 }, 'SCR-21': { name: 'Hộp thoại trình ký', step: 1 },
+    'SCR-20': { name: 'Chi tiết hồ sơ (KĐT, hợp đồng — ĐXMS dùng SCR-97 từ T34 v0.2)', step: 1 }, 'SCR-21': { name: 'Hộp thoại trình ký', step: 1 },
     'SCR-22': { name: 'Xác nhận danh sách CQCM', step: 6 },
     'SCR-23': { name: 'Ký thẩm định trực tiếp BM-09', step: 'T6' }, 'SCR-24': { name: 'Phê duyệt Tờ trình BM-09', step: 'T6' },
     'SCR-25': { name: 'Thêm mới hồ sơ', step: 6 }, 'SCR-26': { name: 'Xử lý ĐXMS không khớp quy trình', step: 6 },
@@ -925,9 +929,12 @@
   /* ĐXMS mẫu (đối tượng cha, D-10 — như nhiệm vụ KHCN wf_tasks). est = giá trị dự kiến nhập khi tạo ĐXMS;
      giá trị hiệu lực suy từ hồ sơ Hoàn thành gần nhất (R4). Trạng thái ĐXMS suy từ hồ sơ (R5). */
   D.dxmsList = [
+    /* T34 (D-85…D-89): ĐXMS điều chỉnh = ĐXMS mới, adjFrom = ĐXMS được điều chỉnh, adjN = lần điều chỉnh, root = ĐXMS gốc của chuỗi; dữ liệu chép từ ĐXMS cũ. */
+    { code: 'ĐXMS-2026-0126', nv: 'DA-2026-002', title: 'Mua sắm dây chuyền lắp ráp bo mạch trạm thu phát', unit: 'Nhà máy sản xuất thử nghiệm', est: 248.9, priority: 'Khẩn', period: '09/2026 – 06/2027', creator: 'Phan Văn Lộc', created: '15/09/2026', updated: '25/09/2026', adjFrom: 'ĐXMS-2026-0077', adjN: 1, root: 'ĐXMS-2026-0077', reason: 'Bổ sung 02 trạm hàn chọn lọc theo thiết kế bo mạch mới; giá linh kiện tăng.' },
     { code: 'ĐXMS-2026-0124', nv: 'DA-2026-002', title: 'Mua sắm hệ thống đo kiểm sản xuất loạt module RRU 5G', unit: 'Trung tâm Vô tuyến', est: 176.4, basisTD: true, priority: 'Thường', period: '02/2027 – 10/2027', creator: 'Nguyễn Văn Minh', created: '25/09/2026', updated: '25/09/2026', purpose: 'Đo kiểm cuối dây chuyền cho sản xuất loạt module RRU 5G theo PAKD 1876/QĐ-TĐ.' },
     { code: 'ĐXMS-2026-0121', nv: 'KHN-2026-VHT', title: 'Mua sắm máy chủ phục vụ phòng lab AI', unit: 'Trung tâm Phần mềm', est: 12.4, priority: 'Thường', period: '11/2026 – 03/2027', creator: 'Lương Thị Hạnh', created: '22/09/2026', updated: '22/09/2026', purpose: 'Bổ sung năng lực tính toán cho phòng lab AI.' },
     { code: 'ĐXMS-2026-0119', nv: 'KHN-2026-VHT', title: 'Mua sắm máy in 3D kim loại cho xưởng mẫu', unit: 'Nhà máy sản xuất thử nghiệm', est: 28.5, priority: 'Thường', period: '01/2027 – 06/2027', creator: 'Phan Văn Lộc', created: '21/09/2026', updated: '21/09/2026', purpose: 'Chế tạo nhanh chi tiết cơ khí cho mẫu thử.' },
+    { code: 'ĐXMS-2026-0112', nv: 'KHN-2026-VHT', title: 'Mua sắm dịch vụ thuê hạ tầng điện toán đám mây cho hệ thống OSS', unit: 'Trung tâm Phần mềm', est: 11.2, priority: 'Thường', period: '09/2026 – 08/2027', creator: 'Lương Thị Hạnh', created: '02/09/2026', updated: '20/09/2026', adjFrom: 'ĐXMS-2026-0084', adjN: 1, root: 'ĐXMS-2026-0084', reason: 'Tăng dung lượng lưu trữ theo số trạm tăng thêm năm 2027.' },
     { code: 'ĐXMS-2026-0110', nv: 'KHN-2026-TTVT', title: 'Mua sắm bộ đàm chuyên dụng cho đội thử nghiệm hiện trường', unit: 'Trung tâm Vô tuyến', est: 6.8, priority: 'Khẩn', period: '10/2026 – 12/2026', creator: 'Nguyễn Văn Minh', created: '15/09/2026', updated: '15/09/2026' },
     { code: 'ĐXMS-2026-0106', nv: 'KHN-2026-VHT', title: 'Mua sắm phần mềm thiết kế mạch in và mô phỏng tín hiệu', unit: 'Trung tâm Thiết kế vi mạch', est: 21.3, priority: 'Thường', period: '11/2026 – 12/2026', creator: 'Trịnh Quốc Việt', created: '01/09/2026', updated: '01/09/2026' },
     { code: 'ĐXMS-2026-0103', nv: 'NV-KHCN-2025-031', title: 'Mua sắm hệ thống mô phỏng mạng lõi 5G', unit: 'Trung tâm Mạng lõi', est: 210.5, priority: 'Thường', period: '10/2026 – 06/2027', creator: 'Đặng Thu Trang', created: '28/07/2026', updated: '28/07/2026' },
@@ -946,9 +953,9 @@
      st: processing | done | moved | stopped — ánh xạ sang nhãn/badge ở Screens.CASE_STATUS; task = số task BPMN đang chờ (step = tên task,
      hồ sơ MS02 lấy tên từ sơ đồ). late: quá hạn xử lý bước hiện tại (Giám sát tiến trình SCR-48 hiện Quá hạn). */
   D.otherCases = [
-    { code: 'HS-2026-0126', dxms: 'ĐXMS-2026-0077', kind: 'DC', title: 'Điều chỉnh lần 1 — Mua sắm dây chuyền lắp ráp bo mạch trạm thu phát', total: 248.9, flow: 'MS02', st: 'processing', task: 19, created: '15/09/2026', updated: '25/09/2026', creator: 'Phan Văn Lộc', reason: 'Bổ sung 02 trạm hàn chọn lọc theo thiết kế bo mạch mới; giá linh kiện tăng.' },
+    { code: 'HS-2026-0126', dxms: 'ĐXMS-2026-0126', kind: 'DC', title: 'Điều chỉnh lần 1 — Mua sắm dây chuyền lắp ráp bo mạch trạm thu phát', total: 248.9, flow: 'MS02', st: 'processing', task: 19, created: '15/09/2026', updated: '25/09/2026', creator: 'Phan Văn Lộc', reason: 'Bổ sung 02 trạm hàn chọn lọc theo thiết kế bo mạch mới; giá linh kiện tăng.' },
     { code: 'HS-2026-0121', dxms: 'ĐXMS-2026-0121', kind: 'PD', title: 'Mua sắm máy chủ phục vụ phòng lab AI', total: 12.4, flow: 'MS01.03', st: 'processing', task: 4, step: 'Rà soát và xác nhận thông tin cơ bản', created: '22/09/2026', updated: '26/09/2026', creator: 'Lương Thị Hạnh' },
-    { code: 'HS-2026-0112', dxms: 'ĐXMS-2026-0084', kind: 'DC', title: 'Điều chỉnh lần 1 — Mua sắm dịch vụ thuê hạ tầng điện toán đám mây cho hệ thống OSS', total: 11.2, flow: 'MS02', st: 'done', created: '02/09/2026', updated: '20/09/2026', creator: 'Lương Thị Hạnh', reason: 'Tăng dung lượng lưu trữ theo số trạm tăng thêm năm 2027.' },
+    { code: 'HS-2026-0112', dxms: 'ĐXMS-2026-0112', kind: 'DC', title: 'Điều chỉnh lần 1 — Mua sắm dịch vụ thuê hạ tầng điện toán đám mây cho hệ thống OSS', total: 11.2, flow: 'MS02', st: 'done', created: '02/09/2026', updated: '20/09/2026', creator: 'Lương Thị Hạnh', reason: 'Tăng dung lượng lưu trữ theo số trạm tăng thêm năm 2027.' },
     { code: 'HS-2026-0110', dxms: 'ĐXMS-2026-0110', kind: 'PD', title: 'Mua sắm bộ đàm chuyên dụng cho đội thử nghiệm hiện trường', total: 6.8, flow: 'MS01.03', st: 'processing', task: 16, step: 'Lập phiếu yêu cầu thẩm định và chọn CQCM', created: '15/09/2026', updated: '23/09/2026', creator: 'Nguyễn Văn Minh' },
     { code: 'HS-2026-0106', dxms: 'ĐXMS-2026-0106', kind: 'PD', title: 'Mua sắm phần mềm thiết kế mạch in và mô phỏng tín hiệu', total: 21.3, flow: 'MS01.03', st: 'processing', task: 27, step: 'Hoàn chỉnh hồ sơ trình ĐXMS', created: '01/09/2026', updated: '22/09/2026', creator: 'Trịnh Quốc Việt' },
     { code: 'HS-2026-0103', dxms: 'ĐXMS-2026-0103', kind: 'PD', title: 'Mua sắm hệ thống mô phỏng mạng lõi 5G', total: 210.5, flow: 'MS01.02', st: 'done', created: '28/07/2026', updated: '19/09/2026', creator: 'Đặng Thu Trang' },
@@ -957,8 +964,7 @@
     { code: 'HS-2026-0089', dxms: 'ĐXMS-2026-0089', kind: 'PD', title: 'Mua sắm thiết bị thử nghiệm môi trường', total: 18.7, flow: 'MS01.03', st: 'done', created: '04/08/2026', updated: '05/09/2026', creator: 'Bùi Minh Quang' },
     { code: 'HS-2026-0084', dxms: 'ĐXMS-2026-0084', kind: 'PD', title: 'Mua sắm dịch vụ thuê hạ tầng điện toán đám mây cho hệ thống OSS', total: 9.6, flow: 'MS01.03', st: 'done', created: '20/07/2026', updated: '28/08/2026', creator: 'Lương Thị Hạnh' },
     { code: 'HS-2026-0077', dxms: 'ĐXMS-2026-0077', kind: 'PD', title: 'Mua sắm dây chuyền lắp ráp bo mạch trạm thu phát', total: 236.4, flow: 'MS01.01', st: 'done', created: '02/06/2026', updated: '14/08/2026', creator: 'Phan Văn Lộc' },
-    { code: 'HS-2026-0074', dxms: 'ĐXMS-2026-0072', kind: 'PD', title: 'Mua sắm anten mảng pha phục vụ đo kiểm', total: 152.0, flow: 'MS01.03', st: 'done', created: '01/07/2026', updated: '08/08/2026', creator: 'Nguyễn Văn Minh', replaces: 'HS-2026-0072' },
-    { code: 'HS-2026-0072', dxms: 'ĐXMS-2026-0072', kind: 'PD', title: 'Mua sắm anten mảng pha phục vụ đo kiểm', total: 152.0, flow: 'MS01.01', st: 'moved', created: '25/05/2026', updated: '30/06/2026', creator: 'Nguyễn Văn Minh', replacedBy: 'HS-2026-0074' },
+    { code: 'HS-2026-0072', dxms: 'ĐXMS-2026-0072', kind: 'PD', title: 'Mua sắm anten mảng pha phục vụ đo kiểm', total: 152.0, flow: 'MS01.03', st: 'done', created: '25/05/2026', updated: '08/08/2026', creator: 'Nguyễn Văn Minh' },
   ];
 
   /* ---------- Khoản đầu tư (PH09, plan KĐT v0.3) ----------
@@ -1005,10 +1011,10 @@
     { who: 'minh', code: 'HS-2026-0110', task: 8, created: '17/09/2026', due: '19/09/2026', done: '18/09/2026' },
     { who: 'minh', code: 'HS-2026-0110', task: 4, created: '15/09/2026', due: '17/09/2026', done: '16/09/2026' },
     { who: 'minh', code: 'HS-2026-0106', task: 16, created: '04/09/2026', due: '08/09/2026', done: '05/09/2026' },
-    { who: 'minh', code: 'HS-2026-0074', task: 26, created: '22/07/2026', due: '24/07/2026', done: '24/07/2026' },
+    { who: 'minh', code: 'HS-2026-0072', task: 26, created: '22/07/2026', due: '24/07/2026', done: '24/07/2026' },
     { who: 'hai', code: 'HS-2026-0110', task: 13, created: '19/09/2026', due: '23/09/2026', done: '22/09/2026' },
     { who: 'hai', code: 'HS-2026-0106', task: 13, created: '03/09/2026', due: '05/09/2026', done: '04/09/2026' },
-    { who: 'hai', code: 'HS-2026-0074', task: 13, created: '06/07/2026', due: '08/07/2026', done: '07/07/2026' },
+    { who: 'hai', code: 'HS-2026-0072', task: 13, created: '06/07/2026', due: '08/07/2026', done: '07/07/2026' },
     { who: 'lan', code: 'HS-2026-0106', task: 17, created: '08/09/2026', due: '10/09/2026', done: '09/09/2026' },
     { who: 'lan', code: 'HS-2026-0101', task: 48, created: '09/09/2026', due: '11/09/2026', done: '11/09/2026' },
     { who: 'lan', code: 'HS-2026-0103', task: 58, created: '12/09/2026', due: '15/09/2026', done: '15/09/2026' },
@@ -1022,7 +1028,7 @@
     { who: 'binh', code: 'HS-2026-0077', task: 47, created: '24/07/2026', due: '28/07/2026', done: '27/07/2026' },
     { who: 'tgd', code: 'HS-2026-0103', task: 60, created: '16/09/2026', due: '19/09/2026', done: '18/09/2026' },
     { who: 'tgd', code: 'HS-2026-0077', task: 60, created: '10/08/2026', due: '13/08/2026', done: '13/08/2026' },
-    { who: 'tgd', code: 'HS-2026-0074', task: 60, created: '04/08/2026', due: '07/08/2026', done: '06/08/2026' },
+    { who: 'tgd', code: 'HS-2026-0072', task: 60, created: '04/08/2026', due: '07/08/2026', done: '06/08/2026' },
     /* Hồ sơ Điều chỉnh mẫu (T21 B3): HS-2026-0126 (MS02.01, đang ở 19), HS-2026-0112 (MS02.03, Hoàn thành) — tên việc theo BPMN_FLOWS.MS02. */
     { who: 'minh', code: 'HS-2026-0126', task: 16, created: '19/09/2026', due: '22/09/2026', done: '22/09/2026' },
     { who: 'minh', code: 'HS-2026-0126', task: 4, created: '15/09/2026', due: '17/09/2026', done: '16/09/2026' },
@@ -1081,7 +1087,7 @@
     'P-26': { q: 'Ngưỡng phân luồng (160 tỷ) tính trên tổng nào — phần còn mở của P-26. Việc chọn quy trình khi tạo hồ sơ đã bỏ: T29 B1 (D-54, RV-PROTO-0511 #4) hệ thống tự phân luồng sau báo giá, không còn 10a / 10b', src: 'RV-PROTO-0511 #4; BPMN MS01 v1.1 (bản 12/10)', def: 'Tổng kinh phí gồm VAT sau khi trừ tồn kho; luồng con .01 / .02 / .03 đặt ở cổng sau task 10 và task 48', scr: 'SCR-25' },
     /* Mô hình ĐXMS ↔ Hồ sơ (D-10…D-12) — docs/dtms/prototype-DXMS-ho-so-chuan-bi.md §5. */
     'P-63': { q: 'MS02 có tách ba quy trình MS02.01 / .02 / .03 như MS01 (P-37) không', src: 'Diễn giải MS02 §B.3; P-37', def: 'Một quy trình MS02 (trang MS02 ver1.1 gộp ba luồng con)', scr: 'SCR-25' },
-    'P-64': { q: 'Hồ sơ Phê duyệt kết thúc theo chỉ đạo khác: ĐXMS có được tạo hồ sơ Phê duyệt mới không, hay ĐXMS cũng dừng', src: '—', def: 'Được tạo hồ sơ Phê duyệt mới', scr: 'SCR-25' },
+    'P-64': { q: 'Hồ sơ Phê duyệt kết thúc theo chỉ đạo khác: ĐXMS có được tạo hồ sơ Phê duyệt mới không, hay ĐXMS cũng dừng', src: '—', def: 'T34 (D-85): ĐXMS dừng theo hồ sơ (mỗi ĐXMS một hồ sơ); làm lại = Sao chép thành ĐXMS mới (P-226)', scr: 'SCR-25' },
     'P-65': { q: 'Sửa ĐXMS khi đang có hồ sơ chạy: trường nào bị khoá; thông tin trên ĐXMS và trên hồ sơ (task 04) lệch nhau thì lấy bên nào', src: '—', def: 'Sửa được trừ Mã ĐXMS và giá trị hiệu lực; hồ sơ giữ thông tin lúc tạo', scr: 'SCR-28' },
     'P-66': { q: 'Giá trị hiệu lực của ĐXMS lấy từ hồ sơ Hoàn thành gần nhất (kể cả hồ sơ Điều chỉnh)', src: 'Diễn giải MS02 §B.2 (giá trị sau điều chỉnh)', def: 'Như vậy; chưa có hồ sơ Hoàn thành thì dùng giá trị dự kiến', scr: 'SCR-29' },
     /* Khoản đầu tư MS13 — docs/dtms/prototype-KDT-chuan-bi.md §5; T18 rà lại theo BPMN 12/10 (trang MS13, 78 bước — plan T18 §6). */
@@ -1155,7 +1161,7 @@
     /* T21 — luồng Điều chỉnh ĐXMS (MS02), plan T21 §6. */
     'P-100': { q: 'Phạm vi "kết quả đã thực hiện" của ĐXMS cũ lấy ở bước 2', src: 'DG-MS02 §D.2 #1', def: 'GIẢ LẬP — văn bản phê duyệt cũ, YCBG / báo giá, gói thầu, hợp đồng, đơn hàng đã có của ĐXMS; chỉ xem', scr: 'SCR-03' },
     'P-101': { q: 'Hạng mục đã có đơn hàng / hợp đồng có được điều chỉnh không', src: 'DG-MS02 §D.2 #2', def: 'GIẢ LẬP — không khoá; dòng có HĐ gắn nhãn "Đã ký HĐ", cảnh báo khi giảm dưới số đã ký', scr: 'SCR-04' },
-    'P-102': { q: 'Trạng thái ĐXMS cũ sau khi điều chỉnh được phê duyệt', src: 'DG-MS02 §D.2 #3', def: 'GIẢ LẬP — ĐXMS "Đã phê duyệt (điều chỉnh lần n)", giá trị hiệu lực = giá trị sau điều chỉnh (D-40)', scr: 'SCR-29' },
+    'P-102': { q: 'Trạng thái ĐXMS cũ sau khi điều chỉnh được phê duyệt', src: 'DG-MS02 §D.2 #3', def: 'T34 (D-85): điều chỉnh là ĐXMS mới; ĐXMS cũ "Đã được điều chỉnh" (hết hiệu lực), ĐXMS mới "Đã phê duyệt (điều chỉnh lần n)" mang giá trị sau điều chỉnh', scr: 'SCR-29' },
     'P-103': { q: 'Điều chỉnh / bổ sung ngân sách có chặn phê duyệt điều chỉnh không', src: 'DG-MS02 §D.2 #4', def: 'GIẢ LẬP — không chặn; bước 4 có ô ghi chú ngân sách thực hiện song song', scr: 'SCR-04' },
     'P-104': { q: 'Ký BM-05 song song: một bên từ chối khi bên kia chưa phản hồi', src: 'DG-MS02 §D.2 #5', def: 'GIẢ LẬP — chờ đủ hai kết quả rồi kiểm tra (như BPMN, như MS01)', scr: 'SCR-17' },
     'P-105': { q: 'Ma trận CQCM bắt buộc theo loại nội dung điều chỉnh', src: 'DG-MS02 §D.2 #6', def: 'GIẢ LẬP — bước 16 gợi ý CQCM theo phạm vi đã chọn ở bước 4, TTMS xác nhận ở bước 17', scr: 'SCR-10' },
@@ -1220,7 +1226,7 @@
     'P-194': { q: 'Danh sách người thẩm định chọn ngay khi tạo luồng (DX-08): có bắt buộc không, bước 16 có được sửa không', src: 'HT-DXMS-NOTE màn 8; DX-08', def: 'GIẢ LẬP — không bắt buộc; danh sách điền sẵn vào bước 16 (chọn CQCM), đơn vị và TTMS vẫn sửa được ở bước 16, 17; chọn Đích danh hoặc Theo vai trò của phòng ban (D-62)', scr: 'SCR-96' },
     'P-192': { q: 'Số, Ngày Tờ trình có từ thời điểm nào; Đợt mua sắm đánh số tự động hay đơn vị nhập', src: 'HT-DXMS-NOTE màn 7, 8; plan T29 F5, F6', def: 'GIẢ LẬP — Số, Ngày Tờ trình cấp khi hồ sơ gửi yêu cầu thẩm định (BM-03 trình ký kèm Tờ trình); Đợt = số thứ tự ĐXMS của cùng nhiệm vụ / đề tài, dự án, hệ thống gợi ý, đơn vị sửa được', scr: 'SCR-96' },
     /* T29 v0.4 — YC-DXMS-PROTO (plan §3.10). SCR-103 Đề tài / dự án dựng ở B8. */
-    'P-195': { q: 'Đề tài / dự án không phải Loại KHCN (SXKD, Dự án đầu tư, Hoạt động TX…) có thông tin chung lấy từ đâu ở Pha 1', src: 'YC-DXMS-PROTO §2.1; HT-DXMS-NOTE màn 1; TPL-DADT-EX', def: 'GIẢ LẬP — danh sách hiện mọi Loại (D-61); Loại KHCN có nguồn "KHCN (đồng bộ)", loại khác "Nhập ở hệ thống cũ", chỉ xem. Dự toán nhập tại ĐTMS cho mọi Loại (D-65); bóc tách làm căn cứ ĐXMS chỉ Loại KHCN (D-60), loại khác căn cứ vẫn là tệp đính kèm (D-30)', scr: 'SCR-103' },
+    'P-195': { q: 'Đề tài / dự án không phải Loại KHCN (SXKD, Dự án đầu tư, Hoạt động TX…) có thông tin chung lấy từ đâu ở Pha 1', src: 'YC-DXMS-PROTO §2.1; HT-DXMS-NOTE màn 1; TPL-DADT-EX', def: 'GIẢ LẬP — danh sách hiện mọi Loại (D-61); Loại KHCN có nguồn "Đồng bộ KHCN", SXKD / Dự án đầu tư "Đồng bộ HR Tool" (T36, P-227), loại khác "Chuyển từ hệ thống cũ", chỉ xem. Dự toán nhập tại ĐTMS cho mọi Loại (D-65); bóc tách làm căn cứ ĐXMS chỉ Loại KHCN (D-60), loại khác căn cứ vẫn là tệp đính kèm (D-30)', scr: 'SCR-103' },
     'P-186': { q: 'Phiếu yêu cầu rà soát tồn kho do ai lập: hệ thống sinh và gửi ở service task 6, hay đơn vị đề xuất lập phiếu (BM-RSTK ghi "căn cứ phiếu yêu cầu … số …/PYC")', src: 'BM-RSTK; GA-DXMS-0411 [03:48–04:51]; DTMS_Q_0080; INDEX C14', def: 'GIẢ LẬP — hệ thống sinh phiếu số …/PYC-RS từ hạng mục bước 5 và gửi ở service task 6; đơn vị không thao tác', scr: 'SCR-105' },
     'P-187': { q: 'Ai ký Biên bản rà soát vật tư, linh kiện tồn kho (BM-RSTK có Người lập, Thủ kho, GĐ TTMS nhưng Người lập = Thủ kho cùng chữ ký; ghi âm đề xuất Thủ kho → Chỉ huy QLTS → GĐ) và ký ở bước nào', src: 'BM-RSTK; BG-0411; GA-DXMS-0411 [08:56–09:38]; DTMS_Q_0136; DX-07', def: 'GIẢ LẬP — chân ký Thủ kho → Chỉ huy bộ phận QLTS → GĐ TTMS; biên bản sinh khi Kho lưu kết quả, trạng thái "Chờ ký — chờ DX-07"', scr: 'SCR-105' },
     'P-196': { q: 'Số tồn kho lấy từ WMS bằng API hay Bộ phận Kho / QLTS nhập tay', src: 'YC-DXMS-PROTO §4.3; BG-0411; BM-RSTK; INDEX C14; DTMS_Q_0080', def: 'GIẢ LẬP — NV QLTS / Thủ kho nhập ở tab Rà soát tồn kho; nút "Lấy số tồn từ WMS" điền số mẫu, người nhập vẫn sửa được', scr: 'SCR-97' },
@@ -1249,11 +1255,14 @@
     'P-223': { q: 'Tạm ẩn bảng AI bước 6 Bóc tách và đối chiếu ở màn Lập ĐXMS (review nhi 06/11 #18): bỏ hẳn bước 6 trên BPMN hay chỉ ẩn trên giao diện; khi đó ai kiểm số lượng đề xuất so với số còn được dùng', src: 'Review nhi 06/11 #18; BPMN MS01 v1.1 bước 6', def: 'GIẢ LẬP — ẩn bảng bằng cờ D.bocHide, áp dụng theo số đề xuất của căn cứ; popup còn dữ liệu căn cứ và bảng điền Loại chi phí', scr: 'SCR-96' },
     'P-224': { q: 'Chọn đích danh Người thẩm định của từng CQCM ở bước 16 (review nhi 06/11 #40): danh sách người lấy từ đâu; lãnh đạo CQCM có được đổi người được giao không', src: 'Review nhi 06/11 #40; D-27', def: 'GIẢ LẬP — danh sách chuyên viên mẫu theo đơn vị, mặc định người đầu danh sách; bước 19 giao đúng người đã chọn, bước 20 vẫn là lãnh đạo CQCM', scr: 'SCR-10' },
     'P-225': { q: 'Bước 18 "Gửi yêu cầu thẩm định, trình ký và thông báo" (tác nhân Hệ thống): ai là Đại diện đơn vị đề xuất ký BM-03; bước 16.1 Chỉ huy ĐVĐX duyệt trên ĐTMS có thay được việc ký không; hồ sơ Mật ký bản cứng thì ai tải bản scan, CQCM có phải chờ ký xong mới nhận yêu cầu không', src: 'BPMN-DTMS trang MS01 v1.1 bước 17, 18; BM-10.2.1 BM-03 (khối ký Đại diện đơn vị đề xuất); QT-10.2.1 bước 2', def: 'GIẢ LẬP — hệ thống tự trình Chỉ huy ĐVĐX (người duyệt 16.1) ký BM-03 theo Hình thức trình ký của hồ sơ (Mật: bản cứng), nhận kết quả ngay rồi gửi CQCM; 16.1 vẫn tách riêng với việc ký; chưa dựng bước tải bản scan', scr: 'SCR-22' },
+    'P-226': { q: 'ĐXMS Dừng xử lý muốn làm lại: tạo ĐXMS mới từ đầu hay có chức năng Sao chép; ĐXMS mới có giữ liên kết tới ĐXMS cũ không, căn cứ đang giữ của ĐXMS cũ trả lúc nào', src: 'T34 (người dùng 09/11, mô hình 1 ĐXMS – 1 hồ sơ)', def: 'GIẢ LẬP — nút Sao chép thành ĐXMS mới: chép thông tin chung, Sao chép từ = ĐXMS cũ, chưa có hồ sơ; căn cứ của ĐXMS cũ trả khi dừng', scr: 'SCR-29' },
+    'P-227': { q: 'HR Tool có phải nguồn đề tài / dự án của ĐTMS không, cho Loại nào; trạng thái, Mật, dự toán chi tiết của đề tài từ HR Tool lấy từ đâu (HR Tool chỉ có trạng thái phân bổ chi phí nhân công, không có cờ Mật, chỉ có Tổng dự toán)', src: 'T36 (người dùng 09/11, D-96); be/hrtool mission; YC-DXMS-PROTO §2.1; DTMS_Q_0438, 0439, 0441, 0442', def: 'GIẢ LẬP — HR Tool cấp Loại SXKD, Dự án đầu tư (phân loại SXKD, DTPT); nhiệm vụ KHCN bỏ qua, ghi Cảnh báo; Trạng thái Đang thực hiện, Mật = Không, chỉ Tổng dự toán', scr: 'SCR-103' },
+    'P-228': { q: 'Đội HR Tool có làm API cho ĐTMS: danh sách nhiệm vụ thay đổi từ mốc (gồm bản ghi đã xóa), chi tiết theo mã, tải tệp tờ trình, tài khoản dịch vụ', src: 'T36 B0 §3; MissionController chỉ có POST /search, GET /{id}; DTMS_Q_0443', def: 'GIẢ LẬP — lần chạy thủ công trả kết quả mẫu; chưa có API thì mọi lần HR Tool chạy phạm vi Toàn bộ qua POST /search', scr: 'SCR-109' },
     'P-220': { q: 'Bộ trường nhập của Tờ trình BM-01 / BM-09 và phiếu BM-03 trên eForm (review nhi 06/11 #8, #15): các ô của mẫu Word chưa có nguồn dữ liệu (Quan điểm thực hiện, Nguồn ngân sách, Đánh giá hiệu quả, số / trích yếu công văn BM-03) do người soạn nhập trên form hay để điền tiếp trên Word', src: 'BM-10.2.1 (BM-01, BM-09, BM-03); review nhi 06/11', def: 'GIẢ LẬP — mọi mục của mẫu có ô nhập trên eForm (không bắt buộc trừ mục bắt buộc của mẫu); ô bỏ trống in "…" trên văn bản', scr: 'SCR-08' },
     'P-206': { q: 'Hình thành gói thầu (bảng bóc tách chi phí ở Thêm mới luồng) là dropdown — danh sách giá trị gồm những gì', src: 'RV-PROTO-0511 #14; HT-DXMS-NOTE màn 8 (cột Hình thành gói thầu); QC-12869 Điều 39', def: 'GIẢ LẬP — Hình thành gói thầu / Không hình thành gói thầu (các trường hợp Điều 39 QC-12869)', scr: 'SCR-96' },
     'P-207': { q: 'Lý do khi chọn Mức ưu tiên Khẩn / Thượng khẩn nhập ở đâu — review ghi ở dòng "Luồng mua sắm / Tìm kiếm"', src: 'RV-PROTO-0511 #1', def: 'GIẢ LẬP — nhập ở Thêm mới luồng (trường Lý do ưu tiên, bắt buộc khi Khẩn / Thượng khẩn), hiện ở Chi tiết luồng; tìm kiếm chỉ lọc theo Mức ưu tiên', scr: 'SCR-96' },
     'P-208': { q: 'Số tiền nhập số thường (đồng) chỉ áp dụng cho Giá trị dự tính ở Thêm mới luồng, hay đổi đơn vị trên mọi màn (báo giá, eForm, báo cáo, ngưỡng 160 tỷ)', src: 'RV-PROTO-0511 #8', def: 'GIẢ LẬP — Thêm mới luồng và Chi tiết luồng nhập / hiện đồng; các màn khác giữ tỷ đồng tới khi BA xác nhận', scr: 'SCR-96' },
-    'P-209': { q: 'Menu Quản lý hồ sơ: "hồ sơ (hay được hiểu là các biểu mẫu)" — là danh sách biểu mẫu / văn bản đã sinh của mọi luồng (D-78), hay danh sách hồ sơ quy trình; trạng thái ký lấy từ đâu', src: 'RV-PROTO-0511 bản 2 #19', def: 'GIẢ LẬP — danh sách văn bản đầu ra của mọi hồ sơ ĐXMS; văn bản có bước ký trên ĐTMS là Đã ký khi đã sinh, BM-02 / BM-07 Không ký trên ĐTMS', scr: 'SCR-107' },
+    'P-209': { q: 'Menu Quản lý hồ sơ: "hồ sơ (hay được hiểu là các biểu mẫu)" — là danh sách biểu mẫu / văn bản đã sinh của mọi luồng (D-78), hay danh sách hồ sơ quy trình; trạng thái ký lấy từ đâu; T34 v0.2 (D-92, hồ sơ không còn là đối tượng trên giao diện): tên menu giữ Quản lý hồ sơ hay đổi thành Quản lý văn bản ĐXMS', src: 'RV-PROTO-0511 bản 2 #19; T34 v0.2', def: 'GIẢ LẬP — danh sách văn bản đầu ra của mọi hồ sơ ĐXMS; văn bản có bước ký trên ĐTMS là Đã ký khi đã sinh, BM-02 / BM-07 Không ký trên ĐTMS; tên menu tạm giữ Quản lý hồ sơ', scr: 'SCR-107' },
     'P-205': { q: 'Yêu cầu báo giá tạo trực tiếp (ngoài hồ sơ) dùng để làm gì và có gắn vào hồ sơ sau này không; SRS-DXMS chỉ có YCBG trong hồ sơ (bước 8–10)', src: 'RV-PROTO-0511 #10, câu hỏi 7; HT-DXMS-IMG Yêu cầu báo giá; BR-DXMS-04-01', def: 'GIẢ LẬP — khảo sát giá trước khi có hồ sơ (vd lấy giá dự tính); Nháp sửa được, đã gửi không sửa; hồ sơ tới bước 8 vẫn sinh YCBG riêng', scr: 'SCR-106' },
     /* T25 B5 — MS23.01 Văn bản phát sinh, DG-MS23.01 §D. P-173 thêm khi dựng. */
     'P-161': { q: 'Danh mục loại văn bản, mẫu tương ứng, điều kiện được xem là sửa đổi hợp đồng', src: 'DG-MS23.01 §D 1', def: 'GIẢ LẬP — bốn loại Phụ lục hợp đồng, Biên bản làm việc, Biên bản phạt, Văn bản khác; chỉ Phụ lục hợp đồng là sửa đổi hợp đồng', scr: 'SCR-102' },
@@ -1308,11 +1317,17 @@
   D.menu = [
     { label: 'Tổng quan', icon: 'tong_quan', path: 'tong-quan', scr: 'SCR-92' },
     { label: 'Việc của tôi', icon: 'view_list', path: 'viec-cua-toi', scr: 'SCR-01', badge: 'tasks' },
+    /* T29 D-63: Đề tài / dự án (SCR-103) — nguồn căn cứ của ĐXMS / KĐT. Người dùng 09/11 (T34): menu cấp 1, ngay trên Quản lý đề xuất mua sắm. */
+    { label: 'Đề tài / dự án', icon: 'menu_square', path: 'de-tai', scr: 'SCR-103' },
     { label: 'Quản lý đề xuất mua sắm', icon: 'phan_he_mua_sam', open: true, bl: 'Quản lý đề xuất mua sắm', due: 'B1 (07/10)', children: [
-      /* T29 D-63: Đề tài / dự án (SCR-103) — nguồn căn cứ của ĐXMS. */
-      { label: 'Đề tài / dự án', path: 'de-tai', scr: 'SCR-103' },
-      { label: 'Đề xuất mua sắm', path: 'dxms', scr: 'SCR-27' },
-      { label: 'Hồ sơ đề xuất mua sắm', path: 'ho-so-dxms', scr: 'SCR-02' },
+      /* T34 (D-90): bỏ phương án Tách — Luồng mua sắm (Gộp) thay hai mục Đề xuất mua sắm / Hồ sơ đề xuất mua sắm. */
+      // [T34 bỏ Tách] { label: 'Đề xuất mua sắm', path: 'dxms', scr: 'SCR-27' },
+      /* Người dùng 09/11 (T34 v0.2): đổi tên Luồng mua sắm → Đề xuất mua sắm (route giữ #/luong). */
+      { label: 'Đề xuất mua sắm', path: 'luong', scr: 'SCR-95' },
+      /* T34 (người dùng 09/11): danh sách ĐXMS điều chỉnh (ĐXMS mới, Điều chỉnh từ ĐXMS cũ) + Thêm mới điều chỉnh (SCR-108). */
+      /* Người dùng 09/11 (T34 v0.2): tạm ẩn menu — vào Thêm mới điều chỉnh bằng nút Điều chỉnh ĐXMS ở Danh sách đề xuất mua sắm; route #/dieu-chinh-dxms vẫn mở được. */
+      // [T34 ẩn SCR-108] { label: 'Điều chỉnh đề xuất mua sắm', path: 'dieu-chinh-dxms', scr: 'SCR-108' },
+      // [T34 bỏ Tách] { label: 'Hồ sơ đề xuất mua sắm', path: 'ho-so-dxms', scr: 'SCR-02' },
       /* T29 B12 (RV-PROTO-0511 bản 2 #19, D-78): Quản lý hồ sơ = danh sách biểu mẫu / văn bản đã sinh của mọi luồng (SCR-107). */
       { label: 'Quản lý hồ sơ', path: 'quan-ly-ho-so', scr: 'SCR-107' },
       { label: 'Yêu cầu báo giá ĐXMS', path: 'ycbg', scr: 'SCR-73' }] },
@@ -1448,23 +1463,24 @@
   /* Nhiệm vụ / đề tài, dự án mà ĐXMS phải chọn khi tạo (comment Figma #1, P-69): nhiệm vụ KHCN, dự án SXKD (PAKD) hoặc kế hoạch mua sắm
      thường xuyên năm (KHN). basis = văn bản căn cứ phê duyệt nhiệm vụ (D.basisDocs); src = nguồn đối soát ở task 08 (comment #4, P-73).
      T29 D-66: đây là danh mục **Đề tài / dự án** (SCR-103); nhiệm vụ KHCN là bản ghi có loai = 'KHCN'. loai / loaiCt theo HT-DXMS-NOTE màn 1
-     (ánh xạ P-198); nguon: 'khcn' = thông tin chung đồng bộ từ phân hệ KHCN, 'cu' = loại khác, nhập ở hệ thống cũ (P-195). */
+     (ánh xạ P-198); nguon: 'khcn' = thông tin chung đồng bộ từ phân hệ KHCN, 'hrtool' = đồng bộ từ HR Tool (Loại SXKD, Dự án đầu tư — T36, P-227),
+     'cu' = chuyển từ hệ thống cũ (P-195). */
   D.nhiemVu = [
     { code: 'NV-KHCN-2026-014', name: 'Phát triển trạm gNodeB thế hệ 2', kind: 'Nhiệm vụ KHCN', basis: 'qd1', src: 'mbom', field: 'VTCNTT', fund: 'KHCN', loai: 'KHCN', loaiCt: 'Đề tài KHCN', nguon: 'khcn' },
     { code: 'NV-KHCN-2026-006', name: 'Anten mảng pha băng Ka', kind: 'Nhiệm vụ KHCN', basis: 'qd2', src: 'mbom', field: 'QP', fund: 'KHCN', loai: 'KHCN', loaiCt: 'Dự án KHCN', nguon: 'khcn' },
     { code: 'NV-KHCN-2025-031', name: 'Hệ thống mạng lõi 5G SA', kind: 'Nhiệm vụ KHCN', basis: 'qd3', src: 'mbom', field: 'VTCNTT', fund: 'KHCN', loai: 'KHCN', loaiCt: 'Chương trình KHCN', nguon: 'khcn' },
-    { code: 'DA-2026-002', name: 'Sản xuất module RRU 5G giai đoạn 2026–2028', kind: 'Dự án SXKD', basis: 'qd4', src: 'dutoan', field: 'VTCNTT', fund: 'SXKD', loai: 'SXKD', loaiCt: 'Dự án sản xuất', nguon: 'cu', total: 420.0 },
+    { code: 'DA-2026-002', name: 'Sản xuất module RRU 5G giai đoạn 2026–2028', kind: 'Dự án SXKD', basis: 'qd4', src: 'dutoan', field: 'VTCNTT', fund: 'SXKD', loai: 'SXKD', loaiCt: 'Dự án sản xuất', nguon: 'hrtool', total: 420.0 },
     { code: 'KHN-2026-TTVT', name: 'Mua sắm thường xuyên năm 2026 — Trung tâm Vô tuyến', kind: 'Mua sắm thường xuyên (KHN)', basis: 'qd5', src: 'khn', field: 'VTCNTT', fund: 'CPTX', loai: 'Hoạt động TX', loaiCt: 'Thường xuyên', nguon: 'cu', total: 320.0 },
     { code: 'KHN-2026-VHT', name: 'Mua sắm thường xuyên năm 2026 — các đơn vị VHT', kind: 'Mua sắm thường xuyên (KHN)', basis: null, src: 'khn', field: 'KHAC', fund: 'CPTX', loai: 'Hoạt động TX', loaiCt: 'Thường xuyên', nguon: 'cu', total: 85.0 },
     /* D-45: nhiệm vụ / đề tài, dự án làm gốc cho KĐT (Kế hoạch năm 2027). */
     { code: 'DT-KHCN-2027-002', name: 'Đề tài phát triển trạm 5G-Advanced năm 2027', kind: 'Nhiệm vụ KHCN', basis: null, src: 'mbom', field: 'VTCNTT', fund: 'KHCN', loai: 'KHCN', loaiCt: 'Đề tài KHCN', nguon: 'khcn' },
-    { code: 'KHN-2027-DTPT', name: 'Kế hoạch đầu tư phát triển năm 2027 — VHT', kind: 'Dự án SXKD', basis: null, src: 'khn', field: 'KHAC', fund: 'SXKD', loai: 'Dự án đầu tư', loaiCt: 'Dự án đầu tư mua sắm tài sản', nguon: 'cu', total: 260.0 },
+    { code: 'KHN-2027-DTPT', name: 'Kế hoạch đầu tư phát triển năm 2027 — VHT', kind: 'Dự án SXKD', basis: null, src: 'khn', field: 'KHAC', fund: 'SXKD', loai: 'Dự án đầu tư', loaiCt: 'Dự án đầu tư mua sắm tài sản', nguon: 'hrtool', total: 260.0 },
     /* T29 S6 — 4 dòng mẫu của TPL-DADT-EX sheet1 (danh sách Đề tài / dự án hệ thống cũ). total = Tổng dự toán được duyệt (tỷ đồng):
        dự toán mẫu (D.duToanOf) quy về đúng tổng này. Thuộc tính màn Đề tài / dự án ở de-tai.js (D.deTaiInfo). */
     { code: '009-26-VHT-RDP-DS', name: 'Nghiên cứu, phát triển mạng 5G dành cho đường sắt tốc độ cao', kind: 'Nhiệm vụ KHCN', basis: null, src: 'mbom', field: 'VTCNTT', fund: 'KHCN', total: 108.35, loai: 'KHCN', loaiCt: 'Đề tài KHCN', nguon: 'khcn' },
-    { code: '020-26-VHT-BP-C', name: 'PAKD hệ thống 5G Private Network cho đối tác Công ty JST (Thái Lan)', kind: 'Dự án SXKD', basis: null, src: 'dutoan', field: 'VTCNTT', fund: 'VG', total: 3.95, loai: 'SXKD', loaiCt: 'Dự án Kinh doanh', nguon: 'cu' },
+    { code: '020-26-VHT-BP-C', name: 'PAKD hệ thống 5G Private Network cho đối tác Công ty JST (Thái Lan)', kind: 'Dự án SXKD', basis: null, src: 'dutoan', field: 'VTCNTT', fund: 'VG', total: 3.95, loai: 'SXKD', loaiCt: 'Dự án Kinh doanh', nguon: 'hrtool' },
     { code: '004-26-VHT-RDP-DS', name: 'Nghiên cứu xây dựng hệ thống quản lý không phận tầm thấp và thử nghiệm giải pháp phục vụ kinh tế tầm thấp', kind: 'Nhiệm vụ KHCN', basis: null, src: 'mbom', field: 'VTCNTT', fund: 'KHCN', total: 147.54, loai: 'KHCN', loaiCt: 'Đề tài KHCN', nguon: 'khcn' },
-    { code: '005-26-VHT-BP-M', name: 'VHT.26.GP.MX.5G.26', kind: 'Dự án SXKD', basis: null, src: 'dutoan', field: 'VTCNTT', fund: 'VG', total: 548.26, loai: 'SXKD', loaiCt: 'Dự án Kinh doanh', nguon: 'cu' },
+    { code: '005-26-VHT-BP-M', name: 'VHT.26.GP.MX.5G.26', kind: 'Dự án SXKD', basis: null, src: 'dutoan', field: 'VTCNTT', fund: 'VG', total: 548.26, loai: 'SXKD', loaiCt: 'Dự án Kinh doanh', nguon: 'hrtool' },
   ];
   D.nvOf = (code) => D.nhiemVu.find((x) => x.code === code) || null;
   /* Quy tắc bảo mật mẫu cho ĐXMS Mật (comment Figma #12, P-70) — AI kiểm tra khi Lưu, chỉ cảnh báo. */
@@ -1964,7 +1980,14 @@
     },
     set(v) { baseItems = v; } });
   D.itemsBase = () => baseItems;
+  /* T34: ĐXMS điều chỉnh / sao chép chưa có bộ dữ liệu mẫu riêng → dùng bộ của ĐXMS nguồn (adjFrom, copyFrom). */
   D.useCase = (code) => {
+    for (let g = 0; code && !D.demoCases[code] && g < 10; g++) {
+      const x = window.Flow && window.Flow.state && window.Flow.findDxms ? window.Flow.findDxms(code) : (D.dxmsList || []).find((o) => o.code === code);
+      const nx = x && (x.adjFrom || x.copyFrom);
+      if (!nx) break;
+      code = nx;
+    }
     const c = D.demoCases[code] || D.demoCases[/^KĐT/.test(code || '') ? D.kdtCode0 : D.dxmsCode0];
     CASE_KEYS.forEach((k) => { D[k] = c[k]; });
     D.caseRef = c.ref;
@@ -2048,7 +2071,8 @@
       { n: 'A3', name: 'Rà soát tồn kho, báo giá điều chỉnh (kết quả cũ chỉ xem)', start: 7, tasks: '06–10', who: 'minh' },
       { n: 'A4', name: 'MS02.02: không báo cáo Tập đoàn (chọn sẵn theo căn cứ cũ)', start: 48, tasks: '48', who: 'lan' },
       { n: 'A5', name: 'Phê duyệt Quyết định BM-08 điều chỉnh', start: 58, tasks: '57–61', who: 'lan' },
-      { n: 'A6', name: 'Tổng kết: ĐXMS điều chỉnh lần 1, chuỗi hồ sơ', start: 'END', tasks: '—', who: 'lan', go: 'dxms/' + encodeURIComponent('ĐXMS-2026-0103') },
+      /* T34 (D-85): điều chỉnh tạo ĐXMS mới — tua lại từ đầu nên mã ĐXMS điều chỉnh luôn là 0127 (số trống đầu tiên). */
+      { n: 'A6', name: 'Tổng kết: ĐXMS điều chỉnh lần 1 (ĐXMS mới), chuỗi điều chỉnh', start: 'END', tasks: '—', who: 'lan', go: 'dxms/' + encodeURIComponent('ĐXMS-2026-0127') },
       { n: 'A7', name: 'Chuyển ngưỡng xuống: còn 150 tỷ → MS02.03, dự thảo BM-09', start: 11, tasks: '10 → 11', who: 'minh',
         pre: { adj: { total: 150, reason: 'Giảm quy mô: bỏ 01 cụm mô phỏng lõi dự phòng do đã có tồn kho dùng chung.' } } },
       { n: 'A8', name: 'MS02.03: TTMS ‖ Phó TGĐ ký BM-09 điều chỉnh', start: 38, tasks: '38–40, 60–61', who: 'lan',

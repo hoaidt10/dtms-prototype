@@ -172,6 +172,8 @@
   /* ---------- vht-steps: rút gọn thành chip +N (buildStepViews của @khcn-core/ui) ----------
      o: { id, steps: [{ title, sub, state: 'completed' | 'active' | 'upcoming' }] }. Chip bấm để bung, nhớ theo id. */
   const STEPS_OPEN = new Set();
+  /* Số hiển thị của bước = số task BPMN (s.no) khi có; không có thì theo thứ tự. */
+  const stepNo = (x) => (x.s.no != null ? x.s.no : x.i + 1);
   function stepViews(steps) {
     const v = (s, i) => ({ kind: 'step', s, i, done: s.state === 'completed' });
     const first = steps.findIndex((s) => s.state === 'active');
@@ -181,7 +183,7 @@
     for (let i = first; i <= lastA; i++) anchors.add(i);
     const out = []; let gap = [];
     const flush = () => {
-      if (gap.length >= 2) { const l = gap[gap.length - 1]; out.push({ kind: 'chip', gap, key: `${gap[0].i + 1}-${l.i + 1}`, done: l.s.state === 'completed' }); }
+      if (gap.length >= 2) { const l = gap[gap.length - 1]; out.push({ kind: 'chip', gap, key: `${stepNo(gap[0])}-${stepNo(l)}`, done: l.s.state === 'completed' }); }
       else if (gap.length === 1) out.push(gap[0]);
       gap = [];
     };
@@ -194,7 +196,7 @@
     stepViews(o.steps).forEach((x) => { if (x.kind === 'chip' && STEPS_OPEN.has(o.id + ':' + x.key)) views.push(...x.gap); else views.push(x); });
     const item = (x) => (x.kind === 'chip'
       ? `<div class="vsteps-item"><button type="button" class="vsteps-chip ${x.done ? '' : 'muted'}" data-steps="${esc(o.id + ':' + x.key)}">+${x.gap.length}</button><div class="vsteps-range">Bước ${x.key.replace('-', ' - ')}</div></div>`
-      : `<div class="vsteps-item"><div class="vsteps-c ${x.s.state}">${x.s.state === 'completed' ? icon('check') : x.i + 1}</div>
+      : `<div class="vsteps-item"><div class="vsteps-c ${x.s.state}">${x.s.state === 'completed' ? icon('check') : stepNo(x)}</div>
           <div class="vsteps-l ${x.s.state}">${esc(x.s.title)}</div>${x.s.sub ? `<div class="vsteps-s">${esc(x.s.sub)}</div>` : ''}</div>`);
     return `<div class="vsteps">${views.map((x, i) => item(x) + (i < views.length - 1 ? `<div class="vsteps-line ${x.done ? 'done' : ''}"></div>` : '')).join('')}</div>`;
   }

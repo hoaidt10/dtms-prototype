@@ -12,51 +12,54 @@ const pick = async (page, id, value) => {
 const go = (page, hash) => page.evaluate((h) => { location.hash = h; }, hash);
 const rowCodes = (page) => page.locator('main .vtable tbody tr').evaluateAll((rs) => rs.map((r) => r.dataset.code).filter(Boolean));
 
-test('F1, F3, F5: Danh sách hồ sơ ĐXMS — lọc Khối (Đơn vị theo khối), CQCM / tình trạng thẩm định; cột Số, Ngày Tờ trình', async ({ page }) => {
-  await fresh(page, '#/ho-so-dxms');
-  await expect(page.locator('tr[data-code="HS-2026-0103"]')).toContainText('103/TTr-TTML');
-  await expect(page.locator('tr[data-code="HS-2026-0121"] td').nth(11)).toHaveText('-');
-  await page.locator('[data-l="adv"]').click();
-  await pick(page, 'f-block', 'Khối 3');
-  await page.locator('[data-vsel="f-unit"]').click();
-  await expect(page.locator('.vsel-panel [data-opt]')).toHaveText(['Nhà máy sản xuất thử nghiệm']);
-  await page.keyboard.press('Escape');
-  await page.locator('.adv button[type="submit"]').click({ force: true });
-  expect((await rowCodes(page)).sort()).toEqual(['HS-2026-0077', 'HS-2026-0095', 'HS-2026-0126']);
-  await page.locator('[data-l="reset"]').click();
-  await pick(page, 'f-rvSt', 'Yêu cầu sửa');
-  await page.locator('.adv button[type="submit"]').click({ force: true });
-  const codes = await rowCodes(page);
-  expect(codes.length).toBeGreaterThan(0);
-  for (const c of codes) await expect(page.locator(`tr[data-code="${c}"] td`).nth(11)).not.toHaveText('-');
-  expect(page.errors).toEqual([]);
-});
+// T34 (D-90): SCR-02 Danh sách hồ sơ ĐXMS — comment cùng màn Tách.
+// [T34 bỏ Tách] test('F1, F3, F5: Danh sách hồ sơ ĐXMS — lọc Khối (Đơn vị theo khối), CQCM / tình trạng thẩm định; cột Số, Ngày Tờ trình', async ({ page }) => {
+// [T34 bỏ Tách]   await fresh(page, '#/ho-so-dxms');
+// [T34 bỏ Tách]   await expect(page.locator('tr[data-code="HS-2026-0103"]')).toContainText('103/TTr-TTML');
+// [T34 bỏ Tách]   await expect(page.locator('tr[data-code="HS-2026-0121"] td').nth(11)).toHaveText('-');
+// [T34 bỏ Tách]   await page.locator('[data-l="adv"]').click();
+// [T34 bỏ Tách]   await pick(page, 'f-block', 'Khối 3');
+// [T34 bỏ Tách]   await page.locator('[data-vsel="f-unit"]').click();
+// [T34 bỏ Tách]   await expect(page.locator('.vsel-panel [data-opt]')).toHaveText(['Nhà máy sản xuất thử nghiệm']);
+// [T34 bỏ Tách]   await page.keyboard.press('Escape');
+// [T34 bỏ Tách]   await page.locator('.adv button[type="submit"]').click({ force: true });
+// [T34 bỏ Tách]   expect((await rowCodes(page)).sort()).toEqual(['HS-2026-0077', 'HS-2026-0095', 'HS-2026-0126']);
+// [T34 bỏ Tách]   await page.locator('[data-l="reset"]').click();
+// [T34 bỏ Tách]   await pick(page, 'f-rvSt', 'Yêu cầu sửa');
+// [T34 bỏ Tách]   await page.locator('.adv button[type="submit"]').click({ force: true });
+// [T34 bỏ Tách]   const codes = await rowCodes(page);
+// [T34 bỏ Tách]   expect(codes.length).toBeGreaterThan(0);
+// [T34 bỏ Tách]   for (const c of codes) await expect(page.locator(`tr[data-code="${c}"] td`).nth(11)).not.toHaveText('-');
+// [T34 bỏ Tách]   expect(page.errors).toEqual([]);
+// [T34 bỏ Tách] });
 
-test('F1, F2, F4, F6: Danh sách ĐXMS — lọc Mật, Người tạo; cột Nhiệm vụ, Đợt; Thêm mới gợi ý Đợt theo nhiệm vụ', async ({ page }) => {
-  await fresh(page, '#/dxms');
-  await expect(page.locator('tr[data-code="ĐXMS-2026-0124"]')).toContainText('DA-2026-002 — Sản xuất module RRU 5G');
-  await page.locator('[data-xl="adv"]').click();
-  await pick(page, 'xf-secret', 'Có');
-  await page.locator('.adv button[type="submit"]').click({ force: true });
-  expect(await rowCodes(page)).toEqual(['ĐXMS-2026-0089']);
-  await page.locator('[data-xl="reset"]').click();
-  await pick(page, 'xf-creator', 'Phan Văn Lộc');
-  await page.locator('.adv button[type="submit"]').click({ force: true });
-  expect((await rowCodes(page)).length).toBe(3);
+// T34 (D-90): SCR-27 Danh sách ĐXMS — comment cùng màn Tách.
+// [T34 bỏ Tách] test('F1, F2, F4, F6: Danh sách ĐXMS — lọc Mật, Người tạo; cột Nhiệm vụ, Đợt; Thêm mới gợi ý Đợt theo nhiệm vụ', async ({ page }) => {
+// [T34 bỏ Tách]   await fresh(page, '#/dxms');
+// [T34 bỏ Tách]   await expect(page.locator('tr[data-code="ĐXMS-2026-0124"]')).toContainText('DA-2026-002 — Sản xuất module RRU 5G');
+// [T34 bỏ Tách]   await page.locator('[data-xl="adv"]').click();
+// [T34 bỏ Tách]   await pick(page, 'xf-secret', 'Có');
+// [T34 bỏ Tách]   await page.locator('.adv button[type="submit"]').click({ force: true });
+// [T34 bỏ Tách]   expect(await rowCodes(page)).toEqual(['ĐXMS-2026-0089']);
+// [T34 bỏ Tách]   await page.locator('[data-xl="reset"]').click();
+// [T34 bỏ Tách]   await pick(page, 'xf-creator', 'Phan Văn Lộc');
+// [T34 bỏ Tách]   await page.locator('.adv button[type="submit"]').click({ force: true });
+// [T34 bỏ Tách]   expect((await rowCodes(page)).length).toBe(4); // T34: thêm ĐXMS-2026-0126 (điều chỉnh của 0077)
+// [T34 bỏ Tách] 
+// [T34 bỏ Tách]   await page.locator('[data-create="dxms"]').click();
+// [T34 bỏ Tách]   await page.locator('#x-title').fill('Mua sắm bổ sung module RRU đợt mới');
+// [T34 bỏ Tách]   await pick(page, 'x-nv', 'DA-2026-002');
+// [T34 bỏ Tách]   await expect(page.locator('#x-dot')).toHaveValue('3');
+// [T34 bỏ Tách]   await page.locator('#x-save').click();
+// [T34 bỏ Tách]   await expect(page).toHaveURL(/#\/dxms$/);
+// [T34 bỏ Tách]   await page.locator('[data-xl="adv"]').click();
+// [T34 bỏ Tách]   const code = await page.evaluate(() => Flow.dxmsAll()[0].code);
+// [T34 bỏ Tách]   await expect(page.locator(`tr[data-code="${code}"] td`).nth(6)).toHaveText('3');
+// [T34 bỏ Tách]   expect(page.errors).toEqual([]);
+// [T34 bỏ Tách] });
 
-  await page.locator('[data-create="dxms"]').click();
-  await page.locator('#x-title').fill('Mua sắm bổ sung module RRU đợt mới');
-  await pick(page, 'x-nv', 'DA-2026-002');
-  await expect(page.locator('#x-dot')).toHaveValue('3');
-  await page.locator('#x-save').click();
-  await expect(page).toHaveURL(/#\/dxms$/);
-  await page.locator('[data-xl="adv"]').click();
-  const code = await page.evaluate(() => Flow.dxmsAll()[0].code);
-  await expect(page.locator(`tr[data-code="${code}"] td`).nth(6)).toHaveText('3');
-  expect(page.errors).toEqual([]);
-});
-
-test('F9: Cập nhật người xem ở Chi tiết ĐXMS; Thông tin chung có Đợt, Khối đơn vị, Người được xem', async ({ page }) => {
+// T37 (RV-PROTO-0911 #3): Thông tin chung không hiện Người được xem — kiểm dữ liệu sau khi cập nhật.
+test('F9: Cập nhật người xem ở Chi tiết ĐXMS; Thông tin chung có Khối đơn vị, không hiện Người được xem', async ({ page }) => {
   await fresh(page, '#/dxms/' + encodeURIComponent('ĐXMS-2026-0103'));
   await expect(page.locator('.ginfo')).toContainText('Khối 1');
   await page.locator('[data-viewers]').click();
@@ -64,7 +67,8 @@ test('F9: Cập nhật người xem ở Chi tiết ĐXMS; Thông tin chung có �
   await page.locator('.vmodal-h h3').click();
   await page.locator('#vw-ok').click();
   expect(await lastToast(page)).toContain('Cập nhật người xem thành công');
-  await expect(page.locator('.ginfo')).toContainText('Bùi Minh Quang');
+  expect(await page.evaluate(() => Screens.s5.viewersText(Flow.findDxms('ĐXMS-2026-0103')))).toContain('Bùi Minh Quang');
+  await expect(page.locator('.ginfo')).not.toContainText('Người được xem');
   expect(page.errors).toEqual([]);
 });
 
@@ -121,7 +125,7 @@ test('F1, F2, F4: Danh sách luồng (Gộp) — Tìm kiếm nâng cao theo SRS 
   await pick(page, 'lgf-block', 'Khối 2');
   await page.locator('.adv button[type="submit"]').click({ force: true });
   const codes = await rowCodes(page);
-  expect(codes.sort()).toEqual(['ĐXMS-2026-0084', 'ĐXMS-2026-0106', 'ĐXMS-2026-0121']);
+  expect(codes.sort()).toEqual(['ĐXMS-2026-0084', 'ĐXMS-2026-0106', 'ĐXMS-2026-0112', 'ĐXMS-2026-0121']);
   expect(page.errors).toEqual([]);
 });
 

@@ -24,28 +24,29 @@ async function fillGeneral(page, est) {
   if (est != null) { await page.locator('#lf-est').fill(String(est)); await page.locator('#lf-est').dispatchEvent('change'); }
 }
 
-test('D-25: công tắc Tách / Gộp — Gộp thay hai mục ĐXMS / Hồ sơ bằng Luồng mua sắm, route cũ vẫn mở', async ({ page }) => {
-  await fresh(page, '#/viec-cua-toi');
-  await expect(page.locator('.sb-nav [data-go="dxms"]')).toHaveCount(1);
-  await expect(page.locator('.sb-nav [data-go="luong"]')).toHaveCount(0);
-  await page.locator('#demo').click();
-  await page.locator('[data-luong-mode="gop"]').click();
-  await expect(page).toHaveURL(/#\/luong$/);
-  await expect(page.locator('.sb-nav [data-go="luong"]')).toHaveCount(1);
-  await expect(page.locator('.sb-nav [data-go="dxms"]')).toHaveCount(0);
-  await expect(page.locator('.sb-nav [data-go="ho-so-dxms"]')).toHaveCount(0);
-  await expect(page.locator('.sb-nav [data-go="ycbg"]')).toHaveCount(1);
-  await expect(page.locator('.sb-nav .nav.active')).toHaveAttribute('data-go', 'luong');
-  await expect(page.locator('.pg-head h1, .pg-head h2').first()).toContainText('Danh sách luồng mua sắm');
-  // Route cũ vẫn mở, mục Luồng mua sắm sáng.
-  await page.evaluate(() => { location.hash = '#/dxms'; });
-  await expect(page.locator('.sb-nav .nav.active')).toHaveAttribute('data-go', 'luong');
-  await page.locator('#demo').click();
-  await page.locator('[data-luong-mode="tach"]').click();
-  await expect(page).toHaveURL(/#\/dxms$/);
-  await expect(page.locator('.sb-nav [data-go="dxms"]')).toHaveCount(1);
-  expect(page.errors).toEqual([]);
-});
+// T34 (D-90): công tắc Tách / Gộp — comment cùng màn Tách.
+// [T34 bỏ Tách] test('D-25: công tắc Tách / Gộp — Gộp thay hai mục ĐXMS / Hồ sơ bằng Luồng mua sắm, route cũ vẫn mở', async ({ page }) => {
+// [T34 bỏ Tách]   await fresh(page, '#/viec-cua-toi');
+// [T34 bỏ Tách]   await expect(page.locator('.sb-nav [data-go="dxms"]')).toHaveCount(1);
+// [T34 bỏ Tách]   await expect(page.locator('.sb-nav [data-go="luong"]')).toHaveCount(0);
+// [T34 bỏ Tách]   await page.locator('#demo').click();
+// [T34 bỏ Tách]   await page.locator('[data-luong-mode="gop"]').click();
+// [T34 bỏ Tách]   await expect(page).toHaveURL(/#\/luong$/);
+// [T34 bỏ Tách]   await expect(page.locator('.sb-nav [data-go="luong"]')).toHaveCount(1);
+// [T34 bỏ Tách]   await expect(page.locator('.sb-nav [data-go="dxms"]')).toHaveCount(0);
+// [T34 bỏ Tách]   await expect(page.locator('.sb-nav [data-go="ho-so-dxms"]')).toHaveCount(0);
+// [T34 bỏ Tách]   await expect(page.locator('.sb-nav [data-go="ycbg"]')).toHaveCount(1);
+// [T34 bỏ Tách]   await expect(page.locator('.sb-nav .nav.active')).toHaveAttribute('data-go', 'luong');
+// [T34 bỏ Tách]   await expect(page.locator('.pg-head h1, .pg-head h2').first()).toContainText('Danh sách luồng mua sắm');
+// [T34 bỏ Tách]   // Route cũ vẫn mở, mục Luồng mua sắm sáng.
+// [T34 bỏ Tách]   await page.evaluate(() => { location.hash = '#/dxms'; });
+// [T34 bỏ Tách]   await expect(page.locator('.sb-nav .nav.active')).toHaveAttribute('data-go', 'luong');
+// [T34 bỏ Tách]   await page.locator('#demo').click();
+// [T34 bỏ Tách]   await page.locator('[data-luong-mode="tach"]').click();
+// [T34 bỏ Tách]   await expect(page).toHaveURL(/#\/dxms$/);
+// [T34 bỏ Tách]   await expect(page.locator('.sb-nav [data-go="dxms"]')).toHaveCount(1);
+// [T34 bỏ Tách]   expect(page.errors).toEqual([]);
+// [T34 bỏ Tách] });
 
 // Thêm một dòng chỉ định (D-75): chọn Vai trò thực hiện rồi chọn một Người thực hiện.
 async function addRow(page, role, person) {
@@ -212,7 +213,7 @@ test('SCR-97: Chi tiết luồng 6 tab; Nhân sự thực hiện theo bước �
   await page.evaluate(() => { location.hash = '#/luong'; });
   await page.locator('.vtable tbody tr').first().locator('td').nth(4).click();
   await expect(page).toHaveURL(/#\/luong\/.+/);
-  await expect(page.locator('[data-ltab]')).toHaveText(['Thông tin chung', 'Tiến trình', 'Căn cứ', 'Nhân sự thực hiện', 'Văn bản & ký duyệt', 'Lịch sử thay đổi nhân sự']);
+  await expect(page.locator('[data-ltab]')).toHaveText(['Thông tin chung', 'Tiến trình', 'Căn cứ', 'Căn cứ & hạng mục', 'Rà soát tồn kho', 'Yêu cầu báo giá', 'Lịch sử phiên bản', 'Nhân sự thực hiện', 'Văn bản & ký duyệt', 'Kết quả & văn bản phê duyệt', 'Lịch sử thay đổi nhân sự']); // T34: thêm 5 tab của SCR-29
   await expect(page.locator('main')).toContainText('Luồng mua sắm cho dự án A');
   await page.locator('[data-ltab="tien-trinh"]').click();
   await expect(page.locator('main')).toContainText(await page.evaluate(() => Flow.state.code));
@@ -304,20 +305,20 @@ test('SCR-98 từ màn xử lý task: Thay người task đang mở chuyển nga
   expect(page.errors).toEqual([]);
 });
 
-test('D-29 (3): thay người đã ký — văn bản đã ký giữ nguyên; tab Văn bản & ký duyệt; bước đã xong không chọn được', async ({ page }) => {
+test('D-29 (3): thay người đã ký — văn bản đã ký giữ nguyên; tab Tài liệu & văn bản (Văn bản đầu ra gộp trạng thái ký, D-95); bước đã xong không chọn được', async ({ page }) => {
   const code = await newLuong(page);
   expect(await runTo(page, 48)).toBe(true);
-  await openTab(page, code, 'van-ban');
+  await openTab(page, code, 'tai-lieu');
   // P-225: bước 18 hệ thống trình Chỉ huy ĐVĐX (người duyệt 16.1) ký BM-03 — TTMS không còn là người ký BM-03.
-  const bm03 = page.locator('.vtable tbody tr', { hasText: 'BM-03' }).first();
+  const bm03 = page.locator('[data-dx-docs] tbody tr', { hasText: 'BM-03' }).first();
   const signer = await page.evaluate(() => D.personas.find((p) => p.id === Flow.state.history.find((h) => h.signDoc === 'BM-03').signer).name);
   await expect(bm03).toContainText(signer);
   await expect(bm03).not.toContainText('Đinh Thị Mai');
   await expect(bm03).toContainText('Đã ký');
-  const bm05 = page.locator('.vtable tbody tr', { hasText: 'BM-05' }).first();
+  const bm05 = page.locator('[data-dx-docs] tbody tr', { hasText: 'BM-05' }).first();
   await expect(bm05).toContainText('Đinh Thị Mai');
   await expect(bm05).toContainText('Đã ký');
-  await expect(page.locator('.vtable tbody tr', { hasText: 'Đang trình ký' })).toHaveCount(0);
+  await expect(page.locator('[data-dx-docs] tbody tr', { hasText: 'Đang trình ký' })).toHaveCount(0);
   // Bước 43 đã xong → không chọn được. Bước 48 (vai trò Chuyên viên TTMS đã chỉ định Mai, D-75) thay bằng Lan.
   await page.evaluate((c) => Luong.membersDialog(c, null), code);
   const r48 = await roleOf(page, '48');

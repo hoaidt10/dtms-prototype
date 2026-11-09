@@ -23,7 +23,9 @@ test('D-66: mọi đề tài / dự án có Loại, Loại chi tiết, Nguồn; 
   for (const n of D.nhiemVu) {
     assert.ok(LOAI.includes(n.loai), n.code);
     assert.ok(n.loaiCt, n.code);
-    assert.ok(['khcn', 'cu'].includes(n.nguon), n.code);
+    assert.ok(['khcn', 'hrtool', 'cu'].includes(n.nguon), n.code);
+    // T36 (P-227): HR Tool chỉ cấp Loại SXKD, Dự án đầu tư.
+    if (n.nguon === 'hrtool') assert.ok(['SXKD', 'Dự án đầu tư'].includes(n.loai), n.code);
     assert.equal(n.kind === 'Nhiệm vụ KHCN', n.loai === 'KHCN', n.code);
     assert.equal(n.nguon === 'khcn', n.loai === 'KHCN', n.code);
   }

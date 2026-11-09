@@ -18,13 +18,10 @@ const DT = 'NV-KHCN-2026-014';
 
 test('SCR-103: menu, lọc Loại → Loại chi tiết, Khối → Đơn vị lập, Xuất Excel theo TPL-DADT-EX', async ({ page }) => {
   await fresh(page, '#/de-tai');
-  await expect(page.locator('.sidebar .child.active')).toHaveText('Đề tài / dự án');
-  // Góp ý 05/11: menu Đề tài / dự án đứng đầu nhóm, trước Luồng mua sắm (phương án Gộp) và trước Đề xuất mua sắm (phương án Tách).
-  const subs = async () => (await page.locator('.sidebar .child').allInnerTexts()).map((x) => x.trim()).slice(0, 2);
-  expect(await subs()).toEqual(['Đề tài / dự án', 'Đề xuất mua sắm']);
-  await page.evaluate(() => { localStorage.setItem('dtms-proto-menu', 'gop'); window.App.render(); });
-  await expect.poll(subs).toEqual(['Đề tài / dự án', 'Luồng mua sắm']);
-  await page.evaluate(() => { localStorage.setItem('dtms-proto-menu', 'tach'); window.App.render(); });
+  // T34 (người dùng 09/11): Đề tài / dự án là menu cấp 1, ngay trên Quản lý đề xuất mua sắm.
+  await expect(page.locator('.sb-nav [data-go="de-tai"]')).toHaveClass(/active/);
+  const tops = (await page.locator('.sb-nav > .nav:not(.child) .l').allInnerTexts()).map((x) => x.trim());
+  expect(tops[tops.indexOf('Đề tài / dự án') + 1]).toBe('Quản lý đề xuất mua sắm');
   await expect(page.locator('.pg-title')).toHaveText('Danh sách đề tài / dự án');
   await expect(page.locator('[data-dt-list] thead th')).toHaveText(['STT', 'Trạng thái', 'Loại dự án / đề tài', 'Mã dự án / đề tài', 'Tên dự án / đề tài', 'Đơn vị lập', 'Chủ nhiệm',
     'Nguồn vốn', 'Tổng dự toán (tỷ đồng)', 'TG bắt đầu', 'TG kết thúc', 'Số ngày còn thực hiện', 'Nguồn dữ liệu']);
@@ -41,7 +38,7 @@ test('SCR-103: menu, lọc Loại → Loại chi tiết, Khối → Đơn vị l
   await page.locator('.pg-title').click();
   await page.locator('.adv button[type="submit"]').click({ force: true });
   await expect.poll(async () => (await listCodes(page)).sort()).toEqual(['004-26-VHT-RDP-DS', '009-26-VHT-RDP-DS', 'DT-KHCN-2027-002', 'NV-KHCN-2025-031', 'NV-KHCN-2026-006', 'NV-KHCN-2026-014']);
-  await expect(page.locator('[data-dt-list] tbody')).not.toContainText('Nhập ở hệ thống cũ');
+  await expect(page.locator('[data-dt-list] tbody')).not.toContainText('Chuyển từ hệ thống cũ');
 
   await page.locator('[data-dt="reset"]').click();
   await pick(page, 'dtf-block', 'Khối 2');
@@ -69,10 +66,10 @@ test('SCR-104: 5 tab cho mọi Loại (T31 B2); dự toán chỉ xem (góp ý 05
   await fresh(page, '#/de-tai/' + encodeURIComponent('DA-2026-002'));
   // T29 B15 (D-80): bản demo ĐXMS ẩn tab Gói thầu / Hợp đồng và bảng KĐT liên quan (cờ D.show).
   await expect(page.locator('[data-dt-tab]')).toHaveText(['Thông tin chung', 'Dự toán chi phí', 'ĐXMS liên quan', 'Văn bản pháp lý']);
-  await expect(page.locator('main .ginfo').first()).toContainText('Nhập ở hệ thống cũ');
+  await expect(page.locator('main .ginfo').first()).toContainText('Đồng bộ HR Tool');
 
   await go(page, '#/de-tai/' + encodeURIComponent(DT));
-  await expect(page.locator('main .ginfo').first()).toContainText('KHCN (đồng bộ)');
+  await expect(page.locator('main .ginfo').first()).toContainText('Đồng bộ KHCN');
   await page.locator('[data-dt-tab="du-toan"]').click();
   await expect(page.locator('[data-dt-kpi]')).toContainText('Đang giữ (ĐXMS / KĐT đang xử lý)');
   // Chỉ xem: không Thêm mới, không cột Thao tác (Sao chép / Sửa / Xoá) — kể cả đơn vị lập đề tài.

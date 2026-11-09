@@ -36,10 +36,11 @@ for (const r of CLEAN_ROUTES) {
 }
 
 test('A2: nút (i) mở ghi chú BA của màn, có điểm ❓ bấm được', async ({ page }) => {
-  await fresh(page, '#/ho-so-dxms/create');
+  // T34 (D-90): SCR-25 bỏ cùng phương án Tách — kiểm trên Lập ĐXMS (SCR-96).
+  await fresh(page, '#/luong/create');
   await page.locator('.pg-title .info-i').click();
-  await expect(page.locator('.info-pop')).toContainText('SCR-25');
-  await expect(page.locator('.info-pop')).toContainText('profile-form');
+  await expect(page.locator('.info-pop')).toContainText('SCR-96');
+  await expect(page.locator('.info-pop')).toContainText('task-create');
   await page.locator('.info-pop [data-q="P-34"]').click();
   await expect(page.locator('.overlay')).toContainText('P-34');
 });
@@ -52,114 +53,122 @@ test('C4: ?capture=1 ẩn nút (i) và nút công cụ demo', async ({ page }) =
   await expect(page.locator('#demo')).toBeHidden();
 });
 
-test('B5: Danh sách hồ sơ ĐXMS theo profile-list — cột, tìm kiếm, tìm kiếm nâng cao, phân trang', async ({ page }) => {
-  await fresh(page, '#/ho-so-dxms');
-  await expect(page.locator('.pg-title')).toHaveText('Danh sách hồ sơ ĐXMS');
-  await expect(page.locator('.sb-nav [data-go="ho-so-dxms"]')).toHaveClass(/active/);
-  await expect(page.locator('.pg-head .r [data-create="hs"]')).toHaveText(/Thêm mới/);
-  await expect(page.locator('.vtable th')).toHaveText(['STT', 'Trạng thái', 'Mã hồ sơ', 'Mã ĐXMS', 'Tên hồ sơ', 'Loại hồ sơ', 'Đơn vị đề xuất',
-    'Tổng giá trị (tỷ đồng)', 'Mức ưu tiên', 'Quy trình', 'Bước hiện tại', 'Số Tờ trình', 'Ngày Tờ trình', 'Ngày gửi thẩm định', 'Người tạo', 'Ngày cập nhật']);
-  await expect(page.locator('.vpager')).toContainText('Tổng số bản ghi: 13');
-  await expect(page.locator('.vtable tbody tr')).toHaveCount(10);
-  await page.locator('.vpager [data-pg="2"]').first().click();
-  await expect(page.locator('.vtable tbody tr')).toHaveCount(3);
-  await expect(page.locator('.vtable tbody tr').first().locator('td').first()).toHaveText('11');
+// T34 (D-90): SCR-02 — comment cùng màn Tách.
+// [T34 bỏ Tách] test('B5: Danh sách hồ sơ ĐXMS theo profile-list — cột, tìm kiếm, tìm kiếm nâng cao, phân trang', async ({ page }) => {
+// [T34 bỏ Tách]   await fresh(page, '#/ho-so-dxms');
+// [T34 bỏ Tách]   await expect(page.locator('.pg-title')).toHaveText('Danh sách hồ sơ ĐXMS');
+// [T34 bỏ Tách]   await expect(page.locator('.sb-nav [data-go="ho-so-dxms"]')).toHaveClass(/active/);
+// [T34 bỏ Tách]   await expect(page.locator('.pg-head .r [data-create="hs"]')).toHaveText(/Thêm mới/);
+// [T34 bỏ Tách]   await expect(page.locator('.vtable th')).toHaveText(['STT', 'Trạng thái', 'Mã hồ sơ', 'Mã ĐXMS', 'Tên hồ sơ', 'Loại hồ sơ', 'Đơn vị đề xuất',
+// [T34 bỏ Tách]     'Tổng giá trị (tỷ đồng)', 'Mức ưu tiên', 'Quy trình', 'Bước hiện tại', 'Số Tờ trình', 'Ngày Tờ trình', 'Ngày gửi thẩm định', 'Người tạo', 'Ngày cập nhật']);
+// [T34 bỏ Tách]   await expect(page.locator('.vpager')).toContainText('Tổng số bản ghi: 12');
+// [T34 bỏ Tách]   await expect(page.locator('.vtable tbody tr')).toHaveCount(10);
+// [T34 bỏ Tách]   await page.locator('.vpager [data-pg="2"]').first().click();
+// [T34 bỏ Tách]   await expect(page.locator('.vtable tbody tr')).toHaveCount(2);
+// [T34 bỏ Tách]   await expect(page.locator('.vtable tbody tr').first().locator('td').first()).toHaveText('11');
+// [T34 bỏ Tách] 
+// [T34 bỏ Tách]   await page.locator('#hs-kw').fill('may chu');
+// [T34 bỏ Tách]   await page.locator('#hs-kw').press('Enter');
+// [T34 bỏ Tách]   await expect(page.locator('.vtable tbody tr')).toHaveCount(1);
+// [T34 bỏ Tách]   await expect(page.locator('.vtable tbody')).toContainText('HS-2026-0121');
+// [T34 bỏ Tách]   // T34 (D-85): mỗi ĐXMS một hồ sơ — hồ sơ Điều chỉnh thuộc ĐXMS điều chỉnh 0126.
+// [T34 bỏ Tách]   await page.locator('#hs-kw').fill('ĐXMS-2026-0126');
+// [T34 bỏ Tách]   await page.locator('#hs-kw').press('Enter');
+// [T34 bỏ Tách]   await expect(page.locator('.vtable tbody tr')).toHaveCount(1);
+// [T34 bỏ Tách]   await expect(page.locator('.vtable tbody')).toContainText('Điều chỉnh ĐXMS');
+// [T34 bỏ Tách] 
+// [T34 bỏ Tách]   await page.locator('[data-l="adv"]').click();
+// [T34 bỏ Tách]   await expect(page.locator('#hs-kw')).toHaveCount(0);
+// [T34 bỏ Tách]   await expect(page.locator('[data-l="adv"]')).toHaveText('Ẩn tìm kiếm nâng cao');
+// [T34 bỏ Tách]   await page.locator('[data-vsel="f-st"]').click();
+// [T34 bỏ Tách]   await page.locator('.vsel-panel [data-opt="done"]').click();
+// [T34 bỏ Tách]   await page.locator('.adv button[type="submit"]').click({ force: true });
+// [T34 bỏ Tách]   const n = await page.locator('.vtable tbody tr').count();
+// [T34 bỏ Tách]   expect(n).toBe(6);
+// [T34 bỏ Tách]   for (let i = 0; i < n; i++) await expect(page.locator('.vtable tbody tr').nth(i).locator('.vbadge')).toHaveText('Hoàn thành');
+// [T34 bỏ Tách]   await page.locator('[data-vsel="f-kind"]').click();
+// [T34 bỏ Tách]   await page.locator('.vsel-panel [data-opt="DC"]').click();
+// [T34 bỏ Tách]   await page.locator('.adv button[type="submit"]').click({ force: true });
+// [T34 bỏ Tách]   await expect(page.locator('.vtable tbody tr')).toHaveCount(1);
+// [T34 bỏ Tách]   await expect(page.locator('.vtable tbody')).toContainText('HS-2026-0112');
+// [T34 bỏ Tách]   await page.locator('[data-l="reset"]').click();
+// [T34 bỏ Tách]   await expect(page.locator('.vpager')).toContainText('Tổng số bản ghi: 12');
+// [T34 bỏ Tách] });
 
-  await page.locator('#hs-kw').fill('may chu');
-  await page.locator('#hs-kw').press('Enter');
-  await expect(page.locator('.vtable tbody tr')).toHaveCount(1);
-  await expect(page.locator('.vtable tbody')).toContainText('HS-2026-0121');
-  // Tìm theo mã ĐXMS ra mọi hồ sơ của ĐXMS đó (Phê duyệt + Điều chỉnh).
-  await page.locator('#hs-kw').fill('ĐXMS-2026-0077');
-  await page.locator('#hs-kw').press('Enter');
-  await expect(page.locator('.vtable tbody tr')).toHaveCount(2);
-  await expect(page.locator('.vtable tbody')).toContainText('Điều chỉnh ĐXMS');
+// T34 (D-90): SCR-02 — comment cùng màn Tách.
+// [T34 bỏ Tách] test('A5: mọi hồ sơ trong danh sách mở được', async ({ page }) => {
+// [T34 bỏ Tách]   await fresh(page, '#/ho-so-dxms');
+// [T34 bỏ Tách]   await page.locator('.vpager .ps-t').click();
+// [T34 bỏ Tách]   await page.locator('.vpager [data-ps="50"]').click();
+// [T34 bỏ Tách]   const codes = await page.locator('.vtable tbody tr').evaluateAll((rs) => rs.map((r) => r.dataset.code));
+// [T34 bỏ Tách]   expect(codes.length).toBe(12);
+// [T34 bỏ Tách]   for (const code of codes) {
+// [T34 bỏ Tách]     await page.evaluate(() => { location.hash = '#/ho-so-dxms'; });
+// [T34 bỏ Tách]     await page.locator(`tr[data-code="${code}"] .link`).click();
+// [T34 bỏ Tách]     await expect(page.locator('.ginfo')).toContainText(code);
+// [T34 bỏ Tách]     await expect(page.locator('.dmain .vsteps, .dmain .vst').first()).toBeVisible();
+// [T34 bỏ Tách]   }
+// [T34 bỏ Tách]   expect(page.errors).toEqual([]);
+// [T34 bỏ Tách] });
 
-  await page.locator('[data-l="adv"]').click();
-  await expect(page.locator('#hs-kw')).toHaveCount(0);
-  await expect(page.locator('[data-l="adv"]')).toHaveText('Ẩn tìm kiếm nâng cao');
-  await page.locator('[data-vsel="f-st"]').click();
-  await page.locator('.vsel-panel [data-opt="done"]').click();
-  await page.locator('.adv button[type="submit"]').click({ force: true });
-  const n = await page.locator('.vtable tbody tr').count();
-  expect(n).toBe(6);
-  for (let i = 0; i < n; i++) await expect(page.locator('.vtable tbody tr').nth(i).locator('.vbadge')).toHaveText('Hoàn thành');
-  await page.locator('[data-vsel="f-kind"]').click();
-  await page.locator('.vsel-panel [data-opt="DC"]').click();
-  await page.locator('.adv button[type="submit"]').click({ force: true });
-  await expect(page.locator('.vtable tbody tr')).toHaveCount(1);
-  await expect(page.locator('.vtable tbody')).toContainText('HS-2026-0112');
-  await page.locator('[data-l="reset"]').click();
-  await expect(page.locator('.vpager')).toContainText('Tổng số bản ghi: 13');
-});
-
-test('A5: mọi hồ sơ trong danh sách mở được', async ({ page }) => {
-  await fresh(page, '#/ho-so-dxms');
-  await page.locator('.vpager .ps-t').click();
-  await page.locator('.vpager [data-ps="50"]').click();
-  const codes = await page.locator('.vtable tbody tr').evaluateAll((rs) => rs.map((r) => r.dataset.code));
-  expect(codes.length).toBe(13);
-  for (const code of codes) {
-    await page.evaluate(() => { location.hash = '#/ho-so-dxms'; });
-    await page.locator(`tr[data-code="${code}"] .link`).click();
-    await expect(page.locator('.ginfo')).toContainText(code);
-    await expect(page.locator('.dmain .vsteps, .dmain .vst').first()).toBeVisible();
-  }
-  expect(page.errors).toEqual([]);
-});
-
-test('B5: Danh sách ĐXMS theo task-management — cột, chỉ ô tìm kiếm, trạng thái suy từ hồ sơ, mọi ĐXMS mở được, Xoá khi chưa có hồ sơ', async ({ page }) => {
-  await fresh(page, '#/dxms');
-  await expect(page.locator('.pg-title')).toHaveText('Danh sách ĐXMS');
-  await expect(page.locator('.sb-nav [data-go="dxms"]')).toHaveClass(/active/);
-  await expect(page.locator('.pg-head .r [data-create="dxms"]')).toHaveText(/Thêm mới/);
-  await expect(page.locator('[data-l="adv"]')).toHaveCount(0);
-  await expect(page.locator('.vtable th')).toHaveText(['STT', 'Thao tác', 'Trạng thái', 'Mã ĐXMS', 'Tên ĐXMS', 'Đề tài / dự án', 'Đợt', 'Đơn vị đề xuất',
-    'Giá trị hiệu lực (tỷ đồng)', 'Mức ưu tiên', 'Người tạo', 'Ngày cập nhật']);
-  await expect(page.locator('.vpager')).toContainText('Tổng số bản ghi: 13');
-  const st = (code) => page.locator(`tr[data-code="${code}"] .vbadge`);
-  await expect(st('ĐXMS-2026-0119')).toHaveText('Chưa có hồ sơ');
-  await expect(st('ĐXMS-2026-0121')).toHaveText('Đang phê duyệt');
-  await expect(st('ĐXMS-2026-0103')).toHaveText('Đã phê duyệt');
-  await page.locator('.vpager [data-pg="2"]').first().click();
-  await expect(st('ĐXMS-2026-0077')).toHaveText('Đang điều chỉnh');
-  // Giá trị hiệu lực = hồ sơ Hoàn thành gần nhất (Điều chỉnh 9,60 → 11,20). 0084 ở trang 2 (0124 thêm đầu danh sách).
-  await expect(page.locator('tr[data-code="ĐXMS-2026-0084"]')).toContainText('11,20');
-  await page.locator('.vpager [data-pg="1"]').first().click();
-  // Xoá được ĐXMS chưa có hồ sơ: 0119, 0124 và 0098 (hai ĐXMS demo MS01.02 / MS01.03 — hồ sơ tạo khi chạy luồng).
-  await expect(page.locator('[data-del-dxms]')).toHaveCount(3);
-
-  await page.locator('#dxms-kw').fill('may in');
-  await page.locator('#dxms-kw').press('Enter');
-  await expect(page.locator('.vtable tbody tr')).toHaveCount(1);
-  await page.locator('[data-del-dxms="ĐXMS-2026-0119"]').click();
-  await expect(page).toHaveURL(/#\/dxms$/);
-  await page.locator('.vconfirm #cf-ok').click();
-  await expect(page.locator('.vtable tbody tr')).toHaveCount(1);
-  await expect(page.locator('.vtable tbody')).toContainText('Chưa có dữ liệu');
-
-  await page.locator('#dxms-kw').fill('');
-  await page.locator('#dxms-kw').press('Enter');
-  await page.locator('.vpager .ps-t').click();
-  await page.locator('.vpager [data-ps="50"]').click();
-  const codes = await page.locator('.vtable tbody tr').evaluateAll((rs) => rs.map((r) => r.dataset.code));
-  expect(codes.length).toBe(12);
-  for (const code of codes) {
-    await page.evaluate(() => { location.hash = '#/dxms'; });
-    await page.locator(`tr[data-code="${code}"] .link`).click();
-    await expect(page.locator('.pg-title')).toHaveText('Xem chi tiết ĐXMS');
-    await expect(page.locator('.gen .ginfo')).toContainText(code);
-    await expect(page.locator('[data-dxms-profiles] tbody tr').first()).toContainText(['ĐXMS-2026-0124', 'ĐXMS-2026-0098'].includes(code) ? 'Chưa có dữ liệu' : 'HS-2026-');
-  }
-  // ĐXMS có hai hồ sơ (Phê duyệt đã chuyển quy trình + hồ sơ thay thế); mở hồ sơ từ đây thì quay lại đúng ĐXMS.
-  await page.evaluate(() => { location.hash = '#/dxms/%C4%90XMS-2026-0072'; });
-  await expect(page.locator('[data-dxms-profiles] tbody tr')).toHaveCount(2);
-  await page.locator('[data-dxms-profiles] a.link', { hasText: 'HS-2026-0074' }).click();
-  await expect(page.locator('.pg-title')).toHaveText('Chi tiết hồ sơ');
-  await page.locator('.pg-head .vbtn.back').click();
-  await expect(page).toHaveURL(/#\/dxms\/%C4%90XMS-2026-0072$/);
-  expect(page.errors).toEqual([]);
-});
+// T34 (D-90): SCR-27, SCR-29 — comment cùng màn Tách.
+// [T34 bỏ Tách] test('B5: Danh sách ĐXMS theo task-management — cột, chỉ ô tìm kiếm, trạng thái suy từ hồ sơ, mọi ĐXMS mở được, Xoá khi chưa có hồ sơ', async ({ page }) => {
+// [T34 bỏ Tách]   await fresh(page, '#/dxms');
+// [T34 bỏ Tách]   await expect(page.locator('.pg-title')).toHaveText('Danh sách ĐXMS');
+// [T34 bỏ Tách]   await expect(page.locator('.sb-nav [data-go="dxms"]')).toHaveClass(/active/);
+// [T34 bỏ Tách]   await expect(page.locator('.pg-head .r [data-create="dxms"]')).toHaveText(/Thêm mới/);
+// [T34 bỏ Tách]   await expect(page.locator('[data-l="adv"]')).toHaveCount(0);
+// [T34 bỏ Tách]   await expect(page.locator('.vtable th')).toHaveText(['STT', 'Thao tác', 'Trạng thái', 'Mã ĐXMS', 'Tên ĐXMS', 'Đề tài / dự án', 'Đợt', 'Đơn vị đề xuất',
+// [T34 bỏ Tách]     'Giá trị hiệu lực (tỷ đồng)', 'Mức ưu tiên', 'Người tạo', 'Ngày cập nhật']);
+// [T34 bỏ Tách]   await expect(page.locator('.vpager')).toContainText('Tổng số bản ghi: 15');
+// [T34 bỏ Tách]   const st = (code) => page.locator(`tr[data-code="${code}"] .vbadge`);
+// [T34 bỏ Tách]   await expect(st('ĐXMS-2026-0119')).toHaveText('Chưa có hồ sơ');
+// [T34 bỏ Tách]   await expect(st('ĐXMS-2026-0121')).toHaveText('Đang phê duyệt');
+// [T34 bỏ Tách]   await expect(st('ĐXMS-2026-0103')).toHaveText('Đã phê duyệt');
+// [T34 bỏ Tách]   // T34 (D-85): ĐXMS điều chỉnh 0112 (đã duyệt) mang giá trị sau điều chỉnh; 0084 hết hiệu lực; 0077 đang được điều chỉnh bởi 0126.
+// [T34 bỏ Tách]   await expect(st('ĐXMS-2026-0112')).toHaveText('Đã phê duyệt (điều chỉnh lần 1)');
+// [T34 bỏ Tách]   await expect(page.locator('tr[data-code="ĐXMS-2026-0112"]')).toContainText('11,20');
+// [T34 bỏ Tách]   await expect(st('ĐXMS-2026-0126')).toHaveText('Đang phê duyệt');
+// [T34 bỏ Tách]   await page.locator('.vpager [data-pg="2"]').first().click();
+// [T34 bỏ Tách]   await expect(st('ĐXMS-2026-0077')).toHaveText('Đang điều chỉnh');
+// [T34 bỏ Tách]   await expect(st('ĐXMS-2026-0084')).toHaveText('Đã được điều chỉnh');
+// [T34 bỏ Tách]   await page.locator('.vpager [data-pg="1"]').first().click();
+// [T34 bỏ Tách]   // Xoá được ĐXMS chưa có hồ sơ: 0119, 0124 và 0098 (hai ĐXMS demo MS01.02 / MS01.03 — hồ sơ tạo khi chạy luồng).
+// [T34 bỏ Tách]   await expect(page.locator('[data-del-dxms]')).toHaveCount(3);
+// [T34 bỏ Tách] 
+// [T34 bỏ Tách]   await page.locator('#dxms-kw').fill('may in');
+// [T34 bỏ Tách]   await page.locator('#dxms-kw').press('Enter');
+// [T34 bỏ Tách]   await expect(page.locator('.vtable tbody tr')).toHaveCount(1);
+// [T34 bỏ Tách]   await page.locator('[data-del-dxms="ĐXMS-2026-0119"]').click();
+// [T34 bỏ Tách]   await expect(page).toHaveURL(/#\/dxms$/);
+// [T34 bỏ Tách]   await page.locator('.vconfirm #cf-ok').click();
+// [T34 bỏ Tách]   await expect(page.locator('.vtable tbody tr')).toHaveCount(1);
+// [T34 bỏ Tách]   await expect(page.locator('.vtable tbody')).toContainText('Chưa có dữ liệu');
+// [T34 bỏ Tách] 
+// [T34 bỏ Tách]   await page.locator('#dxms-kw').fill('');
+// [T34 bỏ Tách]   await page.locator('#dxms-kw').press('Enter');
+// [T34 bỏ Tách]   await page.locator('.vpager .ps-t').click();
+// [T34 bỏ Tách]   await page.locator('.vpager [data-ps="50"]').click();
+// [T34 bỏ Tách]   const codes = await page.locator('.vtable tbody tr').evaluateAll((rs) => rs.map((r) => r.dataset.code));
+// [T34 bỏ Tách]   expect(codes.length).toBe(14);
+// [T34 bỏ Tách]   for (const code of codes) {
+// [T34 bỏ Tách]     await page.evaluate(() => { location.hash = '#/dxms'; });
+// [T34 bỏ Tách]     await page.locator(`tr[data-code="${code}"] .link`).click();
+// [T34 bỏ Tách]     await expect(page.locator('.pg-title')).toHaveText('Xem chi tiết ĐXMS');
+// [T34 bỏ Tách]     await expect(page.locator('.gen .ginfo')).toContainText(code);
+// [T34 bỏ Tách]     await expect(page.locator('[data-dxms-profiles] tbody tr').first()).toContainText(['ĐXMS-2026-0124', 'ĐXMS-2026-0098'].includes(code) ? 'Chưa có dữ liệu' : 'HS-2026-');
+// [T34 bỏ Tách]   }
+// [T34 bỏ Tách]   // T34: ĐXMS cũ có đúng một hồ sơ + Lịch sử điều chỉnh (0084 → 0112); mở hồ sơ từ đây thì quay lại đúng ĐXMS.
+// [T34 bỏ Tách]   await page.evaluate(() => { location.hash = '#/dxms/%C4%90XMS-2026-0084'; });
+// [T34 bỏ Tách]   await expect(page.locator('[data-dxms-profiles] tbody tr')).toHaveCount(1);
+// [T34 bỏ Tách]   await expect(page.locator('[data-dxms-chain] tbody tr')).toHaveCount(2);
+// [T34 bỏ Tách]   await expect(page.locator('.gen .ginfo')).toContainText('Được điều chỉnh bởiĐXMS-2026-0112');
+// [T34 bỏ Tách]   await page.locator('[data-dxms-profiles] a.link', { hasText: 'HS-2026-0084' }).click();
+// [T34 bỏ Tách]   await expect(page.locator('.pg-title')).toHaveText('Chi tiết hồ sơ');
+// [T34 bỏ Tách]   await page.locator('.pg-head .vbtn.back').click();
+// [T34 bỏ Tách]   await expect(page).toHaveURL(/#\/dxms\/%C4%90XMS-2026-0084$/);
+// [T34 bỏ Tách]   expect(page.errors).toEqual([]);
+// [T34 bỏ Tách] });
 
 test('B5: Việc của tôi theo my-tasks — không tab, cột, lọc Trạng thái, mọi dòng mở được', async ({ page }) => {
   await fresh(page, '#/viec-cua-toi');
@@ -503,7 +512,8 @@ test('C4: ?capture=1 — màn Quản trị quy trình ẩn nút (i); sơ đồ S
   await expect(page.locator('.bp-svg foreignObject')).toHaveCount(0);
 });
 
-for (const [h, title] of [['#/ho-so-dxms', 'Danh sách hồ sơ ĐXMS'], ['#/ho-so-kdt', 'Danh sách hồ sơ khoản đầu tư'],
+// T34 (D-90): bỏ ['#/ho-so-dxms', 'Danh sách hồ sơ ĐXMS'] — SCR-02 comment cùng phương án Tách.
+for (const [h, title] of [['#/ho-so-kdt', 'Danh sách hồ sơ khoản đầu tư'],
   ['#/khlcnt', 'Danh sách kế hoạch lựa chọn nhà thầu'], ['#/hop-dong', 'Danh sách hợp đồng']]) {
   test(`D-43: ${title} không có cột Thao tác, mã vẫn mở chi tiết`, async ({ page }) => {
     await fresh(page, h);
