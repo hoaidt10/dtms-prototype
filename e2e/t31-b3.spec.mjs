@@ -11,6 +11,8 @@ const pickV = async (page, id, value) => {
   await page.locator(`[data-vsel="${id}"]`).evaluate((e) => e.scrollIntoView({ block: 'center' }));
   await page.locator(`[data-vsel="${id}"]`).click();
   await page.locator(`.vsel-panel [data-opt="${value}"]`).click();
+  // T45: Đề tài / dự án (k-nv) là chọn nhiều — danh sách giữ mở sau khi chọn, Escape để đóng.
+  if (await page.locator('.vsel-panel').count()) await page.keyboard.press('Escape');
 };
 const pickT = async (page, id, text) => {
   await page.locator(`[data-vsel="${id}"]`).click();

@@ -30,19 +30,21 @@ test('SCR-20 KĐT: mọi mã hồ sơ ở Danh sách hồ sơ của 13 KĐT mở
   let opened = 0;
   for (const k of kdts) {
     await go(page, `#/kdt/${enc(k)}`);
-    const codes = await page.locator('[data-kdt-profiles] tbody a.link[data-go^="ho-so-kdt/"]').allInnerTexts();
+    // T45: mã hồ sơ chủ trương còn ở cột Hồ sơ chủ trương của dòng hồ sơ KĐT — lấy mã không trùng, bấm liên kết đầu tiên.
+    const codes = [...new Set(await page.locator('[data-kdt-profiles] tbody a.link[data-go^="ho-so-kdt/"]').allInnerTexts())];
     for (const code of codes) {
       await go(page, `#/kdt/${enc(k)}`);
-      await page.locator(`[data-kdt-profiles] tbody a.link[data-go="ho-so-kdt/${code}"]`).click();
+      await page.locator(`[data-kdt-profiles] tbody a.link[data-go="ho-so-kdt/${code}"]`).first().click();
       await expect(page).toHaveURL(new RegExp(`#/ho-so-kdt/${code}$`));
       await expect(page.locator('.pg-title')).toHaveText('Chi tiết hồ sơ');
       expect(await card(page)).toEqual(['Thông tin chung', 'Quy trình', 'Danh sách tài liệu', 'Văn bản đầu ra']);
       await expect(page.locator('.ginfo')).toContainText(`Mã KĐT${k}`);
-      await expect(page.locator('.ginfo')).toContainText('Loại hồ sơPhê duyệt KĐT');
+      // T45 (D-103): hồ sơ <mã>-2 là hồ sơ phê duyệt KĐT, còn lại là hồ sơ phê duyệt chủ trương KĐT.
+      await expect(page.locator('.ginfo')).toContainText(`Loại hồ sơ${/-2$/.test(code) ? 'Phê duyệt KĐT' : 'Phê duyệt chủ trương KĐT'}`);
       expect(await mainText(page)).not.toMatch(BA);
       await page.locator('.pg-head .r .vbtn', { hasText: 'Xem BPMN' }).click();
       await expect(page.locator('.pg-title')).toHaveText('Chi tiết BPMN');
-      await expect(page.locator('.bp-vp')).toHaveAttribute('data-page', code === 'HS-2026-0019' ? 'MS14' : 'MS13');
+      await expect(page.locator('.bp-vp')).toHaveAttribute('data-page', ['HS-2026-0019', 'HS-2026-0026-2'].includes(code) ? 'MS14' : 'MS13');
       expect(await mainText(page)).not.toMatch(BA);
       await page.locator('.pg-head .r .vbtn', { hasText: 'Xem quy trình' }).click();
       await page.locator('.pg-head .back').click();
@@ -62,11 +64,22 @@ test('SCR-20 KĐT mẫu: tiến độ, lịch sử, văn bản đầu ra theo b�
   await expect(gi).toContainText('Trạng tháiHoàn thành');
   await expect(gi).toContainText('Tổng mức vốn thực tế (gồm VAT)138,50 tỷ đồng');
   await expect(page.locator('.vsteps .vsteps-c.active')).toHaveCount(0);
-  await expect(page.locator('.dmain section').nth(3)).toContainText('BM-18 Quyết định phê duyệt KĐT');
+  // T45 (D-103): HS-2026-0012 là hồ sơ chủ trương (BM-01); BM-14, BM-18 thuộc hồ sơ phê duyệt KĐT HS-2026-0012-2.
+  await expect(gi).toContainText('Loại hồ sơPhê duyệt chủ trương KĐT');
+  await expect(gi).toContainText('Phạm viChủ trương');
+  await expect(page.locator('.dmain section').nth(3)).toContainText('BM-01');
+  await expect(page.locator('.dmain section').nth(3)).not.toContainText('BM-18');
   await expect(page.locator('.drail .vtl li')).not.toHaveCount(0);
   // Hai giai đoạn: không có bước của nhánh gộp (BM-00) và nhánh Tập đoàn.
   const steps = await page.evaluate(() => [...document.querySelectorAll('.drail .vtl .ti')].map((x) => x.textContent).join('|'));
   expect(steps).not.toMatch(/BM-00|Tập đoàn/);
+  await go(page, '#/ho-so-kdt/HS-2026-0012-2');
+  await expect(gi).toContainText('Loại hồ sơPhê duyệt KĐT');
+  await expect(gi).toContainText('Trạng tháiHoàn thành');
+  await expect(gi).toContainText('Tổng mức vốn KĐT (gồm VAT)138,50 tỷ đồng');
+  await expect(gi).toContainText('Hồ sơ chủ trươngHS-2026-0012');
+  await expect(page.locator('[data-kdt-inherit]')).toContainText('Kế thừa từ hồ sơ chủ trương HS-2026-0012');
+  await expect(page.locator('.dmain section').nth(3)).toContainText('BM-18 Quyết định phê duyệt KĐT');
 
   await go(page, '#/ho-so-kdt/HS-2026-0024');
   await expect(gi).toContainText('Bước hiện tại');
@@ -113,9 +126,13 @@ test('SCR-20 KĐT đang chạy: cảnh K5 (bước 27 của khối chung, vòng 
   await page.locator('.demo-panel [data-scene="K10"]').click();
   await expect(page).toHaveURL(new RegExp(`#/kdt/${enc('KĐT-2026-0032')}$`));
   await expect(page.locator('main')).toContainText('Đã phê duyệt');
-  await page.locator(`[data-kdt-profiles] tbody a.link[data-go="ho-so-kdt/${code}"]`).click();
+  // T45: K10 tua hồ sơ chủ trương tới kết thúc rồi chạy hồ sơ phê duyệt KĐT <mã>-2 (kế thừa chủ trương) tới Quyết định.
+  // Mã hồ sơ chủ trương: cột Mã hồ sơ của dòng chủ trương + cột Hồ sơ chủ trương của dòng hồ sơ KĐT.
+  await expect(page.locator(`[data-kdt-profiles] tbody a.link[data-go="ho-so-kdt/${code}"]`)).toHaveCount(2);
+  await page.locator(`[data-kdt-profiles] tbody a.link[data-go="ho-so-kdt/${code}-2"]`).click();
   await expect(page.locator('.ginfo')).toContainText('Trạng tháiHoàn thành');
-  await expect(page.locator('.ginfo')).toContainText('Thẩm địnhChủ trương: vòng check 2/2, họp 1/2');
+  await expect(page.locator('.ginfo')).toContainText('Loại hồ sơPhê duyệt KĐT');
+  await expect(page.locator('.ginfo')).toContainText(`Hồ sơ chủ trương${code}`);
   const outs = await page.locator('.dmain section').nth(3).locator('tbody td:nth-child(3)').allInnerTexts();
   expect(outs.map((x) => x.slice(0, 5))).toEqual(['BM-01', 'BM-14', 'BM-18']);
   await expect(page.locator('.vsteps .vsteps-c.active')).toHaveCount(0);
@@ -126,36 +143,55 @@ test('SCR-20 KĐT đang chạy: cảnh K5 (bước 27 của khối chung, vòng 
 
 test('Việc của tôi: cột Mã ĐXMS / KĐT, việc KĐT đang chờ và đã xử lý (hồ sơ mẫu), lọc Loại hồ sơ Phê duyệt KĐT; mọi dòng mở được', async ({ page }) => {
   await fresh(page, '#/viec-cua-toi');
-  await page.evaluate(() => Flow.jumpToScene('K6', 'MS13'));
-  await as(page, 'lan');
+  // T45: K7 = hồ sơ phê duyệt KĐT HS-2026-0032-2 ở bước 50 của Minh (việc đã xử lý của hồ sơ chủ trương mang loại Phê duyệt chủ trương KĐT).
+  await page.evaluate(() => Flow.jumpToScene('K7', 'MS13'));
+  await as(page, 'minh');
   await go(page, '#/viec-cua-toi');
-  await expect(page.locator('.vtable thead th').nth(3)).toHaveText('Mã ĐXMS / KĐT');
-  await page.locator('[data-m="adv"]').click();
-  await page.locator('[data-vsel="m-type"]').click();
-  await page.locator('.vsel-panel .vsel-opt', { hasText: 'Phê duyệt KĐT' }).click();
-  await page.keyboard.press('Escape');
-  await page.locator('[data-madv] button[type="submit"]').click();
-  await page.locator('.vpager .ps-t').click();
-  await page.locator('.vpager [data-ps="50"]').click();
-  const rows = page.locator('.vtable tbody tr');
-  const n = await rows.count();
-  expect(n).toBeGreaterThanOrEqual(4);
-  const types = await page.locator('.vtable tbody td:nth-child(8)').allInnerTexts();
-  expect(new Set(types)).toEqual(new Set(['Phê duyệt KĐT']));
-  await expect(rows.first()).toContainText('Chưa xử lý');
+  // T34 v0.2 (D-92) / T39 B1: không có cột Mã hồ sơ, Loại — hai tab Chưa xử lý / Đã hoàn thành; mã hồ sơ ở data-code của dòng.
+  await expect(page.locator('.vtable thead th').nth(2)).toHaveText('Mã ĐXMS / KĐT');
+  const filterType = async (label) => {
+    if (!(await page.locator('[data-madv]').count())) await page.locator('[data-m="adv"]').click();
+    await page.locator('[data-m="reset"]').click();
+    await page.locator('[data-vsel="m-type"]').click();
+    await page.locator('.vsel-panel .vsel-opt', { hasText: new RegExp(`^${label}$`) }).click();
+    await page.keyboard.press('Escape');
+    await page.locator('[data-madv] button[type="submit"]').click();
+  };
+  const codes = () => page.locator('.vtable tbody tr[data-code]').evaluateAll((tr) => tr.map((r) => r.dataset.code));
+  const openAll = async () => {
+    const targets = await page.locator('.vtable tbody tr').evaluateAll((tr) => tr.map((r) => r.dataset.go));
+    for (const t of targets) {
+      await go(page, '#/' + t);
+      await expect(page.locator('.pg-title')).toHaveText(/Xem chi tiết hồ sơ|Chi tiết hồ sơ|Xử lý hồ sơ/);
+      await expect(page.locator('main')).not.toContainText('Không tìm thấy');
+      expect(await mainText(page)).not.toMatch(BA);
+    }
+    await go(page, '#/viec-cua-toi');
+  };
+  await filterType('Phê duyệt KĐT');
+  // Chưa xử lý: việc bước 50 của hồ sơ phê duyệt KĐT đang chạy.
+  const pend = await codes();
+  expect(pend).toContain('HS-2026-0032-2');
+  expect(pend.every((c) => /-2$/.test(c))).toBe(true);
+  await expect(page.locator('.vtable tbody tr').first()).toContainText('Chưa xử lý');
+  await openAll();
+  // Đã hoàn thành: việc đã xử lý của hồ sơ KĐT mẫu (0027-2, 0012-2).
+  await page.locator('[data-my-tab="done"]').click();
+  const done = await codes();
+  expect(done).toEqual(expect.arrayContaining(['HS-2026-0027-2', 'HS-2026-0012-2']));
+  expect(done.every((c) => /-2$/.test(c))).toBe(true);
   await expect(page.locator('.vtable tbody')).toContainText('KĐT-2026-0012');
-  // Mọi dòng mở được: việc đang chờ → màn xử lý task; việc đã xử lý → Chi tiết hồ sơ KĐT.
-  const targets = await page.locator('.vtable tbody tr').evaluateAll((tr) => tr.map((r) => r.dataset.go));
-  for (const t of targets) {
-    await go(page, '#/' + t);
-    await expect(page.locator('.pg-title')).toHaveText(/Xem chi tiết hồ sơ|Chi tiết hồ sơ/);
-    await expect(page.locator('main')).not.toContainText('Không tìm thấy');
-    expect(await mainText(page)).not.toMatch(BA);
-  }
+  await openAll();
+  // Loại Phê duyệt chủ trương KĐT: việc của hồ sơ chủ trương — kể cả việc Minh đã làm ở hồ sơ chủ trương HS-2026-0032 trước khi tạo hồ sơ KĐT.
+  await page.locator('[data-my-tab="done"]').click();
+  await filterType('Phê duyệt chủ trương KĐT');
+  const ct = await codes();
+  expect(ct).toContain('HS-2026-0032');
+  expect(ct.some((c) => /-2$/.test(c))).toBe(false);
   // Việc đã xử lý của hồ sơ mẫu quay lại Việc của tôi.
-  await go(page, '#/viec-cua-toi');
-  await page.locator('.vtable tbody tr', { hasText: 'HS-2026-0012' }).first().click();
-  await expect(page).toHaveURL(/#\/ho-so-kdt\/HS-2026-0012$/);
+  await filterType('Phê duyệt KĐT');
+  await page.locator('.vtable tbody tr[data-code="HS-2026-0012-2"]').first().click();
+  await expect(page).toHaveURL(/#\/ho-so-kdt\/HS-2026-0012-2$/);
   await page.locator('.pg-head .back').click();
   await expect(page).toHaveURL(/#\/viec-cua-toi$/);
   expect(page.errors).toEqual([]);
@@ -170,18 +206,20 @@ test('Giám sát tiến trình: có hồ sơ KĐT (MS13 / MS14), mã hồ sơ m�
   expect(rows.length).toBe(await page.evaluate(() => Flow.kdtCases().length));
   expect(new Set(rows.map((r) => r.proc))).toEqual(new Set(['MS13', 'MS14']));
   const running = rows.filter((r) => r.proc === 'MS13' && (r.status === 'Đang chạy' || r.status === 'Quá hạn')).length;
-  await page.locator('#gs-kw').fill('HS-2026-0027');
+  // T45: hồ sơ quá hạn ở bước 55 là hồ sơ phê duyệt KĐT HS-2026-0027-2.
+  await page.locator('#gs-kw').fill('HS-2026-0027-2');
   await page.locator('#gs-kw').press('Enter');
   await expect(page.locator('.vtable tbody tr')).toHaveCount(1);
   await expect(page.locator('.vtable tbody tr')).toContainText('Quá hạn');
   await expect(page.locator('.vtable tbody tr .proc-cell .s')).toHaveText('MS13 - v1.0');
   await page.locator('.vtable tbody a.link').click();
-  await expect(page).toHaveURL(/#\/ho-so-kdt\/HS-2026-0027$/);
+  await expect(page).toHaveURL(/#\/ho-so-kdt\/HS-2026-0027-2$/);
   await expect(page.locator('.pg-title')).toHaveText('Chi tiết hồ sơ');
   await page.locator('.pg-head .back').click();
   await expect(page).toHaveURL(/#\/giam-sat-tien-trinh$/);
   // Quy trình BPMN: SL hồ sơ đang xử lý của MS13 = số dòng MS13 đang chạy / quá hạn của Giám sát tiến trình.
-  expect(running).toBeGreaterThanOrEqual(9);
+  // T45: 0026 / 0027 / 0028 chủ trương đã duyệt; 0027-2, 0028-2 chạy MS13, 0026-2 MS14.
+  expect(running).toBeGreaterThanOrEqual(8);
   await go(page, '#/quy-trinh');
   const row = page.locator('main table tbody tr', { hasText: 'DTMS_MS13' }).first();
   await expect(row.locator('td').last()).toHaveText(String(running));
@@ -190,7 +228,7 @@ test('Giám sát tiến trình: có hồ sơ KĐT (MS13 / MS14), mã hồ sơ m�
 
 // C3: mọi màn KĐT không có chữ BA ngoài nút (i).
 const ROUTES = ['#/kdt', '#/kdt/create', `#/kdt/${enc('KĐT-2026-0031')}`, `#/kdt/${enc('KĐT-2026-0031')}/edit`, `#/kdt/${enc('KĐT-2026-0015')}/tao-ho-so`,
-  `#/kdt/${enc('KĐT-2026-0018')}/chuyen-luong`, '#/ho-so-kdt/HS-2026-0028', '#/ho-so-kdt/HS-2026-0019/bpmn'];
+  `#/kdt/${enc('KĐT-2026-0018')}/chuyen-luong`, '#/ho-so-kdt/HS-2026-0028', '#/ho-so-kdt/HS-2026-0028-2', '#/ho-so-kdt/HS-2026-0026-2', '#/ho-so-kdt/HS-2026-0019/bpmn'];
 for (const r of ROUTES) {
   test(`C3: không có chữ BA ngoài nút (i) — ${decodeURIComponent(r)}`, async ({ page }) => {
     await fresh(page, r);

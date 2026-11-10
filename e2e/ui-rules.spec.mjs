@@ -513,7 +513,8 @@ test('C4: ?capture=1 — màn Quản trị quy trình ẩn nút (i); sơ đồ S
 });
 
 // T34 (D-90): bỏ ['#/ho-so-dxms', 'Danh sách hồ sơ ĐXMS'] — SCR-02 comment cùng phương án Tách.
-for (const [h, title] of [['#/ho-so-kdt', 'Danh sách hồ sơ khoản đầu tư'],
+// T45 §1.7: Hồ sơ khoản đầu tư tách hai danh sách (chủ trương / phê duyệt KĐT).
+for (const [h, title] of [['#/ho-so-ct-kdt', 'Danh sách hồ sơ chủ trương KĐT'], ['#/ho-so-pd-kdt', 'Danh sách hồ sơ phê duyệt KĐT'],
   ['#/khlcnt', 'Danh sách kế hoạch lựa chọn nhà thầu'], ['#/hop-dong', 'Danh sách hợp đồng']]) {
   test(`D-43: ${title} không có cột Thao tác, mã vẫn mở chi tiết`, async ({ page }) => {
     await fresh(page, h);

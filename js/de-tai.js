@@ -128,7 +128,8 @@
     /* T31 B3 (D-68): KĐT bóc tách từ cùng bảng dự toán — khả dụng tính chung ĐXMS + KĐT. KĐT đã lưu là đang giữ (kể cả chưa có hồ sơ:
        BE ghi bảng giữ chỗ khi Lưu SCR-55); đã phê duyệt = đã đăng ký; dừng theo chỉ đạo thì trả lại phần giữ. */
     kdtOf(code).filter((x) => Array.isArray(x.cost) && x.cost.length).forEach((x) => {
-      const stage = window.Kdt.meta(x).stage, st = stage === 'OK' ? 'OK' : stage === 'STOP' ? 'STOP' : 'PD';
+      /* T45: KĐT mới duyệt chủ trương (CT_OK) vẫn là đang giữ; đăng ký khi KĐT đã duyệt (meta.approved). */
+      const m = window.Kdt.meta(x), stage = m.stage, st = m.approved ? 'OK' : stage === 'STOP' ? 'STOP' : 'PD';
       x.cost.forEach((r) => { const id = r.line || r.id; if (out[id]) out[id].push({ x, st, kdt: true, stage, qty: r.qty == null ? null : r.qty, value: valOf(r.value) }); });
     });
     return out;
@@ -342,7 +343,8 @@
     ${D.show.dtKdt ? kdtTab(r) : ''}`;
   }
   /* T31 B2 (D-69): KĐT chọn đề tài / dự án này (D-45). Trạng thái, tổng mức vốn hiệu lực suy từ hồ sơ như SCR-54. */
-  const kdtOf = (code) => Flow.kdtAll().filter((x) => x.nv === code);
+  /* T45 (D-104): KĐT liên quan khi đề tài nằm trong nvs (KĐT chọn nhiều đề tài / dự án). */
+  const kdtOf = (code) => Flow.kdtAll().filter((x) => (x.nvs || (x.nv ? [x.nv] : [])).includes(code));
   function kdtTab(r) {
     const K = window.Kdt, list0 = kdtOf(r.code).map((x) => Object.assign({ m: K.meta(x) }, x));
     return `<section class="vcard" data-dt-kdt><h3>KĐT liên quan</h3>

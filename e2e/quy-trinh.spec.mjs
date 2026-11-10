@@ -34,9 +34,9 @@ test('D-15: menu theo 12 module Backlog; Quản lý quy trình có 3 mục (D-2)
   await page.locator('.sb-nav [data-toggle="Quản lý quy trình"]').click();
   expect(await kids('Quản lý quy trình')).toEqual(['Quản lý quy trình', 'Ma trận hành động', 'Giám sát tiến trình']);
   // T29 D-63 → T34 (người dùng 09/11): Đề tài / dự án thành menu cấp 1, ngay trên Quản lý đề xuất mua sắm.
-  expect(await kids('Quản lý đề xuất mua sắm')).toEqual(['Luồng mua sắm', 'Điều chỉnh đề xuất mua sắm', 'Quản lý hồ sơ', 'Yêu cầu báo giá ĐXMS']);
+  expect(await kids('Quản lý đề xuất mua sắm')).toEqual(['Luồng mua sắm', 'Điều chỉnh đề xuất mua sắm', 'Quản lý tài liệu ĐXMS', 'Yêu cầu báo giá ĐXMS']);
   await page.locator('.sb-nav [data-toggle="Quản lý khoản đầu tư"]').click();
-  expect(await kids('Quản lý khoản đầu tư')).toEqual(['Khoản đầu tư', 'Hồ sơ khoản đầu tư', 'Yêu cầu báo giá KĐT']);
+  expect(await kids('Quản lý khoản đầu tư')).toEqual(['Khoản đầu tư', 'Hồ sơ chủ trương KĐT', 'Hồ sơ phê duyệt KĐT', 'Yêu cầu báo giá KĐT']);
   await page.locator('.sb-nav [data-toggle="Quản lý thầu"]').click();
   expect(await kids('Quản lý thầu')).toEqual(['Kế hoạch lựa chọn nhà thầu', 'Gói thầu', 'Nhà thầu & kiểm soát rủi ro', 'Công khai & tích hợp đấu thầu', 'Giám sát hoạt động thầu']);
   // Mục để sau (Giám sát hoạt động thầu — T16 B2): trang Đang phát triển.
@@ -67,15 +67,15 @@ test('SCR-48: bố cục theo process-monitoring — không nút tiêu đề, c�
   await expect(page.locator('#gs-kw')).toHaveAttribute('placeholder', 'Tìm kiếm theo mã Camunda, mã hồ sơ');
   await expect(page.locator('.vtable th')).toHaveText(['STT', 'Trạng thái', 'Mã Camunda', 'Mã hồ sơ', 'Quy trình', 'Bước hiện tại', 'Ngày tạo', 'Ngày cập nhật']);
   await expect(rows(page)).toHaveCount(10);
-  // 12 hồ sơ ĐXMS (T34: bỏ hồ sơ đã chuyển quy trình) + 13 hồ sơ KĐT (T11 B5).
-  await expect(page.locator('.vpager')).toContainText('Tổng số bản ghi: 25');
+  // 12 hồ sơ ĐXMS (T34: bỏ hồ sơ đã chuyển quy trình) + 17 hồ sơ KĐT (T11 B5; T45: 13 hồ sơ chủ trương + 4 hồ sơ phê duyệt KĐT).
+  await expect(page.locator('.vpager')).toContainText('Tổng số bản ghi: 29');
   const st = await page.locator('.vtable tbody .vbadge').allInnerTexts();
   for (const p of ['2', '3']) {
     await page.locator(`.vpager [data-pg="${p}"]`).first().click();
     st.push(...await page.locator('.vtable tbody .vbadge').allInnerTexts());
   }
   for (const s of ['Đang chạy', 'Hoàn thành', 'Quá hạn', 'Đã hủy']) expect(st).toContain(s);
-  await expect(rows(page)).toHaveCount(5); // T34: 25 bản ghi
+  await expect(rows(page)).toHaveCount(9); // T45: 29 bản ghi
   expect(await mainText(page)).not.toMatch(BA);
   expect(page.errors).toEqual([]);
 });
@@ -139,7 +139,7 @@ test('SCR-48: tìm nhanh theo mã hồ sơ / mã Camunda; nâng cao — Mã Camu
   expect(st.length).toBeGreaterThan(0);
   expect(new Set(st)).toEqual(new Set(['Hoàn thành']));
   await page.locator('[data-g="reset"]').click();
-  await expect(page.locator('.vpager')).toContainText('Tổng số bản ghi: 25');
+  await expect(page.locator('.vpager')).toContainText('Tổng số bản ghi: 29');
 });
 
 test('P-41: vai khác Quản trị hệ thống / TTMS thấy thông báo chưa được cấp quyền', async ({ page }) => {
@@ -156,7 +156,7 @@ test('SCR-48: hồ sơ đang chạy luồng hiện ở đầu danh sách, Đang 
   await fresh(page, '#/viec-cua-toi');
   await page.evaluate(() => { Flow.jumpTo(13, 'hai'); Flow.setPersona('qt'); });
   await page.goto(page.url().replace(/#.*$/, '#/giam-sat-tien-trinh'));
-  await expect(page.locator('.vpager')).toContainText('Tổng số bản ghi: 26');
+  await expect(page.locator('.vpager')).toContainText('Tổng số bản ghi: 30');
   const code = await page.evaluate(() => Flow.ci().code);
   const r = rows(page).filter({ hasText: code });
   await expect(r.locator('.vbadge')).toHaveText(/Đang chạy|Quá hạn/);

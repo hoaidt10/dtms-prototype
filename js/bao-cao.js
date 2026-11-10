@@ -29,7 +29,7 @@
     const kd = Flow.kdtAll().map((x) => {
       const m = window.Kdt.meta(x);
       return { kind: 'KDT', code: x.code, title: x.title, href: 'kdt/' + encodeURIComponent(x.code), unit: x.unit, field: x.field, fund: x.type === 'KHCN' ? 'KHCN' : x.type === 'TBNB' ? 'DTPT' : 'SXKD',
-        st: window.Kdt.KDT_STAGE[m.stage][0], grp: m.stage === 'OK' ? 'done' : m.stage === 'STOP' ? 'stop' : 'run', value: m.value, date: x.created, type: x.type, nature: x.nature, group: m.group || 'Chưa phân luồng', approved: m.approved };
+        st: window.Kdt.KDT_STAGE[m.stage][0], grp: m.stage === 'OK' ? 'done' : m.stage === 'STOP' ? 'stop' : 'run', value: m.value, date: x.created, type: x.type, nature: x.nature, group: m.group || 'Chưa phân luồng', approved: m.approved, stage: m.stage };
     });
     const src = (kind, code) => (kind === 'KDT' ? kd : dx).find((x) => x.code === code) || {};
     const T = window.Thau;
@@ -265,7 +265,8 @@
     ] },
     kdt: { title: 'Báo cáo khoản đầu tư', bl: 'Báo cáo Khoản đầu tư (dòng 542–550)', list: [
       { key: 'kdt', title: 'Báo cáo tình hình khoản đầu tư', kinds: ['KDT'], fund: true, rows: (fx) => fx.kd,
-        metrics: (rs) => [['Tổng số khoản đầu tư', rs.length, '', () => true], ['Tổng mức vốn', ty(r2(rs.reduce((s, x) => s + x.value, 0)), 2), 'tỷ đồng', () => true], ['Đã phê duyệt', rs.filter((x) => x.approved).length, '', (r) => r.approved]],
+        metrics: (rs) => [['Tổng số khoản đầu tư', rs.length, '', () => true], ['Tổng mức vốn', ty(r2(rs.reduce((s, x) => s + x.value, 0)), 2), 'tỷ đồng', () => true], ['Đã phê duyệt chủ trương', rs.filter((x) => x.stage === 'CT_OK').length, 'chờ hồ sơ phê duyệt KĐT', (r) => r.stage === 'CT_OK'],
+          ['Đã phê duyệt', rs.filter((x) => x.approved).length, '', (r) => r.approved]],
         groups: [['Theo trạng thái', 'st'], ['Theo đơn vị', 'unit'], ['Theo lĩnh vực', 'field', (k) => K().cat('linh-vuc', k)], ['Theo loại khoản đầu tư', 'type', (k) => K().cat('loai-kdt', k)],
           ['Theo tính chất khoản đầu tư', 'nature', (k) => K().cat('tinh-chat-tai-san', k)], ['Theo nhóm phân loại', 'group']], count: true,
         cols: ['code', 'title', 'unit', 'field', col('Loại KĐT', 160, '', (r) => esc(K().cat('loai-kdt', r.type)), (r) => r.type, (r) => K().cat('loai-kdt', r.type)), col('Nhóm', 120, '', (r) => esc(r.group), (r) => r.group), 'st', 'value', 'date'] },

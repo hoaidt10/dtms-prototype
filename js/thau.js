@@ -32,13 +32,17 @@
   /* ---------- Đối tượng nguồn (S4): giá trị được phê duyệt lấy từ hồ sơ Hoàn thành gần nhất của ĐXMS / KĐT ---------- */
   const SRC = { DXMS: 'Đề xuất mua sắm', KDT: 'Khoản đầu tư', DADT: 'Dự án đầu tư' };
   const srcHref = (kind, code) => (kind === 'KDT' ? 'kdt/' : 'dxms/') + encodeURIComponent(code);
+  /* T45 (D-104): KĐT có thể chọn nhiều đề tài / dự án. */
+  const nvText = (codes) => (codes || []).map((c) => D.nvOf(c)).filter(Boolean).map((n) => `${n.code} — ${n.name}`).join('; ');
   function srcInfo(kind, code) {
     if (kind === 'KDT') {
       const x = Flow.findKdt(code);
       if (!x) return null;
-      const m = window.Kdt.meta(x), done = m.hs.find((c) => c.st === 'done');
+      /* T45 (D-103): KĐT đã duyệt = hồ sơ phê duyệt KĐT Hoàn thành hoặc hồ sơ chủ trương gộp (CT_KDT) Hoàn thành — chủ trương BM-01 chưa đủ. */
+      const m = window.Kdt.meta(x), done = !m.approved ? null
+        : m.hs.find((c) => c.kind === 'KDT' && c.st === 'done') || (m.ct && m.ct.st === 'done' && m.ct.scope === 'CT_KDT' ? m.ct : null);
       const d = done && (done.docs || []).filter(([k]) => k === 'BM-18' || k === 'BM-00').pop();
-      return { kind, code, nv: x.nv, title: x.title, unit: x.unit, approved: m.approved, value: m.approved ? m.value : null,
+      return { kind, code, nv: x.nv, nvText: nvText(x.nvs || [x.nv]), title: x.title, unit: x.unit, approved: m.approved, value: m.approved ? m.value : null,
         doc: d ? `${d[0] === 'BM-18' ? 'BM-18 Quyết định phê duyệt KĐT' : 'BM-00 Hồ sơ chủ trương và KĐT'} ngày ${d[1]}` : '',
         fund: x.type === 'KHCN' ? 'KHCN' : x.type === 'TBNB' ? 'DTPT' : 'SXKD' };
     }
@@ -46,7 +50,7 @@
     if (!x) return null;
     const done = S.allCases().filter((c) => c.dxms === code && c.st === 'done').sort((a, b) => dkey(b.updated).localeCompare(dkey(a.updated)))[0];
     const doc = done ? (done.kind === 'DC' ? 'QĐ điều chỉnh ĐXMS' : done.flow === 'MS01.03' ? 'BM-09 Tờ trình ĐXMS (đã phê duyệt)' : 'BM-08 Quyết định phê duyệt ĐXMS') + ' ngày ' + done.updated : '';
-    return { kind, code, nv: x.nv, title: x.title, unit: x.unit, approved: !!done, value: done ? done.total : null, doc, fund: (x.est || 0) < 20 ? 'CPTX' : 'DTPT' };
+    return { kind, code, nv: x.nv, nvText: nvText([x.nv]), title: x.title, unit: x.unit, approved: !!done, value: done ? done.total : null, doc, fund: (x.est || 0) < 20 ? 'CPTX' : 'DTPT' };
   }
   const approvedSources = (kind) => (kind === 'KDT' ? Flow.kdtAll() : Flow.dxmsAll()).map((x) => srcInfo(kind, x.code)).filter((s) => s && s.approved);
 
@@ -373,7 +377,6 @@
       const team = [[P(0), 'Phó Tổng Giám đốc chuyên trách', 'Tổ trưởng', 'Chỉ đạo chung'], [P(1), 'Trưởng phòng Chiến lược - KHCN', 'Thành viên', 'Kỹ thuật'], [P(2), 'Trưởng phòng Tài chính Kế toán', 'Thành viên', 'Tài chính'],
         [P(3), 'Bộ phận Bảo vệ An ninh', 'Thành viên', 'An ninh chính trị nội bộ'], [P(4), 'Giám đốc Trung tâm Mua sắm', 'Thành viên', 'Pháp lý']];
       const perG = (fn) => gs.map((g) => `${pkExtra(g, k).no}: ${fn(g)}`).join('; ');
-      const nv = D.nvOf(s.nv);
       const why = [['a) Cơ sở phân chia các gói thầu', k.basis], ['b) Giá gói thầu', perG((g) => `${ty(g.price, 2)} tỷ đồng — ${g.priceBasis}`)], ['c) Nguồn vốn', cat('nguon-von', s.fund)],
         ['d) Hình thức lựa chọn nhà thầu', perG((g) => `${cat('hinh-thuc-lcnt', g.form)} — ${COND[g.form] || ''}`)], ['đ) Phương thức lựa chọn nhà thầu', perG((g) => cat('phuong-thuc-lcnt', g.method))],
         ['e) Thời gian bắt đầu tổ chức lựa chọn nhà thầu', perG((g) => g.start)], ['g) Thời gian lựa chọn nhà thầu', perG((g) => g.selTime)], ['h) Loại hợp đồng', perG((g) => cat('loai-hop-dong', g.contract))], ['i) Thời gian thực hiện gói thầu', perG((g) => g.execTime)]];
@@ -382,7 +385,7 @@
       return card('Thành viên Tổ thẩm định', table([['Họ và tên', 220], ['Chức vụ', 300], ['Vai trò trong Tổ thẩm định', 200], ['Phân công công việc', 240]], team,
           (r) => `<td>${esc(r[0])}</td><td>${clamp(r[1])}</td><td>${esc(r[2])}</td><td>${esc(r[3])}</td>`))
         + card('Mô tả tóm tắt', `<div class="ginfo c3">${kv('Đối tượng nguồn', esc(`${k.src[1]} - ${s.title || ''}`), 'span2')}${kv('Giá trị được duyệt', t.approved != null ? ty(t.approved, 2) + ' tỷ đồng' : null)}
-          ${kv('Nhiệm vụ / Đề tài, dự án', nv ? esc(`${nv.code} — ${nv.name}`) : null, 'span2')}${kv('Đơn vị đề xuất', esc(s.unit))}</div>`)
+          ${kv('Nhiệm vụ / Đề tài, dự án', s.nvText ? esc(s.nvText) : null, 'span2')}${kv('Đơn vị đề xuất', esc(s.unit))}</div>`)
         + card('Giải trình nội dung KHLCNT', table([['Nội dung', 320], ['Giải trình', 760]], why, (r) => `<td>${esc(r[0])}</td><td>${clamp(r[1])}</td>`))
         + card('Văn bản kèm theo', table([['Nội dung', 620], ['Ghi chú', 160]], attach, (r) => `<td>${clamp(r[0])}</td><td>${esc(r[1])}</td>`))
         + card('Chi tiết danh mục mua sắm thuộc gói thầu', table([['Số gói thầu', 200], ['Hạng mục', 460], ['Đơn vị tính', 130], ['Khối lượng', 110, 'r']], lines,
@@ -533,7 +536,7 @@
         ${kv('Loại gói thầu', esc(cat('loai-goi-thau', g.type)))}${kv('KHLCNT', `<a class="link-red" href="#/khlcnt/${encodeURIComponent(g.kh)}">${esc(g.kh)}</a>`)}${kv('Trạng thái', badge(...PK_ST[g.stx]))}
         ${kv('Loại hợp đồng dự kiến', esc(cat('loai-hop-dong', g.contract)))}${kv('Nguồn vốn', esc(cat('nguon-von', s.fund)))}${kv('Đơn vị', esc(s.unit))}</div>`)
       + card('Nguồn gói thầu', table([['Loại đối tượng', 170], ['Mã', 160], ['Tên', 340], ['Nhiệm vụ / Đề tài, dự án', 280], ['Nguồn vốn', 200], ['Khoản mục chi phí', 200], ['Giá trị phân bổ (tỷ đồng)', 180, 'r']], srcs,
-        (r) => { const o = srcInfo(r[0], r[1]) || {}, nv = D.nvOf(o.nv); return `<td>${esc(SRC[r[0]])}</td><td><a class="link" data-go="${srcHref(r[0], r[1])}">${esc(r[1])}</a></td><td>${clamp(o.title)}</td><td>${nv ? clamp(`${nv.code} — ${nv.name}`) : dash}</td><td>${clamp(cat('nguon-von', o.fund))}</td><td>${esc(x.cost)}</td><td class="r num">${money(r[2])}</td>`; },
+        (r) => { const o = srcInfo(r[0], r[1]) || {}; return `<td>${esc(SRC[r[0]])}</td><td><a class="link" data-go="${srcHref(r[0], r[1])}">${esc(r[1])}</a></td><td>${clamp(o.title)}</td><td>${clamp(o.nvText)}</td><td>${clamp(cat('nguon-von', o.fund))}</td><td>${esc(x.cost)}</td><td class="r num">${money(r[2])}</td>`; },
         `<tfoot><tr><td></td><td colspan="6"><b>Tổng</b></td><td class="r num"><b>${ty(sum(srcs.map((r) => r[2])), 2)}</b></td></tr></tfoot>`))
       + card('Phạm vi gói thầu', table([['Hàng hoá / dịch vụ / công việc', 460], ['Đơn vị tính', 140], ['Khối lượng', 120, 'r']], g.items || [],
         (r) => `<td>${clamp(r[0])}</td><td>${esc(r[1])}</td><td class="r num">${ty(r[2], 0)}</td>`), g.lots ? `Có chia phần · ${g.lots.length} phần` : 'Không chia phần')

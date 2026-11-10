@@ -96,7 +96,7 @@ test('SCR-95: Ngày tạo một trường "từ – đến"', async ({ page }) =
   expect(page.errors).toEqual([]);
 });
 
-test('D-76, D-78: menu ẩn Quản lý thầu / hợp đồng (route giữ); Quản lý hồ sơ dưới Luồng mua sắm — biểu mẫu đã sinh, lọc, mở hồ sơ', async ({ page }) => {
+test('D-76, D-78, D-105: menu ẩn Quản lý thầu / hợp đồng (route giữ); Quản lý tài liệu ĐXMS (SRS 29) — văn bản đầu ra, lọc, mở ĐXMS', async ({ page }) => {
   await gop(page);
   await expect(page.locator('.sb-nav [data-toggle="Quản lý thầu"]')).toHaveCount(0);
   await expect(page.locator('.sb-nav [data-toggle="Quản lý hợp đồng"]')).toHaveCount(0);
@@ -106,32 +106,37 @@ test('D-76, D-78: menu ẩn Quản lý thầu / hợp đồng (route giữ); Qu�
     for (; n && n.classList.contains('child'); n = n.nextElementSibling) out.push(n.querySelector('.l').textContent);
     return out;
   });
-  expect(kids).toEqual(['Luồng mua sắm', 'Điều chỉnh đề xuất mua sắm', 'Quản lý hồ sơ', 'Yêu cầu báo giá ĐXMS']);
+  expect(kids).toEqual(['Đề xuất mua sắm', 'Quản lý tài liệu ĐXMS', 'Yêu cầu báo giá ĐXMS']);
   // Route Thầu vẫn mở.
   await page.evaluate(() => { location.hash = '#/goi-thau'; });
   await expect(page.locator('.pg-title')).toHaveText('Danh sách gói thầu');
 
   await page.locator('.sb-nav [data-go="quan-ly-ho-so"]').click();
-  await expect(page.locator('.pg-title')).toHaveText('Quản lý hồ sơ');
+  await expect(page.locator('.pg-title')).toHaveText('Quản lý tài liệu ĐXMS');
   await expect(page.locator('.sb-nav [data-go="quan-ly-ho-so"]')).toHaveClass(/active/);
-  await expect(page.locator('main .vtable thead th')).toHaveText(['STT', 'Thao tác', 'Mã biểu mẫu', 'Tên biểu mẫu / văn bản', 'Mã hồ sơ', 'Loại hồ sơ', 'Mã ĐXMS', 'Tên luồng mua sắm', 'Trạng thái ký', 'Ngày tạo']);
+  await expect(page.locator('main .vtable thead th')).toHaveText(['STT', 'Thao tác', 'Mã biểu mẫu', 'Tên văn bản', 'Mã ĐXMS', 'Tên đề xuất mua sắm', 'Loại ĐXMS', 'Trạng thái', 'Ngày cập nhật']);
   const n = await page.evaluate(() => QuanLyHoSo.rows().length);
   expect(n).toBeGreaterThan(10);
-  // Tìm nâng cao: Loại biểu mẫu BM-08 → mọi dòng là Quyết định phê duyệt, Đã ký.
+  // SRS 29 AC-0153-05: Loại biểu mẫu BM-08 + Trạng thái Đang hiệu lực.
   await page.locator('[data-qh="adv"]').click();
   await pick(page, 'qh-code', 'BM-08');
   await page.locator('[data-qhadv] button[type="submit"]').click();
   const rows = page.locator('main .vtable tbody tr');
   expect(await rows.count()).toBeGreaterThan(0);
-  for (const t of await rows.allInnerTexts()) { expect(t).toContain('Quyết định phê duyệt'); expect(t).toContain('Đã ký'); }
-  await pick(page, 'qh-sign', 'Không ký trên ĐTMS');
+  for (const t of await rows.allInnerTexts()) { expect(t).toMatch(/Quyết định phê duyệt|QĐ điều chỉnh/); expect(t).toMatch(/Đang hiệu lực|Đã thay thế|Đã ký/); }
+  await pick(page, 'qh-st', 'Từ chối');
+  await page.locator('.pg-title').click(); // đóng panel chọn nhiều
   await page.locator('[data-qhadv] button[type="submit"]').click();
-  await expect(page.locator('main .vtable-empty')).toHaveCount(1);
+  await expect(page.locator('main .vtable-empty')).toContainText('Không tìm thấy dữ liệu phù hợp');
+  // AC-0153-14: ngày đầu lớn hơn ngày cuối.
+  await page.fill('#qh-date', '10/11/2026 – 01/11/2026');
+  await page.locator('[data-qhadv] button[type="submit"]').click();
+  await expect(page.locator('.vfield.invalid .msg')).toHaveText('Ngày cập nhật không hợp lệ.');
   await page.locator('[data-qh="reset"]').click();
-  // Bấm mã hồ sơ mở Chi tiết hồ sơ.
-  const hs = (await rows.first().locator('td').nth(4).innerText()).trim();
+  // AC-0153-10: bấm Mã ĐXMS mở Chi tiết, tab Tài liệu & văn bản.
+  const dx = (await rows.first().locator('td').nth(4).innerText()).trim();
   await rows.first().locator('td').nth(4).locator('a').click();
-  await expect.poll(() => decodeURIComponent(page.url())).toContain(hs);
+  await expect.poll(() => decodeURIComponent(page.url())).toContain(dx + '/tai-lieu');
   // Bật cờ demo Thầu → menu hiện lại.
   await page.evaluate(() => { D.show.menuThau = true; App.render(); });
   await expect(page.locator('.sb-nav [data-toggle="Quản lý thầu"]')).toHaveCount(1);
@@ -191,14 +196,15 @@ test('#20 + B19: bóc tách trên màn Lập ĐXMS — bớt hạng mục, thêm
   await page.locator('.vsel-panel .vsel-opt').first().click();
   await page.locator('[data-lf-cadd]').click();
   const cid = await page.locator('[data-lf-cqty]').last().getAttribute('data-lf-cqty');
-  await page.locator(`[data-lf-cqty="${cid}"]`).fill('3');
+  // T45 — SRS 12 BR-LDX-C-03, BR-LDX-02-04 V0.3 (review khách 10/11): vượt Còn lại khả dụng (khoản mục còn 2 Bộ) thì chặn Gửi — nhập 2 (trước T45: 3, chỉ cảnh báo).
+  await page.locator(`[data-lf-cqty="${cid}"]`).fill('2');
   await page.locator(`[data-lf-cval="${cid}"]`).fill('1.000.000');
   await aiApply(page, ['basic']);
   await page.locator('#lf-save').click();
   await expect(page).toHaveURL(/#\/viec-cua-toi$/);
   const it = await page.evaluate(() => D.items.map((i) => [i.n, i.buy]));
   expect(it.map((x) => x[0])).not.toContain(5);
-  expect(it.find((x) => x[0] === 101)).toEqual([101, 3]);
+  expect(it.find((x) => x[0] === 101)).toEqual([101, 2]);
   // Bước 8 (biến ycbgHang): danh mục hàng hoá YCBG có hạng mục thêm, không có hạng mục đã bỏ.
   const v = await page.evaluate(() => EVars.of({ id: 'x8', task: 8, who: 'minh' }).ycbgHang.map((r) => r.n));
   expect(v).toContain(101);

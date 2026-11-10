@@ -20,7 +20,9 @@
     if (r === 'luong' || r.startsWith('luong/')) return 'luong';
     if (window.Luong.isGop() && (r.startsWith('dxms') || r.startsWith('ho-so-dxms') || ((r === 'ho-so' || r.startsWith('ho-so/')) && !Flow.state.kdt))) return 'luong';
     if (r === 'de-tai' || r.startsWith('de-tai/')) return 'de-tai';
-    if (r.startsWith('ho-so-kdt')) return 'ho-so-kdt';
+    /* T45 §1.7: hai mục Hồ sơ chủ trương KĐT / Hồ sơ phê duyệt KĐT; Chi tiết hồ sơ (#/ho-so-kdt/<mã>) sáng mục theo loại hồ sơ. */
+    if (/^ho-so-(ct|pd)-kdt(\/create)?$/.test(r)) return r.split('/')[0];
+    if (r.startsWith('ho-so-kdt')) return window.KdtB2.listOf(decodeURIComponent(r.split('/')[1] || ''));
     if (r.startsWith('ycbg-kdt')) return 'ycbg-kdt';
     if (r.startsWith('khlcnt')) return 'khlcnt';
     if (r.startsWith('goi-thau')) return 'goi-thau';
@@ -93,7 +95,7 @@
 
   /* Route cũ của Quy trình BPMN / Ma trận hành động trước khi tách menu Quản trị quy trình (D-2); E-Form, Khoản đầu tư trước khi có màn thật (D-4, D-9). */
   const MOVED = { 'ph/quy-trinh': 'quy-trinh', 'ph/ma-tran': 'ma-tran/display-rule', 'ma-tran': 'ma-tran/display-rule', 'ph/dieu-chinh': 'ho-so-dxms', 'ph/eform': 'eform', 'ph/kdt': 'kdt', 'ph/ycbg': 'ycbg',
-    'ph/ho-so-kdt': 'ho-so-kdt', 'ph/ycbg-kdt': 'ycbg-kdt', 'ph/khlcnt': 'khlcnt', 'ph/goi-thau': 'goi-thau', 'ph/ds-cam': 'nha-thau', 'ph/cong-khai-thau': 'cong-khai-thau',
+    'ph/ho-so-kdt': 'ho-so-ct-kdt', 'ho-so-kdt': 'ho-so-ct-kdt', 'ph/ycbg-kdt': 'ycbg-kdt', 'ph/khlcnt': 'khlcnt', 'ph/goi-thau': 'goi-thau', 'ph/ds-cam': 'nha-thau', 'ph/cong-khai-thau': 'cong-khai-thau',
     'ph/hop-dong': 'hop-dong', 'ph/po': 'thoa-thuan-khung', 'ph/mau-thong-bao': 'mau-thong-bao', 'ph/kenh-thong-bao': 'kenh-thong-bao', 'ph/trigger-thong-bao': 'trigger-thong-bao',
     'ph/bao-cao': 'bao-cao/tong-hop', 'ph/bao-cao-dxms': 'bao-cao/dxms', 'ph/bao-cao-kdt': 'bao-cao/kdt', 'ph/bao-cao-lcnt': 'bao-cao/lcnt', 'ph/bao-cao-hop-dong': 'bao-cao/hop-dong', 'ph/bao-cao-tien-do': 'bao-cao/tien-do', 'bao-cao': 'bao-cao/tong-hop' };
 
@@ -132,7 +134,9 @@
     if (a === 'ycbg') return b ? window.Ycbg.detail(decodeURIComponent(b)) : window.Ycbg.list('dxms');
     /* T16 B2: YCBG KĐT (SCR-76/77), Danh sách hồ sơ KĐT (SCR-75), Quản lý thầu (SCR-78…83, thau.js). */
     if (a === 'ycbg-kdt') return b ? window.Ycbg.detail(decodeURIComponent(b)) : window.Ycbg.list('kdt');
-    if (a === 'ho-so-kdt' && !b) return window.KdtB2.caseList();
+    if (a === 'ho-so-ct-kdt') return b === 'create' ? window.Kdt.caseCreateFrom('CT') : window.KdtB2.caseList('CT');
+    if (a === 'ho-so-pd-kdt') return b === 'create' ? window.Kdt.caseCreateFrom('KDT') : window.KdtB2.caseList('KDT');
+    if (a === 'ho-so-kdt' && !b) return redirect('#/ho-so-ct-kdt');
     if (a === 'khlcnt' || a === 'goi-thau' || a === 'nha-thau') return window.Thau.route(r.split('/'));
     if (a === 'cong-khai-thau') return window.CongKhai.route();
     /* T16 B3: Hợp đồng (SCR-84…87), Thông báo (SCR-88…91), Báo cáo (SCR-93). */
@@ -163,6 +167,8 @@
     if (a === 'ho-so') return S.caseDetail(b);
     if (a === 'task' && c === 'bpmn') return S.taskBpmn(b);
     /* T29 B19 (DX-11): việc bước 01 / 04 / 05 của hồ sơ MS01 mở màn Lập đề xuất mua sắm (bước 1–5 trên một màn), không mở popup eForm. */
+    /* Việc bước 01 / 04 / 05 (hồ sơ chủ trương) hoặc 50 (hồ sơ phê duyệt KĐT) của hồ sơ tạo từ màn Thêm mới hồ sơ KĐT (khuôn SCR-96) mở lại màn đó. */
+    if (a === 'task' && !c && window.Kdt.isLap(window.Flow.token(b))) return window.Kdt.lapScreen(window.Flow.token(b));
     if (a === 'task' && window.Luong.isLap(window.Flow.token(b))) return window.Luong.lapScreen(window.Flow.token(b));
     if (a === 'task') return S.taskScreen(b);
     if (a === 'tong-quan') return window.BaoCao.tongQuan();
@@ -232,7 +238,7 @@
     Flow.focus(r);
     const base = r.split('/').slice(0, 2).join('/');
     if (((r.startsWith('ho-so-dxms/') && !r.startsWith('ho-so-dxms/create')) || r.startsWith('ho-so-kdt/')) && !(lastRoute || '').startsWith(base)) detailFrom = lastRoute;
-    if (r !== lastRoute) { S.enter(r); if (r.split('/')[0] === 'kdt') window.Kdt.enter(r.split('/').slice(1)); window.Thau.enter(r.split('/')); window.Luong.enter(r.split('/')); window.HopDong.enter(r.split('/')); window.ThongBao.enter(r.split('/')); }
+    if (r !== lastRoute) { S.enter(r); if (r.split('/')[0] === 'kdt') window.Kdt.enter(r.split('/').slice(1)); if (/^ho-so-(ct|pd)-kdt\/create$/.test(r)) window.Kdt.enterFrom(r.startsWith('ho-so-pd') ? 'KDT' : 'CT'); window.Thau.enter(r.split('/')); window.Luong.enter(r.split('/')); window.HopDong.enter(r.split('/')); window.ThongBao.enter(r.split('/')); }
     lastRoute = r;
     const act = activePath(r);
     const main = document.querySelector('.main');
@@ -317,7 +323,14 @@
       location.hash = `#/kdt/${encodeURIComponent(kdt)}/chuyen-luong`;
       return;
     }
-    if (kdt && Flow.state.status !== 'running') { ok(Flow.state.status === 'approved' ? 'Đã phê duyệt khoản đầu tư.' : 'Đã kết thúc hồ sơ.'); location.hash = `#/kdt/${encodeURIComponent(kdt)}`; return; }
+    /* T45 (D-103): hồ sơ chủ trương (BM-01) duyệt → Chi tiết KĐT (Đã phê duyệt chủ trương, lập tiếp hồ sơ Phê duyệt KĐT ở Chỉnh sửa › Tạo hồ sơ);
+       gộp BM-00 hoặc hồ sơ KĐT duyệt → Chi tiết KĐT (Đã phê duyệt). */
+    if (kdt && Flow.state.status !== 'running') {
+      const ctOk = Flow.state.status === 'approved' && Flow.kdtStage() === 'CT_OK';
+      ok(ctOk ? 'Đã phê duyệt chủ trương khoản đầu tư.' : Flow.state.status === 'approved' ? 'Đã phê duyệt khoản đầu tư.' : 'Đã kết thúc hồ sơ.');
+      location.hash = `#/kdt/${encodeURIComponent(kdt)}`;
+      return;
+    }
     if (Flow.state.status === 'moved') {
       ok(`Đã chuyển quy trình. Hồ sơ mới: <b>${esc(Flow.state.movedTo.code)}</b>.`);
       location.hash = '#/ho-so';

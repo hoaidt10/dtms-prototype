@@ -20,8 +20,10 @@ const card = (page, title) => page.locator('main section.vcard', { has: page.loc
 const KDT = (c) => '#/kdt/' + encodeURIComponent(c);
 
 test('Menu: KĐT và Quản lý thầu mở màn thật; route cũ #/ph/… chuyển hướng', async ({ page }) => {
+  // T45 §1.7: menu Hồ sơ khoản đầu tư tách hai mục — route cũ về Danh sách hồ sơ chủ trương KĐT.
   await as(page, 'minh', '#/ph/ho-so-kdt');
-  await expect(page).toHaveURL(/#\/ho-so-kdt$/);
+  await expect(page).toHaveURL(/#\/ho-so-ct-kdt$/);
+  await expect(page.locator('.sb-nav .nav.active')).toHaveText('Hồ sơ chủ trương KĐT');
   // D-76: menu Thầu ẩn ở bản demo ĐXMS — bật cờ để kiểm mục menu.
   await page.evaluate(() => { D.show.menuThau = true; });
   for (const [h, t] of [['#/ph/ycbg-kdt', 'Danh sách yêu cầu báo giá'], ['#/ph/khlcnt', 'Danh sách kế hoạch lựa chọn nhà thầu'], ['#/ph/goi-thau', 'Danh sách gói thầu'], ['#/ph/ds-cam', 'Nhà thầu & kiểm soát rủi ro']]) {
@@ -37,21 +39,31 @@ test('Danh sách hồ sơ KĐT: mọi hồ sơ mở được; tìm kiếm nâng 
   await as(page, 'minh', '#/ho-so-kdt');
   const n = await page.locator('main .vtable tbody tr').count();
   expect(n).toBe(10);
-  await expect(page.locator('main .pager, main [data-pager="hkdt"]').first()).toContainText('13');
+  await expect(page.locator('main .pager, main [data-pager="hkdt"]').first()).toContainText('14');
   await page.locator('#hk-kw').fill('HS-2026-0012');
   await page.locator('#hk-kw').press('Enter');
   await expect(page.locator('main .vtable tbody tr')).toHaveCount(1);
   await page.locator('main .vtable tbody tr', { hasText: 'HS-2026-0012' }).locator('a.link').first().click();
   await expect(page).toHaveURL(/#\/ho-so-kdt\/HS-2026-0012$/);
   await page.locator('.pg-head .vbtn.back').click();
-  await expect(page).toHaveURL(/#\/ho-so-kdt$/);
-  await page.locator('[data-hk="adv"]').click();
-  await page.locator('[data-vsel="hkf-group"]').click();
-  await page.locator('.vsel-panel [data-opt="MS14"]').click();
-  await page.keyboard.press('Escape');
-  await page.locator('[data-hk-adv] button[type="submit"]').click();
+  await expect(page).toHaveURL(/#\/ho-so-ct-kdt$/);
+  const ms14 = async () => {
+    await page.locator('[data-hk="adv"]').click();
+    await page.locator('[data-vsel="hkf-group"]').click();
+    await page.locator('.vsel-panel [data-opt="MS14"]').click();
+    await page.keyboard.press('Escape');
+    await page.locator('[data-hk-adv] button[type="submit"]').click();
+  };
+  await ms14();
   await expect(page.locator('main .vtable tbody tr')).toHaveCount(1);
   await expect(page.locator('main .vtable tbody tr')).toContainText('HS-2026-0019');
+  // T45: Danh sách hồ sơ phê duyệt KĐT — 4 hồ sơ mẫu, hồ sơ MS14 là HS-2026-0026-2 (luồng khác chủ trương).
+  await go(page, '#/ho-so-pd-kdt');
+  await expect(page.locator('main .vtable tbody tr')).toHaveCount(4);
+  await ms14();
+  await expect(page.locator('main .vtable tbody tr')).toHaveCount(1);
+  await expect(page.locator('main .vtable tbody tr')).toContainText('HS-2026-0026-2');
+  await expect(page.locator('main .vtable tbody tr')).toContainText('MS13 → MS14');
   expect(page.errors).toEqual([]);
 });
 
@@ -67,7 +79,7 @@ test('YCBG KĐT: danh sách theo hồ sơ KĐT đã qua bước 8, chi tiết, x
   await page.locator('main .vtable tbody tr', { hasText: 'KĐT-2026-0012' }).locator('a.link').first().click();
   await expect(page.locator('.pg-title')).toHaveText('Xem chi tiết yêu cầu báo giá');
   await expect(page.locator('.ginfo')).toContainText('Mã KĐT');
-  await expect(card(page, 'So sánh báo giá')).toContainText('Tổng giá trị theo cơ sở giá');
+  await expect(page.locator('main .vcard', { hasText: 'So sánh báo giá' })).toHaveCount(0); // T47: ẩn ở mọi màn
   const dl = page.waitForEvent('download');
   await page.locator('.pg-head [data-y-export]').click();
   expect((await dl).suggestedFilename()).toMatch(/^YCBG-KĐT-2026-0012-01\.csv$/);
@@ -98,7 +110,10 @@ test('Chi tiết KĐT: 7 tab — căn cứ, tồn kho, YCBG, phân loại, thàn
   await tabs.filter({ hasText: 'Thành phần tham gia' }).click();
   await expect(card(page, 'CQCM tham gia thẩm định').locator('tbody tr')).toHaveCount(2);
   await tabs.filter({ hasText: 'Kết quả & triển khai' }).click();
-  await expect(card(page, 'Kết quả phê duyệt')).toContainText('138,50 tỷ đồng');
+  // T45: tab Kết quả tách chủ trương / KĐT.
+  await expect(card(page, 'Kết quả phê duyệt chủ trương')).toContainText('HS-2026-0012');
+  await expect(card(page, 'Kết quả phê duyệt KĐT')).toContainText('138,50 tỷ đồng');
+  await expect(card(page, 'Kết quả phê duyệt KĐT')).toContainText('HS-2026-0012-2');
   await expect(card(page, 'Văn bản đầu ra').locator('tbody tr')).toHaveCount(3);
   await expect(card(page, 'Triển khai mua sắm')).toContainText('KHLCNT-2026-0013');
   // Đã có KHLCNT → không còn nút Lập KHLCNT

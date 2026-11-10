@@ -454,7 +454,8 @@
     47: { who: 'lan', scr: 'SCR-21', nlv: 0.5, choices: [
       { label: 'Ký thẩm định trên tờ trình', to: 48, main: true, sign: 'BM-01' }] },
     48: { who: 'tgd', scr: 'SCR-21', nlv: 1, choices: [
-      { label: 'Ký phê duyệt chủ trương', to: 49, main: true, sign: 'BM-01' },
+      /* T45 (D-103): ký chủ trương = kết thúc hồ sơ CT (KĐT Đã phê duyệt chủ trương); hồ sơ KĐT tạo riêng, chạy từ 49 (Flow.createKdtCase kind KDT). */
+      { label: 'Ký phê duyệt chủ trương', to: 'END', main: true, sign: 'BM-01' },
       { label: 'Không đồng ý — chỉ đạo xử lý tiếp', to: 'g10', kind: 'secondary', reason: true },
       { label: 'Không đồng ý — chỉ đạo dừng', to: 'END_OTHER', kind: 'danger', reason: true }] },
     /* BM-03: AI (49) → lập (50) → kiểm tra, trình (51) → chọn CQCM (52) → xác nhận DS (53) → mở vòng BM-03 (54) → khối chung → thẩm định (55)
@@ -510,8 +511,9 @@
       { label: 'Ký phê duyệt hồ sơ cấp Tập đoàn', to: 74, main: true },
       { label: 'Không đồng ý — yêu cầu sửa', to: 68, kind: 'danger', reason: true }] },
     74: { tdResult: true, next: 'g36' },
-    /* G36 "Là Chủ trương riêng hay hồ sơ gộp đã được duyệt?": chủ trương → lập hồ sơ KĐT (49); KĐT / hồ sơ gộp → hoàn tất phê duyệt cấp Tập đoàn. */
-    g36: { gw: true, when: (v) => (v.tdKind === 'CT' ? 49 : 'END') },
+    /* G36 "Là Chủ trương riêng hay hồ sơ gộp đã được duyệt?": T45 (D-103) — cả hai nhánh kết thúc hồ sơ đang chạy: chủ trương → kết thúc hồ sơ CT
+       (KĐT Đã phê duyệt chủ trương, hồ sơ KĐT tạo riêng từ 49); KĐT / hồ sơ gộp → hoàn tất phê duyệt cấp Tập đoàn. */
+    g36: { gw: true, when: () => 'END' },
     /* Khối ký chung 75–78 (D-34). 75 chọn hình thức ký ghi ở hộp thoại Trình ký của bước ký (B3-1) — không thành việc riêng.
        76 có việc chỉ khi gửi VOffice lỗi (P-94): người trình bấm Gửi lại. 77 người ký của bước ký; 78 người phụ trách hồ sơ (chuyên viên ĐVĐX). */
     76: { vo: true, next: 'g3', who: 'ky:by', scr: 'SCR-21', nlv: 0.25, choices: [
@@ -981,28 +983,42 @@
     { code: 'KĐT-2026-0026', nv: 'KHN-2027-DTPT', title: 'Đầu tư phòng thí nghiệm an toàn thông tin', unit: 'Trung tâm Phần mềm', field: 'VTCNTT', type: 'KHCN', nature: 'TICH_HOP', est: 58.0, period: '11/2026 – 08/2027', creator: 'Lương Thị Hạnh', created: '20/06/2026', updated: '19/09/2026', purpose: 'Kiểm thử bảo mật thiết bị mạng và phần mềm.' },
     { code: 'KĐT-2026-0025', nv: 'DA-2026-002', title: 'Đầu tư nền tảng dữ liệu sản xuất thông minh (MES)', unit: 'Nhà máy sản xuất thử nghiệm', field: 'VTCNTT', type: 'TBNB', nature: 'TICH_HOP', est: 44.6, period: '10/2026 – 05/2027', creator: 'Phan Văn Lộc', created: '05/06/2026', updated: '18/09/2026', purpose: 'Thu thập, truy vết dữ liệu sản xuất theo lô.' },
     { code: 'KĐT-2026-0024', nv: 'NV-KHCN-2026-006', title: 'Đầu tư trạm thử nghiệm vệ tinh mặt đất', unit: 'Trung tâm Vô tuyến', field: 'VTCNTT', type: 'KHCN', nature: 'TICH_HOP', est: 97.3, period: '01/2027 – 12/2027', creator: 'Nguyễn Văn Minh', created: '28/05/2026', updated: '17/09/2026', purpose: 'Thử nghiệm kết nối vệ tinh quỹ đạo thấp.' },
+    /* T45 (D-103): KĐT đã phê duyệt chủ trương (HS-2026-0023, BM-01), chưa có hồ sơ phê duyệt KĐT — mẫu để Thêm mới hồ sơ phê duyệt KĐT. */
+    { code: 'KĐT-2026-0023', nvs: ['NV-KHCN-2026-006', 'NV-KHCN-2026-014'], title: 'Đầu tư hệ thống đo kiểm thiết bị 5G mmWave', unit: 'Trung tâm Vô tuyến', field: 'VTCNTT', type: 'KHCN', nature: 'TICH_HOP', est: 52.0, period: '01/2027 – 10/2027', creator: 'Nguyễn Văn Minh', created: '20/05/2026', updated: '05/10/2026', purpose: 'Đo kiểm bức xạ và hiệu năng thiết bị đầu cuối 5G dải mmWave phục vụ nhiệm vụ KHCN.', legal: 'Quyết định giao kế hoạch KHCN năm 2027 của VHT.', secret: false },
     { code: 'KĐT-2026-0021', nv: 'KHN-2027-DTPT', title: 'Đầu tư hệ thống in 3D kim loại công nghiệp', unit: 'Nhà máy sản xuất thử nghiệm', field: 'KHAC', type: 'TBNB', nature: 'TICH_HOP', est: 35.0, period: '09/2026 – 03/2027', creator: 'Phan Văn Lộc', created: '14/04/2026', updated: '28/08/2026', purpose: 'Chế tạo chi tiết cơ khí phức tạp cho mẫu thử.' },
     { code: 'KĐT-2026-0018', nv: 'DA-2026-002', title: 'Đầu tư dây chuyền SMT thế hệ mới', unit: 'Nhà máy sản xuất thử nghiệm', field: 'KHAC', type: 'KHAC', nature: 'TICH_HOP', est: 82.0, period: '10/2026 – 09/2027', creator: 'Phan Văn Lộc', created: '02/04/2026', updated: '26/08/2026', purpose: 'Thay dây chuyền SMT cũ, tăng độ chính xác gắn linh kiện.' },
     { code: 'KĐT-2026-0015', nv: 'KHN-2026-TTVT', title: 'Trang bị máy đo phổ cầm tay cho đội thử nghiệm hiện trường', unit: 'Trung tâm Vô tuyến', field: 'VTCNTT', type: 'TBNB', nature: 'NGUYEN_CHIEC', est: 8.6, period: '07/2026 – 09/2026', creator: 'Nguyễn Văn Minh', created: '11/03/2026', updated: '30/07/2026', purpose: 'Đo kiểm vùng phủ tại hiện trường.' },
     { code: 'KĐT-2026-0012', nv: 'DT-KHCN-2027-002', title: 'Đầu tư hệ thống đo kiểm anten trong buồng vi sóng', unit: 'Trung tâm Vô tuyến', field: 'VTCNTT', type: 'KHCN', nature: 'TICH_HOP', est: 136.0, period: '06/2026 – 03/2027', creator: 'Nguyễn Văn Minh', created: '20/01/2026', updated: '15/07/2026', purpose: 'Đo đồ thị bức xạ anten mảng pha.', secret: true },
   ];
+  /* T45 (D-104): KĐT chọn nhiều đề tài / dự án — nvs; nv = nvs[0] để tương thích. KĐT-2026-0030 có thêm NV-KHCN-2026-006 (lĩnh vực khác, không chặn — GIẢ LẬP). */
+  D.kdtList.find((x) => x.code === 'KĐT-2026-0030').nvs = ['NV-KHCN-2026-014', 'NV-KHCN-2026-006'];
+  D.kdtList.forEach((x) => { if (!x.nvs) x.nvs = x.nv ? [x.nv] : []; x.nv = x.nvs[0] || null; });
   /* Hồ sơ mẫu của KĐT (đối tượng con). flow: MS13 / MS14, null = chưa xác định nhóm (trước bước 12, D-7). branch: BM00 (gộp) / 2GD (BM-01 → BM-03).
      stage = trạng thái KĐT suy từ hồ sơ (kdt.js KDT_STAGE); task = bước đang chờ (tên lấy từ BPMN_FLOWS.MS13, MS14 từ sơ đồ);
-     total = tổng mức vốn thực tế sau báo giá (task 10). docs = văn bản đầu ra đã có. Luồng MS13 chạy được từ B2. */
+     total = tổng mức vốn thực tế sau báo giá (task 10). docs = văn bản đầu ra đã có. Luồng MS13 chạy được từ B2.
+     T45 (D-103): kind CT = Hồ sơ phê duyệt chủ trương KĐT (bước 1–48; gộp BM-00 = scope CT_KDT, chạy tới 62); kind KDT = Hồ sơ phê duyệt KĐT
+     (mã <mã CT>-2, parent = hồ sơ CT, luongCt = luồng của CT, est = Tổng mức vốn KĐT, lech = lệch luồng so với chủ trương hoặc null; MS13 từ bước 49).
+     HS-2026-0026-2: chủ trương MS13, Tổng mức vốn KĐT vượt ngưỡng → MS14 (bản ghi tĩnh bước 46, GIẢ LẬP — prototype chưa có luồng MS14 chạy được). */
   D.kdtCases = [
-    { code: 'HS-2026-0031', kdt: 'KĐT-2026-0031', kind: 'PD', flow: 'MS13', branch: 'BM00', stage: 'GOP', st: 'processing', task: 19, total: 12.4, created: '21/09/2026', updated: '25/09/2026', creator: 'Nguyễn Văn Minh' },
-    { code: 'HS-2026-0030', kdt: 'KĐT-2026-0030', kind: 'PD', flow: null, stage: 'LAP', st: 'processing', task: 8, created: '18/09/2026', updated: '24/09/2026', creator: 'Bùi Minh Quang' },
-    { code: 'HS-2026-0029', kdt: 'KĐT-2026-0029', kind: 'PD', flow: null, stage: 'PL', st: 'processing', task: 11, tasks: [11, 12], total: 23.5, created: '10/09/2026', updated: '23/09/2026', creator: 'Lương Thị Hạnh' },
-    { code: 'HS-2026-0028', kdt: 'KĐT-2026-0028', kind: 'PD', flow: 'MS13', branch: '2GD', stage: 'KYQD', st: 'processing', task: 60, total: 76.2, created: '12/06/2026', updated: '22/09/2026', creator: 'Phan Văn Lộc', docs: [['BM-01', '14/08/2026'], ['BM-14', '19/09/2026']] },
-    { code: 'HS-2026-0027', kdt: 'KĐT-2026-0027', kind: 'PD', flow: 'MS13', branch: '2GD', stage: 'TDKDT', st: 'processing', task: 55, late: true, total: 131.2, created: '02/07/2026', updated: '21/09/2026', creator: 'Nguyễn Văn Minh', docs: [['BM-01', '28/08/2026']] },
-    { code: 'HS-2026-0026', kdt: 'KĐT-2026-0026', kind: 'PD', flow: 'MS13', branch: '2GD', stage: 'HS', st: 'processing', task: 50, total: 57.4, created: '20/06/2026', updated: '19/09/2026', creator: 'Lương Thị Hạnh', docs: [['BM-01', '16/09/2026']] },
-    { code: 'HS-2026-0025', kdt: 'KĐT-2026-0025', kind: 'PD', flow: 'MS13', branch: '2GD', stage: 'KYCT', st: 'processing', task: 48, total: 45.1, created: '05/06/2026', updated: '18/09/2026', creator: 'Phan Văn Lộc' },
-    { code: 'HS-2026-0024', kdt: 'KĐT-2026-0024', kind: 'PD', flow: 'MS13', branch: '2GD', stage: 'TDCT', st: 'processing', task: 46, total: 98.6, created: '28/05/2026', updated: '17/09/2026', creator: 'Nguyễn Văn Minh' },
-    { code: 'HS-2026-0021', kdt: 'KĐT-2026-0021', kind: 'PD', flow: 'MS13', branch: '2GD', stage: 'STOP', st: 'stopped', total: 35.0, created: '14/04/2026', updated: '28/08/2026', creator: 'Phan Văn Lộc' },
-    { code: 'HS-2026-0019', kdt: 'KĐT-2026-0018', kind: 'PD', flow: 'MS14', stage: 'MS14', st: 'processing', task: 14, total: 118.0, created: '26/08/2026', updated: '26/08/2026', creator: 'Phan Văn Lộc', replaces: 'HS-2026-0018' },
-    { code: 'HS-2026-0018', kdt: 'KĐT-2026-0018', kind: 'PD', flow: 'MS13', stage: 'MS14', st: 'moved', total: 118.0, created: '02/04/2026', updated: '26/08/2026', creator: 'Phan Văn Lộc', replacedBy: 'HS-2026-0019' },
-    { code: 'HS-2026-0015', kdt: 'KĐT-2026-0015', kind: 'PD', flow: 'MS13', branch: 'BM00', stage: 'OK', st: 'done', total: 8.6, created: '11/03/2026', updated: '30/07/2026', creator: 'Nguyễn Văn Minh', docs: [['BM-00', '30/07/2026']] },
-    { code: 'HS-2026-0012', kdt: 'KĐT-2026-0012', kind: 'PD', flow: 'MS13', branch: '2GD', stage: 'OK', st: 'done', total: 138.5, created: '20/01/2026', updated: '15/07/2026', creator: 'Nguyễn Văn Minh', docs: [['BM-01', '12/04/2026'], ['BM-14', '02/07/2026'], ['BM-18', '15/07/2026']] },
+    { code: 'HS-2026-0031', kdt: 'KĐT-2026-0031', kind: 'CT', scope: 'CT_KDT', flow: 'MS13', branch: 'BM00', stage: 'GOP', st: 'processing', task: 19, total: 12.4, created: '21/09/2026', updated: '25/09/2026', creator: 'Nguyễn Văn Minh' },
+    { code: 'HS-2026-0030', kdt: 'KĐT-2026-0030', kind: 'CT', scope: 'CT', flow: null, stage: 'LAP', st: 'processing', task: 8, created: '18/09/2026', updated: '24/09/2026', creator: 'Bùi Minh Quang' },
+    { code: 'HS-2026-0029', kdt: 'KĐT-2026-0029', kind: 'CT', scope: 'CT', flow: null, stage: 'PL', st: 'processing', task: 11, tasks: [11, 12], total: 23.5, created: '10/09/2026', updated: '23/09/2026', creator: 'Lương Thị Hạnh' },
+    { code: 'HS-2026-0028-2', kdt: 'KĐT-2026-0028', kind: 'KDT', parent: 'HS-2026-0028', luongCt: 'MS13', est: 76.2, lech: null, flow: 'MS13', branch: '2GD', stage: 'KYQD', st: 'processing', task: 60, total: 76.2, created: '17/08/2026', updated: '22/09/2026', creator: 'Phan Văn Lộc', docs: [['BM-14', '19/09/2026']] },
+    { code: 'HS-2026-0028', kdt: 'KĐT-2026-0028', kind: 'CT', scope: 'CT', flow: 'MS13', branch: '2GD', stage: 'CT_OK', st: 'done', total: 76.2, created: '12/06/2026', updated: '14/08/2026', creator: 'Phan Văn Lộc', docs: [['BM-01', '14/08/2026']] },
+    { code: 'HS-2026-0027-2', kdt: 'KĐT-2026-0027', kind: 'KDT', parent: 'HS-2026-0027', luongCt: 'MS13', est: 131.2, lech: null, flow: 'MS13', branch: '2GD', stage: 'TDKDT', st: 'processing', task: 55, late: true, total: 131.2, created: '31/08/2026', updated: '21/09/2026', creator: 'Nguyễn Văn Minh' },
+    { code: 'HS-2026-0027', kdt: 'KĐT-2026-0027', kind: 'CT', scope: 'CT', flow: 'MS13', branch: '2GD', stage: 'CT_OK', st: 'done', total: 131.2, created: '02/07/2026', updated: '28/08/2026', creator: 'Nguyễn Văn Minh', docs: [['BM-01', '28/08/2026']] },
+    { code: 'HS-2026-0026-2', kdt: 'KĐT-2026-0026', kind: 'KDT', parent: 'HS-2026-0026', luongCt: 'MS13', est: 172.0, flow: 'MS14', stage: 'HS', st: 'processing', task: 46, total: 172.0, created: '17/09/2026', updated: '19/09/2026', creator: 'Lương Thị Hạnh',
+      lech: { from: 'MS13', to: 'MS14', reason: 'Bổ sung hệ thống kiểm thử xâm nhập phần cứng và buồng cách ly theo kết luận thẩm định chủ trương; tổng mức vốn KĐT tăng từ 57,4 lên 172 tỷ đồng, vượt ngưỡng MS13.' } },
+    { code: 'HS-2026-0026', kdt: 'KĐT-2026-0026', kind: 'CT', scope: 'CT', flow: 'MS13', branch: '2GD', stage: 'CT_OK', st: 'done', total: 57.4, created: '20/06/2026', updated: '16/09/2026', creator: 'Lương Thị Hạnh', docs: [['BM-01', '16/09/2026']] },
+    { code: 'HS-2026-0025', kdt: 'KĐT-2026-0025', kind: 'CT', scope: 'CT', flow: 'MS13', branch: '2GD', stage: 'KYCT', st: 'processing', task: 48, total: 45.1, created: '05/06/2026', updated: '18/09/2026', creator: 'Phan Văn Lộc' },
+    { code: 'HS-2026-0024', kdt: 'KĐT-2026-0024', kind: 'CT', scope: 'CT', flow: 'MS13', branch: '2GD', stage: 'TDCT', st: 'processing', task: 46, total: 98.6, created: '28/05/2026', updated: '17/09/2026', creator: 'Nguyễn Văn Minh' },
+    { code: 'HS-2026-0023', kdt: 'KĐT-2026-0023', kind: 'CT', scope: 'CT', flow: 'MS13', branch: '2GD', stage: 'CT_OK', st: 'done', total: 52.6, created: '20/05/2026', updated: '05/10/2026', creator: 'Nguyễn Văn Minh', docs: [['BM-01', '05/10/2026']] },
+    { code: 'HS-2026-0021', kdt: 'KĐT-2026-0021', kind: 'CT', scope: 'CT', flow: 'MS13', branch: '2GD', stage: 'STOP', st: 'stopped', total: 35.0, created: '14/04/2026', updated: '28/08/2026', creator: 'Phan Văn Lộc' },
+    { code: 'HS-2026-0019', kdt: 'KĐT-2026-0018', kind: 'CT', scope: 'CT', flow: 'MS14', stage: 'MS14', st: 'processing', task: 14, total: 118.0, created: '26/08/2026', updated: '26/08/2026', creator: 'Phan Văn Lộc', replaces: 'HS-2026-0018' },
+    { code: 'HS-2026-0018', kdt: 'KĐT-2026-0018', kind: 'CT', scope: 'CT', flow: 'MS13', stage: 'MS14', st: 'moved', total: 118.0, created: '02/04/2026', updated: '26/08/2026', creator: 'Phan Văn Lộc', replacedBy: 'HS-2026-0019' },
+    { code: 'HS-2026-0015', kdt: 'KĐT-2026-0015', kind: 'CT', scope: 'CT_KDT', flow: 'MS13', branch: 'BM00', stage: 'OK', st: 'done', total: 8.6, created: '11/03/2026', updated: '30/07/2026', creator: 'Nguyễn Văn Minh', docs: [['BM-00', '30/07/2026']] },
+    { code: 'HS-2026-0012-2', kdt: 'KĐT-2026-0012', kind: 'KDT', parent: 'HS-2026-0012', luongCt: 'MS13', est: 138.5, lech: null, flow: 'MS13', branch: '2GD', stage: 'OK', st: 'done', total: 138.5, created: '14/04/2026', updated: '15/07/2026', creator: 'Nguyễn Văn Minh', docs: [['BM-14', '02/07/2026'], ['BM-18', '15/07/2026']] },
+    { code: 'HS-2026-0012', kdt: 'KĐT-2026-0012', kind: 'CT', scope: 'CT', flow: 'MS13', branch: '2GD', stage: 'CT_OK', st: 'done', total: 138.5, created: '20/01/2026', updated: '12/04/2026', creator: 'Nguyễn Văn Minh', docs: [['BM-01', '12/04/2026']] },
   ];
 
   /* Việc đã xử lý trên hồ sơ mẫu (SCR-01 Việc của tôi) — mới nhất trước. Mở ra chi tiết hồ sơ ở chế độ xem. */
@@ -1041,18 +1057,18 @@
   ];
   /* Việc đã xử lý trên hồ sơ KĐT mẫu (B5) — tên việc theo BPMN_FLOWS.MS13; mở Chi tiết hồ sơ KĐT ở chế độ xem. */
   D.sampleKdtTasks = [
-    { who: 'minh', code: 'HS-2026-0027', task: 50, created: '31/08/2026', due: '02/09/2026', done: '02/09/2026' },
+    { who: 'minh', code: 'HS-2026-0027-2', task: 50, created: '31/08/2026', due: '02/09/2026', done: '02/09/2026' },
     { who: 'minh', code: 'HS-2026-0026', task: 39, created: '20/07/2026', due: '22/07/2026', done: '22/07/2026' },
-    { who: 'minh', code: 'HS-2026-0012', task: 50, created: '05/05/2026', due: '07/05/2026', done: '06/05/2026' },
+    { who: 'minh', code: 'HS-2026-0012-2', task: 50, created: '05/05/2026', due: '07/05/2026', done: '06/05/2026' },
     { who: 'minh', code: 'HS-2026-0015', task: 19, created: '06/04/2026', due: '08/04/2026', done: '07/04/2026' },
     { who: 'hai', code: 'HS-2026-0015', task: 21, created: '09/04/2026', due: '13/04/2026', done: '10/04/2026' },
     { who: 'thu', code: 'HS-2026-0024', task: 11, created: '15/06/2026', due: '17/06/2026', done: '16/06/2026' },
     { who: 'thu', code: 'HS-2026-0012', task: 11, created: '10/02/2026', due: '12/02/2026', done: '11/02/2026' },
-    { who: 'lan', code: 'HS-2026-0028', task: 57, created: '16/09/2026', due: '20/09/2026', done: '19/09/2026' },
+    { who: 'lan', code: 'HS-2026-0028-2', task: 57, created: '16/09/2026', due: '20/09/2026', done: '19/09/2026' },
     { who: 'lan', code: 'HS-2026-0024', task: 12, created: '15/06/2026', due: '17/06/2026', done: '17/06/2026' },
-    { who: 'lan', code: 'HS-2026-0012', task: 57, created: '29/06/2026', due: '03/07/2026', done: '02/07/2026' },
+    { who: 'lan', code: 'HS-2026-0012-2', task: 57, created: '29/06/2026', due: '03/07/2026', done: '02/07/2026' },
     { who: 'hoa', code: 'HS-2026-0027', task: 29, created: '14/09/2026', due: '18/09/2026', done: '17/09/2026' },
-    { who: 'tgd', code: 'HS-2026-0012', task: 60, created: '13/07/2026', due: '16/07/2026', done: '15/07/2026' },
+    { who: 'tgd', code: 'HS-2026-0012-2', task: 60, created: '13/07/2026', due: '16/07/2026', done: '15/07/2026' },
     { who: 'tgd', code: 'HS-2026-0015', task: 62, created: '28/07/2026', due: '31/07/2026', done: '30/07/2026' },
   ];
 
@@ -1262,7 +1278,7 @@
     'P-206': { q: 'Hình thành gói thầu (bảng bóc tách chi phí ở Thêm mới luồng) là dropdown — danh sách giá trị gồm những gì', src: 'RV-PROTO-0511 #14; HT-DXMS-NOTE màn 8 (cột Hình thành gói thầu); QC-12869 Điều 39', def: 'GIẢ LẬP — Hình thành gói thầu / Không hình thành gói thầu (các trường hợp Điều 39 QC-12869)', scr: 'SCR-96' },
     'P-207': { q: 'Lý do khi chọn Mức ưu tiên Khẩn / Thượng khẩn nhập ở đâu — review ghi ở dòng "Luồng mua sắm / Tìm kiếm"', src: 'RV-PROTO-0511 #1', def: 'GIẢ LẬP — nhập ở Thêm mới luồng (trường Lý do ưu tiên, bắt buộc khi Khẩn / Thượng khẩn), hiện ở Chi tiết luồng; tìm kiếm chỉ lọc theo Mức ưu tiên', scr: 'SCR-96' },
     'P-208': { q: 'Số tiền nhập số thường (đồng) chỉ áp dụng cho Giá trị dự tính ở Thêm mới luồng, hay đổi đơn vị trên mọi màn (báo giá, eForm, báo cáo, ngưỡng 160 tỷ)', src: 'RV-PROTO-0511 #8', def: 'GIẢ LẬP — Thêm mới luồng và Chi tiết luồng nhập / hiện đồng; các màn khác giữ tỷ đồng tới khi BA xác nhận', scr: 'SCR-96' },
-    'P-209': { q: 'Menu Quản lý hồ sơ: "hồ sơ (hay được hiểu là các biểu mẫu)" — là danh sách biểu mẫu / văn bản đã sinh của mọi luồng (D-78), hay danh sách hồ sơ quy trình; trạng thái ký lấy từ đâu; T34 v0.2 (D-92, hồ sơ không còn là đối tượng trên giao diện): tên menu giữ Quản lý hồ sơ hay đổi thành Quản lý văn bản ĐXMS', src: 'RV-PROTO-0511 bản 2 #19; T34 v0.2', def: 'GIẢ LẬP — danh sách văn bản đầu ra của mọi hồ sơ ĐXMS; văn bản có bước ký trên ĐTMS là Đã ký khi đã sinh, BM-02 / BM-07 Không ký trên ĐTMS; tên menu tạm giữ Quản lý hồ sơ', scr: 'SCR-107' },
+    'P-209': { q: 'Menu Quản lý hồ sơ: "hồ sơ (hay được hiểu là các biểu mẫu)" — là danh sách biểu mẫu / văn bản đã sinh của mọi luồng (D-78), hay danh sách hồ sơ quy trình; trạng thái ký lấy từ đâu; T34 v0.2 (D-92, hồ sơ không còn là đối tượng trên giao diện): tên menu giữ Quản lý hồ sơ hay đổi thành Quản lý văn bản ĐXMS', src: 'RV-PROTO-0511 bản 2 #19; T34 v0.2', def: 'GIẢ LẬP — danh sách văn bản đầu ra của mọi hồ sơ ĐXMS; văn bản có bước ký trên ĐTMS là Đã ký khi đã sinh, BM-02 / BM-07 Không ký trên ĐTMS; tên menu: người dùng chốt 10/11 (D-105) Quản lý tài liệu ĐXMS', scr: 'SCR-107' },
     'P-205': { q: 'Yêu cầu báo giá tạo trực tiếp (ngoài hồ sơ) dùng để làm gì và có gắn vào hồ sơ sau này không; SRS-DXMS chỉ có YCBG trong hồ sơ (bước 8–10)', src: 'RV-PROTO-0511 #10, câu hỏi 7; HT-DXMS-IMG Yêu cầu báo giá; BR-DXMS-04-01', def: 'GIẢ LẬP — khảo sát giá trước khi có hồ sơ (vd lấy giá dự tính); Nháp sửa được, đã gửi không sửa; hồ sơ tới bước 8 vẫn sinh YCBG riêng', scr: 'SCR-106' },
     /* T25 B5 — MS23.01 Văn bản phát sinh, DG-MS23.01 §D. P-173 thêm khi dựng. */
     'P-161': { q: 'Danh mục loại văn bản, mẫu tương ứng, điều kiện được xem là sửa đổi hợp đồng', src: 'DG-MS23.01 §D 1', def: 'GIẢ LẬP — bốn loại Phụ lục hợp đồng, Biên bản làm việc, Biên bản phạt, Văn bản khác; chỉ Phụ lục hợp đồng là sửa đổi hợp đồng', scr: 'SCR-102' },
@@ -1328,12 +1344,14 @@
       /* Người dùng 09/11 (T34 v0.2): tạm ẩn menu — vào Thêm mới điều chỉnh bằng nút Điều chỉnh ĐXMS ở Danh sách đề xuất mua sắm; route #/dieu-chinh-dxms vẫn mở được. */
       // [T34 ẩn SCR-108] { label: 'Điều chỉnh đề xuất mua sắm', path: 'dieu-chinh-dxms', scr: 'SCR-108' },
       // [T34 bỏ Tách] { label: 'Hồ sơ đề xuất mua sắm', path: 'ho-so-dxms', scr: 'SCR-02' },
-      /* T29 B12 (RV-PROTO-0511 bản 2 #19, D-78): Quản lý hồ sơ = danh sách biểu mẫu / văn bản đã sinh của mọi luồng (SCR-107). */
-      { label: 'Quản lý hồ sơ', path: 'quan-ly-ho-so', scr: 'SCR-107' },
+      /* T29 B12 (RV-PROTO-0511 bản 2 #19, D-78): Quản lý hồ sơ = danh sách biểu mẫu / văn bản đã sinh của mọi luồng (SCR-107). Người dùng 10/11 (D-105): đổi tên menu thành Quản lý tài liệu ĐXMS, route giữ. */
+      { label: 'Quản lý tài liệu ĐXMS', path: 'quan-ly-ho-so', scr: 'SCR-107' },
       { label: 'Yêu cầu báo giá ĐXMS', path: 'ycbg', scr: 'SCR-73' }] },
     { label: 'Quản lý khoản đầu tư', icon: 'view_flow', bl: 'Quản lý khoản đầu tư', due: 'B2 (08/10)', children: [
       { label: 'Khoản đầu tư', path: 'kdt', scr: 'SCR-54' },
-      { label: 'Hồ sơ khoản đầu tư', path: 'ho-so-kdt', scr: 'SCR-75' },
+      /* T45 (D-103): tách theo loại hồ sơ — chủ trương / phê duyệt KĐT (màn danh sách chung SCR-75, lọc theo kind). */
+      { label: 'Hồ sơ chủ trương KĐT', path: 'ho-so-ct-kdt', scr: 'SCR-75' },
+      { label: 'Hồ sơ phê duyệt KĐT', path: 'ho-so-pd-kdt', scr: 'SCR-75' },
       { label: 'Yêu cầu báo giá KĐT', path: 'ycbg-kdt', scr: 'SCR-76' }] },
     /* D-76 (RV-PROTO-0511 #17): Quản lý thầu / hợp đồng ẩn khỏi sidebar ở bản demo ĐXMS bằng cờ D.show.menuThau; route và bộ demo MS22–MS24 giữ nguyên. */
     { label: 'Quản lý thầu', icon: 'doi_tac', bl: 'Quản lý thầu', due: 'B2 (08/10)', show: 'menuThau', children: [
@@ -1801,15 +1819,17 @@
   D.basisTypesFor = (process) => (D.familyOf(process) === 'MS13' ? D.kdtBasisTypes : D.basisTypes);
   D.basisDocsFor = (process) => (D.familyOf(process) === 'MS13' ? D.kdtBasisDocs : D.basisDocs);
   /* KĐT của kịch bản chính — tạo ở SCR-55 (cảnh 1); nhảy cảnh thì hệ thống tạo sẵn. */
-  D.kdtDemo = { code: D.kdtCode0, nv: 'DT-KHCN-2027-002', title: 'Đầu tư hệ thống đo kiểm OTA tích hợp phục vụ nhiệm vụ KHCN 5G-A', unit: 'Trung tâm Vô tuyến', field: 'VTCNTT', type: 'KHCN',
+  D.kdtDemo = { code: D.kdtCode0, nv: 'DT-KHCN-2027-002', nvs: ['DT-KHCN-2027-002', '009-26-VHT-RDP-DS'], title: 'Đầu tư hệ thống đo kiểm OTA tích hợp phục vụ nhiệm vụ KHCN 5G-A', unit: 'Trung tâm Vô tuyến', field: 'VTCNTT', type: 'KHCN',
     nature: 'TICH_HOP', est: 120, period: '01/2027 – 12/2027', secret: false, purpose: 'Đo kiểm OTA cho trạm 5G-Advanced theo đề tài KHCN năm 2027.',
     creator: 'Nguyễn Văn Minh', created: '01/10/2026', updated: '01/10/2026' };
   /* T31 B3 (D-68) — dòng bóc tách từ dự toán của KĐT mẫu (GIẢ LẬP P-193): KĐT-2026-0030 giữ 1 bộ khoản mục 1 của NV-KHCN-2026-014, dùng chung
      với ĐXMS-2026-0101 (khả dụng tính chung ĐXMS + KĐT); KĐT kịch bản chính bóc tách 2 dòng của DT-KHCN-2027-002 (bước 01, 05 hiện duToanChon). */
-  const kdtCostSeed = (x, rows) => { x.cost = rows.map(([n, qty, value, pkg]) => { const l = D.duToanOf(x.nv).find((y) => y.id === `${x.nv}-${n}`);
-    return Object.assign({}, l, { line: l.id, qty, value, budget: l.value, pkg }); }); };
-  kdtCostSeed(D.kdtList.find((x) => x.code === 'KĐT-2026-0030'), [[1, 1, 42.5, 'Gói thầu thiết bị đo EMC di động']]);
-  kdtCostSeed(D.kdtDemo, [[1, 2, 88, 'Gói thầu buồng đo OTA và máy phân tích phổ'], [4, 1, 8.2, 'Gói dịch vụ tích hợp, hiệu chuẩn']]);
+  /* T45 (D-104): mỗi dòng bóc tách ghi đề tài / dự án của dòng dự toán (nv; mặc định nvs[0]). KĐT kịch bản chính thêm 1 dòng của đề tài thứ hai. */
+  const kdtCostSeed = (x, rows) => { x.cost = rows.map(([n, qty, value, pkg, nv]) => { const c = nv || x.nv, l = D.duToanOf(c).find((y) => y.id === `${c}-${n}`);
+    return Object.assign({}, l, { line: l.id, nv: c, qty, value, budget: l.value, pkg }); }); };
+  kdtCostSeed(D.kdtList.find((x) => x.code === 'KĐT-2026-0030'), [[1, 1, 42.5, 'Gói thầu thiết bị đo EMC di động'], [2, 1, 12.0, 'Gói vật tư, linh kiện anten', 'NV-KHCN-2026-006']]);
+  kdtCostSeed(D.kdtDemo, [[1, 2, 88, 'Gói thầu buồng đo OTA và máy phân tích phổ'], [4, 1, 8.2, 'Gói dịch vụ tích hợp, hiệu chuẩn'],
+    [2, 1, 10.5, 'Gói vật tư, linh kiện đo kiểm', '009-26-VHT-RDP-DS']]);
   D.demoCases[D.kdtCode0] = {
     caseInfo: { title: D.kdtDemo.title, unit: 'Trung tâm Vô tuyến', basis: 'Đề tài KHCN năm 2027 "Phát triển trạm 5G-Advanced" (2318/QĐ-VHT, nguồn eBOM)',
       basisApprovedByGroup: false, purpose: 'Triển khai hoạt động KHCN', secret: false, priority: 'Thường', fund: 'Vốn KHCN, năm 2027', period: '01/2027 – 12/2027', total: 118.5 },
@@ -2038,6 +2058,7 @@
       { n: 'K4', name: 'Chủ trương: dự thảo, BM-01, chọn CQCM, trình', start: 15, tasks: '15–17, 39–45', who: 'minh' },
       { n: 'K5', name: 'Thẩm định chủ trương (vòng BM-01)', start: 27, tasks: '25–38, 46', who: 'lan' },
       { n: 'K6', name: 'Ký chủ trương BM-01', start: 47, tasks: '47, 48', who: 'lan' },
+      /* T45: K7, K8, K10 tua hồ sơ CT tới kết thúc (chủ trương đã duyệt), tạo hồ sơ KĐT HS-2026-0032-2 (kế thừa chủ trương) rồi tua tiếp (flow.js fastForward). */
       { n: 'K7', name: 'Hồ sơ KĐT BM-03 + Checklist 02, thẩm định (vòng BM-03)', start: 50, tasks: '49–55', who: 'minh' },
       { n: 'K8', name: 'Ký tờ trình BM-03, báo cáo BM-14, TGĐ ký Quyết định BM-18', start: 56, tasks: '56, 57, 60', who: 'hai' },
       { n: 'K9', name: 'Nhánh gộp BM-00 — KĐT-2026-0031', start: 19, tasks: '18–24, 25–38, 61–62', who: 'minh', kdt: 'KĐT-2026-0031' },
@@ -2059,7 +2080,8 @@
       /* Tuyến Tập đoàn 63–74 (T18 B4) — người Tập đoàn là tài khoản giả lập (P-96). */
       { name: 'Tập đoàn: các Ban gửi phiếu nhận xét BM-09 → ĐVĐX tiếp thu, TGĐ VHT ký trình lại', tasks: '65 → 66 → 67 → 68 → 69', task: 67, who: 'td', pre: AUTH_CT_TD },
       { name: 'Tập đoàn: Ban ĐTXD kiểm tra hồ sơ hoàn thiện chưa đạt → ĐVĐX bổ sung', tasks: '70 → 68 → 69 → 70', task: 70, who: 'td', pre: AUTH_CT_TD },
-      { name: 'TGĐ Tập đoàn ký chủ trương BM-01 → về lập hồ sơ KĐT (VHT)', tasks: '71 → 73 → 74 → 49 → 50', task: 73, who: 'td', pre: AUTH_CT_TD },
+      /* T45 (D-103): G36 chủ trương → kết thúc hồ sơ CT (KĐT Đã phê duyệt chủ trương); hồ sơ KĐT tạo riêng trong KĐT. */
+      { name: 'TGĐ Tập đoàn ký chủ trương BM-01 → kết thúc hồ sơ chủ trương', tasks: '71 → 73 → 74 → kết thúc hồ sơ chủ trương', task: 73, who: 'td', pre: AUTH_CT_TD },
       { name: 'KĐT-2026-0031: hồ sơ gộp thuộc Tập đoàn → Ban ĐTXD lập BM-14 + dự thảo BM-18, TGĐ Tập đoàn ký', tasks: '… → G30 → 63–70 → 72 → 73 → 74 → kết thúc', task: 72, who: 'td', dxms: 'KĐT-2026-0031',
         pre: { auth: [{ type: 'TBNB', field: '*', from: 0, to: null, ct: 'VHT', kdt: 'TD', basis: 'GIẢ LẬP P-90' }] } }] },
     /* Điều chỉnh ĐXMS (T21 B3): bộ chính ĐXMS-2026-0103 (đã phê duyệt MS01.02, 210,5 tỷ → MS02.02). pre.adj = giá trị / lý do sau điều chỉnh

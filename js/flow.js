@@ -163,14 +163,93 @@
     S.vars.factors = { field: k.field, type: k.type, nature: k.nature, est: k.est };
     S.creator = (D.personas.find((p) => p.id === S.persona) || D.personas[0]).name;
     /* KĐT mẫu đang có hồ sơ xử lý (KĐT-2026-0031, cảnh K9): chạy lại đúng hồ sơ đó — danh sách hồ sơ bỏ bản ghi mẫu trùng mã. */
-    const sample = D.kdtCases.find((c) => c.kdt === S.kdt && c.st === 'processing');
+    const sample = D.kdtCases.find((c) => c.kdt === S.kdt && c.st === 'processing' && (c.kind || 'CT') === 'CT');
+    /* T45 (D-103): hồ sơ chạy từ bước 1 là Hồ sơ phê duyệt chủ trương KĐT (kind CT); phạm vi (scope) theo cổng gộp — gộp BM-00 = CT_KDT. */
+    S.kdtKind = 'CT';
     S.code = opts.code || (sample ? sample.code : nextCaseCode(S.kdt));
     S.name = opts.name || k.title || D.caseInfo.title;
     S.status = 'running';
     S.persona = 'minh';
-    log('START', { system: true, action: `Khởi tạo ${S.code} — Phê duyệt KĐT` });
+    log('START', { system: true, action: `Khởi tạo ${S.code} — Phê duyệt chủ trương KĐT` });
     enter(1, {});
   }
+
+  /* ---------- T45 (D-103): hồ sơ CT + hồ sơ KĐT ----------
+     Hồ sơ CT (kind CT) chạy MS13 1–48 (hai giai đoạn) hoặc 1–38 + 61–62 (gộp, scope CT_KDT). Hồ sơ KĐT (kind KDT) tạo trong KĐT, chọn 1 hồ sơ CT
+     đã duyệt (parent), nhập Tổng mức vốn KĐT (est) → luồng tính lại (kdtLuong): MS13 chạy từ bước 49, kế thừa biến / dữ liệu eForm / lịch sử của hồ sơ CT
+     (hệ thống thật: process instance mới, biến khởi tạo chép từ instance chủ trương); MS14 = bản ghi tĩnh bước 46 (prototype chưa có luồng MS14 chạy được). */
+  const kindOf = () => S.kdtKind || 'CT';
+  const scopeOf = () => (S.vars.branch === 'BM00' ? 'CT_KDT' : 'CT');
+  /* Giá trị của hồ sơ KĐT = Tổng mức vốn KĐT nhập lúc tạo (như useAdj của hồ sơ Điều chỉnh). Gọi lại sau mỗi lần D.useCase. */
+  function useKdt() {
+    if (S && S.kdt && S.kdtKind === 'KDT' && S.est != null) D.caseInfo = Object.assign({}, D.caseInfo, { total: S.est });
+  }
+  /* Luồng theo Tổng mức vốn KĐT — cùng ngưỡng với kdtCheck (lĩnh vực, tính chất tài sản, [từ, đến dưới)). Không dòng ngưỡng nào chứa giá trị:
+     vượt mức trên của mọi dòng cùng lĩnh vực / tài sản → MS15 (KĐT phức tạp, chưa có dòng ngưỡng — SCR-40); lĩnh vực chưa có dòng ngưỡng → MS14 như kdtCheck. */
+  function kdtLuong(kdt, est) {
+    const k = (typeof kdt === 'string' ? Flow.findKdt(kdt) : kdt) || {}, rs = D.kdtRules(), v = Number(est);
+    const fits = (r) => (r.field === '*' || r.field === k.field) && (r.asset === '*' || r.asset === k.nature);
+    const rule = rs.find((r) => fits(r) && v >= r.from && (r.to == null || v < r.to));
+    if (rule) return rule.procs[0];
+    const own = rs.filter(fits);
+    return own.length && own.every((r) => r.to != null && v >= r.to) ? 'MS15' : 'MS14';
+  }
+  /* Mã hồ sơ KĐT: HS-2026-<4 số cuối KĐT>-<số thứ tự hồ sơ trong KĐT> (hồ sơ CT là hồ sơ thứ nhất). */
+  function nextKdtHsCode(kdt) {
+    const used = usedCodes(), n0 = new Set(Flow.kdtCases().filter((c) => c.kdt === kdt).map((c) => c.code)).size + 1;
+    for (let n = Math.max(2, n0); ; n++) { const c = `HS-2026-${kdt.slice(-4)}-${n}`; if (!used.has(c)) return c; }
+  }
+  /* Hồ sơ CT hợp lệ để tạo hồ sơ KĐT: đã duyệt (done), phạm vi Chủ trương, chưa có hồ sơ KĐT (không dừng) nào trỏ tới. */
+  function kdtCtChoices(kdt) {
+    const hs = Flow.kdtCases().filter((c) => c.kdt === kdt);
+    return hs.filter((c) => (c.kind || 'CT') === 'CT' && c.st === 'done' && (c.scope || 'CT') === 'CT'
+      && !hs.some((x) => x.kind === 'KDT' && x.parent === c.code && x.st !== 'stopped'));
+  }
+  const deep = (x) => (x == null ? x : JSON.parse(JSON.stringify(x)));
+  /* Tạo hồ sơ KĐT (opts: kdt, parent, est, reason, name). Hồ sơ đang chạy được đóng băng (kèm bản chụp biến) trước. Trả về mã hồ sơ. Không emit. */
+  function startKdtHs(opts) {
+    const kdt = opts.kdt, k = Flow.findKdt(kdt) || {};
+    const ct = kdtCtChoices(kdt).find((c) => c.code === opts.parent);
+    if (!ct) throw new Error(`Hồ sơ chủ trương ${opts.parent || '(trống)'} không hợp lệ để tạo hồ sơ KĐT của ${kdt}`);
+    const est = opts.est != null ? Number(opts.est) : ct.total != null ? ct.total : k.est;
+    const luong = kdtLuong(k, est), luongCt = ct.flow || 'MS13';
+    if (luong === 'MS15') throw new Error(`Tổng mức vốn KĐT ${est} tỷ thuộc MS15 — chưa hỗ trợ tạo hồ sơ (chặn Lưu)`);
+    const lech = luong !== luongCt ? { from: luongCt, to: luong, reason: opts.reason || '' } : null;
+    const who = S.persona, creator = (D.personas.find((p) => p.id === who) || D.personas[0]).name;
+    freezeKdt();
+    /* Bản chụp hồ sơ CT (vừa đóng băng ở trên, hoặc từ lần trước). Hồ sơ CT mẫu không có bản chụp → biến tối thiểu. */
+    const own = S.kdtCases.find((c) => c.code === ct.code), snap = (own && own.snap) || null;
+    const code = nextKdtHsCode(kdt);
+    if (luong !== 'MS13' || luongCt !== 'MS13') {
+      const at = Flow.dateOf(S.clock);
+      S.kdtCases.unshift({ code, kdt, kind: 'KDT', parent: ct.code, luongCt, est, lech, title: opts.name || ct.title || k.title, flow: luong, stage: 'HS', st: 'processing',
+        task: luong === 'MS14' ? 46 : 49, total: est, created: at, updated: at, creator });
+      S = carry(S, fresh());
+      S.persona = who;
+      D.useCase(kdt);
+      return code;
+    }
+    S = carry(S, fresh('MS13'));
+    S.persona = who;
+    if (snap) {
+      Object.assign(S.vars, deep(snap.vars));
+      S.ui = deep(snap.ui) || {};
+      S.history = deep(snap.history).map((h) => Object.assign(h, { inh: ct.code }));
+      S.clock = snap.clock || 0;
+      S.members = deep(snap.members) || null;
+    } else {
+      Object.assign(S.vars, { factors: { field: k.field, type: k.type, nature: k.nature, est: k.est }, group: 'MS13', branch: '2GD', td: 'CT' });
+      S.clock = Flow.clockOf(ct.updated || Flow.dateOf(0));
+    }
+    Object.assign(S, { kdt, kdtKind: 'KDT', ctParent: ct.code, luongCt, est, lech, code, name: opts.name || ct.title || k.title || null, creator, status: 'running' });
+    D.useCase(kdt);
+    useKdt();
+    log('START', { system: true, action: `Khởi tạo ${code} — Phê duyệt KĐT (kế thừa hồ sơ chủ trương ${ct.code})` });
+    enter(49, {});
+    return code;
+  }
+  /* T45 (D-104): KĐT có nhiều đề tài / dự án (nvs); nv = nvs[0] để tương thích. */
+  const nvsOf = (x) => (x.nvs ? Object.assign(x, { nv: x.nvs[0] || null }) : Object.assign(x, { nvs: x.nv ? [x.nv] : [] }));
 
   /* Cổng phân luồng KĐT theo 04 yếu tố: nhóm theo Ngưỡng phân luồng (lĩnh vực, tính chất tài sản, tổng mức vốn thực tế);
      gộp BM-00 khi đủ 03 điều kiện (P-51): mức vốn MS13, Nguyên chiếc, Trang bị nội bộ. Không ngưỡng nào chứa giá trị → không thuộc MS13 (MS14). */
@@ -195,7 +274,8 @@
   /* Trạng thái KĐT (kdt.js KDT_STAGE) suy từ bước đang chờ của hồ sơ chạy luồng, theo cụm của trang MS13 bản 12/10 (plan T18 §1). */
   function kdtStage() {
     if (S.status === 'moved') return 'MS14';
-    if (S.status === 'approved') return 'OK';
+    /* T45: hồ sơ CT phạm vi Chủ trương kết thúc → KĐT Đã phê duyệt chủ trương; gộp (CT_KDT) hoặc hồ sơ KĐT → Đã phê duyệt. */
+    if (S.status === 'approved') return kindOf() === 'CT' && scopeOf() === 'CT' ? 'CT_OK' : 'OK';
     if (S.status === 'stopped') return 'STOP';
     const ns = S.tokens.map(stepOf).filter(isTask).map(Number);
     const m = ns.length ? Math.min(...ns) : 1, gop = S.vars.branch === 'BM00';
@@ -223,12 +303,13 @@
     const ns = [...new Set(S.tokens.map(stepOf).filter(isTask).map(Number))].sort((a, b) => a - b);
     const priced = S.history.some((h) => String(h.task) === '10' && h.who);
     /* Hồ sơ đã chuyển luồng vẫn là hồ sơ chạy MS13 (như hồ sơ mẫu HS-2026-0018); nhóm đúng nằm ở hồ sơ mới. */
-    const rec = { code: S.code, kdt: S.kdt, kind: 'PD', title: S.name, flow: S.status === 'moved' ? 'MS13' : S.vars.group || null, branch: S.vars.branch || null, stage: kdtStage(),
+    const kd = kindOf() === 'KDT' ? { kind: 'KDT', parent: S.ctParent, luongCt: S.luongCt || 'MS13', est: S.est, lech: S.lech || null } : { kind: 'CT', scope: scopeOf() };
+    const rec = Object.assign({ code: S.code, kdt: S.kdt, title: S.name, flow: S.status === 'moved' ? 'MS13' : S.vars.group || null, branch: S.vars.branch || null, stage: kdtStage(),
       st: { running: 'processing', approved: 'done', moved: 'moved', stopped: 'stopped' }[S.status], task: ns.length ? ns[0] : null, tasks: ns.length > 1 ? ns : undefined,
       total: priced ? D.caseInfo.total : undefined, created: Flow.dateOf(0), updated: Flow.dateOf(S.clock), creator: S.creator, live: true,
-      replacedBy: S.movedTo ? S.movedTo.code : undefined, docs: kdtDocs().map((d) => [d.code, d.at]) };
+      replacedBy: S.movedTo ? S.movedTo.code : undefined, docs: kdtDocs().filter((d) => !d.inh).map((d) => [d.code, d.at]) }, kd);
     if (S.status !== 'moved') return [rec];
-    return [{ code: S.movedTo.code, kdt: S.kdt, kind: 'PD', title: S.name, flow: S.movedTo.process, stage: 'MS14', st: 'processing', task: 1, total: D.caseInfo.total,
+    return [{ code: S.movedTo.code, kdt: S.kdt, kind: 'CT', scope: 'CT', title: S.name, flow: S.movedTo.process, stage: 'MS14', st: 'processing', task: 1, total: D.caseInfo.total,
       created: Flow.dateOf(S.clock), updated: Flow.dateOf(S.clock), creator: S.creator, replaces: S.code, live: true }, rec];
   }
   /* Văn bản đầu ra của hồ sơ KĐT: BM-01 khi TGĐ VHT ký phê duyệt chủ trương (48), BM-14 khi TTMS ký báo cáo thẩm định (57 / 61),
@@ -240,15 +321,21 @@
     const vhtDocs = KDOCS.map(([code, by, ok]) => {
       if (S.vars.ky && String(S.vars.ky.task) === String(by)) return null;
       const h = S.history.filter((x) => String(x.task) === String(by) && x.who && ok.test(x.action)).pop();
-      return h ? { code, by, at: Flow.dateOf(h.t) } : null;
+      return h ? Object.assign({ code, by, at: Flow.dateOf(h.t) }, h.inh ? { inh: h.inh } : {}) : null;
     }).filter(Boolean);
-    return vhtDocs.concat((S.vars.tdDocs || []).map((d) => ({ code: d.code, by: 74, at: Flow.dateOf(d.t), td: true })));
+    /* T45: hồ sơ KĐT kế thừa văn bản của hồ sơ chủ trương (inh = mã hồ sơ CT); bản ghi danh sách hồ sơ chỉ ghi văn bản của chính hồ sơ. */
+    const inhTd = (d) => (S.kdtKind === 'KDT' && d.kind === 'CT' ? { inh: S.ctParent } : {});
+    return vhtDocs.concat((S.vars.tdDocs || []).map((d) => Object.assign({ code: d.code, by: 74, at: Flow.dateOf(d.t), td: true }, inhTd(d))));
   }
   /* Văn bản Tập đoàn ký theo loại hồ sơ trình (DG-MS13 bước 73, 74): chủ trương — BM-01 có chân ký các Ban; KĐT — BM-14 + BM-18; gộp — BM-00 + BM-14 + BM-18. */
   const TD_DOCS = { CT: ['BM-01'], KDT: ['BM-14', 'BM-18'], GOP: ['BM-00', 'BM-14', 'BM-18'] };
   /* Tạo hồ sơ khác khi đang chạy một hồ sơ KĐT: giữ hồ sơ KĐT cũ ở trạng thái hiện tại trong danh sách hồ sơ của KĐT. */
   function freezeKdt() {
-    if (S && S.kdt && S.status !== 'new') S.kdtCases = liveKdt().map((c) => Object.assign({}, c, { live: false })).concat(S.kdtCases);
+    if (!S || !S.kdt || S.status === 'new') return;
+    /* T45: bản ghi đóng băng giữ bản chụp của hồ sơ (biến, dữ liệu eForm, lịch sử) — hồ sơ KĐT tạo sau chép biến của hồ sơ CT. */
+    const snap = { vars: deep(S.vars), ui: deep(S.ui || {}), history: deep(S.history), clock: S.clock, members: deep(S.members) };
+    const recs = liveKdt().map((c) => Object.assign({}, c, { live: false }, c.code === S.code ? { snap } : {})), codes = new Set(recs.map((c) => c.code));
+    S.kdtCases = recs.concat(S.kdtCases.filter((c) => !codes.has(c.code)));
   }
 
   /* Vai đang đăng nhập và dữ liệu CARRY đi theo khi đổi S giữa luồng chính và hồ sơ con. */
@@ -271,6 +358,7 @@
   function useMainCase() {
     D.useCase(S.kdt || S.dxms || demoSet().dxms || demoSet().kdt);
     useAdj();
+    useKdt();
   }
   /* Về luồng chính. Không emit: gọi trong lúc đổi route, trước khi vẽ màn. */
   function toMain() {
@@ -473,7 +561,10 @@
     ctx = ctx || {};
     if (key === 'END' || key === 'END_OTHER') {
       S.status = key === 'END' ? 'approved' : 'stopped';
-      const endKdt = (S.vars.tdKind && S.vars.tdKind !== 'CT' ? 'Kết thúc — hoàn tất phê duyệt cấp Tập đoàn: ' : 'Kết thúc — ')
+      /* T45: hồ sơ CT phạm vi Chủ trương kết thúc ở 48 / G36 (chủ trương Tập đoàn) — KĐT Đã phê duyệt chủ trương. */
+      const ctEnd = S.kdt && kindOf() === 'CT' && scopeOf() === 'CT';
+      const endKdt = ctEnd ? (S.vars.tdKind === 'CT' ? 'Kết thúc — hoàn tất phê duyệt cấp Tập đoàn: chủ trương BM-01' : 'Kết thúc — chủ trương KĐT đã phê duyệt (BM-01)')
+        : (S.vars.tdKind && S.vars.tdKind !== 'CT' ? 'Kết thúc — hoàn tất phê duyệt cấp Tập đoàn: ' : 'Kết thúc — ')
         + (S.vars.branch === 'BM00' ? 'hồ sơ gộp BM-00 đã ký duyệt' : 'Quyết định phê duyệt KĐT');
       log(key, { system: true, action: key === 'END' ? (S.parent ? S.vars.endText || (D.hdProcesses[fam()] || {}).end : S.kdt ? endKdt : 'Kết thúc — ĐXMS đã phê duyệt') : 'Kết thúc theo chỉ đạo khác' });
       if (key === 'END') spawnNext();
@@ -702,7 +793,13 @@
     start(Object.assign({ dxms }, adj || {}));
     if (p) Object.assign(S.vars, p);
     if (via) advanceTo(via);
-    advanceTo(target, settle);
+    /* T45: 'CT_END' = tua hồ sơ CT tới kết thúc (chủ trương đã duyệt), không tạo hồ sơ KĐT. */
+    advanceTo(target === 'CT_END' ? 'END' : target, settle);
+    /* T45: đích thuộc hồ sơ KĐT (49–60, END của KĐT) — hồ sơ CT đã duyệt chủ trương thì đóng băng, tạo hồ sơ KĐT (est = tổng mức vốn của CT) rồi tua tiếp. */
+    if (target !== 'CT_END' && S.kdt && kindOf() === 'CT' && S.status === 'approved' && scopeOf() === 'CT') {
+      startKdtHs({ kdt: S.kdt, parent: S.code, est: D.caseInfo.total });
+      advanceTo(target, settle);
+    }
   }
   function advanceTo(target, settle) {
     let guard = 0;
@@ -879,8 +976,23 @@
       emit();
     },
     /* ĐXMS đang có: tạo trên prototype (mới nhất trước) + mẫu đã áp chỉnh sửa, bỏ bản ghi đã xoá. */
+    /* T45 V0.4 SRS 12 3.1.3: Xóa ĐXMS chưa gửi / bị trả lại — xóa mềm (cờ deleted, mã không dùng lại vì bản ghi còn trong dxmsUser / dxmsDel),
+       hồ sơ đang chạy của ĐXMS bị hủy cùng công việc mở (luồng chính về trạng thái chưa có hồ sơ). Phần dự toán tự trả vì dxmsAll() bỏ bản ghi đã xóa. */
+    deleteLuong(code) {
+      toMain();
+      const own = S.dxmsUser.find((x) => x.code === code), now = Flow.dateOf(S.clock), by = (D.personas.find((p) => p.id === S.persona) || {}).name;
+      if (own) Object.assign(own, { deleted: true, deletedBy: by, deletedAt: now });
+      else if (!S.dxmsDel.includes(code)) S.dxmsDel = S.dxmsDel.concat([code]);
+      if (S.dxms === code) {
+        const p = S.persona;
+        S = carry(S, fresh());
+        S.persona = p;
+        D.useCase(D.dxmsCode0);
+      }
+      emit();
+    },
     dxmsAll() {
-      return S.dxmsUser.concat(D.dxmsList.filter((x) => !S.dxmsDel.includes(x.code)).map((x) => Object.assign({}, x, S.dxmsEdit[x.code] || {})));
+      return S.dxmsUser.filter((x) => !x.deleted).concat(D.dxmsList.filter((x) => !S.dxmsDel.includes(x.code)).map((x) => Object.assign({}, x, S.dxmsEdit[x.code] || {})));
     },
     findDxms(code) { return Flow.dxmsAll().find((x) => x.code === code) || null; },
     /* T34: chuỗi điều chỉnh chứa `code`, từ ĐXMS gốc tới bản mới nhất (theo adjFrom). */
@@ -909,13 +1021,15 @@
     /* KĐT (SCR-55): tạo / sửa / xoá như ĐXMS — không start quy trình (D-12). */
     createKdt(data) {
       const code = nextKdtCode(), now = Flow.dateOf(S.clock);
-      S.kdtUser.unshift(Object.assign({ creator: window.D.personas.find((p) => p.id === S.persona).name, created: now }, data, { code, updated: now }));
+      S.kdtUser.unshift(nvsOf(Object.assign({ creator: window.D.personas.find((p) => p.id === S.persona).name, created: now }, data, { code, updated: now })));
       emit();
       return code;
     },
     updateKdt(code, patch) {
       const own = S.kdtUser.find((x) => x.code === code);
       const p = Object.assign({}, patch, { updated: Flow.dateOf(S.clock) });
+      /* T45 (D-104): nvs là danh sách đề tài / dự án; nv = nvs[0] để tương thích. */
+      if (p.nvs) p.nv = p.nvs[0] || null; else if (p.nv !== undefined) p.nvs = p.nv ? [p.nv] : [];
       if (own) Object.assign(own, p); else S.kdtEdit[code] = Object.assign({}, S.kdtEdit[code], p);
       emit();
     },
@@ -925,7 +1039,7 @@
       emit();
     },
     kdtAll() {
-      return S.kdtUser.concat(D.kdtList.filter((x) => !S.kdtDel.includes(x.code)).map((x) => Object.assign({}, x, S.kdtEdit[x.code] || {})));
+      return S.kdtUser.concat(D.kdtList.filter((x) => !S.kdtDel.includes(x.code)).map((x) => Object.assign({}, x, S.kdtEdit[x.code] || {}))).map(nvsOf);
     },
     findKdt(code) { return Flow.kdtAll().find((x) => x.code === code) || null; },
     /* Hồ sơ KĐT tạo trên prototype + hồ sơ mẫu. */
@@ -936,8 +1050,16 @@
     kdtDocs,
     /* Thêm mới hồ sơ Phê duyệt KĐT: Lưu = khởi tạo instance MS13 (bước 1 giao người tạo); nhóm MS13/14/15 chưa xác định tới cổng phân luồng
        sau bước 11 ‖ 12 (D-7). Prototype chạy một hồ sơ: hồ sơ đang chạy trước đó được thay (hồ sơ KĐT cũ giữ lại ở trạng thái hiện tại). */
-    createKdtCase(opts) {
+    /* T45: createKdtCase(mã KĐT, { kind: 'CT', name }) — hồ sơ chủ trương (bước 1, như trước; kiểu cũ createKdtCase({ kdt, name }) vẫn dùng được);
+       createKdtCase(mã KĐT, { kind: 'KDT', parent, est, reason, name }) — hồ sơ KĐT: MS13 chạy từ bước 49, MS14 bản ghi tĩnh bước 46, MS15 ném lỗi. */
+    createKdtCase(a, b) {
+      const opts = typeof a === 'string' ? Object.assign({ kdt: a }, b || {}) : Object.assign({}, a || {});
       toMain();
+      if (opts.kind === 'KDT') {
+        const code = startKdtHs(opts);
+        emit();
+        return code;
+      }
       const who = S.persona;
       freezeKdt();
       S = carry(S, fresh('MS13'));
@@ -946,6 +1068,8 @@
       emit();
       return S.code;
     },
+    kdtLuong,
+    kdtCtChoices,
     kdtCheck,
     kdtAuth,
     kdtStage,
@@ -1040,9 +1164,10 @@
       }
       if (S.kdt) {
         const k = Flow.findKdt(S.kdt) || {};
-        return Object.assign({}, D.caseInfo, { code: S.code || '—', dxms: S.kdt, kdt: S.kdt, isKdt: true, kind: 'PD', title: k.title || D.caseInfo.title,
+        const kd = kindOf() === 'KDT' ? { parent: S.ctParent, luongCt: S.luongCt || 'MS13', est: S.est, lech: S.lech || null } : { scope: scopeOf() };
+        return Object.assign({}, D.caseInfo, kd, { code: S.code || '—', dxms: S.kdt, kdt: S.kdt, isKdt: true, kind: kindOf(), nvs: k.nvs, title: k.title || D.caseInfo.title,
           name: S.name || k.title || D.caseInfo.title, flow: S.vars.group || 'Chưa xác định nhóm', group: S.vars.group || null, branch: S.vars.branch || null,
-          unit: k.unit || D.caseInfo.unit, secret: isMat(), period: k.period || D.caseInfo.period, est: k.est });
+          unit: k.unit || D.caseInfo.unit, secret: isMat(), period: k.period || D.caseInfo.period, est: kindOf() === 'KDT' && S.est != null ? S.est : k.est });
       }
       const x = (S.dxms && Flow.findDxms(S.dxms)) || {};
       const title = x.title || D.caseInfo.title;

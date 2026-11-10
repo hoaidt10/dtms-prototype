@@ -27,7 +27,8 @@ test('SCR-54, 56: cột / nhãn "Đề tài / dự án", mã mở Chi tiết đ�
   await page.locator('[data-dt-tab="dxms"]').click();
   const kdt = page.locator('[data-dt-kdt]');
   await expect(kdt).toContainText('KĐT-2026-0012');
-  const want = await page.evaluate((nv) => Flow.kdtAll().filter((x) => x.nv === nv).map((x) => x.code), NV);
+  // T45 (D-104): KĐT chọn nhiều đề tài / dự án — đề tài có KĐT khi nằm trong nvs.
+  const want = await page.evaluate((nv) => Flow.kdtAll().filter((x) => (x.nvs || [x.nv]).includes(nv)).map((x) => x.code), NV);
   await expect(kdt.locator('tbody tr')).toHaveCount(want.length);
   await kdt.locator(`[data-go="kdt/${enc('KĐT-2026-0012')}"]`).click();
   await expect(page).toHaveURL(/#\/kdt\/K%C4%90T-2026-0012$/);
@@ -54,8 +55,9 @@ test('SCR-75: cột và bộ lọc Đề tài / dự án', async ({ page }) => {
   await page.locator('.adv button[type="submit"]').click({ force: true });
   const codes = await page.locator('main .vtable tbody tr').evaluateAll((rs) => rs.map((r) => r.dataset.code).filter(Boolean));
   expect(codes).toContain('HS-2026-0012');
-  const nvs = await page.evaluate((cs) => cs.map((c) => Flow.findKdt(Flow.kdtCases().find((x) => x.code === c).kdt).nv), codes);
-  expect(new Set(nvs)).toEqual(new Set([NV]));
+  // T45 (D-104): lọc "có chứa" đề tài trong danh sách đề tài / dự án của KĐT.
+  const has = await page.evaluate(([cs, nv]) => cs.map((c) => (Flow.findKdt(Flow.kdtCases().find((x) => x.code === c).kdt).nvs || []).includes(nv)), [codes, NV]);
+  expect(has.every(Boolean)).toBe(true);
   await expect(page.locator(`main tbody [data-go="de-tai/${enc(NV)}"]`).first()).toBeVisible();
   expect(page.errors).toEqual([]);
 });

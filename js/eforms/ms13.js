@@ -73,7 +73,7 @@
     10: { id: 'dtms-ms13-b10-bao-gia', q: ['P-06'],
       schema: () => ({ components: [
         txt('Lần gửi YCBG: **{{lanGuiYcbg}}**'),
-        tbl('So sánh báo giá (đơn giá, tỷ đồng, gồm VAT)', 'baoGia', [['ncc', 'Nhà cung cấp'], ['ngay', 'Ngày báo giá'], ['tienTe', 'Loại tiền'], ['dong', 'Dòng hàng'], ['donGia', 'Đơn giá'], ['hieuLuc', 'Hiệu lực đến'], ['thapNhat', 'Giá thấp nhất']]),
+        /* [T47] ẩn bảng So sánh báo giá (10/11/2026): tbl('So sánh báo giá (đơn giá, tỷ đồng, gồm VAT)', 'baoGia', …) */
         txt('### Kết quả AI kiểm tra báo giá: {{quoteCheck.ketQua}}\n{{quoteCheck.chiTiet}}'),
         txt('{{kdtLabel}}')] }),
       notes: () => ['Chốt tổng mức vốn → hệ thống gửi đồng thời 02 yêu cầu xác nhận: Ban Tài chính (task 11) ‖ TTMS (task 12). Nhóm KĐT và nhánh hồ sơ xác định sau khi cả hai xác nhận OK.',

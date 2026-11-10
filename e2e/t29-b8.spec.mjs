@@ -127,6 +127,7 @@ test('SCR-104: Chi mua sắm chỉ TTMS; bỏ tích bị chặn khi ĐXMS đang 
   await go(page, '#/kdt/create');
   await page.locator('[data-vsel="k-nv"]').click();
   await page.locator(`.vsel-panel [data-opt="${DT}"]`).click();
+  await page.keyboard.press('Escape'); // T45: k-nv chọn nhiều — danh sách giữ mở sau khi chọn
   await page.locator('[data-vsel="kc-ctype"]').click();
   await page.locator('.vsel-panel [data-opt="PL2"]').click();
   await page.locator('[data-vsel="kc-cline"]').click();

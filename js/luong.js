@@ -101,7 +101,9 @@
       const run = m.hs.find((c) => c.st === 'processing') || m.hs[0] || null;
       const live = run && run.live && Flow.state.status === 'running';
       const who = live ? [...new Set(Flow.state.tokens.flatMap((t) => t.cands || [t.who]))].map((id) => persona(id).name).join(', ') : '';
-      return Object.assign({}, x, { state: m.state, run, who });
+      /* T45 V0.4 SRS 12 3.1.3: ed = Sửa / Xóa được (người thực hiện việc Lập), ret = bị Chỉ huy ĐVĐX trả lại ở 5.1. */
+      const ls = lapState(x.code);
+      return Object.assign({}, x, { state: m.state, run, who, ed: editOf(x, m.state), ret: !!(ls && ls.returned) });
     }).filter((x) => (!L.adv ? !L.kw || norm(`${x.code} ${x.title}`).includes(norm(L.kw))
       : ((fr, to) => (!fr || dk(x.created) >= dk(fr)) && (!to || dk(x.created) <= dk(to)))(...rangeOf(f.created))
         && (!f.code || norm(x.code).includes(norm(f.code))) && (!f.kind || kindOf(x) === f.kind) && (!f.title || norm(x.title).includes(norm(f.title))) && (!f.nv || x.nv === f.nv)
@@ -132,17 +134,18 @@
     if (L.page > pages) L.page = pages;
     const from = (L.page - 1) * L.size;
     const S = window.Screens.DXMS_STATUS;
-    const cols = [['Thao tác', 100, 'c'], ['Trạng thái', 150, 'c'], ['Mã ĐXMS', 170], ['Loại ĐXMS', 120], ['Tên đề xuất mua sắm', 280], ['Đề tài / dự án', 260], ['Đợt', 70, 'c'],
+    const cols = [['Thao tác', 100, 'c'], ['Trạng thái', 250, 'c'], ['Mã ĐXMS', 170], ['Loại ĐXMS', 120], ['Tên đề xuất mua sắm', 280], ['Đề tài / dự án', 260], ['Đợt', 70, 'c'],
       ['Quy trình', 100], ['Bước hiện tại', 220], ['Người đang xử lý', 180], ['Đơn vị đề xuất', 180], ['Người tạo', 170], ['Ngày cập nhật', 140]];
     const body = all.slice(from, from + L.size).map((x, i) => `<tr class="click" data-go="${href(x.code)}" data-code="${esc(x.code)}">
-        <td class="ord">${from + i + 1}</td><td class="c"><div class="acts">${iconBtn('edit', 'Sửa', `data-go="dxms/${encodeURIComponent(x.code)}/edit"`)}</div></td>
-        <td class="c">${badge(S[x.state][0], S[x.state][1])}</td><td><a class="link" data-go="${href(x.code)}">${esc(x.code)}</a></td><td data-kind>${kindOf(x)}</td><td>${clamp(x.title)}</td>
+        <td class="ord">${from + i + 1}</td><td class="c"><div class="acts">${x.ed ? `${iconBtn('edit', 'Sửa', `data-go="${x.ed.go}" data-lg-edit="${esc(x.code)}"`)}<span class="sep"></span>${iconBtn('del', 'Xóa', `data-lg-del="${esc(x.code)}"`)}` : ''}</div></td>
+        <td class="c"><div class="lg-st">${badge(S[x.state][0], S[x.state][1])}${x.ret ? `<span data-lg-ret>${badge('Bị trả lại', 'warning')}</span>` : ''}</div></td><td><a class="link" data-go="${href(x.code)}">${esc(x.code)}</a></td><td data-kind>${kindOf(x)}</td><td>${clamp(x.title)}</td>
         <td>${clamp(S5().nvText(x.nv))}</td><td class="c">${S5().dotOf(x) || dash}</td>
         <td>${clamp(x.run && (x.run.flowLabel || x.run.flow))}</td>
         <td>${clamp(x.run && x.run.step)}</td><td>${clamp(x.who)}</td><td>${clamp(x.unit)}</td><td>${clamp(x.creator)}</td><td class="num">${esc(x.updated)}</td></tr>`).join('');
     const info = {
       scr: 'SCR-95', name: 'Danh sách đề xuất mua sắm', uc: 'UC-07-01, UC-07-12 · UR-DX-01, UR-DX-20',
       notes: [
+        '<b>T45 — SRS 12 V0.4 mục 3.1.3 (DTMS_CN_0138):</b> icon <b>Sửa</b>, <b>Xóa</b> chỉ hiện với ĐXMS Tạo mới đang ở việc Lập đề xuất mua sắm — chưa gửi (Chưa khởi tạo) hoặc bị Chỉ huy ĐVĐX <b>Trả lại</b> ở bước 5.1 — và người xem là người thực hiện việc đó (ĐXMS mẫu chưa có hồ sơ: người tạo). Sửa mở lại màn Lập; Xóa = xóa mềm, hủy quy trình và việc đang mở, trả phần dự toán. ĐXMS bị trả lại giữ Đang phê duyệt, thêm tag <b>Bị trả lại</b> (câu hỏi DTMS_Q_0548, 0549). Trước T45 icon Sửa hiện ở mọi dòng và mở Chi tiết.',
         '<b>T37 (RV-PROTO-0911 #1):</b> thêm <b>Loại ĐXMS</b> (Tạo mới / Điều chỉnh) ở Tìm kiếm nâng cao và cột sau Mã ĐXMS. Điều chỉnh = ĐXMS tạo từ Điều chỉnh ĐXMS (có Điều chỉnh từ); ĐXMS Sao chép (P-226) là Tạo mới.',
         '<b>Phương án Gộp (T17 D-25)</b>: một mục <b>Luồng mua sắm</b> thay hai mục Đề xuất mua sắm và Hồ sơ đề xuất mua sắm. <b>T34 (D-90):</b> bỏ phương án Tách — chỉ còn Gộp. <b>Mỗi ĐXMS một hồ sơ</b> (D-85); điều chỉnh là ĐXMS mới, ở menu Điều chỉnh đề xuất mua sắm (SCR-108).',
         'Mỗi dòng là một ĐXMS, kèm quy trình, bước hiện tại và người đang xử lý. <b>T34 v0.2 (D-92):</b> bỏ cột Hồ sơ đang xử lý — hồ sơ không hiện trên giao diện. Trạng thái suy từ hồ sơ như SCR-27 (R5).',
@@ -204,17 +207,21 @@
   const typeName = (t) => (D.costTypes.find(([k]) => k === t) || [t, t])[1];
   /* T29 S8 (B9): phần còn lại khả dụng của dòng dự toán = dự toán − ĐXMS đã phê duyệt − ĐXMS đang giữ (cùng hàm với SCR-104, D.duToanStats). */
   /* T37 (RV-PROTO-0911 #2): Điều chỉnh — phần ĐXMS cần điều chỉnh đang giữ được tính lại vào còn khả dụng (bản điều chỉnh thay bản cũ). */
+  /* T45 — SRS 12 V0.4 BR-LDX-03-03, AC-0138-08: mở lại ĐXMS đã có (Lưu nháp / bị trả lại / ĐXMS mẫu chưa có hồ sơ) thì Còn lại khả dụng không trừ phần của chính ĐXMS này. */
+  const ownCode = () => (isAdj() ? null : LF.edit ? LF.edit.code : LF.base && LF.base.mode === 'own' ? LF.base.code : null);
   const availOf = (l) => {
-    const from = isAdj() ? LF.base.from : null;
-    const s = D.duToanStats(l, ((window.DeTai.usesOf(l.code)[l.id]) || []).filter((u) => !from || u.x.code !== from));
+    const skip = [isAdj() ? LF.base.from : null, ownCode()].filter(Boolean);
+    const s = D.duToanStats(l, ((window.DeTai.usesOf(l.code)[l.id]) || []).filter((u) => !skip.includes(u.x.code)));
     return { value: s.remain, qty: l.qty == null ? null : l.qty - s.qty };
   };
-  /* Vượt phần còn lại: cảnh báo, không chặn khi tạo (BR-DXMS-02-04); chặn ở bước 10 (P1, BR-DXMS-04-11). */
-  function costWarn(r) {
+  /* T45 — SRS 12 BR-LDX-C-03, BR-LDX-02-04 (V0.3, review khách 10/11): vượt Còn lại khả dụng thì báo tại dòng và CHẶN Lưu nháp, Gửi
+     (thay "cảnh báo, không chặn" của BR-DXMS-02-04 / T29 S8). */
+  function costOver(r) {
     const l = costLine(r.line) || {}, a = availOf(l), q = estNum(r.qty), n = dongIn(r.value);
-    return [q != null && !Number.isNaN(q) && a.qty != null && q > a.qty ? `Vượt khối lượng còn lại (${a.qty}).` : '',
-      n != null && !Number.isNaN(n) && n > a.value && n <= l.value ? `Vượt giá trị còn lại khả dụng (${dong(a.value)} đồng).` : ''].filter(Boolean).join(' ');
+    return { qty: q != null && !Number.isNaN(q) && a.qty != null && q > a.qty ? `Vượt khối lượng còn lại (${a.qty}${l.uom ? ' ' + l.uom : ''}).` : '',
+      val: n != null && !Number.isNaN(n) && n > a.value && n <= l.value ? `Vượt giá trị còn lại khả dụng (${dong(a.value)} đồng).` : '' };
   }
+  function costWarn(r) { const o = costOver(r); return [o.qty, o.val].filter(Boolean).join(' '); }
   function costCard() {
     const nv = LF.v.nv, all = nv ? D.duToanOf(nv) : [], p = LF.pick, err = LF.err.cost || {}, ent = D.nvOf(nv) || {};
     /* T29 B12 (RV-PROTO-0511 #11, Huylx4 #2, #10): Đề tài / dự án là trường đầu tiên của màn, khối bóc tách chi phí ngay sau, trước Thông tin chung. */
@@ -346,6 +353,42 @@
   const AI_DEC = ['Chấp nhận', 'Sửa', 'Bỏ'];
   const PURPOSES = [['DT', 'Duy trì hoạt động thường xuyên'], ['SX', 'Bảo đảm tính liên tục của hoạt động SXKD'], ['KHCN', 'Triển khai các hoạt động KHCN'], ['QP', 'Nhiệm vụ QP-AN, chính trị, nhiệm vụ đặc thù']];
   const LAP_TASKS = ['1', '4', '5'];
+  // T45 V0.4 SRS 12 3.1.3: ĐXMS (luồng chính MS01) đang ở việc Lập ĐXMS — chưa gửi, hoặc bị Chỉ huy ĐVĐX Trả lại ở 5.1 (về bước 5).
+  // Trả { tok, sent, returned: { who, at, reason } | null } hoặc null khi không có việc Lập đang mở.
+  function lapState(code) {
+    const s = Flow.state, v = s.vars || {};
+    if (!code || s.dxms !== code || s.status !== 'running' || s.kdt || s.parent || v.adj || !/^MS01/.test(String(v.process || ''))) return null;
+    const tok = s.tokens.find((t) => LAP_TASKS.includes(String(t.task)));
+    if (!tok) return null;
+    const sent = s.history.some((h) => String(h.task) === '5' && h.who && h.action !== 'Thiếu thông tin căn cứ');
+    const last = s.history.filter((h) => String(h.task) === '5.1' && h.who).pop();
+    const returned = sent && last && last.action === 'Trả lại'
+      ? { who: (persona(last.who) || {}).name || last.who, at: window.Screens.dateTimeOf(last.t), reason: last.reason || '' } : null;
+    return { tok, sent, returned };
+  }
+  // T45 V0.4 SRS 12 3.1.3 (BR-LDX-03-01): Sửa, Xóa cho người thực hiện việc Lập đang mở; ĐXMS mẫu chưa có hồ sơ (Chưa khởi tạo) — người tạo.
+  // ĐXMS điều chỉnh không áp dụng (theo tài liệu Điều chỉnh). Trả { go } (route mở màn Lập) hoặc null.
+  function editOf(x, state) {
+    if (!x || x.adjFrom) return null;
+    const pid = Flow.state.persona, ls = lapState(x.code);
+    if (ls) return ls.tok.who === pid || (ls.tok.cands || []).includes(pid) ? { go: 'task/' + ls.tok.id, live: true } : null;
+    if (state === 'NEW' && x.code !== Flow.state.dxms && x.creator === (persona(pid) || {}).name) return { go: 'luong/create/' + encodeURIComponent(x.code), live: false };
+    return null;
+  }
+  // T45 V0.4 SRS 12 3.1.3 (BR-LDX-03-04): hộp thoại Xóa đề xuất mua sắm; xóa thành công thì về Danh sách.
+  async function askDelete(code) {
+    const x = Flow.findDxms(code);
+    if (!x) { toast('Không tìm thấy đề xuất mua sắm.', 'warn'); location.hash = '#/luong'; return; }
+    if (!editOf(x, window.Screens.dxmsMeta(x, window.Screens.allCases()).state)) { toast('Đề xuất mua sắm đã được gửi, không sửa, xóa được.', 'warn'); rerender(); return; }
+    const yes = await window.Catalog.confirm({ sev: 'danger', title: 'Xóa đề xuất mua sắm',
+      desc: `Bạn có chắc chắn muốn xóa đề xuất mua sắm ${x.title} - ${x.code} không? Đề xuất sẽ không còn trên danh sách và thao tác này không thể hoàn tác.`,
+      hl: x.title, cancel: 'Hủy', ok: 'Xóa' });
+    if (!yes) return;
+    LF.edit = null;
+    Flow.deleteLuong(code);
+    toast('<b>Thành công</b><br>Xóa đề xuất mua sắm thành công.');
+    if (location.hash !== '#/luong') location.hash = '#/luong'; else rerender();
+  }
   const fundOpts = () => window.Catalog.rows('nguon-von').filter((r) => r.active || r.code === LF.v.fund).map((r) => ({ value: r.code, label: r.name }));
   /* Bước 2 — AI / tích hợp lấy dữ liệu căn cứ của đề tài / dự án. */
   function aiFetch(nv) {
@@ -611,7 +654,7 @@
     const h = `<div class="lf-sub-h"><h4>${stepTag(5)}${D.bocHide ? 'Bóc tách' : 'Bóc tách và đối chiếu <span class="cap">· AI đối chiếu dự toán, eBOM / mBOM, tồn kho</span>'}</h4></div>`;
     if (!LF.v.nv) return '';
     const em = err.boc ? `<p class="msg lf-err" role="alert">${esc(err.boc)}</p>` : '';
-    if (!LF.aiBoc || aiBocOld()) return `<div class="lf-sub ${err.boc ? 'invalid' : ''}" data-lf-boc>${h}${em}<div class="lf-empty">${LF.aiBoc ? `<span class="t-warn">Đề tài / dự án đã đổi</span> — bóc tách hiện tại theo ${esc(LF.aiBoc.nv)}. Bấm ✦ Gợi ý lại ở khối này để AI bóc tách và đối chiếu theo căn cứ mới.` : 'Bấm ✦ Gợi ý từ AI ở khối này — AI lấy dữ liệu căn cứ (bước 2), bóc tách danh mục hàng hoá và đối chiếu (bước 6); bạn chọn hạng mục, chỉnh SL đề xuất rồi Áp dụng.'}</div></div>`;
+    if (!LF.aiBoc || aiBocOld()) return `<div class="lf-sub ${err.boc ? 'invalid' : ''}" data-lf-boc>${h}${em}<div class="lf-empty">${LF.aiBoc ? `<span class="t-warn">Đề tài / dự án đã đổi</span> — bóc tách hiện tại theo ${esc(LF.aiBoc.nv)}. Bấm ✦ Gợi ý lại ở khối này để AI bóc tách và đối chiếu theo căn cứ mới.` : 'Bấm ✦ Gợi ý từ AI ở khối này — AI lấy dữ liệu căn cứ, bóc tách danh mục hàng hoá và đối chiếu; bạn chọn hạng mục, chỉnh SL đề xuất rồi Áp dụng.'}</div></div>`;
     const book = (i) => (i.book != null ? i.book : i.stock != null ? i.stock : null);
     /* Góp ý 06/11: kết quả bóc tách đã điền vào bảng Loại chi phí ở trên → màn chỉ còn dòng tóm tắt; xem / sửa danh mục bóc tách trong popup (✦ Gợi ý lại). */
     const its = D.itemsBase(), kept = its.filter((i) => !bocRow(i).bo), stock = kept.filter((i) => book(i)), warn = kept.filter((i) => i.warn), bad = its.filter((i) => bocIssue(i));
@@ -751,9 +794,15 @@
     };
     const dv = derived(v), urgent = v.priority && v.priority !== 'Thường';
     const ro = (id, val, ph) => `<input class="vctl" id="${id}" value="${esc(val)}" placeholder="${ph}" disabled>`;
+    /* T45 V0.4 SRS 12 3.1.3: ĐXMS đã có (đã Lưu nháp / bị trả lại / ĐXMS mẫu chưa có hồ sơ) → nút Xóa; bị trả lại → khối Lý do trả lại đầu màn. */
+    const cur = isAdj() ? null : LF.edit ? LF.edit.code : LF.base && LF.base.mode === 'own' ? LF.base.code : null;
+    const curX = cur && Flow.findDxms(cur), ret = cur ? (lapState(cur) || {}).returned : null;
+    const canDel = !!(curX && editOf(curX, window.Screens.dxmsMeta(curX, window.Screens.allCases()).state));
+    if (cur) info.notes = ['<b>T45 — SRS 12 V0.4 mục 3.1.3:</b> mở ĐXMS đã có (chưa gửi hoặc bị Chỉ huy ĐVĐX Trả lại ở 5.1) thì có nút <b>Xóa</b> (hộp thoại xác nhận, xóa mềm, về Danh sách) và, khi bị trả lại, khối <b>Lý do trả lại</b> đọc lịch sử xử lý bước 5.1 lần gần nhất. Gửi lại thì quy trình sang lại 5.1, tag và khối mất.'].concat(info.notes);
     return `<form class="pg" data-luong-form>
       ${isAdj() ? head({ title: 'Thêm mới điều chỉnh ĐXMS', back: 'luong', lg: true, info: adjInfo(), right: '<button type="button" class="vbtn secondary grey" data-go="luong">Huỷ</button><button type="submit" class="vbtn primary" id="lf-save">Lưu</button>' })
-    : head({ title: 'Lập đề xuất mua sắm', back: LF.edit ? 'viec-cua-toi' : 'luong', lg: true, info, right: `${LF.edit ? taskBtn(Flow.token(LF.edit.tok), true) : ''}<button type="button" class="vbtn secondary grey" data-go="${LF.edit ? 'viec-cua-toi' : 'luong'}">Huỷ</button><button type="button" class="vbtn secondary" id="lf-draft">Lưu nháp</button><button type="submit" class="vbtn primary" id="lf-save">Gửi</button>` })}
+    : head({ title: 'Lập đề xuất mua sắm', back: LF.edit ? 'viec-cua-toi' : 'luong', lg: true, info, right: `<button type="button" class="vbtn secondary grey" data-go="${LF.edit ? 'viec-cua-toi' : 'luong'}">Huỷ</button>${canDel ? `<button type="button" class="vbtn red" id="lf-del" data-lf-delx="${esc(cur)}">Xóa</button>` : ''}<button type="button" class="vbtn secondary" id="lf-draft">Lưu nháp</button><button type="submit" class="vbtn primary" id="lf-save">Gửi</button>` })}
+      ${ret ? `<div class="lf-ret" data-lf-ret role="note"><b>Chỉ huy đơn vị đề xuất đã trả lại lúc ${esc(ret.at)} — ${esc(ret.who)}:</b> ${esc(ret.reason) || '<span class="faint">Không có lý do</span>'}</div>` : ''}
       ${isAdj() ? adjCard() : ''}
       ${costCard()}
       <section class="vcard" data-lf-chung><div class="vcard-h"><h3>Thông tin chung</h3>${v.nv ? `<div class="row">${aiBtn('chung')}</div>` : ''}</div>
@@ -807,6 +856,7 @@
       else if (Number.isNaN(n) || n <= 0) e.val = 'Giá trị dự tính không đúng định dạng.';
       else if (l && n > l.value) e.val = `Vượt giá trị dự toán (${dong(l.value)} đồng).`;
       if (Object.keys(e).length) ce[r.id] = e;
+      else if (costWarn(r)) ce[r.id] = { over: costWarn(r) }; // T45: vượt Còn lại khả dụng chặn Lưu nháp, Gửi (BR-LDX-02-04)
     });
     if (Object.keys(ce).length) err.cost = ce;
     if (LF.files.some((f) => !f.type)) { err.types = true; err.basis = 'Bạn cần chọn Loại tài liệu căn cứ cho mọi tài liệu.'; }
@@ -838,7 +888,7 @@
     /* Lỗi có thể nằm ngoài màn hình (vd card Căn cứ ở cuối) → cuộn tới lỗi đầu tiên + toast, tránh cảm giác bấm Lưu không có tác dụng. */
     if (Object.keys(err).length) {
       rerender();
-      const first = document.querySelector('[data-luong-form] .vfield.invalid, [data-luong-form] [aria-invalid="true"], [data-luong-form] .msg, [data-luong-form] .lf-err');
+      const first = document.querySelector('[data-luong-form] .vfield.invalid, [data-luong-form] [aria-invalid="true"], [data-luong-form] .msg, [data-luong-form] .lf-err, [data-luong-form] [data-lf-cwarn]');
       if (first) first.scrollIntoView({ block: 'center' });
       toast(send ? 'Chưa gửi được. Kiểm tra các trường báo lỗi.' : 'Chưa lưu được. Kiểm tra các trường báo lỗi.', 'warn');
       return;
@@ -1164,7 +1214,7 @@
       ${body(code)}</div>`;
     }
     return `<div class="pg" data-luong-detail="${esc(code)}">
-      ${head({ title: 'Chi tiết đề xuất mua sắm', back: 'luong', lg: true, info, right: `${m.state === 'NEW' ? `<button type="button" class="vbtn red" data-go="luong/create/${encodeURIComponent(x.code)}" data-lap-dxms>Lập đề xuất mua sắm</button>` : ''}${m.state === 'OK' ? `<button type="button" class="vbtn red" data-go="dieu-chinh-dxms/create/${encodeURIComponent(x.code)}" data-adj-dxms>Điều chỉnh ĐXMS</button>` : ''}${m.state === 'STOP' ? `<button type="button" class="vbtn red" data-copy-dxms="${esc(x.code)}">Sao chép thành ĐXMS mới</button>` : ''}<button type="button" class="vbtn red" data-viewers="${esc(x.code)}">Cập nhật người xem</button>${/* [T34 bỏ Tách] nút Chỉnh sửa mở SCR-28: <button type="button" class="vbtn primary" data-go="dxms/<mã>/edit">Chỉnh sửa</button> */ ''}${bpmn}` })}
+      ${head({ title: 'Chi tiết đề xuất mua sắm', back: 'luong', lg: true, info, right: `${m.state === 'NEW' ? `<button type="button" class="vbtn red" data-go="${/* T45 V0.4: ĐXMS nháp đã có hồ sơ → mở việc Lập, không tạo hồ sơ mới */ lapState(x.code) ? 'task/' + lapState(x.code).tok.id : 'luong/create/' + encodeURIComponent(x.code)}" data-lap-dxms>Lập đề xuất mua sắm</button>` : ''}${m.state === 'OK' ? `<button type="button" class="vbtn red" data-go="dieu-chinh-dxms/create/${encodeURIComponent(x.code)}" data-adj-dxms>Điều chỉnh ĐXMS</button>` : ''}${m.state === 'STOP' ? `<button type="button" class="vbtn red" data-copy-dxms="${esc(x.code)}">Sao chép thành ĐXMS mới</button>` : ''}<button type="button" class="vbtn red" data-viewers="${esc(x.code)}">Cập nhật người xem</button>${/* [T34 bỏ Tách] nút Chỉnh sửa mở SCR-28: <button type="button" class="vbtn primary" data-go="dxms/<mã>/edit">Chỉnh sửa</button> */ ''}${bpmn}` })}
       ${body(code)}</div>`;
   }
 
@@ -1298,6 +1348,13 @@
     delete LF.err.basis;
     rerender();
   });
+  // T45 V0.4 SRS 12 3.1.3: Xóa ở dòng danh sách / trên màn Lập — bắt ở pha capture để dòng (data-go) không mở Chi tiết.
+  document.addEventListener('click', (e) => {
+    const d = e.target.closest('[data-lg-del], [data-lf-delx]');
+    if (!d) return;
+    e.preventDefault(); e.stopPropagation();
+    askDelete(d.dataset.lgDel || d.dataset.lfDelx);
+  }, true);
   document.addEventListener('click', (e) => {
     const t = e.target;
     const lt = t.closest('[data-ltab]');
@@ -1388,5 +1445,6 @@
   }
   const LAP_NAME = 'Lập đề xuất mua sắm (bước 01–05)';
 
-  window.Luong = { isGop, setMode, menu, tasksOf, rolesOf, route, enter, taskBtn, membersDialog, isLap, lapScreen, LAP_NAME, body, useTab };
+  /* SRS 29 (D-105): docRows dùng chung cho màn Quản lý tài liệu ĐXMS (SCR-107) — trạng thái văn bản đồng nhất với tab Tài liệu & văn bản. */
+  window.Luong = { isGop, setMode, menu, tasksOf, rolesOf, route, enter, taskBtn, membersDialog, isLap, lapScreen, LAP_NAME, body, useTab, lapState, docRows };
 })();

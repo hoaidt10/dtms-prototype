@@ -39,7 +39,8 @@ test('K1, K2: Danh sách KĐT — Khối → Đơn vị, Nhóm trạng thái, Ng
   const idle = await rowCodes(page);
   expect(idle.length).toBeGreaterThan(0);
   const stages = await page.evaluate((cs) => cs.map((c) => Kdt.meta(Flow.findKdt(c)).stage), idle);
-  for (const s of stages) expect(['NEW', 'OK', 'STOP']).toContain(s);
+  // T45: Đã phê duyệt chủ trương (CT_OK) cũng là KĐT không có hồ sơ đang xử lý.
+  for (const s of stages) expect(['NEW', 'CT_OK', 'OK', 'STOP']).toContain(s);
 
   await page.locator('[data-kl="reset"]').click();
   await page.locator('[data-kf="from"]').fill('15/09/2026');
@@ -53,17 +54,32 @@ test('K1, K2: Danh sách KĐT — Khối → Đơn vị, Nhóm trạng thái, Ng
 });
 
 test('K1, K2: Danh sách hồ sơ KĐT — Số / Ngày tờ trình, lọc CQCM / Trạng thái với người thẩm định; Xuất Excel', async ({ page }) => {
+  // T45 §1.7: #/ho-so-kdt chuyển sang Danh sách hồ sơ chủ trương KĐT (cột Phạm vi trước Tên hồ sơ → Số tờ trình ở cột 13).
   await fresh(page, '#/ho-so-kdt');
-  await expect(page.locator('tr[data-code="HS-2026-0027"] td').nth(12)).toHaveText(/^027\/TTr-/);
-  await expect(page.locator('tr[data-code="HS-2026-0030"] td').nth(12)).toHaveText('-');
+  await expect(page).toHaveURL(/#\/ho-so-ct-kdt$/);
+  await expect(page.locator('.pg-title')).toHaveText('Danh sách hồ sơ chủ trương KĐT');
+  await expect(page.locator('tr[data-code="HS-2026-0027"] td').nth(13)).toHaveText(/^027\/TTr-/);
+  await expect(page.locator('tr[data-code="HS-2026-0030"] td').nth(13)).toHaveText('-');
 
-  await page.locator('[data-hk="adv"]').click();
-  await pick(page, 'hkf-rvSt', 'Đang xem');
-  await submit(page);
-  const open = await rowCodes(page);
-  expect(open).toEqual(expect.arrayContaining(['HS-2026-0027', 'HS-2026-0024']));
-  const st = await page.evaluate((cs) => cs.map((c) => Kdt.reviewOf(Flow.kdtCases().find((x) => x.code === c)).some((r) => r.st === 'Đang xem')), open);
-  expect(st.every(Boolean)).toBe(true);
+  const reviewing = async () => {
+    await page.locator('[data-hk="adv"]').click();
+    await pick(page, 'hkf-rvSt', 'Đang xem');
+    await submit(page);
+    const open = await rowCodes(page);
+    const st = await page.evaluate((cs) => cs.map((c) => Kdt.reviewOf(Flow.kdtCases().find((x) => x.code === c)).some((r) => r.st === 'Đang xem')), open);
+    expect(st.every(Boolean)).toBe(true);
+    return open;
+  };
+  expect(await reviewing()).toContain('HS-2026-0024');
+  // Hồ sơ phê duyệt KĐT đang thẩm định (vòng BM-03): HS-2026-0027-2; Số tờ trình theo mã hồ sơ.
+  await page.evaluate(() => { location.hash = '#/ho-so-pd-kdt'; });
+  await expect(page.locator('.pg-title')).toHaveText('Danh sách hồ sơ phê duyệt KĐT');
+  expect(await reviewing()).toContain('HS-2026-0027-2');
+  const dl2 = page.waitForEvent('download');
+  await page.locator('[data-hk="export"]').click();
+  expect((await dl2).suggestedFilename()).toBe('danh-sach-ho-so-phe-duyet-kdt.csv');
+  // Quay lại danh sách chủ trương: bộ lọc nâng cao của từng danh sách giữ riêng (vẫn mở).
+  await page.evaluate(() => { location.hash = '#/ho-so-ct-kdt'; });
 
   await page.locator('[data-hk="reset"]').click();
   await pick(page, 'hkf-cqcm', 'PC');
@@ -75,6 +91,6 @@ test('K1, K2: Danh sách hồ sơ KĐT — Số / Ngày tờ trình, lọc CQCM 
 
   const dl = page.waitForEvent('download');
   await page.locator('[data-hk="export"]').click();
-  expect((await dl).suggestedFilename()).toBe('danh-sach-ho-so-khoan-dau-tu.csv');
+  expect((await dl).suggestedFilename()).toBe('danh-sach-ho-so-chu-truong-kdt.csv');
   expect(page.errors).toEqual([]);
 });

@@ -43,7 +43,7 @@
   const TASK_TABS = [['pending', 'Chưa xử lý', ['CHUA_XU_LY', 'QUA_HAN', 'LUU_TRU']], ['done', 'Đã hoàn thành', ['HOAN_THANH']]];
   const TASK_SORTS = [['NEWEST', 'Mới nhất'], ['OLDEST', 'Cũ nhất'], ['DUE_SOONEST', 'Hạn xử lý gần nhất']];
   const dnum = (s) => { const m = /^(\d{2})\/(\d{2})\/(\d{4})/.exec(s || ''); return m ? Number(m[3] + m[2] + m[1]) : null; };
-  const CASE_TYPES = Object.values(D.kinds).map((k) => k.label).concat(['Phê duyệt KĐT'], Object.values(D.hdProcesses).map((p) => p.type));
+  const CASE_TYPES = Object.values(D.kinds).map((k) => k.label).concat(['Phê duyệt chủ trương KĐT', 'Phê duyệt KĐT'], Object.values(D.hdProcesses).map((p) => p.type));
   /* T34 v0.2 (D-92): việc đã xử lý của ĐXMS mở Chi tiết đề xuất mua sắm chế độ Xem (thanh "Bạn đã xử lý xong"), như my-task-detail mode VIEW. */
   const viewHref = (dxms, task) => `luong/${encodeURIComponent(dxms)}/viec/${encodeURIComponent(task)}`;
   const dueOf = (task, since) => since + Math.max(1, Math.ceil(((Flow.def()[task] || {}).nlv || 0.5) * 2));
@@ -52,9 +52,9 @@
   function myTasks() {
     const pid = Flow.state.persona, ci = Flow.ci(), clock = Flow.state.clock, all = D.allAccess(pid);
     /* Hồ sơ KĐT: cột Mã ĐXMS hiện mã KĐT (đối tượng cha), Quy trình = nhóm KĐT (chưa xác định trước cổng phân luồng). */
-    const base = { code: ci.code, dxms: ci.dxms, title: ci.name, flow: ci.flow, flowLabel: ci.flowLabel, priority: ci.isKdt ? '' : ci.priority, type: ci.isKdt ? 'Phê duyệt KĐT' : kindLabel(ci.kind) };
+    const base = { code: ci.code, dxms: ci.dxms, title: ci.name, flow: ci.flow, flowLabel: ci.flowLabel, priority: ci.isKdt ? '' : ci.priority, type: ci.isKdt ? kdtKindText(ci.kind) : kindLabel(ci.kind) };
     const todo = Flow.tokensFor(pid).slice().sort((x, y) => y.since - x.since).map((t) => Object.assign({}, base, {
-      name: window.Luong && window.Luong.isLap(t) ? window.Luong.LAP_NAME : Flow.taskName(t.task), st: dueOf(t.task, t.since) < clock ? 'QUA_HAN' : 'CHUA_XU_LY',
+      name: (window.Kdt && window.Kdt.lapName(t)) || (window.Luong && window.Luong.isLap(t) ? window.Luong.LAP_NAME : Flow.taskName(t.task)), st: dueOf(t.task, t.since) < clock ? 'QUA_HAN' : 'CHUA_XU_LY',
       created: Flow.dateOf(t.since), due: Flow.dateOf(dueOf(t.task, t.since)), go: 'task/' + t.id,
     }));
     /* Sau 10b: ĐXMS thay thế đã được tạo, bước đầu tiên giao người tạo (mở bằng Flow.openReplacement). */
@@ -72,7 +72,7 @@
     const done = Flow.state.history.filter((h) => all || h.who === pid).slice().reverse().map((h) => Object.assign({}, base, {
       name: Flow.taskName(h.task), st: 'HOAN_THANH', created: Flow.dateOf(h.since != null ? h.since : h.t), doneAt: Flow.dateOf(h.t),
       due: Flow.dateOf(dueOf(h.task, h.since != null ? h.since : h.t)), go: ci.isKdt ? kdtCaseHref(ci.code) : viewHref(ci.dxms, h.task),
-    }));
+    }, ci.isKdt && h.inh ? { code: h.inh, type: kdtKindText('CT'), go: kdtCaseHref(h.inh) } : {}));
     const cases = allCases();
     const sample = D.sampleTasks.filter((s) => all || s.who === pid).map((s) => {
       const c = cases.find((x) => x.code === s.code);
@@ -83,7 +83,7 @@
     const kc = Flow.kdtCases(), T13 = window.BPMN_FLOWS.MS13.tasks;
     const kdtSample = D.sampleKdtTasks.filter((s) => all || s.who === pid).map((s) => {
       const c = kc.find((x) => x.code === s.code), x = Flow.findKdt(c.kdt) || {};
-      return { code: c.code, dxms: c.kdt, title: c.title || x.title, flow: c.flow || 'Chưa xác định nhóm', priority: '', type: 'Phê duyệt KĐT', name: T13[s.task].name,
+      return { code: c.code, dxms: c.kdt, title: c.title || x.title, flow: c.flow || 'Chưa xác định nhóm', priority: '', type: kdtKindText(c.kind), name: T13[s.task].name,
         st: 'HOAN_THANH', created: s.created, due: s.due, go: kdtCaseHref(c.code) };
     });
     /* T29 B3a: việc Rà soát tồn kho của Kho (ngoài sơ đồ) khi hồ sơ ở bước 7. */
@@ -120,7 +120,9 @@
     const states = TASK_TABS.find((x) => x[0] === M.tab)[2];
     const rows = searchedTasks().filter((r) => states.includes(r.st)).map((r, i) => ({ r, i, c: dnum(r.created), d: dnum(r.due) }));
     /* MyTaskSort: Mới nhất (mặc định) = ngày tạo giảm dần; Cũ nhất; Hạn gần nhất — không có hạn xếp cuối. Cùng ngày giữ thứ tự gốc. */
-    const cmp = { NEWEST: (a, b) => (b.c || 0) - (a.c || 0), OLDEST: (a, b) => (a.c || 0) - (b.c || 0),
+    /* T39 B3 (BR-VCT-01-07, theo be/workflow): tab Đã hoàn thành luôn xếp Ngày xử lý giảm dần, bỏ qua ô Sắp xếp. */
+    if (M.tab === 'done') rows.forEach((x) => { x.c = dnum(x.r.doneAt || x.r.due || x.r.created); });
+    const cmp = M.tab === 'done' ? (a, b) => (b.c || 0) - (a.c || 0) : { NEWEST: (a, b) => (b.c || 0) - (a.c || 0), OLDEST: (a, b) => (a.c || 0) - (b.c || 0),
       DUE_SOONEST: (a, b) => (a.d == null) - (b.d == null) || (a.d || 0) - (b.d || 0) }[M.sort];
     return rows.sort((a, b) => cmp(a, b) || a.i - b.i).map((x) => x.r);
   }
@@ -167,7 +169,7 @@
         `Đang đăng nhập: ${esc(p.name)} — ${esc(p.role)}, ${esc(p.unit)}. Đổi vai ở menu avatar (Chuyển tài khoản).`,
         '<b>T39 B1 (D-99, theo code KHCN):</b> hai tab như my-tasks — <b>Chưa xử lý</b> (trạng thái Chưa xử lý, Quá hạn, Lưu trữ) và <b>Đã hoàn thành</b> (Hoàn thành); việc <b>Đã hủy</b> (hồ sơ / quy trình bị hủy) không thuộc tab nào, như MY_TASK_TAB_FILTER_STATES. Trạng thái tính theo thứ tự của UserTaskRepository: hồ sơ lưu trữ → Lưu trữ; việc xong → Hoàn thành; việc / quy trình hủy → Đã hủy; quá Hạn xử lý → Quá hạn; còn lại Chưa xử lý (Quá hạn và Chưa xử lý không trùng nhau). Dữ liệu mẫu chưa có việc Lưu trữ / Đã hủy (GIẢ LẬP: chưa dựng hồ sơ lưu trữ).',
         '<b>Số trên tab Chưa xử lý và trên menu Việc của tôi</b> = số việc thuộc tab Chưa xử lý (Chưa xử lý + Quá hạn + Lưu trữ) của người dùng, như getPendingCount của my-tasks. Số trên tab đổi theo từ khóa / tìm kiếm nâng cao; số trên menu không theo từ khóa.',
-        '<b>Sắp xếp</b> theo MyTaskSort: Mới nhất (mặc định, ngày tạo giảm dần), Cũ nhất, Hạn xử lý gần nhất (việc không có hạn xếp cuối).',
+        '<b>Sắp xếp</b> theo MyTaskSort ở tab Chưa xử lý: Mới nhất (mặc định, ngày tạo giảm dần), Cũ nhất, Hạn xử lý gần nhất (việc không có hạn xếp cuối). Tab Đã hoàn thành luôn xếp Ngày xử lý mới nhất trước, bỏ qua ô Sắp xếp (như be/workflow).',
         '<b>Từ khóa và Tìm kiếm nâng cao áp cùng lúc</b> (DT-GOI 0109 BR-02; UserTaskRepository lọc từ khóa và các trường nâng cao trong một truy vấn); Làm mới xóa cả từ khóa. Không có trường Trạng thái trong tìm kiếm nâng cao — tab thay cho trường này.',
         'Bố cục theo màn /my-tasks của ĐTMS (repo-khcn-dtms-fe): tiêu đề trang <b>Việc của tôi</b>; trong khung trắng tiêu đề khối <b>Danh sách việc của tôi</b> (vạch đỏ) bên trái, ô tìm kiếm 320px bên phải; hàng tab + Sắp xếp; bảng.',
         'Thứ tự cột theo my-task-columns.utils: STT, Trạng thái, Mã, Tên, Cấp, Quy trình, Bước, Hạn xử lý (tab Đã hoàn thành: Bước bạn đã xử lý, Ngày xử lý). <b>Mã / Tên nhiệm vụ</b> (KHCN) thay bằng <b>Mã / Tên ĐXMS / KĐT</b> — đối tượng cha của hồ sơ; <b>Cấp</b> thay bằng <b>Mức ưu tiên</b> (KĐT không có → "-"). Không có cột <b>Mã hồ sơ</b> vì giao diện ĐXMS không hiện hồ sơ (D-92). Hạn xử lý quá hạn tô đỏ. Không có cột Thao tác: bấm dòng hoặc mã để mở màn xử lý việc.',
@@ -298,7 +300,11 @@
     const kids = Flow.dxmsAdjOf(x.code).map((k) => ({ k, c: cases.find((c) => c.dxms === k.code) }));
     const kidDone = kids.find((o) => o.c && o.c.st === 'done'), kidRun = kids.find((o) => o.c && o.c.st === 'processing');
     const st = own ? own.st : null;
-    const state = !own ? 'NEW' : st === 'processing' ? 'PD' : st === 'done' ? (kidDone ? 'SUP' : kidRun ? 'DC' : 'OK') : 'STOP';
+    /* T45 — SRS 12 V0.3 mục 2.3, BR-LDX-C-03 (review khách 10/11, thay D-60 / T29 S8 "giữ chỗ từ Lưu nháp"): hồ sơ đã khởi tạo nhưng ĐXMS mới Lưu nháp,
+       chưa Gửi lần nào (việc Lập còn mở) → Chưa khởi tạo, không tính vào phần đã dùng của dòng dự toán (D.duToanStats chỉ tính OK / PD / DC).
+       Gửi → Đang phê duyệt; bị Chỉ huy ĐVĐX trả lại ở 5.1 vẫn Đang phê duyệt (đã Gửi). */
+    const lap = own && own.live && st === 'processing' && window.Luong && window.Luong.lapState ? window.Luong.lapState(x.code) : null;
+    const state = !own || (lap && !lap.sent) ? 'NEW' : st === 'processing' ? 'PD' : st === 'done' ? (kidDone ? 'SUP' : kidRun ? 'DC' : 'OK') : 'STOP';
     const by = kidDone || kidRun;
     return { hs, own, state, value: st === 'done' ? own.total : x.est, approved: st === 'done', adjN: x.adjN || 0, adjBy: by ? by.k.code : null };
   }
@@ -309,7 +315,7 @@
     const x = Flow.findDxms(code);
     if (!x) return null;
     const m = dxmsMeta(x, allCases());
-    if (m.state === 'PD') return 'ĐXMS đang có hồ sơ đang xử lý.';
+    if (m.state === 'PD' || (m.state === 'NEW' && m.own)) return 'ĐXMS đang có hồ sơ đang xử lý.'; // T45: ĐXMS Lưu nháp (Chưa khởi tạo) đã có hồ sơ
     if (m.state === 'DC') return `ĐXMS đang được điều chỉnh (${m.adjBy}).`;
     if (m.state === 'SUP') return `ĐXMS đã được điều chỉnh bởi ${m.adjBy}. Chọn ĐXMS mới nhất của chuỗi để điều chỉnh.`;
     if (m.state === 'STOP') return 'ĐXMS đã dừng xử lý. Dùng Sao chép thành ĐXMS mới để làm lại.';
@@ -1028,18 +1034,40 @@
   /* ---------- Hồ sơ KĐT (hồ sơ Phê duyệt KĐT, D-12) cho khuôn profile-detail ----------
      Quy trình: bước người dùng của MS13 (bỏ nhánh không đi qua — D.kdtNa) hoặc MS14 (hồ sơ sau chuyển luồng, luồng chưa dựng). */
   const KDT_END = { done: 'Kết thúc — đã phê duyệt', moved: 'Kết thúc — đã chuyển luồng', stopped: 'Kết thúc theo chỉ đạo' };
+  /* T45 (D-103): hồ sơ chủ trương (phạm vi Chủ trương) kết thúc = đã phê duyệt chủ trương, khớp card hồ sơ SCR-56. */
+  const kdtEnd = (c, st) => (st === 'done' && (c && (c.kind || 'CT')) === 'CT' && ((c && c.scope) || 'CT') === 'CT' ? 'Kết thúc — đã phê duyệt chủ trương' : KDT_END[st]);
   const KDT_TD = { GOP: 'Hồ sơ gộp', CT: 'Chủ trương', KDT: 'Hồ sơ KĐT' };
   const kdtCaseHref = (code) => 'ho-so-kdt/' + encodeURIComponent(code);
   const kdtCaseRef = (code) => (code ? `<a class="link-red" href="#/${kdtCaseHref(code)}">${esc(code)}</a>` : null);
   /* Task 4 của MS13 ghi actor "Đơn vị đề xuất mua sắm" (chép từ MS01, plan KĐT §1.4) → hiện ĐVĐX KĐT như lane. */
   const kdtActor = (a) => (a || '').replace('Đơn vị đề xuất mua sắm', 'Đơn vị đề xuất KĐT');
   const kdtProcText = (flow) => (flow === 'MS14' ? D.kdtGroups.MS14 : D.kdtGroups.MS13);
+  /* T45 (D-103): loại hồ sơ KĐT — Phê duyệt chủ trương KĐT (kind CT) / Phê duyệt KĐT (kind KDT); phạm vi của hồ sơ chủ trương (gộp BM-00 = CT_KDT). */
+  const KDT_KIND = { CT: 'Phê duyệt chủ trương KĐT', KDT: 'Phê duyệt KĐT' };
+  const kdtKindText = (k) => KDT_KIND[k === 'KDT' ? 'KDT' : 'CT'];
+  const kdtScopeText = (vm) => (vm.scope === 'CT_KDT' || (!vm.scope && vm.branch === 'BM00') ? 'Chủ trương và KĐT' : 'Chủ trương');
+  /* Bước của hồ sơ theo loại: hồ sơ KĐT bắt đầu ở bước Lập hồ sơ phê duyệt KĐT (MS13: 49, MS14: 46); hồ sơ chủ trương không có các bước của vòng KĐT
+     (MS13: 49–60, MS14: 46–56) — dừng ở 48 / 62 (gộp) / tuyến Tập đoàn của chủ trương. Bước trước điểm nối của hồ sơ KĐT là kế thừa từ hồ sơ chủ trương. */
+  const KDT_SPAN = { MS13: [49, 60], MS14: [46, 56] };
+  const kdtOwnStep = (kind, flow) => { const [a, b] = KDT_SPAN[flow === 'MS14' ? 'MS14' : 'MS13']; return (k) => (kind === 'KDT' ? Number(k) >= a : !(Number(k) >= a && Number(k) <= b)); };
+  const kdtInheritCap = (vm) => (vm.kind === 'KDT' && vm.parent ? `<span class="faint" data-kdt-inherit>Bước 1–${KDT_SPAN[vm.page === 'MS14' ? 'MS14' : 'MS13'][0] - 1} · Kế thừa từ hồ sơ chủ trương ${kdtCaseRef(vm.parent)}</span>` : '');
+  const kdtStepsCard = (vm, steps, cls) => `<section class="vcard${cls ? ' ' + cls : ''}">${kdtInheritCap(vm) ? `<div class="vcard-h"><h3>Quy trình</h3>${kdtInheritCap(vm)}</div>` : '<h3>Quy trình</h3>'}${UI.vSteps({ id: vm.code, steps })}</section>`;
+  /* Tag và các dòng lệch luồng (D-103) — mọi vai xem được ở Chi tiết hồ sơ và màn xử lý việc của hồ sơ KĐT. */
+  const kdtLechTag = (vm) => (vm.kind === 'KDT' && vm.lech ? `<span data-lech-tag>${badge('Luồng khác chủ trương', 'warning')}</span>` : '');
+  const kdtGenHead = (vm) => (kdtLechTag(vm) ? `<div class="vcard-h"><h3>Thông tin chung</h3>${kdtLechTag(vm)}</div>` : '<h3>Thông tin chung</h3>');
+  function kdtKindRows(vm, kv) {
+    if (vm.kind !== 'KDT') return kv('Phạm vi', esc(kdtScopeText(vm)));
+    const l = vm.lech, g = (f) => esc(D.kdtGroups[f] || f);
+    return kv('Hồ sơ chủ trương', kdtCaseRef(vm.parent)) + kv('Luồng chủ trương', g(l ? l.from : vm.luongCt || 'MS13'))
+      + (l ? kv('Luồng KĐT', g(l.to)) + `<div class="full"><div class="k">Giải trình luồng khác chủ trương</div><div class="v" style="white-space:pre-line">${l.reason ? esc(l.reason) : '-'}</div></div>` : '');
+  }
   function kdtUserTasks(c) {
-    if (c.flow === 'MS14') return diagramTasks('MS14').map((t) => ({ k: t.n, name: t.name, actor: t.actor }));
+    const own = kdtOwnStep(c.kind, c.flow);
+    if (c.flow === 'MS14') return diagramTasks('MS14').filter((t) => own(t.n)).map((t) => ({ k: t.n, name: t.name, actor: t.actor }));
     /* Hồ sơ mẫu: Mật theo KĐT — Mật bỏ 75 (bắt buộc bản cứng), không Mật bỏ 77–78 (chỉ khi chọn bản cứng). */
     const mat = !!(Flow.findKdt(c.kdt) || {}).secret;
     const T13 = window.BPMN_FLOWS.MS13.tasks, na = D.kdtNa({ branch: c.branch }, mat).concat(mat ? [] : [77, 78]);
-    return Object.keys(T13).map(Number).sort((a, b) => a - b).filter((k) => T13[k].type !== 'service' && !na.includes(k))
+    return Object.keys(T13).map(Number).sort((a, b) => a - b).filter((k) => T13[k].type !== 'service' && !na.includes(k) && own(k))
       .map((k) => ({ k, name: T13[k].name, actor: kdtActor(T13[k].actor) }));
   }
   const kdtOuts = (docs) => (docs || []).map(([code, at]) => ({ name: `${code} ${KDOC_NAME[code]}`, at }));
@@ -1048,19 +1076,21 @@
   function kdtLiveVm() {
     const ci = Flow.ci(), S0 = Flow.state, st = { running: 'processing', approved: 'done', moved: 'moved', stopped: 'stopped' }[S0.status];
     const rec = Flow.kdtCases().find((c) => c.code === ci.code) || {};
-    const T13 = TT(), name = (t) => T13[t.task].name;
+    const T13 = TT(), name = (t) => (window.Kdt && window.Kdt.lapName(t)) || T13[t.task].name;
     /* Bản 12/10 không còn quy trình con (D-32): tô đúng bước đang chạy, kể cả bước của khối chung 25–38. */
     const active = [...new Set(S0.tokens.map((t) => String(t.task)))];
     const focus = active;
     const chk = S0.vars.chk || {}, meet = S0.vars.meet || {};
-    const counts = Object.keys(KDT_TD).filter((k) => chk[k] != null || meet[k] != null || S0.vars.td === k)
+    /* T45: bộ đếm theo vòng của chính hồ sơ — hồ sơ KĐT chỉ vòng KĐT, hồ sơ chủ trương không có vòng KĐT. */
+    const counts = Object.keys(KDT_TD).filter((k) => (ci.kind === 'KDT' ? k === 'KDT' : k !== 'KDT') && (chk[k] != null || meet[k] != null || S0.vars.td === k))
       .map((k) => `${KDT_TD[k]}: vòng check ${chk[k] || 0}/2, họp ${meet[k] || 0}/2`).join(' · ');
     const priced = S0.history.some((h) => String(h.task) === '10' && h.who);
     return {
       key: kdtCaseHref(ci.code), isKdt: true, code: ci.code, kdt: ci.kdt, title: ci.name, flow: S0.status === 'moved' ? 'MS13' : ci.group, branch: ci.branch, st, unit: ci.unit, lead: persona('minh').name,
+      kind: ci.kind, scope: ci.scope, parent: ci.parent, luongCt: ci.luongCt, lech: ci.lech || null,
       total: priced ? ci.total : null, est: ci.est, fund: ci.fund, period: ci.period, secret: ci.secret, counts,
       active, focus: focus.length ? focus : undefined, page: 'MS13', proc: kdtProcText('MS13'),
-      step: S0.tokens.length ? [...new Set(S0.tokens.map(name))].join(', ') : KDT_END[st],
+      step: S0.tokens.length ? [...new Set(S0.tokens.map(name))].join(', ') : kdtEnd(ci, st),
       replacedBy: S0.movedTo ? kdtCaseRef(S0.movedTo.code) : null, replaces: rec.replaces ? kdtCaseRef(rec.replaces) : null,
       steps: processSteps(), history: caseHistory(), files: caseFiles(), outs: outputDocs(),
     };
@@ -1085,13 +1115,18 @@
       .concat(cur >= 0 ? [{ title: keys[cur].name, st: 'CREATED' }] : []);
     const doneAt = (by) => { const i = keys.findIndex((t) => t.k >= by); return i >= 0 && i < doneN ? at(i).slice(0, 10) : null; };
     const n4 = c.code.slice(-4);
-    const files = ms14 ? [] : [[`Can-cu-KDT-${n4}.pdf`, 1], [`Danh-muc-dau-tu-${n4}.xlsx`, 5], [`RSTK-${n4}.xlsx`, 7], ['Bao-gia-tong-hop.pdf', 10]]
-      .filter(([, by]) => doneAt(by)).map(([name, by]) => ({ name, at: doneAt(by) }));
+    /* Hồ sơ KĐT: tài liệu căn cứ, tồn kho, báo giá kế thừa từ hồ sơ chủ trương (ngày theo hồ sơ chủ trương). */
+    const kd = c.kind === 'KDT', ctRec = kd ? Flow.kdtCases().find((h) => h.code === c.parent) : null;
+    const k4 = c.kdt.slice(-4);
+    const files = kd ? (ctRec ? [`Can-cu-KDT-${k4}.pdf`, `Danh-muc-dau-tu-${k4}.xlsx`, `RSTK-${k4}.xlsx`, 'Bao-gia-tong-hop.pdf'].map((name) => ({ name, at: ctRec.updated })) : [])
+      : ms14 ? [] : [[`Can-cu-KDT-${n4}.pdf`, 1], [`Danh-muc-dau-tu-${n4}.xlsx`, 5], [`RSTK-${n4}.xlsx`, 7], ['Bao-gia-tong-hop.pdf', 10]]
+        .filter(([, by]) => doneAt(by)).map(([name, by]) => ({ name, at: doneAt(by) }));
     return {
       key: kdtCaseHref(c.code), isKdt: true, code: c.code, kdt: c.kdt, title: c.title || x.title, flow: c.flow, branch: c.branch, st: c.st, unit: x.unit, lead: c.creator,
-      total: c.total, est: x.est, fund: x.type === 'KHCN' ? 'Vốn KHCN' : 'Vốn đầu tư phát triển', period: x.period, secret: !!x.secret, counts: '',
+      kind: c.kind || 'CT', scope: c.scope, parent: c.parent, luongCt: c.luongCt, lech: c.lech || null,
+      total: c.total, est: kd && c.est != null ? c.est : x.est, fund: x.type === 'KHCN' ? 'Vốn KHCN' : 'Vốn đầu tư phát triển', period: x.period, secret: !!x.secret, counts: '',
       active: cur >= 0 ? [String(keys[cur].k)] : [], page: ms14 ? 'MS14' : 'MS13', proc: kdtProcText(c.flow),
-      step: c.st === 'processing' ? keys[cur].name : KDT_END[c.st],
+      step: c.st === 'processing' ? keys[cur].name : kdtEnd(c, c.st),
       replaces: kdtCaseRef(c.replaces), replacedBy: kdtCaseRef(c.replacedBy), steps, history, files, outs: kdtOuts(c.docs), sample: true,
     };
   }
@@ -1100,12 +1135,13 @@
   function kdtGeneralInfo(vm, cols) {
     const kv = (k, v) => `<div><div class="k">${k}</div><div class="v clamp">${v || '-'}</div></div>`;
     const CS = { processing: ['Đang xử lý', 'info'], done: ['Hoàn thành', 'success'], moved: ['Đã chuyển luồng', 'warning'], stopped: ['Dừng theo chỉ đạo', 'default'] };
-    return `<section class="vcard pad24 gen"><h3>Thông tin chung</h3><div class="ginfo ${cols === 3 ? 'c3' : ''}">
-      ${kv('Mã hồ sơ', esc(vm.code))}${kv('Tên hồ sơ', esc(vm.title))}${kv('Mã KĐT', kdtRef(vm.kdt))}${kv('Loại hồ sơ', 'Phê duyệt KĐT')}
+    return `<section class="vcard pad24 gen">${kdtGenHead(vm)}<div class="ginfo ${cols === 3 ? 'c3' : ''}">
+      ${kv('Mã hồ sơ', esc(vm.code))}${kv('Tên hồ sơ', esc(vm.title))}${kv('Mã KĐT', kdtRef(vm.kdt))}${kv('Loại hồ sơ', esc(kdtKindText(vm.kind)))}
       ${kv('Quy trình', esc(vm.flow ? D.kdtGroups[vm.flow] : 'Chưa xác định nhóm (MS13 · MS14 · MS15)'))}${kv('Nhánh hồ sơ', vm.branch ? esc(D.kdtBranches[vm.branch]) : null)}
       ${kv('Trạng thái', badge(CS[vm.st][0], CS[vm.st][1]))}${kv('Bước hiện tại', esc(vm.step))}${kv('Đơn vị đề xuất', esc(vm.unit))}${kv('Người phụ trách', esc(vm.lead))}
-      ${vm.total != null ? kv('Tổng mức vốn thực tế (gồm VAT)', ty(vm.total) + ' tỷ đồng') : kv('Tổng mức vốn dự kiến', vm.est != null ? ty(vm.est) + ' tỷ đồng' : null)}
-      ${kv('Thời gian thực hiện', esc(vm.period))}${kv('Nguồn vốn', esc(vm.fund))}${kv('Mật', vm.secret ? 'Có' : 'Không')}
+      ${vm.kind === 'KDT' ? kv('Tổng mức vốn KĐT (gồm VAT)', vm.est != null ? ty(vm.est) + ' tỷ đồng' : vm.total != null ? ty(vm.total) + ' tỷ đồng' : null)
+    : vm.total != null ? kv('Tổng mức vốn thực tế (gồm VAT)', ty(vm.total) + ' tỷ đồng') : kv('Tổng mức vốn dự kiến', vm.est != null ? ty(vm.est) + ' tỷ đồng' : null)}
+      ${kv('Thời gian thực hiện', esc(vm.period))}${kv('Nguồn vốn', esc(vm.fund))}${kv('Mật', vm.secret ? 'Có' : 'Không')}${kdtKindRows(vm, kv)}
       ${vm.counts ? kv('Thẩm định', esc(vm.counts)) : ''}${vm.replaces ? kv('Thay thế cho', vm.replaces) : ''}${vm.replacedBy ? kv('Được thay bởi', vm.replacedBy) : ''}
     </div></section>`;
   }
@@ -1135,8 +1171,9 @@
   }
 
   /* Hồ sơ Điều chỉnh: So sánh trước – sau (bảng bước 4; hồ sơ mẫu chỉ có dòng giá trị). Căn cứ = hồ sơ Hoàn thành trước đó (D-40, UR-DX-20). */
+  const SHOW_ADJ_COMPARE = false; /* [T47] ẩn card So sánh trước – sau điều chỉnh ở mọi màn (10/11/2026) — bật lại: true */
   function compareCard(vm) {
-    if (vm.kind !== 'DC' || vm.isKdt) return '';
+    if (!SHOW_ADJ_COMPARE || vm.kind !== 'DC' || vm.isKdt) return '';
     const rows = vm.compare || (vm.before != null ? [{ noiDung: 'Tổng giá trị (gồm VAT)', truoc: ty(vm.before) + ' tỷ đồng', sau: ty(vm.total) + ' tỷ đồng' }] : []);
     const from = vm.from ? `<a class="link-red" href="#/${caseHref(allCases().find((x) => x.code === vm.from) || { code: vm.from })}">${esc(vm.from)}</a>` : '-';
     return `<section class="vcard" data-adj-compare><div class="vcard-h"><h3>So sánh trước – sau điều chỉnh</h3><span class="faint">Căn cứ: hồ sơ ${from}</span></div>
@@ -1163,7 +1200,7 @@
       q: qFor(vm.flow, D.screenQ['SCR-20']),
       notes: ['Bố cục lấy nguyên từ profile-detail: "Xem BPMN" là nút duy nhất trên hàng tiêu đề; cột trái Thông tin chung · Quy trình · Danh sách tài liệu · Văn bản đầu ra, cột phải Lịch sử hồ sơ (tỉ lệ 801 : 333).',
         'Các tab cũ (Danh mục hàng hoá, Tài liệu & phiên bản, Timeline, KPI, Nhật ký AI, Hồ sơ liên quan) bỏ vì source không có. KPI thẩm định, Vòng giải trình, Thay thế cho / Được thay bởi chuyển vào Thông tin chung; danh mục hàng hoá xem ở màn xử lý task; timeline xem ở Lịch sử hồ sơ và Xem BPMN.',
-        'Mã ĐXMS (đối tượng cha, D-10) thay Mã nhiệm vụ, bấm mở Chi tiết ĐXMS. Loại hồ sơ: Phê duyệt ĐXMS / Điều chỉnh ĐXMS; hồ sơ Điều chỉnh hiện Giá trị sau điều chỉnh và Lý do điều chỉnh, Quy trình và Lịch sử theo các bước MS02; thêm card So sánh trước – sau điều chỉnh (bảng của bước 4, căn cứ = hồ sơ Hoàn thành trước đó — T21 D-40). Văn bản đầu ra của hồ sơ Điều chỉnh là bản điều chỉnh (BM-01 / BM-09 / BM-08 có mục Nội dung điều chỉnh).',
+        'Mã ĐXMS (đối tượng cha, D-10) thay Mã nhiệm vụ, bấm mở Chi tiết ĐXMS. Loại hồ sơ: Phê duyệt ĐXMS / Điều chỉnh ĐXMS; hồ sơ Điều chỉnh hiện Giá trị sau điều chỉnh và Lý do điều chỉnh, Quy trình và Lịch sử theo các bước MS02; card So sánh trước – sau điều chỉnh (T21 D-40) <b>tạm ẩn</b> (10/11/2026). Văn bản đầu ra của hồ sơ Điều chỉnh là bản điều chỉnh (BM-01 / BM-09 / BM-08 có mục Nội dung điều chỉnh).',
         'Thông tin chung đổi theo nghiệp vụ ĐTMS như màn xử lý task: Tên nhiệm vụ → Trạng thái, Bước hiện tại; Cấp nhiệm vụ → Mức ưu tiên; Đơn vị chủ trì → Đơn vị đề xuất; Chủ nhiệm đề tài → Người phụ trách; Tổng dự toán → Tổng giá trị; Lĩnh vực → Nguồn vốn; thêm Mật, KPI thẩm định (UR-KPI-04: từ task 18 tới task 60, ngưỡng 20 NLV; MS01.03 10 NLV — P-21).',
         'Quy trình chỉ gồm bước người dùng của quy trình hồ sơ đi qua: MS01.02 không có task 49–56 (báo cáo Tập đoàn), MS01.03 không có task 12, 41–59 (BM-01, BM-05…BM-08).',
         'Danh sách tài liệu ở chế độ xem (readOnly): chỉ Tải xuống; "Chọn mẫu tài liệu" vẫn ở hàng tiêu đề như source.',
@@ -1174,7 +1211,7 @@
       ${head({ title: 'Chi tiết hồ sơ', back: vm.isHd ? 'hop-dong/' + encodeURIComponent(vm.hd) : vm.isKdt ? kdtBackOf(window.App.detailFrom(), vm.kdt) : vm.sample ? backOf(window.App.detailFrom()) : true, lg: true, info, right: `<button type="button" class="vbtn primary" data-go="${esc(vm.key)}/bpmn">Xem BPMN</button>` })}
       <div class="dgrid"><div class="dmain">
         ${generalInfo(vm, 2)}${compareCard(vm)}
-        <section class="vcard"><h3>Quy trình</h3>${UI.vSteps({ id: vm.code, steps: vm.steps })}</section>
+        ${vm.isKdt ? kdtStepsCard(vm, vm.steps) : `<section class="vcard"><h3>Quy trình</h3>${UI.vSteps({ id: vm.code, steps: vm.steps })}</section>`}
         ${filesCard(vm)}${outsCard(vm)}
       </div>${historyCard(vm.history, 'drail')}</div></div>`;
   }
@@ -1205,9 +1242,11 @@
     'Văn bản đầu ra: BM-01 (TGĐ VHT ký duyệt chủ trương, bước 48), BM-14 (TTMS ký báo cáo thẩm định, bước 57 / 61), BM-18 (TGĐ VHT ký Quyết định, bước 60) hoặc BM-00 + BM-18 (ký hồ sơ gộp, bước 62). Tuyến Tập đoàn: Công văn trình (65), BM-06 giải trình (69), văn bản TGĐ Tập đoàn ký nhận ở bước 74 (chủ trương BM-01; KĐT / gộp BM-14 + BM-18).',
     'Nút quay lại về màn đã mở (Chi tiết / Chỉnh sửa KĐT, Giám sát tiến trình, Việc của tôi, Thông báo chuyển luồng); mở trực tiếp thì về Chi tiết KĐT.']
     .concat(vm.sample ? ['Hồ sơ mẫu không chạy luồng: tiến độ, lịch sử, tài liệu suy ra từ bước đang chờ của bản ghi; ngày rải đều từ ngày tạo tới ngày cập nhật.'] : [])
-    .concat(vm.page === 'MS14' ? ['Hồ sơ theo MS14 (tạo khi hồ sơ MS13 chuyển luồng, P-53): luồng MS14 chưa dựng — Quy trình theo các bước người dùng của sơ đồ MS14.'] : []);
+    .concat(vm.page === 'MS14' ? ['Hồ sơ theo MS14 (tạo khi hồ sơ MS13 chuyển luồng, P-53, hoặc hồ sơ KĐT có Tổng mức vốn KĐT thuộc MS14): luồng MS14 chưa dựng — Quy trình theo các bước người dùng của sơ đồ MS14.'] : [])
+    .concat(['<b>T45 (D-103)</b>: KĐT có hai loại hồ sơ — <b>Phê duyệt chủ trương KĐT</b> (MS13 bước 1–48 hai giai đoạn BM-01, hoặc 1–38 + 61–62 gộp BM-00; Phạm vi Chủ trương / Chủ trương và KĐT) và <b>Phê duyệt KĐT</b> (chọn 1 hồ sơ chủ trương đã duyệt, chạy từ bước 49; MS14 từ bước 46). Quy trình của hồ sơ chỉ gồm bước của chính hồ sơ: hồ sơ KĐT ghi "Kế thừa từ hồ sơ chủ trương" cho các bước trước điểm nối, Lịch sử hồ sơ không lặp lịch sử của hồ sơ chủ trương; hồ sơ chủ trương không có các bước của vòng KĐT.',
+      'Hồ sơ KĐT: Thông tin chung có <b>Hồ sơ chủ trương</b> (mở Chi tiết hồ sơ chủ trương), Luồng chủ trương, Tổng mức vốn KĐT (nhập lúc tạo); khi luồng theo Tổng mức vốn KĐT khác luồng chủ trương thì có tag <b>Luồng khác chủ trương</b> cạnh tiêu đề, Luồng KĐT và Giải trình (D-103 — chỗ thứ 3 của cảnh báo; hiện cho mọi vai ở Chi tiết hồ sơ và màn xử lý việc).']);
   /* Chi tiết hồ sơ KĐT: quay lại màn đã mở nó (KĐT, Giám sát tiến trình, Việc của tôi), còn lại về Chi tiết KĐT. */
-  const kdtBackOf = (from, kdt) => (from && (from === 'giam-sat-tien-trinh' || from === 'viec-cua-toi' || from === 'ho-so-kdt' || /^(ycbg-kdt|khlcnt)(\/[^/]+)?$/.test(from) || /^kdt\/[^/]+(\/(edit|chuyen-luong))?$/.test(from)) ? from : 'kdt/' + encodeURIComponent(kdt));
+  const kdtBackOf = (from, kdt) => (from && (from === 'giam-sat-tien-trinh' || from === 'viec-cua-toi' || from === 'ho-so-ct-kdt' || from === 'ho-so-pd-kdt' || /^(ycbg-kdt|khlcnt)(\/[^/]+)?$/.test(from) || /^kdt\/[^/]+(\/(edit|chuyen-luong))?$/.test(from)) ? from : 'kdt/' + encodeURIComponent(kdt));
 
   /* ---------- T34 v0.2 (D-92, D-93): ĐXMS không còn màn Chi tiết hồ sơ riêng ----------
      Hồ sơ là bản ghi kỹ thuật của ĐXMS (1 – 1 wf_profile). Phần của SCR-20 (Quy trình, Lịch sử xử lý, Danh sách tài liệu, Văn bản đầu ra,
@@ -1309,8 +1348,8 @@
     const kv = (k, v) => `<div><div class="k">${k}</div><div class="v clamp">${v || '-'}</div></div>`;
     return `<div class="pg tight">
       ${head({ title: ci.isHd || ci.isKdt ? 'Chi tiết hồ sơ' : 'Chi tiết đề xuất mua sắm', back: 'task/' + tok.id, lg: true, info })}
-      <section class="vcard pad24 gen"><h3>Thông tin chung</h3><div class="ginfo c3">
-        ${ci.isHd || ci.isKdt ? kv('Mã hồ sơ', esc(ci.code)) + kv('Tên hồ sơ', esc(ci.name)) : ''}${ci.isHd ? kv('Mã hợp đồng', hdRef(ci.hd)) : ci.isKdt ? kv('Mã KĐT', kdtRef(ci.kdt)) : kv('Mã ĐXMS', dxmsRef(ci.dxms)) + kv('Tên đề xuất mua sắm', esc(ci.name))}
+      <section class="vcard pad24 gen">${ci.isKdt ? kdtGenHead(ci) : '<h3>Thông tin chung</h3>'}<div class="ginfo c3">
+        ${ci.isHd || ci.isKdt ? kv('Mã hồ sơ', esc(ci.code)) + kv('Tên hồ sơ', esc(ci.name)) : ''}${ci.isHd ? kv('Mã hợp đồng', hdRef(ci.hd)) : ci.isKdt ? kv('Mã KĐT', kdtRef(ci.kdt)) + kv('Loại hồ sơ', esc(kdtKindText(ci.kind))) : kv('Mã ĐXMS', dxmsRef(ci.dxms)) + kv('Tên đề xuất mua sắm', esc(ci.name))}
         ${kv('Công việc', esc(t.name + (tok.cqcm ? ' — ' + cqcmUnit(tok.cqcm) : '')))}${kv('Người xử lý', esc(persona(tok.who).name))}${kv('Hạn xử lý', Flow.dateOf(tok.since + Math.max(1, Math.ceil((f.nlv || 0.5) * 2))))}
         ${kv(ci.isHd ? 'Đơn vị quản lý' : 'Đơn vị đề xuất', esc(ci.unit))}${kv(ci.isKdt ? 'Tổng mức vốn (gồm VAT)' : ci.isHd ? 'Giá trị hợp đồng (gồm thuế GTGT)' : 'Tổng giá trị (gồm VAT)', ty(ci.total) + ' tỷ đồng')}${ci.isHd ? kv('Nhà thầu', esc(hdNccName(ci.ncc))) : ci.isKdt ? kv('Nhóm KĐT', esc(kdtGroupText(ci))) : kv('Mức ưu tiên', esc(ci.priority))}</div></section>
       <section class="vcard pad24"><div class="bp-h"><h2>Bước hiện tại: ${esc(t.name + (ci.isKdt && kdtRoundOf(tok.task) ? ` (${kdtRoundOf(tok.task)})` : ''))}</h2><p>${esc(ci.isHd ? `${ci.flow} — ${D.hdProcesses[ci.flow].name}` : ci.isKdt ? kdtProcText('MS13') : procLabel(ci.flow, ci.flowLabel))}</p></div>
@@ -1346,7 +1385,8 @@
     /* MS01: chèn bước DX-10 (5.1, 7.1, 10.1, 16.1) sau bước gốc; MS02 / KĐT / hợp đồng giữ dãy số. */
     if (!Flow.state.parent && !Flow.state.kdt && D.familyOf(Flow.state.vars.process) === 'MS01') keys.push(...D.stepKeys(last));
     else for (let n = 1; n <= last; n++) keys.push(n);
-    return keys.filter((k) => isUserTask(k) && !['na', 'cond'].includes(Flow.taskStatus(k)))
+    const own = Flow.state.kdt && !Flow.state.parent ? kdtOwnStep(Flow.ci().kind, 'MS13') : () => true;
+    return keys.filter((k) => isUserTask(k) && !['na', 'cond'].includes(Flow.taskStatus(k)) && own(k))
       .map((k) => {
         const st = Flow.taskStatus(k);
         return { no: k, title: TT()[k].name, sub: Flow.state.kdt ? kdtActor(TT()[k].actor) : TT()[k].actor.replace(/\s*\[[^\]]*\]/g, ''), state: st === 'active' ? 'active' : st === 'done' ? 'completed' : 'upcoming' };
@@ -1355,7 +1395,8 @@
 
   /* Lịch sử hồ sơ: mỗi lượt task người dùng (Hoàn thành) và việc đang chờ (Chưa xử lý), cũ → mới. */
   function caseHistory() {
-    const done = Flow.state.history.filter((h) => h.who && isUserTask(h.task))
+    /* T45: hồ sơ KĐT không lặp lịch sử kế thừa từ hồ sơ chủ trương (h.inh). */
+    const done = Flow.state.history.filter((h) => h.who && isUserTask(h.task) && !(Flow.state.kdt && h.inh))
       .map((h) => ({ title: TT()[h.task].name, st: 'COMPLETED', who: h.who, at: sinceOf(h), note: h.reason || '' }));
     const open = Flow.state.tokens.filter((t) => isUserTask(t.task)).map((t) => ({ title: TT()[t.task].name, st: 'CREATED', who: t.who, at: t.since, note: '' }));
     /* T39 B1: Bổ sung ý kiến, Yêu cầu thay người xử lý (vct.js) hiện ở Lịch sử xử lý. */
@@ -1545,12 +1586,12 @@
     const info = ci.isHd ? `${kv('Mã hồ sơ', esc(ci.code))}${kv('Tên hồ sơ', esc(ci.name))}${kv('Mã hợp đồng', hdRef(ci.hd))}${kv('Loại hồ sơ', esc(D.hdProcesses[ci.flow].type))}
       ${kv('Quy trình', `${esc(ci.flow)} — ${esc(D.hdProcesses[ci.flow].name)}`)}${kv('Công việc', esc(t.name))}${kv('Hạn xử lý', due)}${kv('Đơn vị quản lý', esc(ci.unit))}
       ${kv('Đầu mối theo dõi', esc(ci.owner))}${kv('Nhà thầu', esc(hdNccName(ci.ncc)))}${kv('Giá trị hợp đồng (gồm thuế GTGT)', ty(ci.total) + ' tỷ đồng')}`
-      : ci.isKdt ? `${kv('Mã hồ sơ', esc(ci.code))}${kv('Tên hồ sơ', esc(ci.name))}${kv('Mã KĐT', kdtRef(ci.kdt))}${kv('Loại hồ sơ', 'Phê duyệt KĐT')}
+      : ci.isKdt ? `${kv('Mã hồ sơ', esc(ci.code))}${kv('Tên hồ sơ', esc(ci.name))}${kv('Mã KĐT', kdtRef(ci.kdt))}${kv('Loại hồ sơ', esc(kdtKindText(ci.kind)))}
       ${kv('Quy trình', esc(ci.group ? D.kdtGroups[ci.group] : 'Chưa xác định nhóm (MS13 · MS14 · MS15)'))}${kv('Công việc', esc(t.name + (tok.cqcm ? ' — ' + cqcmUnit(tok.cqcm) : '') + (ci.isKdt && kdtRoundOf(tok.task) ? ` · ${kdtRoundOf(tok.task)}` : '')))}
       ${kv('Hạn xử lý', due)}${kv('Đơn vị đề xuất', esc(ci.unit))}${kv('Người phụ trách', esc(persona('minh').name))}
       ${kdtFactors(ci)}
-      ${priced ? kv('Tổng mức vốn thực tế (gồm VAT)', ty(ci.total) + ' tỷ đồng') : kv('Tổng mức vốn dự kiến', ci.est != null ? ty(ci.est) + ' tỷ đồng' : null)}${kv('Nguồn vốn', esc(ci.fund))}${kv('Thời gian thực hiện', esc(ci.period))}
-      ${kv('Nhánh hồ sơ', ci.branch ? esc(D.kdtBranches[ci.branch]) : null)}${kv('Mật', ci.secret ? 'Có' : 'Không')}`
+      ${ci.kind === 'KDT' ? kv('Tổng mức vốn KĐT (gồm VAT)', ty(ci.total) + ' tỷ đồng') : priced ? kv('Tổng mức vốn thực tế (gồm VAT)', ty(ci.total) + ' tỷ đồng') : kv('Tổng mức vốn dự kiến', ci.est != null ? ty(ci.est) + ' tỷ đồng' : null)}${kv('Nguồn vốn', esc(ci.fund))}${kv('Thời gian thực hiện', esc(ci.period))}
+      ${kv('Nhánh hồ sơ', ci.branch ? esc(D.kdtBranches[ci.branch]) : null)}${kv('Mật', ci.secret ? 'Có' : 'Không')}${kdtKindRows(ci, kv)}`
       : `${kv('Mã ĐXMS', dxmsRef(ci.dxms))}${kv('Tên đề xuất mua sắm', esc(ci.name))}${kv('Loại', esc(kindLabel(ci.kind || 'PD')))}
       ${kv('Đề tài / dự án', nvD ? `<a class="link" data-go="${window.DeTai.href(xD.nv)}">${esc(`${xD.nv} — ${nvD.name}`)}</a>` : null)}${kv('Đợt mua sắm', dotOf(xD) ? String(dotOf(xD)) : null)}
       ${kv('Quy trình', esc(procLabel(ci.flow, ci.flowLabel)))}${kv('Công việc', esc(t.name + (tok.cqcm ? ' — ' + cqcmUnit(tok.cqcm) : '')))}
@@ -1622,11 +1663,11 @@
     return `<div class="pg">
       ${head({ title: 'Xem chi tiết hồ sơ', back: true, lg: true, info: infoSpec, right: `<div class="task-acts">${acts}</div>` })}
       <div class="tgrid"><div class="tmain">
-        <section class="vcard pad24"><h3>Thông tin chung</h3><div class="ginfo">${info}</div>${phuLucInfo(ci)}${membersInfo(ci)}</section>
+        <section class="vcard pad24">${ci.isKdt ? kdtGenHead(ci) : '<h3>Thông tin chung</h3>'}<div class="ginfo">${info}</div>${phuLucInfo(ci)}${membersInfo(ci)}</section>
         ${window.ThamDinh.card(tok)}
         ${window.BaoGia ? window.BaoGia.card(tok) : ''}
         ${window.RaSoatKho ? window.RaSoatKho.taskCard(tok) : ''}
-        <section class="vcard pad24"><h3>Quy trình</h3>${UI.vSteps({ id: ci.code, steps: processSteps() })}</section>
+        ${ci.isKdt ? kdtStepsCard(Object.assign({ page: 'MS13' }, ci), processSteps(), 'pad24') : `<section class="vcard pad24"><h3>Quy trình</h3>${UI.vSteps({ id: ci.code, steps: processSteps() })}</section>`}
         ${filesSec}${outsSec}
       </div>${historyCard()}</div></div>`;
   }
@@ -1787,7 +1828,7 @@
 
   /* T34 (D-90): bỏ dxmsList, dxmsForm, dxmsDetail, profileList, profileCreate, resetCreate (phương án Tách). */
   window.Screens = { dxmsParts, dxmsBpmn, doneStep, statusBar, docPreview, basisAvail, chonVai, viecCuaToi, adjList, chainCard, kindBlock, enter, sampleDetail, caseDetail, kdtCaseDetail, hdCaseDetail, taskScreen, taskBpmn,
-    phanHe, tongQuan, choChot, allCases, caseHref, dueOf, head, dxmsMeta, DXMS_STATUS, processSteps,
+    phanHe, tongQuan, choChot, allCases, caseHref, dueOf, head, dxmsMeta, DXMS_STATUS, processSteps, dateTimeOf,
     /* T29 B12 (D-78, SCR-107): văn bản đầu ra của một hồ sơ ĐXMS (đang chạy hoặc mẫu). */
     caseDocs: (c) => (c.live ? outputDocs() : sampleVm(c).outs),
     s5: { dotOf, nextDot, creators, unitsOf, nvText, viewersText, viewersDialog, secCheckCard } };

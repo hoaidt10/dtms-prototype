@@ -21,6 +21,8 @@ const mainText = (page) => page.evaluate(() => {
 const pick = async (page, id, text) => {
   await page.locator(`[data-vsel="${id}"]`).click();
   await page.locator('.vsel-panel .vsel-opt', { hasText: text }).first().click();
+  // T45: Đề tài / dự án (k-nv) là chọn nhiều — danh sách giữ mở sau khi chọn, Escape để đóng.
+  if (await page.locator('.vsel-panel').count()) await page.keyboard.press('Escape');
 };
 const as = (page, who) => page.evaluate((id) => Flow.setPersona(id), who);
 // Mở việc đầu tiên của vai đang đăng nhập.
@@ -54,12 +56,13 @@ test('Cảnh 1–3: tạo KĐT, tạo hồ sơ start MS13; task 1–10; Ban Tài
   await expect(page).toHaveURL(/#\/kdt$/);
   // Chỉnh sửa › Tạo hồ sơ › Lưu = start quy trình, mở ngay bước 01.
   await page.evaluate(() => { location.hash = '#/kdt/' + encodeURIComponent('KĐT-2026-0032') + '/edit'; });
-  await page.locator('[data-kdt-profiles] .vcard-h [data-go$="/tao-ho-so"]').click();
-  await page.locator('#kc-save').click();
+  // Màn Thêm mới hồ sơ chủ trương KĐT (khuôn SCR-96) gộp bước 1–5; cảnh này đi từng bước qua eForm → tạo hồ sơ bằng engine (như Lưu nháp).
+  await page.evaluate(() => { Flow.createKdtCase('KĐT-2026-0032', { kind: 'CT' }); location.hash = '#/task/' + Flow.state.tokens[0].id; });
   await expect(page).toHaveURL(/#\/task\//);
   const gi = page.locator('.tmain .ginfo').first();
   await expect(gi).toContainText('Mã KĐTKĐT-2026-0032');
-  await expect(gi).toContainText('Loại hồ sơPhê duyệt KĐT');
+  // T45 (D-103): hồ sơ chạy từ bước 1 là hồ sơ phê duyệt chủ trương KĐT.
+  await expect(gi).toContainText('Loại hồ sơPhê duyệt chủ trương KĐT');
   await expect(gi).toContainText('Chưa xác định nhóm (MS13 · MS14 · MS15)');
   await expect(gi).toContainText('Tổng mức vốn dự kiến120,00 tỷ đồng');
   expect(await formText(page)).toContain('2318/QĐ-VHT');
@@ -88,7 +91,8 @@ test('Cảnh 1–3: tạo KĐT, tạo hồ sơ start MS13; task 1–10; Ban Tài
   await page.evaluate(() => { location.hash = '#/viec-cua-toi'; });
   const r57 = page.locator('.vtable tbody tr', { hasText: 'Xác nhận hình thành TSCĐ' }).filter({ hasText: 'Chưa xử lý' });
   await expect(r57).toContainText('KĐT-2026-0032');
-  await expect(r57).toContainText('Phê duyệt KĐT');
+  // T34 v0.2 (D-92): Việc của tôi không có cột Loại / Mã hồ sơ — mã hồ sơ (hồ sơ chủ trương, T45) ở data-code.
+  await expect(r57).toHaveAttribute('data-code', 'HS-2026-0032');
   await r57.locator('td').nth(4).click();
   const t57 = await formText(page, 'Xác nhận OK');
   for (const x of ['Hình thành tài sản cố định', 'Danh mục đầu tư', 'Máy phân tích phổ vector 44 GHz']) expect(t57).toContain(x);
@@ -158,7 +162,7 @@ test('Nhánh phụ SCR-66: KĐT-2026-0033 (lĩnh vực Khác, 96 tỷ) vượt n
   // Việc của tôi của ĐVĐX: hồ sơ mới MS14 mở thông báo chuyển luồng.
   await as(page, 'minh');
   await page.evaluate(() => { location.hash = '#/viec-cua-toi'; });
-  const r = page.locator('.vtable tbody tr', { hasText: 'HS-2026-0127' });
+  const r = page.locator('.vtable tbody tr[data-code="HS-2026-0127"]');
   await expect(r).toContainText('MS14');
   await r.locator('td').nth(4).click();
   await expect(page).toHaveURL(/chuyen-luong$/);
@@ -326,10 +330,20 @@ test('Cảnh 4–6: chủ trương BM-01, thẩm định vòng BM-01 ở khối 
   await openMine(page, 48);
   expect(await formText(page, 'Ký phê duyệt chủ trương')).toContain('Phê duyệt chủ trương: VHT');
   expect(await primary(page, 'Ký phê duyệt chủ trương')).toBe(true);
-  // 49 AI → 50 lập hồ sơ KĐT: bộ đếm vòng BM-01 giữ 2/2 vòng check, 1/2 lần họp (P-54); vòng BM-03 mở ở 54.
-  expect(await page.evaluate(() => [Flow.state.tokens.map((t) => `${t.task}:${t.who}`), Flow.state.vars.chk.CT, Flow.state.vars.meet.CT])).toEqual([['50:minh'], 2, 1]);
-  // Văn bản đầu ra BM-01; trạng thái KĐT.
+  // T45 (D-103): ký chủ trương kết thúc hồ sơ chủ trương → KĐT Đã phê duyệt chủ trương.
+  expect(await page.evaluate(() => [Flow.state.status, Flow.state.tokens.length, Flow.kdtCases().find((c) => c.code === Flow.state.code).stage])).toEqual(['approved', 0, 'CT_OK']);
+  const ctCode = await page.evaluate(() => Flow.state.code);
+  await page.evaluate(() => { location.hash = '#/kdt'; });
+  await expect(page.locator('.vtable tbody tr', { hasText: 'KĐT-2026-0032' }).locator('.vbadge')).toHaveText('Đã phê duyệt chủ trương');
+  // ĐVĐX tạo hồ sơ phê duyệt KĐT chọn hồ sơ chủ trương → 49 AI → 50 lập hồ sơ KĐT: kế thừa bộ đếm vòng BM-01 2/2 vòng check, 1/2 lần họp (P-54).
   await as(page, 'minh');
+  await page.evaluate(() => { location.hash = '#/kdt/' + encodeURIComponent('KĐT-2026-0032') + '/tao-ho-so'; });
+  await expect(page.locator('[data-vsel="kc-parent"]')).toContainText(ctCode);
+  // Bước 50 đi qua eForm ở dưới → tạo hồ sơ KĐT bằng engine (như Lưu nháp của màn).
+  await page.evaluate((p) => { Flow.createKdtCase('KĐT-2026-0032', { kind: 'KDT', parent: p }); location.hash = '#/task/' + Flow.state.tokens[0].id; }, ctCode);
+  await expect(page).toHaveURL(/#\/task\//);
+  expect(await page.evaluate(() => [Flow.state.code, Flow.state.tokens.map((t) => `${t.task}:${t.who}`), Flow.state.vars.chk.CT, Flow.state.vars.meet.CT])).toEqual([ctCode + '-2', ['50:minh'], 2, 1]);
+  // Văn bản đầu ra BM-01 (kế thừa); trạng thái KĐT.
   await openMine(page, 50);
   await expect(m).toContainText('BM-01 Tờ trình chủ trương KĐT (đã phê duyệt)');
   await page.evaluate(() => { location.hash = '#/kdt'; });
@@ -610,7 +624,7 @@ test('Khối ký chung: hồ sơ Mật ký bản cứng 47 → 77 → 78 (scan b
 });
 
 // T18 B4 — tuyến Tập đoàn 63–74 (người dùng mở D-8, 12/10). Người Tập đoàn = tài khoản giả lập "td" (P-96).
-test('Tuyến Tập đoàn: công văn 64 → TGĐ VHT ký 65 → các Ban nhận xét 67 → tiếp thu 68 → ký trình lại 69 → Ban ĐTXD chưa đạt → 68; TGĐ Tập đoàn ký chủ trương → lập hồ sơ KĐT', async ({ page }) => {
+test('Tuyến Tập đoàn: công văn 64 → TGĐ VHT ký 65 → các Ban nhận xét 67 → tiếp thu 68 → ký trình lại 69 → Ban ĐTXD chưa đạt → 68; TGĐ Tập đoàn ký chủ trương → kết thúc hồ sơ chủ trương', async ({ page }) => {
   await fresh(page, '#/kdt');
   await branch(page, 9);
   const f64 = await formText(page);
@@ -654,11 +668,13 @@ test('Tuyến Tập đoàn: công văn 64 → TGĐ VHT ký 65 → các Ban nhậ
   const f68 = await openForm(page);
   await expect(f68.locator('.banner-moved, .banner-bad').first()).toContainText('Ban ĐTXD Tập đoàn yêu cầu bổ sung: “Nội dung thử”');
   await closeForm(page);
-  // TGĐ Tập đoàn ký chủ trương BM-01 → 74 lưu kết quả → về lập hồ sơ KĐT (49 → 50).
+  // TGĐ Tập đoàn ký chủ trương BM-01 → 74 lưu kết quả → G36 chủ trương → kết thúc hồ sơ chủ trương (T45, D-103): KĐT Đã phê duyệt chủ trương.
   await branch(page, 14);
   expect(await formText(page)).toContain('Ký trực tiếp Tờ trình BM-01');
   expect(await primary(page)).toBe(true);
-  expect(await toks(page)).toEqual(['50:minh']);
+  expect(await toks(page)).toEqual([]);
+  expect(await page.evaluate(() => [Flow.state.status, Flow.kdtCases().find((c) => c.code === Flow.state.code).stage, Flow.kdtCtChoices('KĐT-2026-0032').map((c) => c.code)]))
+    .toEqual(['approved', 'CT_OK', [await page.evaluate(() => Flow.state.code)]]);
   await page.evaluate(() => { location.hash = '#/ho-so-kdt/' + encodeURIComponent(Flow.state.code); });
   const main = page.locator('main');
   await expect(main).toContainText('CV-TD Công văn trình Tập đoàn (đã ký)');

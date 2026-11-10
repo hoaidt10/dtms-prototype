@@ -279,8 +279,9 @@ test('SCR-98: chọn Vai trò thực hiện (D-75), không chọn Bước; Thay 
 
 test('SCR-98 từ màn xử lý task: Thay người task đang mở chuyển ngay; Bổ sung thêm candidate', async ({ page }) => {
   await newLuong(page);
-  // T29 B19: việc bước 1 là màn Lập ĐXMS — nút Cập nhật nhân sự ở đầu màn.
-  await page.locator('[data-luong-form] [data-um-open]').click();
+  // SRS 12 V0.4: màn Lập không có nút Cập nhật nhân sự (SRS 12 mục 3.1.2.1.3) — mở hộp thoại trực tiếp.
+  await expect(page.locator('[data-luong-form] [data-um-open]')).toHaveCount(0);
+  await page.evaluate(() => Luong.membersDialog(Flow.state.dxms));
   const r1 = await roleOf(page, '1');
   await page.locator('.vmodal [data-vsel="um-role"]').click();
   await page.locator(`.vsel-panel [data-opt="${r1.code}"]`).click();

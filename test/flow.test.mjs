@@ -522,7 +522,7 @@ test('B1 KĐT: engine chọn định nghĩa luồng theo quy trình; tạo KĐT 
   assert.equal(Flow.state.vars.process, 'MS01.03');
   assert.equal(Flow.createKdtCase({ kdt: code, name: 'Hồ sơ thử' }), 'HS-2026-0032');
   const hs = Flow.kdtCases().find((c) => c.kdt === code);
-  assert.deepEqual(plain([hs.flow, hs.task, hs.st, hs.stage]), [null, 1, 'processing', 'LAP']);
+  assert.deepEqual(plain([hs.flow, hs.task, hs.st, hs.stage, hs.kind, hs.scope]), [null, 1, 'processing', 'LAP', 'CT', 'CT']);
   assert.equal(Flow.state.vars.process, 'MS13');
   assert.equal(Flow.def(), D.flows.MS13);
   assert.equal(Flow.createKdt({ title: 'KĐT thử 2' }), 'KĐT-2026-0034');
@@ -667,7 +667,7 @@ function toSubmit(w) {
 }
 const counts = (w) => plain([w.Flow.tdCount('chk'), w.Flow.tdCount('meet')]);
 
-test('B3 KĐT: 39–43 → HT/AI kiểm tra (44) → mở vòng BM-01 (45) → khối chung (lượt 1 cần sửa, lượt 2 giải trình → họp 1, xác nhận, cập nhật) → 46 → 47 → 48 → 50', () => {
+test('B3 KĐT: 39–43 → HT/AI kiểm tra (44) → mở vòng BM-01 (45) → khối chung (lượt 1 cần sửa, lượt 2 giải trình → họp 1, xác nhận, cập nhật) → 46 → 47 → 48 → kết thúc hồ sơ CT; hồ sơ KĐT → 50', () => {
   const w = boot(null);
   const { Flow } = w;
   toSubmit(w);
@@ -711,10 +711,16 @@ test('B3 KĐT: 39–43 → HT/AI kiểm tra (44) → mở vòng BM-01 (45) → k
   kdtStep(w, 47);
   assert.deepEqual(tasksOf(w), ['48:tgd']);
   kdtStep(w, 48);
+  // T45 (D-103): ký chủ trương = kết thúc hồ sơ CT; KĐT Đã phê duyệt chủ trương.
+  assert.deepEqual(plain([Flow.state.status, Flow.kdtStage(), Flow.state.tokens.length]), ['approved', 'CT_OK', 0]);
+  assert.match(Flow.state.history.slice(-1)[0].action, /chủ trương KĐT đã phê duyệt/);
+  const ct = Flow.state.code;
+  assert.deepEqual(plain(Flow.kdtCtChoices(Flow.state.kdt).map((c) => c.code)), [ct]);
+  Flow.createKdtCase(Flow.state.kdt, { kind: 'KDT', parent: ct, est: 118.5 });
   assert.deepEqual(tasksOf(w), ['50:minh']);
   assert.equal(Flow.kdtStage(), 'HS');
   assert.ok(sysLog(w, 49).length);
-  assert.deepEqual(plain([Flow.state.vars.chk.CT, Flow.state.vars.meet.CT]), [2, 1], 'bộ đếm vòng BM-01 giữ nguyên');
+  assert.deepEqual(plain([Flow.state.vars.chk.CT, Flow.state.vars.meet.CT]), [2, 1], 'bộ đếm vòng BM-01 kế thừa từ hồ sơ CT');
 });
 
 test('B3 KĐT: CQCM chủ trì không đồng ý DS CQCM → 41; không chọn CQCM → bỏ 28–29; G13 chưa đủ điều kiện → 25 → 26 → về chọn CQCM đúng vòng; G22 AI không đạt → 39', () => {
@@ -825,8 +831,12 @@ test('B4 KĐT: 50–53 → mở vòng BM-03 (54, bộ đếm riêng) → 27 → 
   assert.equal(Flow.state.status, 'approved');
   assert.equal(Flow.kdtStage(), 'OK');
   assert.deepEqual(docsOf(w), ['BM-01', 'BM-14', 'BM-18']);
+  // T45: hồ sơ KĐT HS-2026-0032-2 (kế thừa BM-01 của hồ sơ CT — danh sách hồ sơ ghi văn bản của chính hồ sơ) + hồ sơ CT HS-2026-0032 Hoàn thành.
   const hs = Flow.kdtCases().find((c) => c.kdt === 'KĐT-2026-0032');
-  assert.deepEqual(plain([hs.st, hs.stage, hs.total, hs.docs.map((d) => d[0])]), ['done', 'OK', 118.5, ['BM-01', 'BM-14', 'BM-18']]);
+  assert.deepEqual(plain([hs.code, hs.kind, hs.parent, hs.st, hs.stage, hs.total, hs.docs.map((d) => d[0])]), ['HS-2026-0032-2', 'KDT', 'HS-2026-0032', 'done', 'OK', 118.5, ['BM-14', 'BM-18']]);
+  const ct = Flow.kdtCases().find((c) => c.code === 'HS-2026-0032');
+  assert.deepEqual(plain([ct.kind, ct.scope, ct.st, ct.stage, ct.docs.map((d) => d[0])]), ['CT', 'CT', 'done', 'CT_OK', ['BM-01']]);
+  assert.deepEqual(plain(Flow.kdtDocs().filter((d) => d.inh).map((d) => [d.code, d.inh])), [['BM-01', 'HS-2026-0032']]);
   assert.match(Flow.state.history.slice(-1)[0].action, /Quyết định phê duyệt KĐT/);
 });
 
@@ -975,7 +985,7 @@ test('T18 B3: ký VOffice (mặc định) — 75 ghi hình thức, 76 nhận cal
   kdtStep(w, 77);
   assert.deepEqual(tasksOf(w), ['78:minh']);
   kdtStep(w, 78);
-  assert.deepEqual(tasksOf(w), ['50:minh'], 'G3 → về đích của nút ký 48 (49 AI → 50)');
+  assert.deepEqual(plain([Flow.state.status, Flow.kdtStage()]), ['approved', 'CT_OK'], 'G3 → về đích của nút ký 48 (T45: kết thúc hồ sơ CT)');
   assert.deepEqual(docsOf(w), ['BM-01']);
   assert.deepEqual(plain(Flow.state.vars.kyLog.map((k) => [k.task, k.mode])), [[47, 'soft'], [48, 'hard']]);
 });
@@ -1014,7 +1024,7 @@ test('T18 B3: hồ sơ Mật — G1 bắt buộc bản cứng (bỏ qua 75–76,
 });
 
 // T18 B4 — tuyến Tập đoàn 63–74 (người dùng mở D-8, 12/10).
-test('T18 B4: chủ trương thuộc Tập đoàn — 64 → 65 ký công văn (khối ký) → 66 → 67 → 68 → 69 → 70 (chưa đạt → 68) → 71 → 73 (không đồng ý → 68) → 74 → 49 lập hồ sơ KĐT cấp VHT', () => {
+test('T18 B4: chủ trương thuộc Tập đoàn — 64 → 65 ký công văn (khối ký) → 66 → 67 → 68 → 69 → 70 (chưa đạt → 68) → 71 → 73 (không đồng ý → 68) → 74 → kết thúc hồ sơ CT; hồ sơ KĐT cấp VHT từ 49', () => {
   const w = boot(null);
   const { Flow, D } = w;
   const bs = D.demoSets.find((d) => d.key === 'MS13').branches;
@@ -1045,10 +1055,15 @@ test('T18 B4: chủ trương thuộc Tập đoàn — 64 → 65 ký công văn (
   kdtStep(w, 73, 'Không đồng ý');
   assert.deepEqual(tasksOf(w), ['68:minh']);
   for (const n of [68, 69, 70, 71, 73]) kdtStep(w, n);
-  // 74 lưu kết quả (BM-01 do TGĐ Tập đoàn ký) → G36 chủ trương → 49 AI → 50.
-  assert.deepEqual(tasksOf(w), ['50:minh']);
+  // 74 lưu kết quả (BM-01 do TGĐ Tập đoàn ký) → G36 chủ trương → T45: kết thúc hồ sơ CT; hồ sơ KĐT tạo riêng, chạy từ 49 AI → 50.
   assert.match(sysLog(w, 74)[0].action, /BM-01 đã ký/);
   assert.deepEqual(docsOf(w), ['CV-TD', 'BM-06', 'BM-01']);
+  assert.deepEqual(plain([Flow.state.status, Flow.kdtStage()]), ['approved', 'CT_OK']);
+  assert.match(Flow.state.history.slice(-1)[0].action, /cấp Tập đoàn: chủ trương BM-01/);
+  Flow.createKdtCase(Flow.state.kdt, { kind: 'KDT', parent: Flow.state.code });
+  assert.deepEqual(tasksOf(w), ['50:minh']);
+  assert.deepEqual(docsOf(w), ['CV-TD', 'BM-06', 'BM-01'], 'văn bản chủ trương kế thừa');
+  assert.ok(Flow.kdtDocs().every((d) => d.inh === 'HS-2026-0032'));
   assert.equal(Flow.state.status, 'running');
   assert.equal(Flow.kdtStage(), 'HS');
   // KĐT cấp VHT (KHCN, UQ-GUQ §1.2.1) → tua tiếp tới kết thúc qua 56 → 57 → 60.
@@ -1090,6 +1105,8 @@ test('T18 B4: chủ trương và KĐT đều thuộc Tập đoàn — lên Tập
   Flow.jumpTo(73, 'td', null, 'MS13', null, null, false, pre);
   assert.equal(Flow.state.vars.tdKind, 'CT');
   kdtStep(w, 73);
+  assert.equal(Flow.kdtStage(), 'CT_OK');
+  Flow.createKdtCase(Flow.state.kdt, { kind: 'KDT', parent: Flow.state.code });
   assert.deepEqual(tasksOf(w), ['50:minh']);
   for (let i = 0; i < 60 && !Flow.state.tokens.some((t) => t.task === 64); i++) kdtStep(w, Flow.state.tokens[0].task);
   assert.deepEqual(plain([Flow.state.vars.tdKind, Flow.state.vars.tdKinds]), ['KDT', ['CT', 'KDT']], 'G27 KĐT Tập đoàn → 63 lần hai');
@@ -1133,4 +1150,133 @@ test('DX-10 (b): người khởi tạo là Chỉ huy ĐVĐX → bỏ qua 5.1 (kh
   for (const k of ['5.1', '7.1', '10.1', '16.1', 'g5']) assert.equal(a[k], undefined, `MS02 không có ${k}`);
   assert.equal(a[7].who, 'minh');
   assert.equal(a[16].next, 17);
+});
+
+// T45 (D-103, D-104): KĐT có hai loại hồ sơ — Hồ sơ phê duyệt chủ trương (kind CT) và Hồ sơ phê duyệt KĐT (kind KDT); KĐT nhiều đề tài / dự án.
+function bootKdtJs(w) {
+  // kdt.js chỉ cần UI khi vẽ màn — meta / KDT_STAGE đọc được với UI giả.
+  w.UI = {};
+  const ctx = vm.createContext({ window: w, document: { addEventListener() {} } });
+  vm.runInContext(readFileSync(new URL('kdt.js', dir), 'utf8'), ctx, { filename: 'kdt.js' });
+  return w.Kdt;
+}
+test('T45: hồ sơ CT 0032 chạy 1 → 48 kết thúc → KĐT Đã phê duyệt chủ trương; kdtCtChoices; hồ sơ KĐT chạy từ 49 kế thừa biến, tới 60 → KĐT Đã phê duyệt', () => {
+  const w = boot(null);
+  const { Flow, D } = w;
+  Flow.jumpTo('CT_END', 'tgd', null, 'MS13', D.kdtCode0);
+  assert.deepEqual(plain([Flow.state.code, Flow.state.status, Flow.kdtStage(), Flow.ci().kind, Flow.ci().scope]), ['HS-2026-0032', 'approved', 'CT_OK', 'CT', 'CT']);
+  assert.ok(!Flow.state.history.some((h) => Number(h.task) >= 49 && Number(h.task) <= 60), 'hồ sơ CT không đi qua 49–60');
+  assert.deepEqual(docsOf(w), ['BM-01']);
+  const live = Flow.kdtCases().find((c) => c.code === 'HS-2026-0032');
+  assert.deepEqual(plain([live.kind, live.scope, live.st, live.stage]), ['CT', 'CT', 'done', 'CT_OK']);
+  const K = bootKdtJs(w);
+  assert.deepEqual(plain(K.KDT_STAGE.CT_OK), ['Đã phê duyệt chủ trương', 'success']);
+  let m = K.meta(Flow.findKdt(D.kdtCode0));
+  assert.deepEqual(plain([m.stage, m.approved, m.ct.code, m.kdt, m.main.code]), ['CT_OK', false, 'HS-2026-0032', null, 'HS-2026-0032']);
+  assert.deepEqual(plain(Flow.kdtCtChoices(D.kdtCode0).map((c) => c.code)), ['HS-2026-0032']);
+  const vars = plain(Flow.state.vars), clock = Flow.state.clock;
+  const code = Flow.createKdtCase(D.kdtCode0, { kind: 'KDT', parent: 'HS-2026-0032', est: 118.5 });
+  assert.equal(code, 'HS-2026-0032-2');
+  assert.deepEqual(tasksOf(w), ['50:minh']);
+  const ci = Flow.ci();
+  assert.deepEqual(plain([ci.kind, ci.parent, ci.luongCt, ci.est, ci.lech, ci.total]), ['KDT', 'HS-2026-0032', 'MS13', 118.5, null, 118.5]);
+  for (const k of ['factors', 'cap', 'group', 'branch', 'chk', 'meet']) assert.deepEqual(plain(Flow.state.vars[k]), vars[k], `kế thừa biến ${k}`);
+  assert.ok(Flow.state.clock >= clock, 'đồng hồ tiếp nối hồ sơ CT');
+  assert.equal(Flow.lastOf(48).inh, 'HS-2026-0032', 'lịch sử chủ trương kế thừa (bước 50 đọc ký chủ trương 48)');
+  // Hồ sơ CT đóng băng kèm bản chụp; đã có hồ sơ KĐT trỏ tới → không còn chọn được.
+  const ct = Flow.state.kdtCases.find((c) => c.code === 'HS-2026-0032');
+  assert.ok(ct.snap && ct.snap.vars.group === 'MS13');
+  assert.deepEqual(plain(Flow.kdtCtChoices(D.kdtCode0)), []);
+  assert.throws(() => Flow.createKdtCase(D.kdtCode0, { kind: 'KDT', parent: 'HS-2026-0032' }), /không hợp lệ/);
+  for (let i = 0; i < 80 && Flow.state.status === 'running'; i++) kdtStep(w, Flow.state.tokens[0].task);
+  assert.deepEqual(plain([Flow.state.status, Flow.kdtStage()]), ['approved', 'OK']);
+  assert.match(Flow.state.history.slice(-1)[0].action, /Quyết định phê duyệt KĐT/);
+  m = K.meta(Flow.findKdt(D.kdtCode0));
+  assert.deepEqual(plain([m.stage, m.approved, m.ct.code, m.kdt.code, m.main.code, m.value]), ['OK', true, 'HS-2026-0032', 'HS-2026-0032-2', 'HS-2026-0032-2', 118.5]);
+});
+
+test('T45: gộp BM-00 (0031) 62 → KĐT Đã phê duyệt, scope CT_KDT, không tạo được hồ sơ KĐT; cảnh K7 / K8 / K10 đi qua hồ sơ CT đã duyệt; Tập đoàn 74 → kết thúc CT', () => {
+  const w = boot(null);
+  const { Flow, D } = w;
+  Flow.jumpTo('END', 'tgd', null, 'MS13', 'KĐT-2026-0031');
+  assert.deepEqual(plain([Flow.state.code, Flow.state.status, Flow.kdtStage(), Flow.ci().scope, Flow.state.kdtKind]), ['HS-2026-0031', 'approved', 'OK', 'CT_KDT', 'CT']);
+  assert.deepEqual(plain(Flow.kdtCtChoices('KĐT-2026-0031')), []);
+  assert.throws(() => Flow.createKdtCase('KĐT-2026-0031', { kind: 'KDT', parent: 'HS-2026-0031', est: 12.4 }), /không hợp lệ/);
+  const K = bootKdtJs(w);
+  const m = K.meta(Flow.findKdt('KĐT-2026-0031'));
+  assert.deepEqual(plain([m.stage, m.approved, m.ct.scope, m.kdt]), ['OK', true, 'CT_KDT', null]);
+  for (const [n, task, code] of [['K7', 50, 'HS-2026-0032-2'], ['K8', 56, 'HS-2026-0032-2'], ['K6', 47, 'HS-2026-0032']]) {
+    Flow.jumpToScene(n, 'MS13');
+    assert.deepEqual(plain([Flow.state.code, Flow.state.tokens.map((t) => t.task)]), [code, [task]], `cảnh ${n}`);
+  }
+  Flow.jumpToScene('K10', 'MS13');
+  assert.deepEqual(plain([Flow.state.code, Flow.state.kdtKind, Flow.state.ctParent, Flow.kdtStage()]), ['HS-2026-0032-2', 'KDT', 'HS-2026-0032', 'OK']);
+  assert.deepEqual(plain(Flow.kdtCases().filter((c) => c.kdt === D.kdtCode0).map((c) => [c.code, c.kind, c.st, c.stage])),
+    [['HS-2026-0032-2', 'KDT', 'done', 'OK'], ['HS-2026-0032', 'CT', 'done', 'CT_OK']]);
+  const b = D.demoSets.find((d) => d.key === 'MS13').branches.find((x) => /kết thúc hồ sơ chủ trương/.test(x.name));
+  Flow.jumpTo(b.task, b.who, b.vars, b.process, b.dxms, b.ui, b.settle, b.pre);
+  kdtStep(w, 73);
+  assert.deepEqual(plain([Flow.state.status, Flow.kdtStage(), Flow.state.code]), ['approved', 'CT_OK', 'HS-2026-0032']);
+});
+
+test('T45: kdtLuong theo ngưỡng KĐT — MS13 / MS14 / MS15; hồ sơ KĐT vượt ngưỡng → MS14 bản ghi tĩnh bước 46 có lech; MS15 → lỗi', () => {
+  const w = boot(null);
+  const { Flow, D } = w;
+  const vt = { field: 'VTCNTT', nature: 'TICH_HOP' }, kh = { field: 'KHAC', nature: 'TICH_HOP' };
+  assert.deepEqual(plain([[vt, 159.9], [vt, 160], [vt, 999], [vt, 1000], [kh, 89], [kh, 90], [kh, 500], [{ field: 'QP' }, 10]].map(([k, v]) => Flow.kdtLuong(k, v))),
+    ['MS13', 'MS14', 'MS14', 'MS15', 'MS13', 'MS14', 'MS15', 'MS14']);
+  Flow.jumpTo('CT_END', 'minh', null, 'MS13', D.kdtCode0);
+  assert.deepEqual(plain([120, 160].map((v) => Flow.kdtLuong(D.kdtCode0, v))), ['MS13', 'MS14'], 'nhận mã KĐT');
+  assert.throws(() => Flow.createKdtCase(D.kdtCode0, { kind: 'KDT', parent: 'HS-2026-0032', est: 1200 }), /MS15/);
+  assert.equal(Flow.state.code, 'HS-2026-0032', 'MS15 chặn: hồ sơ CT vẫn là hồ sơ đang mở');
+  const code = Flow.createKdtCase(D.kdtCode0, { kind: 'KDT', parent: 'HS-2026-0032', est: 175, reason: 'Bổ sung hạng mục' });
+  assert.equal(code, 'HS-2026-0032-2');
+  const rec = Flow.kdtCases().find((c) => c.code === code);
+  assert.deepEqual(plain([rec.kind, rec.parent, rec.flow, rec.st, rec.task, rec.stage, rec.est, rec.luongCt, rec.lech]),
+    ['KDT', 'HS-2026-0032', 'MS14', 'processing', 46, 'HS', 175, 'MS13', { from: 'MS13', to: 'MS14', reason: 'Bổ sung hạng mục' }]);
+  assert.equal(Flow.state.status, 'new', 'MS14 tĩnh: không còn hồ sơ chạy luồng');
+  assert.equal(Flow.kdtCases().filter((c) => c.code === 'HS-2026-0032').length, 1, 'hồ sơ CT đóng băng một bản');
+  assert.deepEqual(plain(Flow.kdtCtChoices(D.kdtCode0)), []);
+  const s = D.kdtCases.find((c) => c.lech);
+  assert.deepEqual(plain([s.code, s.parent, s.flow, s.task, s.lech.from, s.lech.to]), ['HS-2026-0026-2', 'HS-2026-0026', 'MS14', 46, 'MS13', 'MS14']);
+  assert.ok(s.lech.reason);
+});
+
+test('T45: dữ liệu mẫu — mỗi hồ sơ là CT hoặc KDT; KDT có parent CT Hoàn thành cùng KĐT, mã -2; KĐT nhiều đề tài (nvs), dòng bóc tách có nv; việc mẫu trỏ mã có thật; menu tách hai danh sách', () => {
+  const w = boot(null);
+  const { Flow, D } = w;
+  for (const c of D.kdtCases) {
+    assert.ok(['CT', 'KDT'].includes(c.kind), c.code);
+    if (c.kind === 'CT') assert.equal(c.scope, c.branch === 'BM00' ? 'CT_KDT' : 'CT', `${c.code} scope`);
+    else {
+      const p = D.kdtCases.find((x) => x.code === c.parent);
+      assert.ok(p && p.kind === 'CT' && p.st === 'done' && p.scope === 'CT' && p.kdt === c.kdt, `${c.code} parent`);
+      assert.equal(c.code, c.parent + '-2');
+      assert.equal(c.luongCt, p.flow);
+      assert.ok(c.est != null && 'lech' in c);
+      if (c.lech) assert.notEqual(c.lech.from, c.lech.to); else assert.equal(c.flow, c.luongCt);
+    }
+    if (c.kind === 'CT' && c.st === 'processing' && c.flow !== 'MS14' && c.scope === 'CT') assert.ok((c.task || 0) <= 48, `${c.code} CT ≤ 48`);
+  }
+  for (const t of D.sampleKdtTasks) {
+    const c = D.kdtCases.find((x) => x.code === t.code);
+    assert.ok(c, t.code);
+    assert.equal(c.kind === 'KDT', t.task >= 49 && t.task <= 60, `${t.code} bước ${t.task}`);
+  }
+  for (const x of Flow.kdtAll()) { assert.ok(Array.isArray(x.nvs) && x.nvs.length >= 1, x.code); assert.equal(x.nv, x.nvs[0]); }
+  assert.ok(D.kdtList.some((x) => x.nvs.length > 1));
+  assert.deepEqual(plain(D.kdtDemo.nvs), ['DT-KHCN-2027-002', '009-26-VHT-RDP-DS']);
+  assert.deepEqual(plain([...new Set(D.kdtDemo.cost.map((c) => c.nv))]), plain(D.kdtDemo.nvs));
+  for (const x of [D.kdtDemo].concat(D.kdtList.filter((k) => k.cost))) for (const c of x.cost) assert.ok(x.nvs.includes(c.nv) && c.line.startsWith(c.nv + '-'), `${x.code} ${c.line}`);
+  const code = Flow.createKdt({ title: 'KĐT nhiều đề tài', nvs: ['NV-KHCN-2026-014', 'DA-2026-002'] });
+  assert.equal(Flow.findKdt(code).nv, 'NV-KHCN-2026-014');
+  Flow.updateKdt(code, { nvs: ['DA-2026-002'] });
+  assert.equal(Flow.findKdt(code).nv, 'DA-2026-002');
+  Flow.updateKdt('KĐT-2026-0029', { nv: 'DA-2026-002' });
+  assert.deepEqual(plain(Flow.findKdt('KĐT-2026-0029').nvs), ['DA-2026-002']);
+  // Kiểu gọi cũ createKdtCase({ kdt, name }) vẫn tạo hồ sơ CT.
+  assert.equal(Flow.createKdtCase({ kdt: 'KĐT-2026-0033' }), 'HS-2026-0033');
+  assert.equal(Flow.state.kdtKind, 'CT');
+  const menu = JSON.stringify(D.menu);
+  assert.ok(menu.includes('"ho-so-ct-kdt"') && menu.includes('"ho-so-pd-kdt"') && !menu.includes('"ho-so-kdt"'));
 });

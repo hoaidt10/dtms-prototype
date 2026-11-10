@@ -123,6 +123,7 @@ Mở `index.html` bằng Chrome hoặc Edge. Không cần mạng, không cần b
     cổng gộp BM-00 (Trang bị nội bộ + Nguyên chiếc + mức vốn MS13).
   - **Hai giai đoạn (KĐT-2026-0032):** BM-01 + Checklist 01 (39–40), chọn CQCM (41), CQCM chủ trì xác nhận danh sách (42), trình (43), HT/AI kiểm tra (44, Không đạt → 39),
     mở vòng BM-01 (45) → **khối chung 25–38** → TTMS thẩm định và hoàn chỉnh chủ trương (46) → cổng cấp duyệt (tính lại thẩm quyền) → ký thẩm định (47) → TGĐ VHT ký (48) →
+    *(từ T45: 48 kết thúc hồ sơ chủ trương; 49 trở đi chạy trong hồ sơ phê duyệt KĐT riêng — xem mục T45 dưới)*
     BM-03 + Phụ lục + Checklist 02 (49–51), chọn CQCM (52), xác nhận DS (53), mở vòng BM-03 (54) → khối chung → thẩm định và hoàn chỉnh KĐT (55) → Chỉ huy ký tờ trình BM-03 (56)
     → TTMS ký BM-14 + dự thảo BM-18 (57; không thông qua → 58 → 59 → 50) → TGĐ VHT ký Quyết định BM-18 (60) → KĐT "Đã phê duyệt", nút "Tạo gói thầu" ở Chi tiết KĐT.
   - **Gộp BM-00 (KĐT-2026-0031, chạy lại hồ sơ mẫu HS-2026-0031):** AI dự thảo (18), lập BM-00 (19), xin ý kiến Chỉ huy (20–21), chọn CQCM (22), xác nhận DS (23),
@@ -137,15 +138,15 @@ Mở `index.html` bằng Chrome hoặc Edge. Không cần mạng, không cần b
   - **Tuyến Tập đoàn 63–74** (T18 B4, người dùng mở D-8 12/10): cổng cấp duyệt (G23 chủ trương / G27 KĐT / G30 gộp) ra Tập đoàn ghi loại hồ sơ trình (`vars.tdKind`)
     → AI dự thảo công văn (63) → ĐVĐX hoàn thiện (64) → TGĐ VHT ký công văn (65, qua khối ký; không đồng ý → 64) → chuyển hồ sơ (66) → các Ban Tập đoàn gửi phiếu nhận xét
     BM-09 / BM-10 (67) → ĐVĐX tiếp thu, lập BM-06 (68) → TGĐ VHT ký trình lại (69, qua khối ký) → Ban ĐTXD kiểm tra (70; chưa đạt → 68) → chủ trương: các Ban ký BM-01 (71) |
-    KĐT / gộp: Ban ĐTXD lập BM-14 + dự thảo BM-18 (72) → TGĐ Tập đoàn ký (73; không đồng ý → 68) → lưu kết quả (74) → chủ trương về lập hồ sơ KĐT (49), KĐT / gộp kết thúc.
+    KĐT / gộp: Ban ĐTXD lập BM-14 + dự thảo BM-18 (72) → TGĐ Tập đoàn ký (73; không đồng ý → 68) → lưu kết quả (74) → chủ trương về lập hồ sơ KĐT (49) *(đã thay ở T45: chủ trương kết thúc hồ sơ chủ trương)*, KĐT / gộp kết thúc.
     Người Tập đoàn = tài khoản giả lập "Ban ĐTXD Tập đoàn" (P-96). KĐT "Đang trình Tập đoàn" / "Tập đoàn thẩm định, phê duyệt"; văn bản đầu ra thêm Công văn trình, BM-06 và
     văn bản cấp Tập đoàn. ❓ P-96…P-99.
   - **Công cụ demo** bộ "KĐT-2026-0032 · MS13": cảnh K1–K10 (K9 = nhánh gộp KĐT-2026-0031, K10 = tổng kết mở Chi tiết KĐT đã phê duyệt) và 16 nhánh phụ:
     chuyển MS14, 04 yếu tố Không OK, không đồng ý DS CQCM, họp 02 lần chưa thống nhất, TGĐ không đồng ý chủ trương, BM-14 không thông qua, TGĐ không đồng ý hồ sơ gộp,
     HT/AI kiểm tra Không đạt, chưa đủ điều kiện thẩm định, chủ trương thuộc Tập đoàn, **hồ sơ Mật ký bản cứng (47 → 77 → 78 → 48)**, **gửi VOffice lỗi → Gửi lại**;
     tuyến Tập đoàn (chủ trương KHCN thuộc Tập đoàn — bản chụp danh mục): **các Ban nhận xét → tiếp thu, ký trình lại (67–69)**, **Ban ĐTXD chưa đạt → bổ sung (70 → 68)**,
-    **TGĐ Tập đoàn ký chủ trương → lập hồ sơ KĐT (73 → 74 → 49)**, **hồ sơ gộp KĐT-2026-0031 thuộc Tập đoàn (72 → 73 → kết thúc)**.
-  - Việc của tôi: cột "Mã ĐXMS / KĐT", 13 việc đã xử lý trên hồ sơ KĐT mẫu; Giám sát tiến trình: 13 hồ sơ KĐT (MS13 / MS14). KĐT và hồ sơ KĐT tạo trên prototype nằm trong
+    **TGĐ Tập đoàn ký chủ trương → kết thúc hồ sơ chủ trương (73 → 74 → kết thúc; trước T45: → 49)**, **hồ sơ gộp KĐT-2026-0031 thuộc Tập đoàn (72 → 73 → kết thúc)**.
+  - Việc của tôi: cột "Mã ĐXMS / KĐT", 13 việc đã xử lý trên hồ sơ KĐT mẫu; Giám sát tiến trình: 13 hồ sơ KĐT (MS13 / MS14) *(T45: 17 — thêm 4 hồ sơ phê duyệt KĐT)*. KĐT và hồ sơ KĐT tạo trên prototype nằm trong
     trạng thái luồng (Reset luồng xoá như ĐXMS). Điểm ❓ của KĐT: P-50…P-62 (T11, đã rà theo bản 12/10), P-90…P-99 (T18).
   - **Theo IA-DXMS** (T31, plan `docs/dtms/prototype-T31-kdt-ia-chuan-bi.md`; INDEX IA-DXMS, D-67…D-71): IA-DXMS là danh sách thành phần màn cho KĐT, nội dung tờ trình theo BM-8.6.5.
     **K1, K2** — SCR-54 lọc thêm Khối → Đơn vị, Người tạo, Nhóm trạng thái, Mật, Ngày tạo; cột Ngày gửi thẩm định, Người tạo, Ngày tạo; SCR-75 lọc thêm CQCM, trạng thái với người
@@ -156,6 +157,19 @@ Mở `index.html` bằng Chrome hoặc Edge. Không cần mạng, không cần b
     lượt (CQCM phối hợp không thấy kết luận, nội dung cơ quan khác — BR-KDT-08-06), Đạt / Không đạt từng nội dung + kết luận hệ thống tính (27), phiếu BM-09 / BM-10 (29),
     tổng hợp vòng (46 / 55), nút **Ghi lại** = Lưu nháp. Không dựng: Hủy thẩm định (DX-09), người thẩm định dự kiến (D-71), Cập nhật người xem (P-189), Chi phí năm (P-202).
     ❓ P-201, P-202. MS14 chưa áp (chưa chạy luồng).
+  - **T45 — hai hồ sơ cho một KĐT, nhiều đề tài / dự án** (D-103, D-104; plan `docs/dtms/prototype-T45-kdt-2-ho-so.md`). *Thay mô tả "một hồ sơ chạy 1 → 60" ở các
+    mục trên.* Hồ sơ **Phê duyệt chủ trương KĐT** (`kind 'CT'`, mã `HS-2026-<4 số>`) chạy bước 1–48 (hai giai đoạn, BM-01) hoặc 1–38 + 61–62 (gộp BM-00, Phạm vi
+    "Chủ trương và KĐT"); TGĐ VHT ký ở 48 hoặc tuyến Tập đoàn của chủ trương → kết thúc hồ sơ, KĐT **Đã phê duyệt chủ trương**; gộp duyệt → KĐT **Đã phê duyệt**, không có hồ sơ KĐT.
+    Hồ sơ **Phê duyệt KĐT** (`kind 'KDT'`, mã `HS-2026-<4 số>-2`) do ĐVĐX tạo ở `#/kdt/<mã>/tao-ho-so`: Loại hồ sơ Phê duyệt KĐT, chọn đúng 1 **Hồ sơ chủ trương** đã duyệt (phạm vi
+    Chủ trương, chưa hồ sơ KĐT nào dùng), nhập **Tổng mức vốn KĐT** → **Luồng** chỉ đọc tính lại (cùng ngưỡng phân luồng). Lệch luồng chủ trương → thanh vàng trên form, hộp
+    "Xác nhận luồng KĐT khác luồng chủ trương" lúc Lưu (Giải trình bắt buộc khi MS13 → MS14), tag **Luồng khác chủ trương** ở Chi tiết hồ sơ và màn xử lý; ra MS15 → chặn Lưu.
+    MS13 chạy từ bước 49 (kế thừa biến / văn bản của hồ sơ chủ trương, caption "Bước 1–48 · Kế thừa từ hồ sơ chủ trương …"); MS14 = hồ sơ tĩnh "Đang xử lý" bước 46 (GIẢ LẬP).
+    Menu **Hồ sơ khoản đầu tư** tách hai mục: **Hồ sơ chủ trương KĐT** `#/ho-so-ct-kdt` (cột Phạm vi) và **Hồ sơ phê duyệt KĐT** `#/ho-so-pd-kdt` (cột Hồ sơ chủ trương,
+    Luồng khác chủ trương); `#/ho-so-kdt` chuyển sang `#/ho-so-ct-kdt`; Chi tiết hồ sơ giữ `#/ho-so-kdt/<mã>`. SCR-56 card Danh sách hồ sơ có Loại hồ sơ / Hồ sơ chủ trương; tab
+    Kết quả tách "Kết quả phê duyệt chủ trương" / "Kết quả phê duyệt KĐT". KĐT chọn **nhiều đề tài / dự án** (`nvs`, SCR-55 chọn nhiều; bảng bóc tách có cột Mã đề tài / dự án;
+    SCR-54 lọc "có chứa"; SCR-104 liệt kê mọi KĐT có đề tài). Mẫu: cặp CT + KĐT 0028 / 0028-2, 0027 / 0027-2 (quá hạn), 0026 / 0026-2 (MS14, lệch luồng), 0012 / 0012-2
+    (đã duyệt); KĐT-2026-0030, 0032 có 2 đề tài. **Cảnh demo** K7, K8, K10 tua hồ sơ chủ trương 0032 tới kết thúc, tạo `HS-2026-0032-2` rồi chạy tiếp 50 / 56 / kết thúc.
+    Test: `e2e/t45-kdt-2-ho-so.spec.mjs`.
   - `tools/capture.mjs` trang "Khoản đầu tư" 78 màn (số bước 12/10, 5 màn khối ký chung, 14 màn tuyến Tập đoàn; `SCR-61-27-l2` thẩm định lượt 02 có lịch sử — T31 B4); chụp riêng trang: `node tools/capture.mjs <thư-mục> "Khoản đầu tư"`.
 - Trạng thái lưu trong localStorage của trình duyệt. Dùng "Reset luồng" để chạy lại từ đầu.
 
@@ -170,6 +184,7 @@ Công cụ góp ý kiểu Figma, `js/review.js` (không thuộc giao diện app;
   → `review-merged.json`, `review.md` (theo màn: vị trí, vai, hồ sơ, bước BPMN, phần tử, chữ xung quanh, trả lời), `shots/Rnn.png` (khoanh phần tử).
 - Tệp JSON có trường `readme` giải thích từng trường; mỗi comment mang ngữ cảnh (route, SCR, vai, hồ sơ, bước, phần tử) và ảnh chụp dữ liệu
   prototype lúc ghim (`snapshots`) để mở lại đúng màn.
+- **Bản web (GitHub Pages):** `node tools/publish-pages.mjs` — đóng gói bản mới từ code hiện tại (như release, không zip, ra thư mục tạm), thay toàn bộ nội dung repo public `thaiphuc22/dtms-prototype` rồi push → **<https://thaiphuc22.github.io/dtms-prototype/>** (cập nhật sau ~1 phút). `--from <thư mục release>` đăng một bản đã đóng, `--no-push` chỉ commit. Repo đó chỉ chứa bản đóng gói, không chứa gì của `cds-vht`. Dữ liệu demo/comment vẫn nằm trong `localStorage` của từng người xem.
 - **Bản release (T33):** `npm run release -- --date YYYY-MM-DD` (= `node tools/release.mjs --check`) → `prototype/_release/DTMS-Prototype-<ngày>/` + `.zip`. Chỉ lấy `index.html`, `assets/`, `js/`, `HUONG-DAN.html` (+ `huong-dan/`); báo lỗi khi tham chiếu thiếu, tệp JS không được `index.html` nạp, `.env` / khoá / localhost; tự chèn `proto-build`; `HUONG-DAN-MO.txt` sinh từ `tools/release/HUONG-DAN-MO.txt` (sửa nội dung hướng dẫn ở đó). `--suffix NN` cho bản thứ hai trở đi trong cùng ngày (`DTMS-Prototype-2026-11-05-02`), `--out <thư mục>` đóng bản nháp ra ngoài `_release`, `--force` ghi đè bản cùng tên (không dùng cho bản đã gửi khách). `tools/release-check.mjs <zip>` giải nén và mở `file://` như người nhận (0 lỗi console, tua tới bước 1). `--menu gop` (mặc định) chèn `<meta name="proto-menu" content="gop">` — bản gửi mở sẵn phương án Gộp (khách chọn); bản dev vẫn Tách. Tài liệu `HUONG-DAN.html` (7 tác vụ) đi kèm gói; ảnh `huong-dan/*.jpg` chụp lại bằng `node tools/guide-shots.mjs` mỗi khi giao diện đổi (ghi `tools/release/guide-shots.json`: vai, nút thật từng màn). **Tour hướng dẫn** (`js/tour.js`, T33 B2): 7 tour theo 7 tác vụ — mảng `TOURS`, mỗi bước `enter` (dựng màn), `sel` (CSS hoặc [CSS, chữ]), `title`, `text`, `wait` + `do` (Làm hộ). Đổi giao diện làm mất phần tử thì `e2e/t33-tour.spec.mjs` báo (popover hiện "màn này có thể đã thay đổi"). Ẩn ở `?capture=1`, chế độ comment; `index.html?tour=n` mở thẳng; nút Hướng dẫn luôn hiện; bản gửi (proto-build khác `dev`) tự hiện danh sách tour mỗi lần mở, trừ khi người xem bỏ chọn "Tự hiện" (`dtms-tour.on`). Trước T33 đóng gói tay: proto-build và đoạn comment trong HUONG-DAN-MO.txt như sau:
 
   ```text
@@ -190,7 +205,7 @@ Công cụ góp ý kiểu Figma, `js/review.js` (không thuộc giao diện app;
 | `js/bpmn-tasks-ms02.js` | Luồng trang **MS02 ver1.1** bản 12/10 (T21 D-38): 61 bước, 29 cổng, 119 mũi tên — trùng topo MS01 v1.1, không 10a / 10b; trang còn bản MS01 cũ nằm dưới nên tool lấy hình vẽ sau. Sinh bằng `node tools/bpmn-flow-extract.mjs`. Không sửa tay |
 | `js/kdt.js` | Khoản đầu tư: SCR-54/55/56 + Tạo hồ sơ KĐT (khuôn SCR-25), SCR-66. Chi tiết hồ sơ KĐT (SCR-20) nằm trong `screens.js` (`kdtCaseDetail`) |
 | `js/ycbg.js` | Yêu cầu báo giá ĐXMS SCR-73/74 (`#/ycbg`) và 5 tab của SCR-29 Chi tiết ĐXMS (T16 B1); dữ liệu suy từ bước của hồ sơ. T16 B2: dùng chung cho KĐT — YCBG KĐT SCR-76/77 (`#/ycbg-kdt`), tab Căn cứ / Tồn kho / YCBG của SCR-56 |
-| `js/kdt-b2.js` | T16 B2: Danh sách hồ sơ KĐT SCR-75 (`#/ho-so-kdt`), tab Phân loại & định danh, Thành phần tham gia, Kết quả & triển khai của SCR-56 Chi tiết KĐT |
+| `js/kdt-b2.js` | T16 B2: Danh sách hồ sơ KĐT SCR-75 (T45: `#/ho-so-ct-kdt` chủ trương, `#/ho-so-pd-kdt` phê duyệt KĐT; `#/ho-so-kdt` chuyển hướng), tab Phân loại & định danh, Thành phần tham gia, Kết quả & triển khai của SCR-56 Chi tiết KĐT |
 | `js/thau.js` | T16 B2 Quản lý thầu (màn tĩnh, D-17): KHLCNT SCR-78…80 (`#/khlcnt`), gói thầu SCR-81/82 (`#/goi-thau`), nhà thầu & rủi ro SCR-83 (`#/nha-thau`); KHLCNT tạo / điều chỉnh lưu ở localStorage `dtms-proto-thau`; `Thau.kit` = khuôn danh sách / bảng / card / tab dùng chung cho B3 |
 | `js/eforms/ms22.js`, `ms23.js`, `ms23-01.js`, `ms23-02.js`, `ms23-nt-tl.js`, `ms24.js` | T25: eForm + biến, tài liệu, văn bản đầu ra của từng quy trình Hợp đồng (`EForms.hdBy`) |
 | `js/hop-dong.js` | T16 B3 Quản lý hợp đồng (T25: HĐ-2026-0052 đọc từ hồ sơ con, hợp đồng mẫu khác tĩnh — D-48): SCR-84 danh sách + Nhập hợp đồng (`#/hop-dong`), SCR-85 thêm mới từ KQLCNT (`#/hop-dong/create[/<gói>]`), SCR-86 chi tiết 10 tab theo MS22 / MS23 / MS24 (Thêm phụ lục, Tạo hồ sơ thanh toán), SCR-87 thỏa thuận khung (`#/thoa-thuan-khung`); localStorage `dtms-proto-hop-dong` |

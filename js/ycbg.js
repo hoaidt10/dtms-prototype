@@ -58,9 +58,13 @@
     /* T34: ĐXMS điều chỉnh / ĐXMS cũ xem dữ liệu của cả chuỗi điều chỉnh (căn cứ, tồn kho, báo giá, phiên bản gốc ở hồ sơ Phê duyệt của ĐXMS gốc). */
     const chain = kdt ? [] : Flow.dxmsChain(code).map((o) => o.code);
     const cases = kdt ? Flow.kdtCases().filter((c) => c.kdt === code) : S.allCases().filter((c) => (chain.length ? chain : [code]).includes(c.dxms));
-    const pd = kdt ? (cases.find((c) => c.st !== 'moved') || cases[0] || null)
+    /* T45 (D-103): căn cứ, tồn kho, báo giá của KĐT nằm ở hồ sơ chủ trương (kind CT); hồ sơ KĐT kế thừa lịch sử của hồ sơ CT → khi hồ sơ KĐT
+       (parent = hồ sơ CT) đang chạy thì đọc lịch sử luồng đang chạy. */
+    const ctCases = kdt ? cases.filter((c) => (c.kind || 'CT') === 'CT') : [];
+    const pd = kdt ? (ctCases.find((c) => c.st !== 'moved') || ctCases[0] || cases.find((c) => c.st !== 'moved') || cases[0] || null)
       : cases.find((c) => c.kind === 'PD' && c.st !== 'moved') || cases.find((c) => c.kind === 'PD') || null;
-    const live = !!(pd && pd.live && (!kdt || Flow.state.kdt === code));
+    const liveHs = !!(pd && (pd.live || (kdt && cases.some((c) => c.live && c.kind === 'KDT' && c.parent === pd.code))));
+    const live = !!(liveHs && (!kdt || Flow.state.kdt === code));
     const demo = D.demoCases[code] || (chain.length && D.demoCases[chain[0]]) || (live ? D.demoCases[kdt ? D.kdtCode0 : D.dxmsCode0] : null);
     /* Hồ sơ KĐT chuyển sang MS14 mang theo căn cứ, tồn kho, báo giá của hồ sơ MS13 → coi như đã qua các bước đó. */
     const reached = !pd ? 0 : live ? null : pd.st === 'processing' && pd.flow !== 'MS14' ? (pd.task || 1) : pd.st === 'stopped' && !kdt ? 11 : 99;
@@ -255,7 +259,7 @@
       notes: [
         'Khuôn profile-detail: card Thông tin chung lưới 3 cột, các card bảng bên dưới; nút Xuất file trên hàng tiêu đề tải phiếu YCBG (hạng mục, số lượng, hạn) — cùng nội dung email service task 09 gửi NCC.',
         'Hạng mục yêu cầu = phần còn phải mua sau rà soát tồn kho (task 07). Nhà cung cấp nhận yêu cầu chọn ở task 08 (lọc theo ngành hàng; B0.5 #3 thêm NCC mới). Báo giá = tài liệu "Báo giá — (NCC)" tải lên ở task 10.',
-        'So sánh báo giá: đơn giá thấp nhất trong các báo giá còn hiệu lực là cơ sở giá của hạng mục; báo giá hết hiệu lực hiện mờ, không dùng. Kết quả Đạt / Không đạt là quyết định ở task 10 (DX-03: AI kiểm tra báo giá ghi biến quoteCheck).',
+        'Card So sánh báo giá (cơ sở giá = đơn giá thấp nhất trong báo giá còn hiệu lực) <b>tạm ẩn</b> ở mọi màn (10/11/2026) — Thầu so sánh, đánh giá báo giá ngoài hệ thống (P-219). Kết quả Đạt / Không đạt là quyết định ở task 10.',
         'Mã ĐXMS, mã hồ sơ mở màn chi tiết tương ứng.',
       ],
       q: ['P-06', 'P-26', 'P-72'], src: 'profile-management/profile-detail · /khcn-profile-management/:id/view',
@@ -286,7 +290,7 @@
         ${table([['Mã nhà cung cấp', 140], ['Tên nhà cung cấp', 280], ['Email nhận yêu cầu báo giá', 220], ['Tình trạng', 150, 'c'], ['Ngày báo giá', 120], ['Hiệu lực đến', 120], ['Tệp báo giá', 220]], y.ncc,
           (n, i) => `${ord(i)}<td>${esc(n.code)}</td><td>${clamp(n.name)}</td><td>${clamp(n.email)}</td><td class="c">${NST(n)}</td><td class="num">${n.date ? esc(n.date) : dash}</td>
             <td class="num">${n.valid ? esc(n.valid) : dash}</td><td>${n.got ? `<a class="link-red" href="#" data-dl="${esc(qFile(n))}">${esc(qFile(n))}</a>` : dash}</td>`)}</section>
-      ${compareCard(y)}
+      ${''/* [T47] ẩn card So sánh báo giá (người dùng 10/11: ẩn ở mọi màn) — bật lại: ${compareCard(y)} */}
       <section class="vcard pad24"><h3>Lịch sử xử lý</h3>
         ${table([['Thời gian', 140], ['Người thực hiện', 220], ['Nội dung', 420]], hist, (h, i) => `${ord(i)}<td class="num">${esc(h.at)}</td><td>${esc(h.who)}</td><td>${clamp(h.act)}</td>`)}</section>
     </div>`;
@@ -321,7 +325,9 @@
   }
   function tabTonKho(g) {
     if (!g.pd || !g.did(7)) return emptyCard('Rà soát tồn kho', 'Chưa có kết quả rà soát tồn kho. Hệ thống lấy dữ liệu tồn kho từ phân hệ Quản lý kho sau khi hồ sơ bóc tách căn cứ.');
-    const hold = g.pd.st === 'processing' ? ['Đang tạm giữ', 'warning'] : g.pd.st === 'done' ? ['Đã chốt sử dụng', 'success'] : ['Đã giải phóng', 'default'];
+    /* T45: KĐT mới duyệt chủ trương (BM-01, chưa có hồ sơ KĐT đã duyệt) vẫn tạm giữ tồn kho. */
+    const ctOnly = g.kdt && g.pd.st === 'done' && !(window.Kdt && window.Kdt.meta(g.x).approved);
+    const hold = g.pd.st === 'processing' || ctOnly ? ['Đang tạm giữ', 'warning'] : g.pd.st === 'done' ? ['Đã chốt sử dụng', 'success'] : ['Đã giải phóng', 'default'];
     const at7 = g.at(7, 3) || g.pd.created;
     const rstk = g.ref.rstk || `RSTK-${g.x.code.slice(5)}`;
     const snaps = [{ code: rstk, at: at7, by: g.pd.code, why: `Rà soát lần đầu (hồ sơ Phê duyệt ${g.obj})`, cur: true }];
@@ -353,10 +359,11 @@
       ${table([['Trạng thái', 169, 'c'], ['Mã yêu cầu báo giá', 180], ['Lần', 60, 'c'], ['Nhà cung cấp nhận', 360], ['Số báo giá đã nhận', 140, 'c'], ['Ngày gửi', 120], ['Hạn báo giá', 120]], ys,
         (y, i) => `${ord(i)}<td class="c">${badge(...YST[y.status])}</td><td><a class="link" data-go="${yHref(y)}">${esc(y.code)}</a></td><td class="c">${y.lan}</td>
           <td>${clamp(y.ncc.map((n) => n.name).join('; '))}</td><td class="c">${y.ncc.filter((n) => n.got).length}</td><td class="num">${esc(y.sent)}</td><td class="num">${esc(y.due)}</td>`)}</section>
-      ${compareCard(last, `So sánh báo giá và cơ sở giá — ${esc(last.code)}`)}
+      ${''/* [T47] ẩn So sánh báo giá và cơ sở giá (10/11) — bật lại: compareCard(last, `So sánh báo giá và cơ sở giá — ${esc(last.code)}`) */}
+      ${''/* [T47] ẩn Lịch sử cơ sở giá (10/11/2026) — bật lại:
       <section class="vcard pad24"><h3>Lịch sử cơ sở giá</h3>
         ${table([['Yêu cầu báo giá', 180], ['Ngày', 120], ['Kết quả', 169, 'c'], ['Tổng giá trị theo cơ sở giá (tỷ đồng)', 260, 'r']], totals,
-          (t, i) => `${ord(i)}<td>${esc(t.y.code)}</td><td class="num">${esc(addDays(t.y.sent, 6))}</td><td class="c">${badge(...YST[t.y.status])}</td><td class="r num">${ty(t.total, 2)}</td>`)}</section>`;
+          (t, i) => `${ord(i)}<td>${esc(t.y.code)}</td><td class="num">${esc(addDays(t.y.sent, 6))}</td><td class="c">${badge(...YST[t.y.status])}</td><td class="r num">${ty(t.total, 2)}</td>`)}</section> */}`;
   }
   /* Phiên bản hồ sơ: v1 khi lập dự thảo (task 11/12); v2 khi hoàn chỉnh theo ý kiến CQCM (task 27) — kết quả ký BM-04 của v1 không còn hiệu lực. */
   function versionsOf(g) {
