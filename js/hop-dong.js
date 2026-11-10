@@ -742,5 +742,5 @@
   /* Mở một tab của Chi tiết hợp đồng (công cụ demo). */
   const setTab = (code, tab) => K().setTab('hd:' + code, tab);
   const openTab = (code, tab) => { setTab(code, tab); location.hash = '#/hop-dong/' + encodeURIComponent(code); };
-  window.HopDong = { find: hdOf, kit: K, pkgOf: (h) => (h.pkg ? T().pkOf(h.pkg) : null), checkRows, setTab, openTab, route, enter, reset, byPkg, all, eff, prog, paidSum, remain, advOf, accSum, lateMs, guarWarn, doneRate, HD_ST, FW, called, ordersOf, hdSoon, warnDays, TODAY, days, dk };
+  window.HopDong = { find: hdOf, kit: K, pkgOf: (h) => (h.pkg ? T().pkOf(h.pkg) : null), checkRows, setTab, openTab, route, enter, reset, byPkg, all, eff, prog, paidSum, remain, advOf, accSum, lateMs, guarWarn, doneRate, HD_ST, PAY_ST, FW, called, ordersOf, hdSoon, warnDays, TODAY, days, dk };
 })();

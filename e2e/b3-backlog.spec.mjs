@@ -183,7 +183,7 @@ test('Tổng quan: 7 tab không lỗi; ô chỉ số khớp dữ liệu; lọc l
   await expect(card(page, 'Hợp đồng chậm tiến độ').locator('tbody tr')).toHaveCount(1);
   await expect(card(page, 'Hồ sơ có kiến nghị / khiếu nại đang xử lý').locator('tbody tr')).toHaveCount(1);
   await page.locator('[data-tqtab="td"]').click();
-  await expect(page.locator('.bc-card', { hasText: 'Từ nhu cầu đến hợp đồng' }).locator('.bc-hr')).toHaveCount(7);
+  await expect(page.locator('.bc-card', { hasText: 'Từ nhu cầu đến hợp đồng' }).locator('.bc-hr')).toHaveCount(10);
   await page.locator('[data-rp-refresh="tq"]').click();
   expect(await lastToast(page)).toContain('Đã cập nhật số liệu Dashboard');
   expect(page.errors).toEqual([]);
