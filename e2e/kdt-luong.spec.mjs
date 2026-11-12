@@ -31,7 +31,7 @@ async function openMine(page, task) {
   const tok = s.mine.find((t) => task == null || String(t.task) === String(task));
   expect(tok, `vai hiện tại phải có việc ${task ?? ''}`).toBeTruthy();
   await page.evaluate((id) => { location.hash = `#/task/${id}`; }, tok.id);
-  await expect(page.locator('.pg-title')).toContainText('Xem chi tiết hồ sơ');
+  await expect(page.locator('.pg-title')).toHaveText(/Xem chi tiết hồ sơ|Xử lý hồ sơ/);
   return tok;
 }
 // Công cụ demo › Hồ sơ demo KĐT-2026-0032 rồi mở nhánh phụ thứ i.
@@ -89,7 +89,8 @@ test('Cảnh 1–3: tạo KĐT, tạo hồ sơ start MS13; task 1–10; Ban Tài
   // SCR-57 — Ban Tài chính.
   await as(page, 'thu');
   await page.evaluate(() => { location.hash = '#/viec-cua-toi'; });
-  const r57 = page.locator('.vtable tbody tr', { hasText: 'Xác nhận hình thành TSCĐ' }).filter({ hasText: 'Chưa xử lý' });
+  // T58: hồ sơ mẫu HS-2026-0029 cũng có việc chờ cùng tên → lọc theo mã KĐT.
+  const r57 = page.locator('.vtable tbody tr', { hasText: 'Xác nhận hình thành TSCĐ' }).filter({ hasText: 'Chưa xử lý' }).filter({ hasText: 'KĐT-2026-0032' });
   await expect(r57).toContainText('KĐT-2026-0032');
   // T34 v0.2 (D-92): Việc của tôi không có cột Loại / Mã hồ sơ — mã hồ sơ (hồ sơ chủ trương, T45) ở data-code.
   await expect(r57).toHaveAttribute('data-code', 'HS-2026-0032');
@@ -105,9 +106,9 @@ test('Cảnh 1–3: tạo KĐT, tạo hồ sơ start MS13; task 1–10; Ban Tài
   await openMine(page, 12);
   const m = await openForm(page, 'Xác nhận OK');
   await expect(m).toContainText('Xác nhận 04 yếu tố định danh');
-  await expect(m).toContainText('MS13 · KĐT đơn giản');
+  await expect(m).toContainText('Đơn giản'); // T56 Q7: Nhóm KĐT không ghi mã
   await expect(m).toContainText('Viễn thông - CNTT: dưới 160 tỷ đồng');
-  await expect(m).toContainText('Hai giai đoạn (BM-01 → BM-03)');
+  await expect(m).toContainText('BM01→BM03');
   await expect(m.locator('.ef-text', { hasText: 'Xác nhận hình thành TSCĐ' })).toContainText('OK');
   await expect(m.locator('.vbadge', { hasText: /^Không đạt$/ })).toHaveCount(2);
   expect(await mainText(page)).not.toMatch(BA);
@@ -124,13 +125,13 @@ test('Cảnh 1–3: tạo KĐT, tạo hồ sơ start MS13; task 1–10; Ban Tài
   await openMine(page, 15);
   await expect(page.locator('.task-acts [data-act].primary')).toHaveText('Hoàn thành dự thảo');
   await expect(gi).toContainText('MS13 · KĐT đơn giản');
-  await expect(gi).toContainText('Hai giai đoạn (BM-01 → BM-03)');
+  await expect(gi).toContainText('BM01→BM03');
   await expect(gi).toContainText('Tổng mức vốn thực tế (gồm VAT)118,50 tỷ đồng');
   // Danh sách KĐT: trạng thái suy từ hồ sơ.
   await page.evaluate(() => { location.hash = '#/kdt'; });
   const row = page.locator('.vtable tbody tr', { hasText: 'KĐT-2026-0032' });
   await expect(row.locator('.vbadge')).toHaveText('Đang lập chủ trương');
-  await expect(row).toContainText('MS13');
+  await expect(row).toContainText('Đơn giản'); // T56 Q7
   expect(page.errors).toEqual([]);
 });
 
@@ -140,7 +141,7 @@ test('Nhánh phụ SCR-66: KĐT-2026-0033 (lĩnh vực Khác, 96 tỷ) vượt n
   expect(await page.evaluate(() => [Flow.state.persona, Flow.state.tokens.map((t) => t.task)])).toEqual(['lan', [12]]);
   const f = await openForm(page, 'Xác nhận OK');
   await expect(f.locator('.banner-bad')).toContainText('96,00 tỷ đồng không thuộc ngưỡng MS13 (Lĩnh vực khác: dưới 90 tỷ đồng)');
-  await expect(f).toContainText('MS14 · KĐT thông thường');
+  await expect(f).toContainText('Thông thường'); // T56 Q7
   await f.locator('#ok').click();
   const m = page.locator('main');
   await expect(page).toHaveURL(/#\/kdt\/K%C4%90T-2026-0033\/chuyen-luong$/);
@@ -150,7 +151,7 @@ test('Nhánh phụ SCR-66: KĐT-2026-0033 (lĩnh vực Khác, 96 tỷ) vượt n
   await expect(m).toContainText('Đã chuyển luồng');
   await expect(m.locator('.vtable tbody tr')).toHaveCount(1);
   await expect(m.locator('.vtable tbody tr')).toContainText('HS-2026-0127');
-  await expect(m.locator('.vtable tbody tr')).toContainText('MS14 · KĐT thông thường');
+  await expect(m.locator('.vtable tbody tr')).toContainText('Thông thường'); // T56 Q7
   expect(await mainText(page)).not.toMatch(BA);
   // Danh sách KĐT; Chi tiết KĐT › Danh sách hồ sơ có liên kết tới thông báo.
   await page.evaluate(() => { location.hash = '#/kdt'; });
@@ -217,7 +218,7 @@ test('Cảnh 4–6: chủ trương BM-01, thẩm định vòng BM-01 ở khối 
   await openMine(page, 17);
   const t17 = await formText(page);
   expect(t17).toContain('AI hỗ trợ soạn nội dung đề xuất');
-  expect(t17).toContain('Hai giai đoạn (BM-01 → BM-03)');
+  expect(t17).toContain('BM01→BM03');
   // Kết quả bước 13 (thẩm quyền): KHCN 118,5 tỷ → VHT / VHT.
   expect(t17).toContain('Phê duyệt chủ trương: VHT · Phê duyệt KĐT: VHT');
   expect(await primary(page)).toBe(true);
@@ -481,8 +482,10 @@ test('Cảnh 7–8: BM-03 + Checklist 02 kế thừa chủ trương, thẩm đ�
   // Chi tiết KĐT: Đã phê duyệt, văn bản đầu ra, nút Lập KHLCNT (T16 B2, thay Tạo gói thầu mờ).
   await expect(page).toHaveURL(/#\/kdt\/K%C4%90T-2026-0032$/);
   await expect(m).toContainText('Đã phê duyệt');
+  await page.locator('[data-dtab="tai-lieu"]').click(); // 12/11: văn bản ở tab Tài liệu & văn bản
   await expect(m).toContainText('BM-18 Quyết định phê duyệt KĐT');
   await expect(m).toContainText('BM-14 Báo cáo kết quả thẩm định KĐT');
+  await page.locator('[data-dtab="info"]').click();
   await expect(page.locator('.pg-head [data-go^="khlcnt/create/KDT/"]')).toHaveText('Lập KHLCNT');
   await page.evaluate(() => { location.hash = '#/kdt'; });
   await expect(page.locator('.vtable tbody tr', { hasText: 'KĐT-2026-0032' }).locator('.vbadge')).toHaveText('Đã phê duyệt');
@@ -496,7 +499,7 @@ test('Cảnh 9: nhánh gộp BM-00 (KĐT-2026-0031) — dự thảo, Chỉ huy c
   const run = async (who, task, label) => { await as(page, who); await openMine(page, task); expect(await primary(page, label)).toBe(true); };
   const gi = page.locator('.tmain .ginfo').first();
   await expect(gi).toContainText('Mã KĐTKĐT-2026-0031');
-  await expect(gi).toContainText('Nhánh hồ sơGộp BM-00');
+  await expect(gi).toContainText('Nhánh hồ sơBM00');
   expect(await formText(page)).toContain('AI hỗ trợ lập dự thảo văn bản gộp');
   const bm00 = await previewText(page, 'BM-00');
   expect(bm00).toContain('A. CHỦ TRƯƠNG ĐẦU TƯ');
@@ -544,7 +547,9 @@ test('Cảnh 9: nhánh gộp BM-00 (KĐT-2026-0031) — dự thảo, Chỉ huy c
   expect(await mainText(page)).not.toMatch(BA);
   expect(await primary(page, 'Ký phê duyệt hồ sơ gộp')).toBe(true);
   await expect(page).toHaveURL(/#\/kdt\/K%C4%90T-2026-0031$/);
-  await expect(m).toContainText('BM-00 Hồ sơ chủ trương và KĐT (văn bản gộp)');
+  await page.locator('[data-dtab="tai-lieu"]').click(); // 12/11: văn bản ở tab Tài liệu & văn bản
+  await expect(m).toContainText('BM-00 Hồ sơ chủ trương và KĐT (văn bản gộp'); // tên như Chi tiết hồ sơ: (văn bản gộp, đã phê duyệt)
+  await page.locator('[data-dtab="info"]').click();
   await expect(m.locator('[data-kdt-profiles] tbody tr')).toHaveCount(1);
   await page.evaluate(() => { location.hash = '#/kdt'; });
   await expect(page.locator('.vtable tbody tr', { hasText: 'KĐT-2026-0031' }).locator('.vbadge')).toHaveText('Đã phê duyệt');

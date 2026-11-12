@@ -186,9 +186,11 @@
     if (L.page > pages) L.page = pages;
     const from = (L.page - 1) * L.size;
     const txt = (k, label) => `<div class="vfield"><div class="lr"><label>${label}</label></div><input class="vctl" data-tf="${o.id}:${k}" maxlength="255" placeholder="Nhập ${label.toLowerCase()}" value="${esc(L.d[k])}"></div>`;
+    /* T56: khoảng ngày = hai vht-calendar + "-" (UI.vDateRange). */
+    const range = (a, b, label) => window.UI.vDateRange({ label, from: [`data-tf="${o.id}:${a}"`, L.d[a]], to: [`data-tf="${o.id}:${b}"`, L.d[b]] });
     const sel = (k, label, opt) => `<div class="vfield"><div class="lr"><label>${label}</label></div>${vSelect(Object.assign({ id: `tf-${o.id}-${k}`, value: L.d[k], clear: true, searchable: true,
       placeholder: 'Chọn ' + label.toLowerCase(), onChange: (v) => { L.d[k] = v; rerender(); } }, opt))}</div>`;
-    const adv = `<form class="adv" data-tadv="${o.id}"><div class="grid3">${o.adv(txt, sel)}</div>
+    const adv = `<form class="adv" data-tadv="${o.id}"><div class="grid3">${o.adv(txt, sel, range)}</div>
       <div class="acts"><button type="button" class="vbtn secondary" data-tl="${o.id}:reset">Làm mới</button><button type="submit" class="vbtn primary">Tìm kiếm</button></div></form>`;
     const body = rows.slice(from, from + L.size).map((r, i) => `<tr class="click" data-go="${o.href(r)}" data-code="${esc(r.code)}"><td class="ord">${from + i + 1}</td>${o.cell(r)}</tr>`).join('');
     return `<div class="pg">
@@ -222,7 +224,7 @@
       empty: () => ({ code: '', title: '', src: '', kind: [], unit: null, st: [], qc: null, lv: null, fund: null, owner: [], from: '', to: '' }),
       match: (k, f) => has(f.code, k.code) && has(f.title, k.title) && has(f.src, k.srcCode) && inSet(f.kind, k.kind) && (!f.unit || k.unit === f.unit) && inSet(f.st, k.st)
         && (!f.qc || k.qc === f.qc) && (!f.lv || k.lv === f.lv) && (!f.fund || k.fund === f.fund) && inSet(f.owner, k.owner) && inRange(k.qdDate, f.from, f.to),
-      adv: (txt, sel) => `${txt('code', 'Mã KHLCNT')}${txt('title', 'Tên KHLCNT')}${txt('src', 'Mã đối tượng nguồn')}
+      adv: (txt, sel, range) => `${txt('code', 'Mã KHLCNT')}${txt('title', 'Tên KHLCNT')}${txt('src', 'Mã đối tượng nguồn')}
         ${sel('kind', 'Loại đối tượng nguồn', { multi: true, searchable: false, options: [['DXMS', SRC.DXMS], ['KDT', SRC.KDT]].map(([value, label]) => ({ value, label })) })}
         ${sel('unit', 'Đơn vị lập', { options: [...new Set(khAll().map(khRow).map((k) => k.unit))].map((u) => ({ value: u, label: u })) })}
         ${sel('st', 'Trạng thái', { multi: true, searchable: false, options: Object.entries(KH_ST).map(([value, [label]]) => ({ value, label })) })}
@@ -230,7 +232,7 @@
         ${sel('lv', 'Cấp phê duyệt', { searchable: false, options: Object.entries(LEVEL).map(([value, label]) => ({ value, label })) })}
         ${sel('fund', 'Nguồn vốn', { options: catOpts('nguon-von') })}
         ${sel('owner', 'Người phụ trách', { multi: true, options: [...new Set(khAll().map(ownerOf))].map((u) => ({ value: u, label: u })) })}
-        ${txt('from', 'Ngày QĐ KHLCNT từ')}${txt('to', 'Ngày QĐ KHLCNT đến')}`,
+        ${range('from', 'to', 'Ngày QĐ KHLCNT')}`,
       cols: [['Trạng thái', 190, 'c'], ['Mã KHLCNT', 170], ['Tên KHLCNT', 320], ['Quy chế áp dụng', 170], ['Cấp phê duyệt', 130], ['Người phụ trách', 170], ['Loại đối tượng nguồn', 170], ['Mã đối tượng nguồn', 160], ['Đơn vị lập', 200],
         ['Số QĐ KHLCNT', 140], ['Ngày QĐ KHLCNT', 130], ['Ngày đăng tải KHLCNT', 160], ['Số gói thầu', 100, 'c'], ['Tổng giá gói thầu (tỷ đồng)', 190, 'r'], ['Ngày cập nhật', 130]],
       href: khHref,

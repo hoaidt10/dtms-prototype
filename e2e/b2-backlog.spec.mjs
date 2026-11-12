@@ -23,7 +23,7 @@ test('Menu: KĐT và Quản lý thầu mở màn thật; route cũ #/ph/… chuy
   // T45 §1.7: menu Hồ sơ khoản đầu tư tách hai mục — route cũ về Danh sách hồ sơ chủ trương KĐT.
   await as(page, 'minh', '#/ph/ho-so-kdt');
   await expect(page).toHaveURL(/#\/ho-so-ct-kdt$/);
-  await expect(page.locator('.sb-nav .nav.active')).toHaveText('Hồ sơ chủ trương KĐT');
+  await expect(page.locator('.sb-nav .nav.active')).toHaveText('Chủ trương KĐT'); // T56 Q2
   // D-76: menu Thầu ẩn ở bản demo ĐXMS — bật cờ để kiểm mục menu.
   await page.evaluate(() => { D.show.menuThau = true; });
   for (const [h, t] of [['#/ph/ycbg-kdt', 'Danh sách yêu cầu báo giá'], ['#/ph/khlcnt', 'Danh sách kế hoạch lựa chọn nhà thầu'], ['#/ph/goi-thau', 'Danh sách gói thầu'], ['#/ph/ds-cam', 'Nhà thầu & kiểm soát rủi ro']]) {
@@ -39,7 +39,7 @@ test('Danh sách hồ sơ KĐT: mọi hồ sơ mở được; tìm kiếm nâng 
   await as(page, 'minh', '#/ho-so-kdt');
   const n = await page.locator('main .vtable tbody tr').count();
   expect(n).toBe(10);
-  await expect(page.locator('main .pager, main [data-pager="hkdt"]').first()).toContainText('14');
+  await expect(page.locator('main .pager, main [data-pager="hkdt"]').first()).toContainText('20'); // T58: thêm 6 hồ sơ chủ trương mẫu
   await page.locator('#hk-kw').fill('HS-2026-0012');
   await page.locator('#hk-kw').press('Enter');
   await expect(page.locator('main .vtable tbody tr')).toHaveCount(1);
@@ -57,9 +57,9 @@ test('Danh sách hồ sơ KĐT: mọi hồ sơ mở được; tìm kiếm nâng 
   await ms14();
   await expect(page.locator('main .vtable tbody tr')).toHaveCount(1);
   await expect(page.locator('main .vtable tbody tr')).toContainText('HS-2026-0019');
-  // T45: Danh sách hồ sơ phê duyệt KĐT — 4 hồ sơ mẫu, hồ sơ MS14 là HS-2026-0026-2 (luồng khác chủ trương).
+  // T45: Danh sách hồ sơ phê duyệt KĐT — 5 hồ sơ mẫu (T58 thêm HS-2026-0039-2), hồ sơ MS14 là HS-2026-0026-2 (luồng khác chủ trương).
   await go(page, '#/ho-so-pd-kdt');
-  await expect(page.locator('main .vtable tbody tr')).toHaveCount(4);
+  await expect(page.locator('main .vtable tbody tr')).toHaveCount(5);
   await ms14();
   await expect(page.locator('main .vtable tbody tr')).toHaveCount(1);
   await expect(page.locator('main .vtable tbody tr')).toContainText('HS-2026-0026-2');
@@ -67,10 +67,27 @@ test('Danh sách hồ sơ KĐT: mọi hồ sơ mở được; tìm kiếm nâng 
   expect(page.errors).toEqual([]);
 });
 
-test('YCBG KĐT: danh sách theo hồ sơ KĐT đã qua bước 8, chi tiết, xuất file', async ({ page }) => {
+test('YCBG gộp (12/11): menu cấp 1 Yêu cầu báo giá, lọc Loại đối tượng, #/ycbg-kdt chuyển hướng', async ({ page }) => {
   await as(page, 'minh', '#/ycbg-kdt');
+  await expect(page).toHaveURL(/#\/ycbg$/);
+  await expect(page.locator('.sb-nav .nav.active')).toHaveText('Yêu cầu báo giá');
+  await expect(page.locator('main .vtable thead')).toContainText('Loại đối tượng');
   const rows = page.locator('main .vtable tbody tr');
-  await expect(rows.first()).toContainText('YCBG-KĐT-');
+  const total = await page.evaluate(() => Ycbg.allYcbg().length);
+  expect(total).toBeGreaterThan(await page.evaluate(() => Ycbg.allYcbg('kdt').length));
+  await page.locator('[data-y="adv"]').click();
+  await page.locator('[data-vsel="yf-obj"]').click();
+  await page.locator('.vsel-opt', { hasText: /^KĐT$/ }).first().click();
+  await page.locator('[data-yadv] button[type="submit"]').click();
+  const n = await rows.count();
+  for (let i = 0; i < n; i++) await expect(rows.nth(i).locator('td').nth(4)).toHaveText('KĐT');
+  expect(page.errors).toEqual([]);
+});
+
+test('YCBG KĐT: danh sách theo hồ sơ KĐT đã qua bước 8, chi tiết, xuất file', async ({ page }) => {
+  await as(page, 'minh', '#/ycbg');
+  const rows = page.locator('main .vtable tbody tr');
+  await expect(rows.filter({ hasText: 'YCBG-KĐT-' }).first()).toBeVisible();
   const codes = await page.evaluate(() => Ycbg.allYcbg('kdt').map((y) => y.dxms));
   expect(codes).not.toContain('KĐT-2026-0033');
   expect(codes).toContain('KĐT-2026-0012');
@@ -84,15 +101,15 @@ test('YCBG KĐT: danh sách theo hồ sơ KĐT đã qua bước 8, chi tiết, x
   await page.locator('.pg-head [data-y-export]').click();
   expect((await dl).suggestedFilename()).toMatch(/^YCBG-KĐT-2026-0012-01\.csv$/);
   await page.locator('.pg-head .vbtn.back').click();
-  await expect(page).toHaveURL(/#\/ycbg-kdt$/);
+  await expect(page).toHaveURL(/#\/ycbg$/);
   expect(await mainText(page)).not.toMatch(BA);
   expect(page.errors).toEqual([]);
 });
 
-test('Chi tiết KĐT: 7 tab — căn cứ, tồn kho, YCBG, phân loại, thành phần, kết quả; KĐT đã duyệt có KHLCNT', async ({ page }) => {
+test('Chi tiết KĐT: 8 tab — căn cứ, tồn kho, YCBG, phân loại, thành phần, kết quả; KĐT đã duyệt có KHLCNT', async ({ page }) => {
   await as(page, 'minh', KDT('KĐT-2026-0012'));
   const tabs = page.locator('.dx-tabs [data-dtab]');
-  await expect(tabs).toHaveText(['Thông tin chung', 'Căn cứ & hạng mục', 'Rà soát tồn kho', 'Yêu cầu báo giá', 'Phân loại & định danh', 'Thành phần tham gia', 'Kết quả & triển khai']);
+  await expect(tabs).toHaveText(['Thông tin chung', 'Căn cứ & hạng mục', 'Rà soát tồn kho', 'Yêu cầu báo giá', 'Phân loại & định danh', 'Tài liệu & văn bản', 'Thành phần tham gia', 'Kết quả & triển khai']);
   await expect(page.locator('[data-kdt-profiles]')).toBeVisible();
   await tabs.filter({ hasText: 'Căn cứ & hạng mục' }).click();
   await expect(card(page, 'Căn cứ hình thành KĐT')).toContainText('2318/QĐ-VHT');
@@ -114,8 +131,11 @@ test('Chi tiết KĐT: 7 tab — căn cứ, tồn kho, YCBG, phân loại, thàn
   await expect(card(page, 'Kết quả phê duyệt chủ trương')).toContainText('HS-2026-0012');
   await expect(card(page, 'Kết quả phê duyệt KĐT')).toContainText('138,50 tỷ đồng');
   await expect(card(page, 'Kết quả phê duyệt KĐT')).toContainText('HS-2026-0012-2');
-  await expect(card(page, 'Văn bản đầu ra').locator('tbody tr')).toHaveCount(3);
   await expect(card(page, 'Triển khai mua sắm')).toContainText('KHLCNT-2026-0013');
+  // 12/11: Văn bản đầu ra chuyển sang tab Tài liệu & văn bản (như Chi tiết ĐXMS).
+  await tabs.filter({ hasText: 'Tài liệu & văn bản' }).click();
+  await expect(card(page, 'Văn bản đầu ra').locator('tbody tr')).toHaveCount(3);
+  await expect(card(page, 'Danh sách tài liệu')).toBeVisible();
   // Đã có KHLCNT → không còn nút Lập KHLCNT
   await expect(page.locator('.pg-head', { hasText: 'Lập KHLCNT' })).toHaveCount(0);
   expect(await mainText(page)).not.toMatch(BA);

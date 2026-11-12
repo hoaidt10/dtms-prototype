@@ -82,7 +82,9 @@
   }
 
   /* ---------- Yêu cầu báo giá: một YCBG mỗi lần chạy task 08 (gửi ở service task 09, nhận và kiểm tra ở task 10) ---------- */
-  const YST = { DRAFT: ['Nháp', 'default'], WAIT: ['Đang chờ báo giá', 'info'], GOT: ['Đã nhận báo giá', 'warning'], OK: ['Báo giá đạt', 'success'], FAIL: ['Báo giá không đạt', 'error'], CANCEL: ['Đã huỷ', 'default'] };
+  /* T59 #56 (D-114 Q7): "Đã nhận báo giá" gộp vào "Đang chờ báo giá" khi hiển thị và lọc (vẫn chờ kết quả duyệt; số báo giá đã nhận ở cột riêng).
+     GOT giữ làm trạng thái nội bộ cho logic (got / cơ sở giá). [T59 #56] bản cũ: GOT: ['Đã nhận báo giá', 'warning'] */
+  const YST = { DRAFT: ['Nháp', 'default'], WAIT: ['Đang chờ báo giá', 'info'], GOT: ['Đang chờ báo giá', 'info'], OK: ['Báo giá đạt', 'success'], FAIL: ['Báo giá không đạt', 'error'], CANCEL: ['Đã huỷ', 'default'] };
   function ycbgOf(code) {
     const g = dataOf(code);
     if (!g || !g.pd || !g.did(8)) return [];
@@ -136,22 +138,28 @@
     .concat(kind !== 'kdt' && window.YcbgForm ? window.YcbgForm.all() : []);
 
   /* ---------- SCR-73 Danh sách yêu cầu báo giá ĐXMS / SCR-76 YCBG KĐT (khuôn profile-list) ---------- */
-  const emptyF = () => ({ code: '', dxms: '', hs: '', unit: null, st: [], ncc: null, from: '', to: '', nv: null, creator: null });
+  /* Trạng thái hiển thị / lọc (Q7): GOT tính là WAIT; danh sách lựa chọn không có GOT. */
+  const stShow = (st) => (st === 'GOT' ? 'WAIT' : st);
+  const stOpts = () => Object.entries(YST).filter(([value]) => value !== 'GOT').map(([value, [label]]) => ({ value, label }));
+  const emptyF = () => ({ code: '', dxms: '', hs: '', unit: null, st: [], ncc: null, from: '', to: '', nv: null, creator: null, obj: null });
   const newL = () => ({ kw: '', adv: false, f: emptyF(), d: emptyF(), page: 1, size: 10, psOpen: false });
-  const LS = { dxms: newL(), kdt: newL() };
+  const LS = { dxms: newL(), kdt: newL(), all: newL() };
   /* Nhãn theo đối tượng cha: ĐXMS (#/ycbg) hoặc KĐT (#/ycbg-kdt). */
   const K = {
     dxms: { obj: 'ĐXMS', objHref: (c) => 'dxms/' + encodeURIComponent(c) },
     kdt: { obj: 'KĐT', objHref: (c) => 'kdt/' + encodeURIComponent(c) },
+    /* Người dùng 12/11: menu gộp #/ycbg — cả YCBG của ĐXMS và KĐT. */
+    all: { obj: 'ĐXMS / KĐT', all: true },
   };
-  let kind = 'dxms';
+  const objOf = (y) => K[y.kdt ? 'kdt' : 'dxms'];
+  let kind = 'all';
   function filtered(k) {
     const L = LS[k], f = L.f, n = norm;
     /* T29 B3b (DTMS_CN_0150): từ khoá và bộ lọc nâng cao áp đồng thời; RV-PROTO-0511 #9 lọc theo Dự án / Đề tài. */
     return allYcbg(k).filter((y) => (!L.kw || n(`${y.code} ${y.dxms} ${y.title} ${y.nvText || ''}`).includes(n(L.kw)))
       && (!L.adv || ((!f.code || n(y.code).includes(n(f.code))) && (!f.dxms || n(y.dxms).includes(n(f.dxms))) && (!f.hs || n(y.hs).includes(n(f.hs)))
-        && (!f.unit || y.unit === f.unit) && (!f.st.length || f.st.includes(y.status)) && (!f.ncc || y.ncc.some((c) => c.code === f.ncc))
-        && (!f.nv || (y.nv || []).includes(f.nv)) && (!f.creator || y.creator === f.creator)
+        && (!f.unit || y.unit === f.unit) && (!f.st.length || f.st.includes(stShow(y.status))) && (!f.ncc || y.ncc.some((c) => c.code === f.ncc))
+        && (!f.obj || (f.obj === 'kdt') === !!y.kdt) && (!f.nv || (y.nv || []).includes(f.nv)) && (!f.creator || y.creator === f.creator)
         && (!f.from || dkey(y.sent) >= dkey(f.from)) && (!f.to || dkey(y.sent) <= dkey(f.to)))))
       .sort((a, b) => dkey(b.sent).localeCompare(dkey(a.sent)) || b.code.localeCompare(a.code));
   }
@@ -163,22 +171,26 @@
     const units = [...new Set(all.map((y) => y.unit))];
     const nccs = [...new Map(all.flatMap((y) => y.ncc).map((c) => [c.code, c])).values()];
     return `<form class="adv" data-yadv><div class="grid3">
-        ${txt('code', 'Mã yêu cầu báo giá', 'Nhập mã yêu cầu báo giá')}${txt('dxms', 'Mã ' + o.obj, 'Nhập mã ' + o.obj)}${txt('hs', 'Mã hồ sơ', 'Nhập mã hồ sơ')}
+        ${k === 'all' ? sel('obj', 'Loại đối tượng', { searchable: false, placeholder: 'Tất cả', options: [{ value: 'dxms', label: 'ĐXMS' }, { value: 'kdt', label: 'KĐT' }] }) : ''}${txt('code', 'Mã yêu cầu báo giá', 'Nhập mã yêu cầu báo giá')}${txt('dxms', 'Mã ' + o.obj, 'Nhập mã ' + o.obj)}${''/* [T59 #55] bỏ ô tìm Mã hồ sơ: txt('hs', 'Mã hồ sơ', 'Nhập mã hồ sơ') */}
         ${sel('unit', 'Đơn vị đề xuất', { placeholder: 'Chọn đơn vị đề xuất', options: units.map((u) => ({ value: u, label: u })) })}
-        ${sel('st', 'Trạng thái', { multi: true, searchable: false, placeholder: 'Tất cả trạng thái', options: Object.entries(YST).map(([value, [label]]) => ({ value, label })) })}
+        ${sel('st', 'Trạng thái', { multi: true, searchable: false, placeholder: 'Tất cả trạng thái', options: stOpts() })}
         ${sel('ncc', 'Nhà cung cấp', { placeholder: 'Chọn nhà cung cấp', options: nccs.map((c) => ({ value: c.code, label: `${c.code} - ${c.name}` })) })}
         ${k === 'kdt' ? '' : sel('nv', 'Dự án / Đề tài', { placeholder: 'Chọn dự án / đề tài', options: D.nhiemVu.map((x) => ({ value: x.code, label: `${x.code} — ${x.name}` })) })}
         ${sel('creator', 'Người tạo', { placeholder: 'Chọn người tạo', options: [...new Set(all.map((y) => y.creator))].map((c) => ({ value: c, label: c })) })}
-        ${txt('from', 'Ngày gửi từ', 'DD/MM/YYYY')}${txt('to', 'Ngày gửi đến', 'DD/MM/YYYY')}</div>
+        ${window.UI.vDateRange({ label: 'Ngày gửi', from: ['data-yf="from"', d.from], to: ['data-yf="to"', d.to] })}</div>
       <div class="acts"><button type="button" class="vbtn secondary" data-y="reset">Làm mới</button><button type="submit" class="vbtn primary">Tìm kiếm</button></div></form>`;
   }
+  const T59_NOTE = '<b>T59 (D-114)</b>: bỏ cột Mã hồ sơ ở danh sách, tệp Xuất excel và ô tìm Mã hồ sơ ở Tìm kiếm nâng cao (review #55); Chi tiết YCBG vẫn hiện Mã hồ sơ. '
+    + 'Trạng thái (review #56, Q7): "Đã nhận báo giá" (Thầu đã tải báo giá ở bước 10, chờ Chỉ huy duyệt 10.1) gộp vào <b>Đang chờ báo giá</b> — số báo giá đã nhận xem ở cột riêng; '
+    + 'người xem còn các trạng thái Nháp (chỉ YCBG ngoài quy trình), Đang chờ báo giá, Báo giá đạt, Báo giá không đạt, Đã huỷ (ĐXMS / KĐT Dừng xử lý khi YCBG còn chờ, BR-YBG-C-09). BE có thể giữ trạng thái nội bộ "đã nhận" để tính cơ sở giá.';
   const yHref = (y) => (y.kdt ? 'ycbg-kdt/' : 'ycbg/') + encodeURIComponent(y.code);
   const LIST_INFO = {
     scr: 'SCR-73', name: 'Danh sách yêu cầu báo giá ĐXMS', uc: 'UC-07-03 · UR-PRE-21/22',
     notes: [
       'Backlog W1_T10 › Quản lý ĐXMS › Yêu cầu báo giá ĐXMS: danh sách, tìm kiếm nâng cao, xem chi tiết, xuất file (T16 B1). Khuôn profile-list: ô tìm + Tìm kiếm nâng cao, bảng một thông tin một cột, phân trang 10 / 20 / 50.',
       'Mỗi lần hồ sơ chạy task 08 "Khởi tạo yêu cầu báo giá" sinh một YCBG (mã YCBG-&lt;số ĐXMS&gt;-&lt;lần&gt;); service task 09 gửi email thay TTMS cho các NCC đã chọn; task 10 ghi nhận báo giá và kết quả kiểm tra. Danh sách là tra cứu — không tạo YCBG ở đây (tạo trong luồng, S2).',
-      'Trạng thái: Đang chờ báo giá (đã gửi, chưa đến task 10) → Đã nhận báo giá (đang ở task 10) → Báo giá đạt / Báo giá không đạt (kết quả task 10; Không đạt thì hồ sơ quay về task 08, sinh YCBG lần sau). Hồ sơ dừng / chuyển quy trình khi YCBG còn chờ → Đã huỷ.',
+      'Trạng thái: Đang chờ báo giá (đã gửi, đến khi có kết quả task 10) → Báo giá đạt / Báo giá không đạt (kết quả task 10; Không đạt thì hồ sơ quay về task 08, sinh YCBG lần sau). Hồ sơ dừng / chuyển quy trình khi YCBG còn chờ → Đã huỷ.',
+      T59_NOTE,
       'Cần dev: bảng YCBG (ĐXMS, hồ sơ, lần, NCC nhận, hạn) do BE ghi ở task 08/09; báo giá của NCC = tài liệu "Báo giá — (NCC)" ở task 10 (B0.5 #5). Xuất excel tải danh sách đang lọc.',
       'Dữ liệu mẫu suy từ hồ sơ của các ĐXMS: hồ sơ chưa qua task 08 không có YCBG.',
     ],
@@ -194,24 +206,37 @@
     ],
     q: ['P-72', 'P-74'], src: 'profile-management/profile-list · /khcn-profile-management',
   };
+  /* Người dùng 12/11: một menu cấp 1 Yêu cầu báo giá thay hai mục SCR-73 (ĐXMS) / SCR-76 (KĐT) — cùng khuôn, cùng cơ chế (bước 8–10 MS01 / MS13). */
+  const LIST_INFO_ALL = {
+    scr: 'SCR-73', name: 'Danh sách yêu cầu báo giá', uc: 'UC-07-03 · UC-05-01 · Backlog W1_T10 › Yêu cầu báo giá ĐXMS + Yêu cầu báo giá KĐT (dòng 310–313)',
+    notes: [
+      'Gộp hai menu Yêu cầu báo giá ĐXMS (SCR-73) và Yêu cầu báo giá KĐT (SCR-76) thành một menu cấp 1 theo yêu cầu người dùng 12/11 — Backlog vẫn chia hai mục, truy vết cả hai về màn này.',
+      'Một bảng YCBG, cột Loại đối tượng (ĐXMS / KĐT) suy từ đối tượng cha; Tìm kiếm nâng cao có lọc Loại đối tượng. Mã đối tượng mở Chi tiết ĐXMS hoặc Chi tiết KĐT tương ứng.',
+      'ĐXMS: task 08 MS01 sinh YCBG (mã YCBG-&lt;số ĐXMS&gt;-&lt;lần&gt;), service task 09 gửi email NCC, task 10 ghi nhận báo giá. KĐT: bước 8 / 9 / 10 MS13 (mã YCBG-&lt;mã KĐT&gt;-&lt;lần&gt;); YCBG đạt cho tổng mức vốn thực tế để phân luồng MS13 / MS14 / MS15.',
+      'Trạng thái: Đang chờ báo giá → Báo giá đạt / Báo giá không đạt; hồ sơ dừng khi YCBG còn chờ → Đã huỷ; Nháp chỉ có ở YCBG tạo trực tiếp. Thêm mới = YCBG tạo trực tiếp (P-205, chỉ loại ĐXMS).',
+      T59_NOTE,
+      'Cần dev: một API danh sách YCBG có tham số loại đối tượng (cùng bảng YCBG, khoá ngoại tới ĐXMS hoặc KĐT); quyền xem theo quyền trên đối tượng cha. Xuất excel tải danh sách đang lọc.',
+    ],
+    q: ['P-72', 'P-74'], src: 'profile-management/profile-list · /khcn-profile-management',
+  };
   function list(k) {
     // Theo: fe/repo-khcn-bpmn-fe/src/app/features/profile-management/profile-list/profile-list.component.html
-    kind = k || 'dxms';
+    kind = k || 'all';
     const L = LS[kind], o = K[kind];
     const rows = filtered(kind);
     const pages = Math.max(1, Math.ceil(rows.length / L.size));
     if (L.page > pages) L.page = pages;
     const from = (L.page - 1) * L.size;
-    const cols = [['Thao tác', 100, 'c'], ['Trạng thái', 169, 'c'], ['Mã yêu cầu báo giá', 200], ['Mã ' + o.obj, 160], ['Mã hồ sơ', 140], ['Tên ' + o.obj, 300]].concat(kind === 'kdt' ? [] : [['Dự án / Đề tài', 260]], [
+    const cols = [['Thao tác', 100, 'c'], ['Trạng thái', 169, 'c'], ['Mã yêu cầu báo giá', 200]].concat(o.all ? [['Loại đối tượng', 130, 'c']] : [], [['Mã ' + o.obj, 160], /* [T59 #55] ['Mã hồ sơ', 140], */ ['Tên ' + o.obj, 300]], kind === 'kdt' ? [] : [['Dự án / Đề tài', 260]], [
       ['Đơn vị đề xuất', 185], ['Lần', 70, 'c'], ['Số NCC nhận', 110, 'c'], ['Số báo giá đã nhận', 140, 'c'], ['Ngày gửi', 120], ['Hạn báo giá', 120]]);
     const body = rows.slice(from, from + L.size).map((y, i) => `<tr class="click" data-go="${yHref(y)}" data-code="${esc(y.code)}">
         <td class="ord">${from + i + 1}</td><td class="c"><div class="acts">${y.user && window.YcbgForm.canEdit(y.code) ? `<button type="button" class="vbtn icon ghost" aria-label="Cập nhật" title="Cập nhật" data-go="ycbg/${encodeURIComponent(y.code)}/edit">${icon('edit')}</button>` : ''}<button type="button" class="vbtn icon ghost" aria-label="Xuất file" title="Xuất file" data-y-export="${esc(y.code)}">${icon('download')}</button></div></td>
-        <td class="c">${badge(...YST[y.status])}</td><td><a class="link" data-go="${yHref(y)}">${esc(y.code)}</a></td>
-        <td>${y.dxms ? `<a class="link" data-go="${o.objHref(y.dxms)}">${esc(y.dxms)}</a>` : dash}</td><td>${y.hs ? `<a class="link" data-go="${y.hsHref}">${esc(y.hs)}</a>` : dash}</td>
+        <td class="c">${badge(...YST[y.status])}</td><td><a class="link" data-go="${yHref(y)}">${esc(y.code)}</a></td>${o.all ? `<td class="c">${objOf(y).obj}</td>` : ''}
+        <td>${y.dxms ? `<a class="link" data-go="${objOf(y).objHref(y.dxms)}">${esc(y.dxms)}</a>` : dash}</td>${''/* [T59 #55] <td>Mã hồ sơ</td> */}
         <td>${clamp(y.title)}</td>${kind === 'kdt' ? '' : `<td>${clamp(y.nvText)}</td>`}<td>${clamp(y.unit)}</td><td class="c">${y.lan}</td><td class="c">${y.ncc.length}</td><td class="c">${y.ncc.filter((c) => c.got).length}</td>
         <td class="num">${esc(y.sent)}</td><td class="num">${esc(y.due)}</td></tr>`).join('');
     return `<div class="pg">
-      ${S.head({ title: 'Danh sách yêu cầu báo giá', info: kind === 'kdt' ? LIST_INFO_KDT : LIST_INFO, right: `<button class="vbtn secondary" data-y="export">${icon('excel')} Xuất excel</button>${kind === 'kdt' ? '' : `<button class="vbtn primary" data-go="ycbg/create">${icon('add')} Thêm mới</button>`}` })}
+      ${S.head({ title: 'Danh sách yêu cầu báo giá', info: kind === 'kdt' ? LIST_INFO_KDT : kind === 'all' ? LIST_INFO_ALL : LIST_INFO, right: `<button class="vbtn secondary" data-y="export">${icon('excel')} Xuất excel</button>${kind === 'kdt' ? '' : `<button class="vbtn primary" data-go="ycbg/create">${icon('add')} Thêm mới</button>`}` })}
       <div class="vcard">
         <div class="pg-head"><span></span><div class="r">
           <label class="vsearch" style="width:264px">${icon('search')}<input id="y-kw" maxlength="255" placeholder="Tìm kiếm theo mã YCBG, mã ${o.obj}, tên ${o.obj}" value="${esc(L.kw)}"></label>
@@ -224,8 +249,8 @@
   }
   function exportList() {
     const o = K[kind];
-    csv(`Danh_sach_yeu_cau_bao_gia_${Date.now()}.csv`, ['STT', 'Mã yêu cầu báo giá', 'Mã ' + o.obj, 'Mã hồ sơ', 'Tên ' + o.obj, 'Đơn vị đề xuất', 'Lần', 'Số NCC nhận', 'Số báo giá đã nhận', 'Ngày gửi', 'Hạn báo giá', 'Trạng thái'],
-      filtered(kind).map((y, i) => [i + 1, y.code, y.dxms, y.hs, y.title, y.unit, y.lan, y.ncc.length, y.ncc.filter((c) => c.got).length, y.sent, y.due, YST[y.status][0]]));
+    csv(`Danh_sach_yeu_cau_bao_gia_${Date.now()}.csv`, ['STT', 'Mã yêu cầu báo giá'].concat(o.all ? ['Loại đối tượng'] : [], ['Mã ' + o.obj, /* [T59 #55] 'Mã hồ sơ', */ 'Tên ' + o.obj, 'Đơn vị đề xuất', 'Lần', 'Số NCC nhận', 'Số báo giá đã nhận', 'Ngày gửi', 'Hạn báo giá', 'Trạng thái']),
+      filtered(kind).map((y, i) => [i + 1, y.code].concat(o.all ? [objOf(y).obj] : [], [y.dxms, /* [T59 #55] y.hs, */ y.title, y.unit, y.lan, y.ncc.length, y.ncc.filter((c) => c.got).length, y.sent, y.due, YST[y.status][0]])));
   }
   /* Xuất file YCBG: phiếu gửi NCC — hạng mục, số lượng, hạn báo giá (cùng nội dung email service task 09). */
   function exportOne(y) {
@@ -252,7 +277,7 @@
   function detail(code) {
     // Theo: fe/repo-khcn-bpmn-fe/src/app/features/profile-management/profile-detail/profile-detail.component.html
     const y = allYcbg().find((v) => v.code === code);
-    const back = (y ? y.kdt : /^YCBG-KĐT/.test(code)) ? 'ycbg-kdt' : 'ycbg';
+    const back = 'ycbg';
     if (!y) return `<div class="pg">${S.head({ title: 'Xem chi tiết yêu cầu báo giá', back, lg: true })}<section class="vcard pad24"><div class="empty-t">Không tìm thấy yêu cầu báo giá.</div></section></div>`;
     const info = {
       scr: 'SCR-74', name: 'Chi tiết yêu cầu báo giá', uc: 'UC-07-03 · UR-PRE-21/22',
@@ -261,6 +286,7 @@
         'Hạng mục yêu cầu = phần còn phải mua sau rà soát tồn kho (task 07). Nhà cung cấp nhận yêu cầu chọn ở task 08 (lọc theo ngành hàng; B0.5 #3 thêm NCC mới). Báo giá = tài liệu "Báo giá — (NCC)" tải lên ở task 10.',
         'Card So sánh báo giá (cơ sở giá = đơn giá thấp nhất trong báo giá còn hiệu lực) <b>tạm ẩn</b> ở mọi màn (10/11/2026) — Thầu so sánh, đánh giá báo giá ngoài hệ thống (P-219). Kết quả Đạt / Không đạt là quyết định ở task 10.',
         'Mã ĐXMS, mã hồ sơ mở màn chi tiết tương ứng.',
+        '<b>T59 (D-114)</b>: Danh sách YCBG bỏ cột Mã hồ sơ (review #55) nhưng Chi tiết YCBG vẫn giữ trường Mã hồ sơ — GIẢ ĐỊNH: người xem cần biết YCBG sinh từ hồ sơ nào (KĐT: hồ sơ chủ trương / KĐT; ĐXMS: hồ sơ phê duyệt). Trạng thái "Đã nhận báo giá" hiển thị là Đang chờ báo giá (Q7); trạng thái từng NCC (Chưa phản hồi / Đã nhận báo giá / Hết hiệu lực) giữ ở bảng NCC.',
       ],
       q: ['P-06', 'P-26', 'P-72'], src: 'profile-management/profile-detail · /khcn-profile-management/:id/view',
     };
@@ -323,6 +349,14 @@
           <td class="r num">${num(it.used)}</td><td class="r num">${num(it.prop)}</td><td>${clamp(it.warn || (used[it.n] ? 'Đã dùng ở ' + used[it.n] : ''))}</td>`)}</section>`;
     return basis + items;
   }
+  /* T59 #48: tệp kết quả rà soát tồn kho (Kho tải lên ở bước 7) của một lần rà soát — lấy từ RaSoatKho.resultFile(mã đối tượng, lần rà soát) nếu có. */
+  function rsFile(g, s) {
+    const R = window.RaSoatKho;
+    let f = null;
+    try { f = R && typeof R.resultFile === 'function' ? R.resultFile(g.x.code, s) : null; } catch (e) { f = null; }
+    if (f && typeof f === 'object') f = f.name;
+    return f || `Ket-qua-ra-soat-ton-kho-${s.code}.xlsx`;
+  }
   function tabTonKho(g) {
     if (!g.pd || !g.did(7)) return emptyCard('Rà soát tồn kho', 'Chưa có kết quả rà soát tồn kho. Hệ thống lấy dữ liệu tồn kho từ phân hệ Quản lý kho sau khi hồ sơ bóc tách căn cứ.');
     /* T45: KĐT mới duyệt chủ trương (BM-01, chưa có hồ sơ KĐT đã duyệt) vẫn tạm giữ tồn kho. */
@@ -338,8 +372,8 @@
           <td class="r num">${num(it.book != null ? it.book : it.stock)}</td><td>${it.held ? esc(`${it.held} — ${it.heldFor}`) : dash}</td><td class="r num">${num(it.stock)}</td>
           <td class="r num">${num(take)}</td><td class="c">${take > 0 ? badge(...hold) : dash}</td><td class="r num"><b>${num(it.buy)}</b></td>`; })}</section>
       <section class="vcard pad24"><h3>Lịch sử rà soát tồn kho</h3>
-        ${table([['Mã kết quả', 200], ['Thời điểm', 130], ['Hồ sơ', 150], ['Nội dung', 360], ['Hiệu lực', 140, 'c']], snaps.reverse(), (s, i) => `${ord(i)}<td>${esc(s.code)}</td><td class="num">${esc(s.at)}</td>
-          <td><a class="link" data-go="${g.hsHref(g.cases.find((c) => c.code === s.by) || { code: s.by })}">${esc(s.by)}</a></td><td>${clamp(s.why)}</td><td class="c">${s.cur ? badge('Hiện hành', 'success') : badge('Bản cũ', 'default')}</td>`)}</section>`;
+        ${table([['Mã kết quả', 200], ['Thời điểm', 130], ['Kết quả rà soát tồn kho', 280], ['Nội dung', 360], ['Hiệu lực', 140, 'c']], snaps.reverse(), (s, i) => `${ord(i)}<td>${esc(s.code)}</td><td class="num">${esc(s.at)}</td>
+          ${''/* [T59 #48] cột Hồ sơ cũ: <a data-go="hồ sơ">s.by</a> */}<td>${((f) => `<a class="link-red" href="#" data-dl="${esc(f)}">${icon('download')} ${esc(f)}</a>`)(rsFile(g, s))}</td><td>${clamp(s.why)}</td><td class="c">${s.cur ? badge('Hiện hành', 'success') : badge('Bản cũ', 'default')}</td>`)}</section>`;
   }
   function tabYcbg(g) {
     const ys = ycbgOf(g.x.code);
@@ -412,6 +446,7 @@
     'Tab theo Backlog W1_T10 › Quản lý ĐXMS (T16 B1). Khuôn: app-tabs (p-tabs) của @khcn-core/ui; tab Thông tin chung giữ nguyên bố cục task-create mode detail. Các tab khác chỉ xem — dữ liệu do các bước của hồ sơ ghi (S2, S4), không nhập ở đây.',
     'Căn cứ & hạng mục: căn cứ chọn ở task 01, bóc tách hạng mục ở task 05 (nguồn eBOM / mBOM / dự toán / KHN theo nhiệm vụ — P-73). Cột "Đã dùng ở ĐXMS khác / đang giữ / còn có thể sử dụng" do BE tính trên các ĐXMS cùng căn cứ để tránh dùng lặp (cần dev: bảng giữ chỗ căn cứ).',
     'Rà soát tồn kho: service task 06 lấy tồn kho từ phân hệ Quản lý kho (tích hợp ❓), task 07 chốt số dùng từ kho. Tạm giữ = khoá số lượng cho ĐXMS này đến khi hồ sơ kết thúc; mỗi lần rà soát lưu một bản (MS02 rà soát lại) — cần dev: API giữ chỗ + snapshot.',
+    '<b>T59 (D-114)</b>: bảng Lịch sử rà soát tồn kho — cột Hồ sơ thay bằng <b>Kết quả rà soát tồn kho</b> (review #48): tên tệp kết quả Kho tải lên ở bước 7 của lần rà soát, bấm để tải (Q9: không sinh biên bản BBRS-MS). Dùng chung cho Chi tiết ĐXMS và Chi tiết KĐT.',
     'Yêu cầu báo giá: các YCBG của ĐXMS (SCR-73/74), so sánh báo giá và cơ sở giá của YCBG gần nhất, tổng giá trị theo cơ sở giá, lịch sử theo từng lần. Import YCBG chưa dựng — chờ mẫu tệp (P-74).',
     'Lịch sử phiên bản (DEV-1): v1 khi lập dự thảo (task 11/12), v2 khi hoàn chỉnh theo ý kiến CQCM (task 27); BM-04 chỉ hợp lệ với đúng phiên bản (Backlog "Theo dõi tính hợp lệ BM-04 theo phiên bản"). So sánh hiện các nội dung đổi giữa hai phiên bản.',
     'Kết quả & văn bản phê duyệt: hồ sơ Hoàn thành của ĐXMS và văn bản phê duyệt (BM-08 / BM-09 / QĐ điều chỉnh) — truy ngược hồ sơ nào tạo ra quyết định đang hiệu lực.',
@@ -428,8 +463,8 @@
   }
 
   /* ---------- Sự kiện ---------- */
-  const onList = () => /^#\/ycbg(-kdt)?\/?$/.test(location.hash);
-  const Lk = () => LS[/^#\/ycbg-kdt/.test(location.hash) ? 'kdt' : 'dxms'];
+  const onList = () => /^#\/ycbg\/?$/.test(location.hash);
+  const Lk = () => LS[kind];
   document.addEventListener('click', (e) => {
     const t = e.target;
     const tb = t.closest('[data-dtab]');

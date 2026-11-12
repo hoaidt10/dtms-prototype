@@ -70,11 +70,28 @@ test('Lưu / xoá dòng dự toán: thêm mới cấp id kế tiếp, cập nh�
   assert.equal(D.duToanOf(c)[4].buy, false);
 });
 
-test('Chỉ số dòng: đã đăng ký = ĐXMS đã phê duyệt, đang giữ = đang phê duyệt / điều chỉnh, còn lại, thực hiện, tiết kiệm', () => {
+test('Chỉ số dòng: đã đăng ký = ĐXMS đã phê duyệt, đang giữ = đang phê duyệt / điều chỉnh, còn lại; chưa có mốc thì ba mốc, tiết kiệm null', () => {
   const { D } = boot();
-  const l = { value: 100 };
+  const l = { id: 'X-1', value: 100 };
   const s = D.duToanStats(l, [{ st: 'OK', qty: 2, value: 40 }, { st: 'PD', qty: 1, value: 25 }, { st: 'DC', qty: null, value: 5 }, { st: 'STOP', qty: 3, value: 30 }]);
-  assert.deepEqual({ ...s }, { ok: 40, held: 30, qty: 3, exec: 37.6, saving: 2.4, remain: 30 });
+  assert.deepEqual({ ...s }, { ok: 40, held: 30, qty: 3, remain: 30, bid: null, hd: null, tt: null, saving: null });
   assert.equal(D.duToanStats(l, [{ st: 'OK', qty: 1, value: 120 }]).remain, -20);
   assert.equal(D.duToanStats(l, []).remain, 100);
+});
+
+test('SRS-DADT V1.4 BR-DADT-02-05: ba mốc cộng theo dòng con có mốc; tiết kiệm = dự toán của dòng con − mốc muộn nhất', () => {
+  const { D } = boot();
+  D.duToanMoc['X-1:A'] = [38, 37, 36.5];
+  D.duToanMoc['X-1:B'] = [19, null, null];
+  const l = { id: 'X-1', value: 100 };
+  const s = D.duToanStats(l, [{ code: 'A', st: 'OK', qty: 1, value: 40 }, { code: 'B', st: 'OK', qty: 1, value: 20 }, { code: 'C', st: 'PD', qty: 1, value: 10 }]);
+  assert.equal(s.bid, 57);
+  assert.equal(s.hd, 37);
+  assert.equal(s.tt, 36.5);
+  assert.equal(s.saving, 4.5); // (40 − 36,5) + (20 − 19)
+  assert.equal(D.duToanMocOf('X-1', 'A').latest, 36.5);
+  assert.equal(D.duToanMocOf('X-1', 'B').latest, 19);
+  assert.equal(D.duToanMocOf('X-1', 'C'), null);
+  // Mốc mẫu: NV-KHCN-2026-006 khoản mục 1 có đủ ba mốc với ĐXMS-2026-0072.
+  assert.deepEqual([...D.duToanMoc['NV-KHCN-2026-006-1:ĐXMS-2026-0072']], [176.8, 174.5, 173.95]);
 });

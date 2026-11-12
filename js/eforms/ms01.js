@@ -133,7 +133,8 @@
       write: (v) => pick(v, ['yKien']) },
     '7.1': { id: 'dtms-ms01-t07-1-chi-huy-kho-duyet', q: ['P-210', 'P-187'],
       schema: () => ({ components: [
-        txt('Duyệt kết quả rà soát tồn kho và Biên bản rà soát vật tư, linh kiện tồn kho của hồ sơ **{{tenHoSo}}** (bảng kết quả ở màn xử lý).'),
+        /* [T59 Q9] bỏ "và Biên bản rà soát vật tư, linh kiện tồn kho" — không còn biên bản sinh. */
+        txt('Duyệt kết quả rà soát tồn kho của hồ sơ **{{tenHoSo}}** (bảng kết quả, tệp kết quả và biên bản kiểm đếm ở tab Rà soát tồn kho).'),
         ta('yKien', 'Ý kiến', { rows: 2, validate: { maxLength: 2000 } })] }),
       notes: () => ['<b>DX-10 (d), D-83:</b> bước mới — Chỉ huy Kho duyệt kết quả rà soát (card Kết quả rà soát tồn kho trên màn) và biên bản; Trả lại → Kho rà soát lại (bước 07). Duyệt trên ĐTMS, không qua VOffice. Chân ký biên bản GIẢ LẬP P-187.'],
       write: (v) => pick(v, ['yKien']) },

@@ -81,7 +81,7 @@ test('SCR-55: bóc tách 2 dòng, cảnh báo vượt còn lại, chặn vượt
   // SCR-104: dòng 6 có KĐT vừa tạo (đang giữ); KPI ghi ĐXMS / KĐT.
   await go(page, '#/de-tai/' + enc(DT));
   await page.locator('[data-dt-tab="du-toan"]').click();
-  await expect(page.locator('[data-dt-kpi]')).toContainText('Đang giữ (ĐXMS / KĐT đang xử lý)');
+  await expect(page.locator('[data-dt-kpi] .dt-tip').nth(1)).toHaveAttribute('title', 'Đề xuất mua sắm, khoản đầu tư đang xử lý'); // V1.4: nhãn Đang giữ, tooltip
   await page.locator(`[data-vtt-row="${DT}-6"] [data-vtt]`).click();
   const row = page.locator(`[data-vtt-row="${DT}-6:${x.code}"]`);
   await expect(row).toContainText(`KĐT — ${x.code}`);

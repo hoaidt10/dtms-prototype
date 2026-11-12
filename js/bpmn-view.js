@@ -9,6 +9,8 @@
   let G = diagram();
   const ACTIVE = { fill: '#e9fbf0', stroke: '#5fe495', sw: 3 }; // bpmn-viewer/constants ACTIVE_STEP_PAINT
   const SELECTED = { stroke: '#ee0033', sw: 3.5 }; // .app-bpmn-selected
+  /* T59 #45 (D-114 Q5): bước đã hoàn thành (o.done) tô riêng để khớp chú giải của Chi tiết BPMN (bpmn-js: overlay / marker theo lịch sử task). */
+  const DONE = { fill: '#E3EDFF', stroke: '#2F6FDE', sw: 2 };
   const ZOOM_MIN = 0.02, ZOOM_MAX = 4, ZOOM_FACTOR = 1.25;
   const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   const views = {}; // key → { tx, ty, s } giữ vị trí khi màn vẽ lại
@@ -23,9 +25,9 @@
     ? `<g transform="translate(${n.x + 10},${n.y + 8})" fill="none" stroke="#51799E" stroke-width="1.3"><circle cx="7" cy="5" r="3.5"/><path d="M1 15c0-4 3-6 6-6s6 2 6 6z"/></g>`
     : n.mk === 'service' ? `<g transform="translate(${n.x + 10},${n.y + 8})" fill="none" stroke="#3E7B52" stroke-width="1.3"><circle cx="7" cy="7" r="5.5" stroke-dasharray="2.2 1.6" stroke-width="3"/><circle cx="7" cy="7" r="2.2"/></g>` : '');
 
-  function node(n, on, sel, pick) {
-    const fill = on ? ACTIVE.fill : n.fill || 'none';
-    const stroke = sel ? SELECTED.stroke : on ? ACTIVE.stroke : n.stroke || 'none', sw = sel ? SELECTED.sw : on ? ACTIVE.sw : n.sw || 1;
+  function node(n, on, sel, pick, dn) {
+    const fill = on ? ACTIVE.fill : dn ? DONE.fill : n.fill || 'none';
+    const stroke = sel ? SELECTED.stroke : on ? ACTIVE.stroke : dn ? DONE.stroke : n.stroke || 'none', sw = sel ? SELECTED.sw : on ? ACTIVE.sw : dn ? DONE.sw : n.sw || 1;
     const S = `fill="${fill}" stroke="${stroke}" stroke-width="${sw}"${n.dash ? ' stroke-dasharray="6 4"' : ''}`;
     const id = (n.t ? ` data-task="${esc(n.t)}"` : '') + (pick && n.el ? ` data-el="${esc(n.el.id)}" class="bp-pick"` : '');
     switch (n.k) {
@@ -42,7 +44,8 @@
   }
 
   function svg(active, o) {
-    const key = [o.page, active.join(','), o.select ? 1 : 0, o.selected || ''].join('|');
+    const key = [o.page, active.join(','), o.select ? 1 : 0, o.selected || '', (o.done || []).join(',')].join('|');
+    const dn = new Set((o.done || []).map(String));
     if (svgCache.key === key) return svgCache.html;
     const on = new Set(active.map(String));
     const colors = [...new Set(G.edges.map((e) => e.c || '#455F73'))];
@@ -56,7 +59,7 @@
       const lab = (e.l || []).map(([x, y, t]) => `<text x="${x}" y="${y}" dy="0.35em" text-anchor="middle" class="bp-el" fill="${c}">${esc(unent(t))}</text>`).join('');
       return `<path d="${d}" fill="none" stroke="${c}" stroke-width="${e.sw || 1.7}"${e.d ? ' stroke-dasharray="6 4"' : ''}${e.na ? '' : ` marker-end="url(#${mid(c)})"`}/>${lab}`;
     }).join('');
-    const html = `<svg class="bp-svg" xmlns="http://www.w3.org/2000/svg"><defs>${defs}</defs><g class="bp-root">${back.map((n) => node(n, false)).join('')}${edges}${front.map((n) => node(n, on.has(String(n.t)), !!(o.selected && n.el && n.el.id === o.selected), o.select)).join('')}</g></svg>`;
+    const html = `<svg class="bp-svg" xmlns="http://www.w3.org/2000/svg"><defs>${defs}</defs><g class="bp-root">${back.map((n) => node(n, false)).join('')}${edges}${front.map((n) => node(n, on.has(String(n.t)), !!(o.selected && n.el && n.el.id === o.selected), o.select, n.k === 'task' && dn.has(String(n.t)))).join('')}</g></svg>`;
     svgCache = { key, html };
     return html;
   }

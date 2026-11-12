@@ -69,11 +69,11 @@
         wait: route(/#\/viec-cua-toi$/), do: click('#lf-save') }] },
 
     { n: 2, name: 'Thủ kho rà soát tồn kho', who: 'Phòng Quản lý tài sản / Thủ kho', steps: [
-      { enter: () => { Flow.jumpToScene('1b', SET); const t = tokOf(7); if (t) go('#/task/' + t.id); }, sel: actPrimary, title: 'Việc Rà soát tồn kho',
-        text: 'Vai <b>Hà Văn Tiến — Phòng Quản lý tài sản</b>. <b>Bấm Cập nhật kết quả rà soát</b> để mở màn nhập kết quả; danh mục là các hạng mục ĐVĐX đã bóc tách ở bước 5.', wait: () => !!find('[data-rsk-ed]'), do: click(actPrimary) },
-      { sel: '[data-rsk-ed]', title: 'Kết quả rà soát', text: 'Nhập <b>một lần</b> theo biên bản rà soát: Mã hàng trong kho, SL tồn kho, SL xuất kho (không vượt tồn khả dụng), SL điều chuyển, hợp đồng đầu vào, vị trí; SL cần mua tự tính. Tải Tệp kết quả (bắt buộc, ở trên bảng) — tệp Excel theo mẫu thì hệ thống điền sẵn bảng; nút Toàn màn hình để xem đủ cột. Lưu xong hệ thống sinh Biên bản rà soát.' },
-      { sel: '[data-rsk-save]', title: 'Gửi Chỉ huy Kho', text: 'Nhập xong bấm <b>Gửi Chỉ huy Kho</b>: hệ thống lưu kết quả, sinh biên bản và chuyển <b>Chỉ huy Kho duyệt</b>. Phần còn phải mua là đầu vào của yêu cầu báo giá.' },
-      { enter: () => { closeModals(); goTask('7.1'); }, sel: act('Duyệt'), title: 'Chỉ huy Kho duyệt', text: 'Vai <b>Lưu Văn Thắng</b>. Xem kết quả rà soát và biên bản; <b>Duyệt</b> thì Thầu TTMS lấy báo giá, <b>Trả lại</b> (có lý do) thì Kho rà soát lại.' }] },
+      /* T59 Q4, Q8, Q9 (D-114): việc bước 7 mở sẵn tab Rà soát tồn kho của màn xử lý việc (không còn màn riêng); hai ô tệp; không sinh biên bản. */
+      { enter: () => { Flow.jumpToScene('1b', SET); const t = tokOf(7); if (t) go('#/task/' + t.id); }, sel: '[data-rsk-ed]', title: 'Việc Rà soát tồn kho',
+        text: 'Vai <b>Hà Văn Tiến — Phòng Quản lý tài sản</b>. Màn xử lý việc mở sẵn tab <b>Rà soát tồn kho</b>: tải <b>Tệp kết quả</b> Excel theo mẫu BM-RSTK thì hệ thống đọc và điền sẵn bảng (sửa được mọi ô), tải <b>Biên bản kiểm đếm có ký</b>; SL xuất kho không vượt tồn khả dụng, SL cần mua tự tính.' },
+      { sel: actPrimary, title: 'Gửi Chỉ huy Kho', text: 'Nhập xong bấm <b>Gửi Chỉ huy Kho</b> trên thanh trạng thái: hệ thống kiểm dữ liệu của tab, lưu kết quả và chuyển <b>Chỉ huy Kho duyệt</b>. Phần còn phải mua là đầu vào của yêu cầu báo giá.' },
+      { enter: () => { closeModals(); goTask('7.1'); }, sel: act('Duyệt'), title: 'Chỉ huy Kho duyệt', text: 'Vai <b>Lưu Văn Thắng</b>. Xem kết quả rà soát, tệp kết quả và biên bản kiểm đếm ở tab Rà soát tồn kho; <b>Duyệt</b> thì Thầu TTMS lấy báo giá, <b>Trả lại</b> (có lý do) thì Kho rà soát lại.' }] },
 
     { n: 3, name: 'Tổng hợp yêu cầu báo giá', who: 'Thầu Trung tâm Mua sắm', steps: [
       { enter: () => goTask(8), sel: actPrimary, title: 'Bước 8 — Khởi tạo YCBG', text: '<b>Bấm Hoàn thành</b> để mở phiếu yêu cầu báo giá.', wait: modalOpen, do: click(actPrimary) },
@@ -105,7 +105,11 @@
       { enter: () => goTask(35, 'PC'), sel: act('Đạt'), title: 'Bước 35 — Kiểm tra lại', text: 'CQCM kiểm tra hồ sơ đã hoàn chỉnh: Đạt thì xác nhận ký BM-04 và Checklist.' }] },
 
     { n: 7, name: 'Trình ký và phê duyệt', who: 'TTMS, Tổng Giám đốc VHT', steps: [
-      { enter: () => goTask(48), sel: act('Có báo cáo TGĐ Tập đoàn'), title: 'Bước 48 — Báo cáo Tập đoàn?', text: 'Sau khi BM-05 được ký (bước 43–47), TTMS chọn có báo cáo TGĐ Tập đoàn hay không. Chọn sẵn theo "Căn cứ đã được phê duyệt" của luồng.' },
+      /* T56 (review Nhi 12/11 #27): bước tour mở hộp thoại Trình ký VOffice (SCR-21) — chỉ xem, đóng không hoàn thành bước. */
+      { enter: () => { goTask(43); setTimeout(() => { if (!document.querySelector('.overlay .vmodal')) window.TrinhKy.signDialog('BM-05', Flow.state.persona); }, 400); },
+        sel: '.overlay .vmodal', title: 'Bước 43 — Trình ký VOffice',
+        text: 'Nút ký của bước (vd <b>Xác nhận đủ điều kiện &amp; ký BM-05</b>) mở hộp thoại <b>Trình ký VOffice</b>: chọn Hình thức trình, đăng nhập VOffice, kiểm Thông tin văn bản, tệp trình ký và bảng người ký theo nhóm rồi bấm <b>Trình ký</b>. Kết quả theo dõi ở menu <b>Trình ký</b>.' },
+      { enter: () => { closeModals(); goTask(48); }, sel: act('Có báo cáo TGĐ Tập đoàn'), title: 'Bước 48 — Báo cáo Tập đoàn?', text: 'Sau khi BM-05 được ký (bước 43–47), TTMS chọn có báo cáo TGĐ Tập đoàn hay không. Chọn sẵn theo "Căn cứ đã được phê duyệt" của luồng.' },
       { enter: () => goTask(59), sel: act('Trình phê duyệt'), title: 'Bước 59 — Trình phê duyệt', text: 'Hệ thống sinh dự thảo Quyết định phê duyệt; TTMS rà soát và <b>Trình phê duyệt</b>.' },
       { enter: () => goTask(60), sel: act('Phê duyệt'), title: 'Bước 60 — Tổng Giám đốc', text: 'Vai <b>Ngô Đình Khôi</b>. <b>Phê duyệt</b>, hoặc Yêu cầu hoàn chỉnh. Bước 61 hệ thống gửi ký duyệt trên VOffice; hồ sơ Hoàn thành.' }] },
   ];

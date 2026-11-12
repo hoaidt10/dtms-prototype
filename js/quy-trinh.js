@@ -167,7 +167,7 @@
       <div class="grid3">
         ${txt('code', 'Mã quy trình', 'Nhập mã quy trình')}${txt('id', 'Mã Camunda', 'Nhập mã Camunda')}${txt('name', 'Tên quy trình', 'Nhập tên quy trình')}
         ${sel('st', 'Trạng thái', 'Tất cả trạng thái', Object.entries(WF_STATUS).map(([value, [label]]) => ({ value, label })))}
-        ${txt('from', 'Ngày deploy từ', 'DD/MM/YYYY')}${txt('to', 'Ngày deploy đến', 'DD/MM/YYYY')}
+        ${window.UI.vDateRange({ label: 'Ngày deploy', from: ['data-wff="from"', d.from], to: ['data-wff="to"', d.to] })}
         ${sel('busy', 'Có hồ sơ đang xử lý', 'Tất cả', [{ value: 'YES', label: 'Có' }, { value: 'NO', label: 'Không' }])}
       </div>
       <div class="acts"><button type="button" class="vbtn secondary" data-wf="adv-reset">Làm mới</button><button type="submit" class="vbtn primary">Tìm kiếm</button></div></form>`;

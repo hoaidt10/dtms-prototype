@@ -349,8 +349,8 @@ const P12 = 'KĐT & Thầu · Backlog W1_T10';
 const K12 = '#/kdt/' + encodeURIComponent('KĐT-2026-0012');
 add(P12, 'SCR-75', 'Danh sách hồ sơ KĐT', dx('#/ho-so-kdt'));
 add(P12, 'SCR-75-adv', 'Danh sách hồ sơ KĐT — tìm kiếm nâng cao', [...dx('#/ho-so-kdt'), click('[data-hk="adv"]')]);
-add(P12, 'SCR-76', 'Danh sách yêu cầu báo giá KĐT', dx('#/ycbg-kdt'), { link: 'SCR-77', linkSel: 'main .vtable tbody a.link' });
-add(P12, 'SCR-77', 'Chi tiết yêu cầu báo giá KĐT', [...dx('#/ycbg-kdt'), `location.hash = '#/ycbg-kdt/' + encodeURIComponent(Ycbg.allYcbg('kdt')[0].code)`], { link: 'SCR-76', linkSel: '.pg-head .vbtn.back' });
+// 12/11: menu gộp — danh sách YCBG KĐT là SCR-73 lọc Loại đối tượng = KĐT; chi tiết vẫn #/ycbg-kdt/<mã>.
+add(P12, 'SCR-77', 'Chi tiết yêu cầu báo giá KĐT', [...dx('#/ycbg'), `location.hash = '#/ycbg-kdt/' + encodeURIComponent(Ycbg.allYcbg('kdt')[0].code)`], { link: 'SCR-73', linkSel: '.pg-head .vbtn.back' });
 [['info', 'Thông tin chung'], ['can-cu', 'Căn cứ & hạng mục'], ['ton-kho', 'Rà soát tồn kho'], ['ycbg', 'Yêu cầu báo giá'], ['phan-loai', 'Phân loại & định danh'], ['thanh-phan', 'Thành phần tham gia'], ['ket-qua-kdt', 'Kết quả & triển khai']]
   .forEach(([k, name], i, a) => add(P12, 'SCR-56-' + k, 'Chi tiết KĐT-2026-0012 — tab ' + name, [...dx(K12), click(`[data-dtab="${k}"]`)],
     i < a.length - 1 ? { link: 'SCR-56-' + a[i + 1][0], linkSel: `[data-dtab="${a[i + 1][0]}"]` } : {}));

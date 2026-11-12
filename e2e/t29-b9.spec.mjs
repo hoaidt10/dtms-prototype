@@ -82,8 +82,13 @@ test('SCR-96 S8: bóc tách từ dự toán vào ĐXMS → bước 01 có dòng 
   await expect(page.locator(`[data-vtt-row="${DT}-6:${st.code}"]`)).toContainText('Chưa khởi tạo');
   await expect(page.locator(`[data-vtt-row="${DT}-6:${st.code}"]`)).toContainText('8');
   // Khoản mục vẫn đang được giữ (2 chiếc của ĐXMS-2026-0101 Đang phê duyệt) → TTMS không bỏ được Chi mua sắm.
+  // SRS-DADT V1.4 BR-DADT-02-10: bỏ là nháp, chặn khi [Lưu].
   await page.evaluate(() => Flow.setPersona('lan'));
+  await page.locator('[data-dt-e="edit"]').click();
   await page.locator(`[data-dt-buy="${DT}-6"]`).click();
+  await page.locator('[data-dt-e="save"]').click();
+  expect(await page.evaluate(() => [...document.querySelectorAll('.toast')].pop().textContent)).toContain('Khoản mục đang được giữ bởi');
+  await page.locator('[data-dt-e="cancel"]').click();
   await expect(page.locator(`[data-dt-buy="${DT}-6"]`)).toBeChecked();
 
   // Tab Căn cứ của luồng: có ĐVT, Số lượng, link mở đề tài.

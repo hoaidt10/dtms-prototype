@@ -10,6 +10,9 @@ const tab = (page, name) => page.locator('.dx-tabs .tab', { hasText: name }).cli
 test('#1 Danh sách ĐXMS: cột Loại ĐXMS và lọc Tạo mới / Điều chỉnh ở tìm kiếm nâng cao', async ({ page }) => {
   await fresh(page, '#/luong');
   await expect(page.locator('main .vtable th')).toContainText(['Loại ĐXMS']);
+  // T58: thêm ĐXMS mẫu → 50 bản ghi/trang để 0112, 0103 ở trang đầu.
+  await page.locator('[data-ps-open]').first().click();
+  await page.locator('[data-ps="50"]').first().click();
   await expect(page.locator('main tr[data-code="ĐXMS-2026-0112"] [data-kind]')).toHaveText('Điều chỉnh');
   await expect(page.locator('main tr[data-code="ĐXMS-2026-0103"] [data-kind]')).toHaveText('Tạo mới');
   await page.locator('[data-lg="adv"]').click();

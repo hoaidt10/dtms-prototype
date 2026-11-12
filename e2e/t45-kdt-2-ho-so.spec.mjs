@@ -57,7 +57,7 @@ test('Menu tách hai mục: Danh sách hồ sơ chủ trương KĐT / phê duy�
   await expect(page.locator('.pg-title')).toHaveText('Danh sách hồ sơ phê duyệt KĐT');
   await expect(page.locator('.sb-nav [data-go="ho-so-pd-kdt"]')).toHaveClass(/active/);
   expect(await heads(page)).toEqual(expect.arrayContaining(['Hồ sơ chủ trương', 'Luồng khác chủ trương', 'Tổng mức vốn KĐT (tỷ đồng)']));
-  expect(await rowCodes(page)).toEqual(['HS-2026-0028-2', 'HS-2026-0027-2', 'HS-2026-0026-2', 'HS-2026-0012-2']);
+  expect(await rowCodes(page)).toEqual(['HS-2026-0039-2', 'HS-2026-0028-2', 'HS-2026-0027-2', 'HS-2026-0026-2', 'HS-2026-0012-2']);
   const lech = page.locator('tr[data-code="HS-2026-0026-2"]');
   await expect(lech).toContainText('HS-2026-0026');
   await expect(lech).toContainText('MS13 → MS14');

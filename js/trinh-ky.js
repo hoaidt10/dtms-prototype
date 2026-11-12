@@ -25,7 +25,16 @@
   /* ---------- Trạng thái lần trình (SRS 32 mục 2.4, màu mục 4) ---------- */
   const ST = { PENDING_SIGN: ['Chờ ký', 'warning'], SIGNED: ['Đã ký', 'success'], REJECTED_SIGN: ['Từ chối', 'error'], CANCELLED_SIGN: ['Đã hủy', 'default'],
     UNPUBLISHED: ['Đã hủy ban hành', 'default'], RECALLED: ['Đã thu hồi', 'default'], FAILED: ['Lỗi gửi', 'error'], OFFLINE_PENDING: ['Chờ nhập kết quả', 'warning'] };
-  const stTag = (s) => badge((ST[s] || [s])[0], (ST[s] || [])[1]);
+  const logTag = (s) => badge((ST[s] || [s])[0], (ST[s] || [])[1]);
+  /* T56 Q4 (review Nhi 12/11 #31; be/vops-office VOfficeStatusEnum.fromVOfficeState state 0–4): danh sách, lọc, khối Trình ký chỉ dùng
+     5 trạng thái VOffice trả về. Trạng thái nội bộ ĐTMS (Đã hủy, Đã thu hồi, Đã hủy ban hành, Lỗi gửi, Chờ nhập kết quả) chỉ ở Lịch sử cập nhật. */
+  const VST = { DRAFT: ['Chưa trình ký', 'default'], PENDING: ['Đang xử lý', 'warning'], REJECTED: ['Bị từ chối', 'error'], SIGNED: ['Đã ký duyệt', 'success'], PUBLISHED: ['Đã ban hành', 'success'] };
+  const vstOf = (r) => (r.st === 'PENDING_SIGN' || r.st === 'OFFLINE_PENDING' ? 'PENDING' : r.st === 'REJECTED_SIGN' ? 'REJECTED'
+    : r.st === 'SIGNED' ? (r.docNo && r.method === 'VOFFICE' ? 'PUBLISHED' : 'SIGNED') : 'DRAFT');
+  const stTag = (r) => badge(VST[vstOf(r)][0], VST[vstOf(r)][1]);
+  /* Lịch sử cập nhật: hh:mm:ss - dd/mm/yyyy (review Nhi #23). */
+  const nowTm = () => new Date().toTimeString().slice(0, 8);
+  const atOf = (l) => `${l.tm || '08:00:00'} - ${l.at}`;
   const METHOD = { VOFFICE: 'VOffice', OFFLINE: 'Ký ngoài hệ thống' };
   /* Hình thức trình ký của ĐXMS (SRS 32 Q9 A: "Bản cứng" đổi thành "Ký ngoài hệ thống"; dữ liệu lưu cũ vẫn đọc được). */
   const OFF_SIGN = ['Ký ngoài hệ thống', 'Bản cứng'];
@@ -88,8 +97,8 @@
       S({ obj: 'ĐXMS-2026-0101', objName: 'Mua sắm linh kiện chế thử module RF', step: 38, stepName: 'Ký thẩm định trực tiếp BM-09', doc: 'BM-09', by: 'lan', at: '10/11/2026', method: 'OFFLINE', offMode: 'HAND',
         offReason: 'Đối tượng Mật', st: 'OFFLINE_PENDING', info: {}, signers: [sg(1, 'TRUNG TÂM MUA SẮM', 'lan', 1, 1)] }),
     ];
-    list.forEach((r, i) => { r.id = i + 1; r.trans = transOf(r); r.log = [{ at: r.at, actor: r.by, action: 'Trình ký', to: r.method === 'OFFLINE' ? 'OFFLINE_PENDING' : 'PENDING_SIGN' }]
-      .concat(r.st !== 'PENDING_SIGN' && r.st !== 'OFFLINE_PENDING' ? [{ at: r.signedAt || r.at, actor: r.st === 'RECALLED' ? r.by : null, action: r.st === 'RECALLED' ? 'Thu hồi' : 'Kết quả từ VOffice', to: r.st, note: r.reason || '' }] : []); });
+    list.forEach((r, i) => { r.id = i + 1; r.trans = transOf(r); r.log = [{ at: r.at, tm: `0${8 + (i % 2)}:${String(10 + i * 7).padStart(2, '0')}:${String(i * 13 % 60).padStart(2, '0')}`, actor: r.by, action: 'Trình ký', to: r.method === 'OFFLINE' ? 'OFFLINE_PENDING' : 'PENDING_SIGN' }]
+      .concat(r.st !== 'PENDING_SIGN' && r.st !== 'OFFLINE_PENDING' ? [{ at: r.signedAt || r.at, tm: `1${4 + (i % 3)}:${String(5 + i * 4).padStart(2, '0')}:${String(i * 17 % 60).padStart(2, '0')}`, actor: r.st === 'RECALLED' ? r.by : null, action: r.st === 'RECALLED' ? 'Thu hồi' : 'Kết quả từ VOffice', to: r.st, note: r.reason || '' }] : []); });
     return { seq: list.length, list };
   }
   function transOf(r) {
@@ -104,7 +113,7 @@
   }
   const save = () => { try { localStorage.setItem(STORE, JSON.stringify(db())); } catch (e) { /* bỏ qua */ } };
   function reset() { DB = null; try { localStorage.removeItem(STORE); } catch (e) { /* bỏ qua */ } }
-  function addLog(r, action, to, note, actor) { r.log.push({ at: today(), actor: actor === undefined ? Flow.state.persona : actor, action, from: r.st, to, note: note || '' }); r.st = to; }
+  function addLog(r, action, to, note, actor) { r.log.push({ at: today(), tm: nowTm(), actor: actor === undefined ? Flow.state.persona : actor, action, from: r.st, to, note: note || '' }); r.st = to; }
 
   /* ---------- Hộp thoại Trình ký VOffice (DTMS_CN_0271) ---------- */
   function ctx() {
@@ -317,7 +326,8 @@
     if (r.st === 'PENDING_SIGN') { if (rel) a.push('sync'); if (mine) a.push('recall'); }
     if (r.st === 'SIGNED') { a.push('dl'); if (r.method === 'VOFFICE' && !r.fetched && rel) a.push('fetch'); }
     if (r.st === 'OFFLINE_PENDING' && mine) a.push('result');
-    if (['FAILED', 'CANCELLED_SIGN', 'RECALLED', 'REJECTED_SIGN'].includes(r.st) && mine) a.push('resend');
+    /* D-112 (T58): Từ chối không Gửi lại — quy trình đã đi nhánh không đồng ý (BR-TKV-02-03, BR-TKV-04-03). */
+    if (['FAILED', 'CANCELLED_SIGN', 'RECALLED'].includes(r.st) && mine) a.push('resend');
     return a;
   }
   const ACT = { view: ['file', 'Xem'], sync: ['reload', 'Cập nhật trạng thái từ VOffice'], recall: ['back', 'Thu hồi'], dl: ['download', 'Tải bản ký'],
@@ -353,7 +363,7 @@
       <div class="vfield"><div class="lr"><label>Kết quả</label></div><div class="vradio">${window.UI.vRadio('Đã ký', true, 'data-kq="ok"')}${window.UI.vRadio('Từ chối', false, 'data-kq="no"')}</div></div>
       <div id="kq-ok" class="stack"><div class="vfield"><div class="lr"><label>Bản ký</label><span class="req">*</span></div><div><button type="button" class="vbtn sm red" id="kq-up">${icon('upload')} Tải file lên</button></div></div>
         <div class="grid2"><div class="vfield"><div class="lr"><label>Số văn bản</label></div><input class="vctl" id="kq-no" maxlength="50"></div>
-        <div class="vfield"><div class="lr"><label>Ngày ký</label><span class="req">*</span></div><input class="vctl" id="kq-date" placeholder="DD/MM/YYYY" value="${esc(today())}"></div></div></div>
+        <div class="vfield"><div class="lr"><label>Ngày ký</label><span class="req">*</span></div>${window.UI.vDate('id="kq-date"', today())}</div></div></div>
       <div id="kq-no-w" class="stack" style="display:none"><div class="vfield"><div class="lr"><label>Người từ chối</label><span class="req">*</span></div><input class="vctl" id="kq-who" maxlength="200"></div>
         <div class="vfield"><div class="lr"><label>Lý do từ chối</label><span class="req">*</span></div><textarea class="vctl ta" id="kq-rs" rows="3" maxlength="2000"></textarea></div></div></div>`,
       actions: '<button class="vbtn secondary" data-close>Hủy</button><button class="vbtn primary" id="kq-go">Xác nhận kết quả ký</button>' });
@@ -378,11 +388,13 @@
     };
   }
   function resend(r) {
+    /* D-112: chặn Gửi lại lần trình Từ chối (SRS 32 mục 3.4, bảng trường hợp; AC-0273-17). */
+    if (r.st === 'REJECTED_SIGN') { toast('Văn bản đã bị từ chối, quy trình đã chuyển sang bước sửa văn bản. Không gửi lại được lần trình này.', 'warn'); return; }
     if (r.st === 'FAILED') {
       askPw('Gửi lại').then((ok) => { if (!ok) return; addLog(r, 'Gửi lại', 'PENDING_SIGN'); addLog(r, 'Kết quả từ VOffice — Ký duyệt thành công', 'SIGNED', '', null); r.signedAt = today(); save(); toast('Trình ký VOffice thành công'); rerender(); });
       return;
     }
-    /* Đã hủy, Đã thu hồi, Từ chối: lần trình mới (BR-TKV-03-02) — GIẢ LẬP: chép lần trước, gửi sau khi nhập mật khẩu. */
+    /* Đã hủy, Đã thu hồi: lần trình mới (BR-TKV-03-02) — GIẢ LẬP: chép lần trước, gửi sau khi nhập mật khẩu. */
     askPw('Gửi lại').then((ok) => {
       if (!ok) return;
       const d = db(), n = JSON.parse(JSON.stringify(r));
@@ -396,16 +408,16 @@
     const f = FORMS.find((x) => x.id === (r.info || {}).form);
     vModal({ title: `Chi tiết lần trình — ${r.doc} ${r.obj}`, size: 'xl', body: `<div class="stack">
       <div class="ginfo">${kv('Đối tượng', esc(`${objLabel(r)} — ${r.objName}`))}${kv('Bước', esc(`Bước ${r.step} ${r.stepName || ''}`))}${kv('Lần trình', esc(String(r.attempt)))}
-        ${kv('Mã giao dịch', `<code>${esc(r.trans)}</code>`)}${kv('Hình thức', esc(METHOD[r.method] + (r.offMode ? ' — ' + (r.offMode === 'HAND' ? 'Ký tay' : 'Tự trình trên VOffice') : '')))}${kv('Trạng thái', stTag(r.st))}
+        ${kv('Mã giao dịch', `<code>${esc(r.trans)}</code>`)}${kv('Hình thức', esc(METHOD[r.method] + (r.offMode ? ' — ' + (r.offMode === 'HAND' ? 'Ký tay' : 'Tự trình trên VOffice') : '')))}${kv('Trạng thái', stTag(r))}
         ${kv('Lý do', esc(r.reason || r.offReason || ''))}${kv('Số văn bản', esc(r.docNo || ''))}${kv('Ngày ký', esc(r.signedAt || ''))}</div>
       ${r.method === 'VOFFICE' ? `<div class="ginfo">${kv('Trích yếu', esc(r.info.title || ''))}${kv('Hình thức văn bản', esc(f ? f.title : ''))}${kv('Ký hiệu', esc(r.info.symbol || ''))}
         ${kv('Ngành', esc(r.info.area || AREAS[0]))}${kv('Độ mật', esc(r.info.sec || SECS[0]))}${kv('Độ khẩn', esc(r.info.prio || PRIOS[0]))}</div>` : ''}
-      <div class="vfield"><div class="lr"><label>Tệp</label></div><div class="tk-files"><div class="tk-file">${icon('file')} ${esc(r.doc)}-${esc(r.obj)}.pdf <span class="faint">(tệp chính${r.st === 'SIGNED' ? (r.fetched ? ', đã có bản ký' : ', bản ký chưa lấy') : ''})</span></div>
-        ${(r.attach || []).map((a) => `<div class="tk-file">${icon('file')} ${esc(a)} <span class="faint">(kèm theo)</span></div>`).join('')}</div></div>
+      <div class="vfield"><div class="lr"><label>Tệp</label></div><div class="tk-files"><div class="tk-file">${icon('file')} <a class="link" data-tk-file="${esc(r.doc)}-${esc(r.obj)}.pdf">${esc(r.doc)}-${esc(r.obj)}.pdf</a> <span class="faint">(tệp chính${r.st === 'SIGNED' ? (r.fetched ? ', đã có bản ký' : ', bản ký chưa lấy') : ''})</span> <button type="button" class="vbtn icon ghost" data-tk-file="${esc(r.doc)}-${esc(r.obj)}.pdf" aria-label="Tải xuống" title="Tải xuống">${icon('download')}</button></div>
+        ${(r.attach || []).map((a) => `<div class="tk-file">${icon('file')} <a class="link" data-tk-file="${esc(a)}">${esc(a)}</a> <span class="faint">(kèm theo)</span> <button type="button" class="vbtn icon ghost" data-tk-file="${esc(a)}" aria-label="Tải xuống" title="Tải xuống">${icon('download')}</button></div>`).join('')}</div></div>
       <div class="vfield"><div class="lr"><label>Người ký</label></div><div class="vtable-vp"><table class="vtable"><thead><tr><th class="c">Nhóm</th><th>Chức danh</th><th>Tên người ký</th><th>Đơn vị</th><th class="c">Hiển thị chữ ký</th><th class="c">Khóa</th></tr></thead>
         <tbody>${r.signers.map((s) => `<tr><td class="c">${s.g}</td><td>${esc(s.pos)}</td><td>${esc(s.name)}</td><td>${esc(s.unit)}</td><td class="c">${s.show ? 'Có' : 'Không'}</td><td class="c">${s.locked ? icon('lock') : ''}</td></tr>`).join('')}</tbody></table></div></div>
-      <div class="vfield"><div class="lr"><label>Nhật ký</label></div><div class="vtable-vp"><table class="vtable"><thead><tr><th>Thời điểm</th><th>Người / VOffice</th><th>Thao tác</th><th>Trạng thái</th><th>Nội dung</th></tr></thead>
-        <tbody>${r.log.map((l) => `<tr><td>${esc(l.at)}</td><td>${esc(l.actor ? nameOf(l.actor) : 'VOffice')}</td><td>${esc(l.action)}</td><td>${l.from ? stTag(l.from) + ' → ' : ''}${stTag(l.to)}</td><td>${esc(l.note || '')}</td></tr>`).join('')}</tbody></table></div></div></div>`,
+      <div class="vfield"><div class="lr"><label>Lịch sử cập nhật</label></div><div class="vtable-vp"><table class="vtable"><thead><tr><th>Thời điểm</th><th>Người / VOffice</th><th>Thao tác</th><th>Trạng thái</th><th>Nội dung</th></tr></thead>
+        <tbody>${r.log.map((l, i) => Object.assign({ i }, l)).reverse().map((l) => `<tr><td>${esc(atOf(l))}</td><td>${esc(l.actor ? nameOf(l.actor) : 'VOffice')}</td><td>${esc(l.action)}</td><td>${l.from ? logTag(l.from) + ' → ' : ''}${logTag(l.to)}</td><td>${esc(l.note || '')}</td></tr>`).join('')}</tbody></table></div></div></div>`,
       actions: '<button class="vbtn secondary" data-close>Đóng</button>' });
   }
   function act(k, r) {
@@ -436,38 +448,38 @@
     const warn = list.filter((r) => r.st === 'UNPUBLISHED').map((r) => `<div class="banner-moved">Văn bản ${esc(r.doc)} đã bị hủy ban hành trên VOffice ngày ${esc(r.signedAt || r.at)}. Vui lòng xử lý theo quy định.</div>`).join('');
     const body = list.map((r) => `<tr data-tk-id="${r.id}" data-tk-row-view class="tk-click"><td class="c"><div class="acts">${acts(r).map((k) => `<button type="button" class="vbtn icon ghost" data-tk-act="${k}" aria-label="${ACT[k][1]}" title="${ACT[k][1]}">${icon(ACT[k][0])}</button>`).join('')}</div></td>
       <td>${esc(r.doc)}</td><td>${clamp(`Bước ${r.step} ${r.stepName || ''}`)}</td><td class="c">${r.attempt}</td><td>${esc(METHOD[r.method] + (r.offMode ? ' — ' + (r.offMode === 'HAND' ? 'Ký tay' : 'Tự trình trên VOffice') : ''))}</td>
-      <td class="c">${stTag(r.st)}</td><td class="c">${r.st === 'SIGNED' && r.method === 'VOFFICE' ? badge(r.fetched ? 'Đã lấy' : 'Chưa lấy', r.fetched ? 'success' : 'warning') : dash}</td>
+      <td class="c">${stTag(r)}</td><td class="c">${r.st === 'SIGNED' && r.method === 'VOFFICE' ? badge(r.fetched ? 'Đã lấy' : 'Chưa lấy', r.fetched ? 'success' : 'warning') : dash}</td>
       <td>${esc(r.docNo || '') || dash}</td><td class="c">${esc(r.signedAt || '') || dash}</td><td>${clamp(r.reason || r.offReason || '')}</td></tr>`).join('');
-    return `<section class="vcard${pad}" data-tkb><div class="vcard-h"><h3>Trình ký</h3><div class="row"><a class="link" data-go="trinh-ky">Xem màn Trình ký</a></div></div>${warn}
+    return `<section class="vcard${pad}" data-tkb><div class="vcard-h"><h3>Trình ký</h3>${'' /* [T56 bỏ — review Nhi 12/11 #42] <div class="row"><a class="link" data-go="trinh-ky">Xem màn Trình ký</a></div> */}</div>${warn}
       <div class="vtable-vp"><table class="vtable"><thead><tr>${cols.map(([h, w, a]) => `<th class="${a || ''}" style="width:${w}px;min-width:${w}px">${h}</th>`).join('')}</tr></thead>
       <tbody>${body || `<tr><td class="vtable-empty" colspan="${cols.length}"><img src="assets/empty-table.svg" alt="">Chưa có văn bản trình ký</td></tr>`}</tbody></table></div></section>`;
   }
   /* Trạng thái ký của văn bản theo lần trình mới nhất (tab Tài liệu & văn bản, Văn bản đầu ra). */
   function docStatus(obj, code) {
     const r = latest(obj).find((x) => String(x.doc).split(/\s|\+/)[0] === String(code).split(/\s|\+/)[0]);
-    return r ? { st: r.st, label: (ST[r.st] || [r.st])[0], tone: (ST[r.st] || [])[1], r } : null;
+    return r ? { st: r.st, label: VST[vstOf(r)][0], tone: VST[vstOf(r)][1], r } : null;
   }
 
   /* ---------- Màn Trình ký (DTMS_CN_0274) ---------- */
-  const emptyF = () => ({ st: [], method: null, fetched: null });
-  const L = { tab: 'mine', kw: '', adv: false, f: emptyF(), d: emptyF(), page: 1, size: 20, psOpen: false, sel: [] };
-  function inTab(r, tab) {
-    const p = Flow.state.persona;
-    if (tab === 'mine') return r.by === p;
-    if (tab === 'sign') return isSigner(r, p);
-    return isAdmin();
-  }
+  const emptyF = () => ({ st: [], method: null, fetched: null, by: null, signer: null });
+  const L = { kw: '', adv: false, f: emptyF(), d: emptyF(), page: 1, size: 20, psOpen: false, sel: [] };
+  /* T56 Q3 (review Nhi 12/11 #26): bỏ tab Tôi trình / Tôi ký — một danh sách; lọc Người trình ký, Người ký thay tab.
+     Phạm vi xem = lần trình của ĐXMS / KĐT người dùng có quyền xem (quyền xem đối tượng cha, S7).
+     GIẢ LẬP: mọi vai demo có quyền xem các ĐXMS / KĐT mẫu nên thấy mọi lần trình. Lệch SRS 32 DTMS_CN_0274 (tab). */
+  // [T56 bỏ tab] function inTab(r, tab) { const p = Flow.state.persona; if (tab === 'mine') return r.by === p; if (tab === 'sign') return isSigner(r, p); return isAdmin(); }
+  const canView = () => true;
   function rows() {
     const f = L.f, dk = (s) => { const m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})/.exec(String(s || '')); return m ? `${m[3]}${m[2].padStart(2, '0')}${m[1].padStart(2, '0')}` : ''; };
-    return db().list.filter((r) => inTab(r, L.tab)).filter((r) => (!L.adv ? !L.kw || norm(`${r.obj} ${r.objName} ${(r.info || {}).title || ''} ${r.docNo || ''}`).includes(norm(L.kw))
-      : (!f.st.length || f.st.includes(r.st)) && (!f.method || r.method === f.method) && (f.fetched == null || (r.st === 'SIGNED' && (f.fetched === 'y') === !!r.fetched))))
+    return db().list.filter(canView).filter((r) => (!L.adv ? !L.kw || norm(`${r.obj} ${r.objName} ${(r.info || {}).title || ''} ${r.docNo || ''}`).includes(norm(L.kw))
+      : (!f.st.length || f.st.includes(vstOf(r))) && (!f.by || r.by === f.by) && (!f.signer || isSigner(r, f.signer)) && (!f.method || r.method === f.method) && (f.fetched == null || (r.st === 'SIGNED' && (f.fetched === 'y') === !!r.fetched))))
       /* BR-TKV-04-05: Ngày trình giảm dần → Mã đối tượng tăng dần. */
       .sort((a, b) => dk(b.at).localeCompare(dk(a.at)) || a.obj.localeCompare(b.obj) || b.id - a.id);
   }
+  /* Ô lọc Người trình ký / Người ký: người có trong các lần trình. */
+  const people = (k) => [...new Set(db().list.flatMap((r) => (k === 'by' ? [r.by] : r.signers.map((x) => x.who))).filter(Boolean))]
+    .map((id) => ({ value: id, label: nameOf(id) })).sort((a, b) => a.label.localeCompare(b.label, 'vi'));
   function page() {
     const p = Flow.state.persona;
-    const tabs = [['mine', 'Tôi trình'], ['sign', 'Tôi ký']].concat(isAdmin() ? [['all', 'Tất cả']] : []);
-    if (!tabs.some(([k]) => k === L.tab)) L.tab = 'mine';
     const list = rows(), pages = Math.max(1, Math.ceil(list.length / L.size));
     if (L.page > pages) L.page = pages;
     const from = (L.page - 1) * L.size;
@@ -480,31 +492,34 @@
         <td><a class="link" data-go="${r.objType === 'KĐT' ? 'kdt' : 'luong'}/${encodeURIComponent(r.obj)}">${esc(objLabel(r))}</a></td><td>${clamp(r.objName)}</td>
         <td>${esc(r.doc)}</td><td>${clamp(`Bước ${r.step} ${r.stepName || ''}`)}</td><td>${r.method === 'OFFLINE' ? dash : clamp((r.info || {}).title)}</td><td>${esc(nameOf(r.by))}</td>
         <td><span title="${esc(r.signers.map((s) => `Nhóm ${s.g}: ${s.name}`).join('\n'))}">${r.signers.length} người · ${groups} nhóm</span></td><td>${esc(METHOD[r.method])}</td>
-        <td class="c">${stTag(r.st)}</td><td class="c">${r.st === 'SIGNED' && r.method === 'VOFFICE' ? badge(r.fetched ? 'Đã lấy' : 'Chưa lấy', r.fetched ? 'success' : 'warning') : dash}</td>
+        <td class="c">${stTag(r)}</td><td class="c">${r.st === 'SIGNED' && r.method === 'VOFFICE' ? badge(r.fetched ? 'Đã lấy' : 'Chưa lấy', r.fetched ? 'success' : 'warning') : dash}</td>
         <td>${esc(r.docNo || '') || dash}</td><td class="c">${esc(r.at)}</td><td class="c">${esc(r.signedAt || '') || dash}</td></tr>`;
     }).join('');
-    const empty = db().list.some((r) => inTab(r, L.tab)) ? 'Không tìm thấy dữ liệu phù hợp' : 'Chưa có dữ liệu';
+    const empty = db().list.some(canView) ? 'Không tìm thấy dữ liệu phù hợp' : 'Chưa có dữ liệu';
     const sel = (k, label, opts, o) => `<div class="vfield"><div class="lr"><label>${label}</label></div>${vSelect(Object.assign({ id: 'tkf-' + k, value: L.d[k], clear: true, placeholder: 'Tất cả', options: opts, onChange: (v) => { L.d[k] = v; rerender(); } }, o || {}))}</div>`;
     const info = {
       scr: 'SCR-113', name: 'Trình ký', uc: 'SRS 32 · DTMS_CN_0273, DTMS_CN_0274',
       notes: [
-        '<b>T54</b> (người dùng 11/11): màn theo SRS 32 Trình ký VOffice (<code>docs/SRS/32-srs-trinh-ky-voffice</code>). Mỗi dòng là <b>một lần trình</b>; tab Tôi trình / Tôi ký, Tất cả cho quản trị viên.',
-        'Thao tác theo trạng thái (BR-TKV-04-03): Chờ ký — Cập nhật trạng thái, Thu hồi (người trình); Đã ký — Tải bản ký, Lấy bản đã ký khi Chưa lấy; Từ chối / Đã hủy / Đã thu hồi / Lỗi gửi — Gửi lại; Chờ nhập kết quả — Nhập kết quả ký. Chọn nhiều dòng để Lấy bản đã ký / Cập nhật trạng thái, nhập mật khẩu VOffice một lần.',
-        'GIẢ LẬP: mật khẩu VOffice mọi chuỗi khác rỗng là đúng (gõ <code>sai</code> để thấy lỗi); VOffice trả kết quả ngay (mã 3 — Đã ký, Bản ký Chưa lấy); Gửi lại khi Đã hủy / Từ chối / Đã thu hồi tạo lần trình mới ngay trên màn này (thật: mở công việc Xử lý trình ký). Thật: cổng VOffice, bảng <code>sign_request</code> (SRS 32 mục 5).',
+        '<b>T54</b> (người dùng 11/11): màn theo SRS 32 Trình ký VOffice (<code>docs/SRS/32-srs-trinh-ky-voffice</code>). Mỗi dòng là <b>một lần trình</b>.',
+        '<b>T56</b> (review Nhi 12/11): <b>bỏ tab</b> Tôi trình / Tôi ký (#26) — một danh sách, lọc <b>Người trình ký</b>, <b>Người ký</b>; người không trình / không ký vẫn xem được lần trình của ĐXMS / KĐT mình có quyền xem (GIẢ LẬP: mọi vai demo xem được mọi lần trình mẫu). Lệch SRS 32 DTMS_CN_0274. <b>Trạng thái</b> (#31, Q4) chỉ còn 5 giá trị VOffice trả về (<code>be/vops-office</code> <code>VOfficeStatusEnum.fromVOfficeState</code> 0–4): Chưa trình ký, Đang xử lý, Bị từ chối, Đã ký duyệt, Đã ban hành (Đã ký duyệt + có Số văn bản). Đã hủy / Đã thu hồi / Đã hủy ban hành / Lỗi gửi hiện là Chưa trình ký, chi tiết ở <b>Lịch sử cập nhật</b> của hộp thoại (đổi tên từ Nhật ký, #22; thời điểm hh:mm:ss - dd/mm/yyyy, mới nhất trước, #23, #24; tải tệp, #25).',
+        'Thao tác theo trạng thái (BR-TKV-04-03): Chờ ký — Cập nhật trạng thái, Thu hồi (người trình); Đã ký — Tải bản ký, Lấy bản đã ký khi Chưa lấy; Từ chối — chỉ Xem (quy trình đã đi nhánh không đồng ý); Đã hủy / Đã thu hồi / Lỗi gửi — Gửi lại; Chờ nhập kết quả — Nhập kết quả ký. Chọn nhiều dòng để Lấy bản đã ký / Cập nhật trạng thái, nhập mật khẩu VOffice một lần.',
+        'GIẢ LẬP: mật khẩu VOffice mọi chuỗi khác rỗng là đúng (gõ <code>sai</code> để thấy lỗi); VOffice trả kết quả ngay (mã 3 — Đã ký, Bản ký Chưa lấy); Gửi lại khi Đã hủy / Đã thu hồi tạo lần trình mới ngay trên màn này (thật: mở công việc Xử lý trình ký). Thật: cổng VOffice, bảng <code>sign_request</code> (SRS 32 mục 5).',
         'Không thu hồi được trên VOffice (VOffice không có lời gọi hủy — người dùng chốt 11/11): thu hồi chỉ có hiệu lực trên ĐTMS.',
+        '<b>T58 / D-112</b> (12/11): Từ chối không Gửi lại — đi nhánh không đồng ý.',
       ],
       src: 'SRS 32 · fe/repo-khcn-hr-tools-fe features/signing · profile-management/profile-list (khuôn)',
     };
     return `<div class="pg" data-tkl>
       ${window.Screens.head({ title: 'Trình ký', info })}
       <div class="vcard">
-        <nav class="tabs dx-tabs" role="tablist">${tabs.map(([k, l]) => `<button type="button" class="tab ${L.tab === k ? 'on' : ''}" role="tab" data-tk-tab="${k}">${l} (${db().list.filter((r) => inTab(r, k)).length})</button>`).join('')}</nav>
         <div class="pg-head"><div class="l"><button type="button" class="vbtn secondary" data-tk-bulk="fetch" ${L.sel.length ? '' : 'disabled'}>${icon('sign')} Lấy bản đã ký</button>
           <button type="button" class="vbtn secondary" data-tk-bulk="sync" ${L.sel.length ? '' : 'disabled'}>${icon('reload')} Cập nhật trạng thái</button></div><div class="r">
           ${L.adv ? '' : `<label class="vsearch" style="width:320px">${icon('search')}<input id="tk-kw" maxlength="255" placeholder="Tìm theo mã, tên đối tượng, trích yếu, số văn bản" value="${esc(L.kw)}"></label>`}
           <button type="button" class="vbtn ${L.adv ? 'active' : 'secondary'}" data-tk-adv>${L.adv ? 'Ẩn tìm kiếm nâng cao' : 'Tìm kiếm nâng cao'}</button></div></div>
         ${L.adv ? `<form class="adv" data-tkadv><div class="grid3">
-            ${sel('st', 'Trạng thái', Object.entries(ST).map(([v, [l]]) => ({ value: v, label: l })), { multi: true })}
+            ${sel('st', 'Trạng thái', Object.entries(VST).map(([v, [l]]) => ({ value: v, label: l })), { multi: true })}
+            ${sel('by', 'Người trình ký', people('by'), { placeholder: 'Tất cả' })}
+            ${sel('signer', 'Người ký', people('signer'), { placeholder: 'Tất cả' })}
             ${sel('method', 'Hình thức', Object.entries(METHOD).map(([v, l]) => ({ value: v, label: l })))}
             ${sel('fetched', 'Bản ký', [{ value: 'y', label: 'Đã lấy' }, { value: 'n', label: 'Chưa lấy' }])}</div>
           <div class="acts"><button type="button" class="vbtn secondary" data-tk-reset>Làm mới</button><button type="submit" class="vbtn primary">Tìm kiếm</button></div></form>` : ''}
@@ -515,10 +530,14 @@
       </div></div>`;
   }
 
+  /* T56 (review Nhi #25): tải tệp ở hộp thoại Chi tiết lần trình. GIẢ LẬP: thông báo tải; thật: API tải tệp của lần trình (MinIO). */
+  document.addEventListener('click', (e) => {
+    const f = e.target.closest('[data-tk-file]'); if (!f) return;
+    e.preventDefault(); toast(`Đã tải ${esc(f.dataset.tkFile)}`);
+  });
   document.addEventListener('click', (e) => {
     if (!e.target.closest('[data-tkl], [data-tkb]')) return;
     const t = e.target;
-    const tb = t.closest('[data-tk-tab]'); if (tb) { L.tab = tb.dataset.tkTab; L.page = 1; L.sel = []; rerender(); return; }
     if (t.closest('[data-tk-adv]')) { L.adv = !L.adv; L.d = JSON.parse(JSON.stringify(L.f)); L.page = 1; rerender(); return; }
     if (t.closest('[data-tk-reset]')) { L.d = emptyF(); L.f = emptyF(); L.page = 1; rerender(); return; }
     const a = t.closest('[data-tk-act]'); if (a) { const r = find(a.closest('[data-tk-id]').dataset.tkId); if (r) act(a.dataset.tkAct, r); return; }

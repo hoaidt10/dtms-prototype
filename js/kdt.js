@@ -161,7 +161,7 @@
         ${sel('stGroup', 'Nhóm trạng thái', { searchable: false, placeholder: 'Tất cả', options: Object.entries(STAGE_GROUP).map(([value, label]) => ({ value, label })) })}
         ${sel('stage', 'Trạng thái', { multi: true, options: Object.entries(KDT_STAGE).map(([v, s]) => ({ value: v, label: s[0] })) })}
         ${sel('secret', 'Mật', { searchable: false, placeholder: 'Tất cả', options: ['Có', 'Không'].map((p) => ({ value: p, label: p })) })}
-        ${txt('from', 'Ngày tạo từ', 'DD/MM/YYYY')}${txt('to', 'Ngày tạo đến', 'DD/MM/YYYY')}
+        ${window.UI.vDateRange({ label: 'Ngày tạo', from: ['data-kf="from"', d.from], to: ['data-kf="to"', d.to] })}
       </div>
       <div class="acts"><button type="button" class="vbtn secondary" data-kl="reset">Làm mới</button><button type="submit" class="vbtn primary">Tìm kiếm</button></div></form>`;
   }
@@ -177,11 +177,12 @@
     const body = rows.slice(from, from + L.size).map((x, i) => { const sent = sentAt(x.main); return `<tr class="click" data-go="${href(x.code)}" data-code="${esc(x.code)}">
         <td class="ord">${from + i + 1}</td><td class="c"><div class="acts">${iconBtn('edit', 'Sửa', `data-go="${href(x.code)}/edit"`)}${x.stage === 'NEW' ? `<span class="sep"></span>${iconBtn('del', 'Xoá', `data-del-kdt="${esc(x.code)}"`)}` : ''}</div></td>
         <td class="c">${stageBadge(x.stage)}</td><td><a class="link" data-go="${href(x.code)}">${esc(x.code)}</a></td><td>${clamp(x.title)}</td><td>${nvsCell(nvsOf(x))}</td><td>${clamp(x.unit)}</td>
-        <td>${clamp(catLabel('type', x.type))}</td><td>${x.group ? esc(x.group) : '<span class="faint">Chưa xác định</span>'}</td>
+        <td>${clamp(catLabel('type', x.type))}</td><td>${x.group ? esc(GROUP[x.group] || x.group) : dash}</td>
         <td class="r num">${x.value != null ? ty(x.value) : dash}</td><td class="num">${sent ? esc(sent) : dash}</td><td>${clamp(x.creator)}</td><td class="num">${esc(x.created || '')}</td><td class="num">${esc(x.updated)}</td></tr>`; }).join('');
     const info = {
       scr: 'SCR-54', name: 'Danh sách khoản đầu tư', uc: 'UC-05-01 · WBS PH09 #172, 173 · UR-COM-01, UR-COM-09 · IA-DXMS dòng 10–12 (plan T31 K1, K2; D-67)',
       notes: [
+        '<b>T56 (review minhnh57 BA 12/11 #28, #29, #35, #38):</b> Nhóm KĐT ghi thẳng <b>Đơn giản</b> (MS13) / <b>Thông thường</b> (MS14) / <b>Phức tạp</b> (MS15), không ghi mã; Nhánh hồ sơ ghi <b>BM00</b> / <b>BM01→BM03</b>. Mã quy trình chỉ còn ở trường Quy trình. Nhóm KĐT do hệ thống xác định ở cổng phân luồng sau bước 12 (D-7) — chưa có thì bảng hiện "-" (Tìm kiếm nâng cao vẫn lọc được "Chưa xác định").',
         '<b>KĐT là đối tượng cha</b> (D-12), như ĐXMS: mỗi KĐT có các hồ sơ — hồ sơ <b>Phê duyệt KĐT</b> (MS13 / MS14 / MS15) và sau này hồ sơ Điều chỉnh KĐT. Bố cục theo task-management (như Danh sách ĐXMS).',
         'Thêm mới chỉ tạo KĐT, <b>không khởi tạo quy trình</b>; không chọn quy trình (D-7). Hồ sơ tạo ở Chỉnh sửa KĐT › Danh sách hồ sơ › Tạo hồ sơ.',
         'Trạng thái KĐT suy từ hồ sơ đang xử lý (hoặc hồ sơ Hoàn thành gần nhất): Đang lập → Chờ xác nhận phân loại → nhánh gộp (Đang lập / thẩm định hồ sơ gộp) hoặc hai giai đoạn (chủ trương → hồ sơ KĐT) → Chờ ký quyết định → Đã phê duyệt; Chuyển MS14; Dừng theo chỉ đạo.',
@@ -496,7 +497,8 @@
     const info = {
       scr: 'SCR-56', name: 'Chi tiết khoản đầu tư', uc: 'UC-05-01 · WBS PH09 #174, 180 · IA-DXMS dòng 13 (plan T31 K3, K4; D-68, D-69)',
       notes: [
-        'Theo task-create (mode detail): nút <b>Chỉnh sửa</b> trên hàng tiêu đề; cards Thông tin chung KĐT · <b>Danh sách hồ sơ</b> · Tài liệu đính kèm. Nút Tạo hồ sơ chỉ có ở Chỉnh sửa (như source).',
+        '<b>12/11 (người dùng: "giống Đề xuất mua sắm"):</b> thêm tab <b>Tài liệu & văn bản</b> như Chi tiết ĐXMS — Văn bản đầu ra, Danh sách tài liệu (của mọi hồ sơ của KĐT, có cột Hồ sơ, Loại hồ sơ) và khối Trình ký. Card Tài liệu đính kèm, khối Trình ký ở tab Thông tin chung và card Văn bản đầu ra ở tab Kết quả & triển khai chuyển vào tab này.',
+        'Theo task-create (mode detail): nút <b>Chỉnh sửa</b> trên hàng tiêu đề; cards Thông tin chung KĐT · <b>Danh sách hồ sơ</b>. Nút Tạo hồ sơ chỉ có ở Chỉnh sửa (như source).',
         'Nhóm KĐT và Nhánh hồ sơ lấy từ hồ sơ gần nhất — hệ thống xác định sau bước 12 (D-7). Trạng thái suy từ hồ sơ. Tổng mức vốn hiệu lực = của hồ sơ Hoàn thành gần nhất.',
         'Mã hồ sơ trong Danh sách hồ sơ mở <b>Chi tiết hồ sơ</b> (khuôn profile-detail: Quy trình MS13, Lịch sử, văn bản đầu ra, Xem BPMN MS13 tô bước hiện tại); quay lại về màn này. Hồ sơ đã chuyển luồng: bấm "Kết thúc — đã chuyển luồng" mở Thông báo chuyển luồng.',
         '<b>T31</b> (IA-DXMS dòng 13; D-69, D-68): ô <b>Đề tài / dự án</b> mở Chi tiết đề tài / dự án, kèm Loại của đề tài; card <b>Thông tin đề tài / dự án</b> chỉ xem các dòng dự toán KĐT đã bóc tách (sửa ở Chỉnh sửa khi chưa có hồ sơ); <b>Nội dung căn cứ pháp lý</b> nhập ở Thêm mới / Chỉnh sửa.',
@@ -516,7 +518,7 @@
         ${kv('Tổng mức vốn dự kiến', x.est != null ? ty(x.est) + ' tỷ đồng' : null)}${kv('Thời gian thực hiện', esc(x.period))}${kv('Mật', x.secret ? 'Có' : 'Không')}
         ${kv('Ngày cập nhật', esc(x.updated))}
         ${kv('Mục tiêu', esc(x.purpose), 'span3')}${x.legal ? kv('Nội dung căn cứ pháp lý', esc(x.legal), 'span3') : ''}</div></section>
-      ${costView(x)}${casesCard(x, false)}${docsCard(x)}${window.TrinhKy.block(x.code)}`, window.KdtB2.tabOpt)}</div>`;
+      ${costView(x)}${casesCard(x, false)}${'' /* [12/11 chuyển sang tab Tài liệu & văn bản] docsCard(x), window.TrinhKy.block(x.code) */}`, window.KdtB2.tabOpt)}</div>`;
   }
 
   /* ---------- Thêm mới hồ sơ KĐT (khuôn SCR-25 / profile-form, ô KĐT khoá như route create/:taskId) ----------
@@ -524,7 +526,8 @@
      nhập Tổng mức vốn KĐT → luồng tính lại bằng Flow.kdtLuong; lệch luồng chủ trương → thanh vàng, hộp xác nhận + Giải trình; MS15 chặn Lưu). */
   const C = { kdt: null, kind: 'CT', name: '', parent: null, est: '', err: {}, from: null };
   const CASE_RANK = { MS13: 1, MS14: 2, MS15: 3 };
-  const gname = (g) => GROUP[g] || g;
+  /* Tên luồng (quy trình) của hồ sơ KĐT — T56 Q7: trường Luồng / Quy trình giữ mã quy trình, Nhóm KĐT thì không. */
+  const gname = (g) => D.kdtProcs[g] || GROUP[g] || g;
   const ctTotal = (c, x) => (c && c.total != null ? c.total : x ? x.est : null);
   const ctOf = () => Flow.kdtCtChoices(C.kdt).find((c) => c.code === C.parent) || null;
   /* Lý do không tạo được hồ sơ loại kind cho KĐT, hoặc null (như R1, R2 của ĐXMS). Hồ sơ dừng / đã chuyển luồng không tính. */
@@ -697,7 +700,7 @@
   }
   function membersCardK() {
     const roles = kdtRoles(), err = C.err.rows || {};
-    return `${cardH('Nhân sự thực hiện', `<button type="button" class="vbtn secondary" data-kcm-add>${icon('add')} Thêm dòng</button>`, 'data-kc-members')}
+    return `${cardH('Thành phần tham gia', `<button type="button" class="vbtn secondary" data-kcm-add>${icon('add')} Thêm dòng</button>`, 'data-kc-members')}
       ${table([['Thao tác', 80, 'c'], ['Vai trò thực hiện', 340], ['Người thực hiện', 380]], C.h.rows, (r) => {
     const e = err[r.id] || {}, used = C.h.rows.filter((x) => x !== r && x.role).map((x) => x.role);
     return `<td class="c">${iconBtn('del', 'Xóa dòng', `data-kcm-del="${r.id}"`)}</td>

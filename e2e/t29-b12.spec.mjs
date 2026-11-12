@@ -58,19 +58,17 @@ test('SCR-96: Đề tài / dự án và khối bóc tách đứng đầu; Căn c
   await page.locator('#lf-save').click();
   await expect(page).toHaveURL(/#\/viec-cua-toi$/);
   await page.evaluate(() => { const t = Flow.state.tokens[0]; Flow.setPersona(t.who); location.hash = '#/task/' + t.id; });
-  // Màn xử lý việc: Thông tin chung mang lại các trường đã nhập khi tạo luồng.
-  const gi = page.locator('.tmain .ginfo').first();
+  // Màn xử lý việc: Thông tin chung như màn Chi tiết ĐXMS (T58 — SRS 14 V0.6 BR-XCT-01-05, SRS 15 BR-VCT-02-03).
+  const gi = page.locator('.dx-body .gen .ginfo').first();
   const val = (k) => gi.locator(':scope > div', { has: page.locator('.k', { hasText: new RegExp('^' + k + '$') }) }).locator('.v');
   await expect(val('Đề tài / dự án')).toContainText('NV-KHCN-2026-014');
   await expect(val('Lý do ưu tiên')).toContainText('thử nghiệm hiện trường');
   await expect(val('Hình thức trình ký')).toHaveText('VOffice');
-  await expect(val('Căn cứ đã được phê duyệt')).toHaveText('Chưa phê duyệt');
   await expect(val('Người tạo')).not.toHaveText('-');
-  await expect(val('Nội dung căn cứ pháp lý')).not.toHaveText('');
-  // Khối Nhân sự thực hiện (chỉ xem): mỗi vai trò của quy trình một dòng, chưa chỉ định thì theo vai trò.
-  const ns = page.locator('[data-members-info] tbody tr');
-  expect(await ns.count()).toBeGreaterThan(1);
-  await expect(page.locator('[data-members-info]')).toContainText('(theo vai trò)');
+  const ks = await gi.locator(':scope > div > .k').allTextContents();
+  expect(ks.indexOf('Ngày tạo')).toBe(ks.indexOf('Người tạo') + 1);
+  for (const k of ['Công việc', 'Hạn xử lý', 'Loại biểu mẫu', 'Tổng giá trị (gồm VAT)', 'Căn cứ đã được phê duyệt']) expect(ks).not.toContain(k);
+  await expect(page.locator('[data-members-info]')).toHaveCount(0); // bảng Thành phần tham gia ở tab riêng
   // Chi tiết luồng: Lý do ưu tiên, Hình thức trình ký; không còn Mục đích.
   await page.evaluate((c) => { location.hash = '#/luong/' + encodeURIComponent(c); }, x.code);
   await expect(page.locator('main .gen')).toContainText('Lý do ưu tiên');
@@ -87,7 +85,10 @@ test('SCR-95: Ngày tạo một trường "từ – đến"', async ({ page }) =
   await expect(page.locator('[data-lgf="from"], [data-lgf="to"]')).toHaveCount(0);
   const all = await page.locator('.vtable tbody tr').count();
   const dates = await page.evaluate(() => Flow.dxmsAll().map((x) => x.created));
-  await page.locator('[data-lgf="created"]').fill('01/09/2026 – 30/09/2026');
+  // T56: hai ô ngày + "-", ghép vào ô ẩn data-lgf="created" (một chuỗi từ – đến như trước).
+  await page.locator('[data-lgadv] input[data-vrange="a"]').fill('01092026');
+  await page.locator('[data-lgadv] input[data-vrange="b"]').fill('30092026');
+  await expect(page.locator('[data-lgf="created"]')).toHaveValue('01/09/2026 – 30/09/2026');
   await page.locator('[data-lgadv] button[type="submit"]').click();
   const want = dates.filter((d) => { const [dd, mm, yy] = d.split('/'); const k = yy + mm + dd; return k >= '20260901' && k <= '20260930'; }).length;
   await expect(page.locator('[data-pager="lg"] .tot')).toHaveText(`Tổng số bản ghi: ${want}`);
@@ -98,7 +99,10 @@ test('SCR-95: Ngày tạo một trường "từ – đến"', async ({ page }) =
 
 test('D-76, D-78, D-105: menu ẩn Quản lý thầu / hợp đồng (route giữ); Quản lý tài liệu ĐXMS (SRS 29) — văn bản đầu ra, lọc, mở ĐXMS', async ({ page }) => {
   await gop(page);
-  await expect(page.locator('.sb-nav [data-toggle="Quản lý thầu"]')).toHaveCount(0);
+  // T56 Q1: nhóm Quản lý thầu hiện, chỉ có Yêu cầu báo giá; các mục thầu khác vẫn ẩn (D-76).
+  await page.locator('.sb-nav [data-toggle="Quản lý thầu"]').click();
+  await expect(page.locator('.sb-nav [data-go="ycbg"]')).toBeVisible();
+  await expect(page.locator('.sb-nav [data-go="khlcnt"], .sb-nav [data-go="goi-thau"]')).toHaveCount(0);
   await expect(page.locator('.sb-nav [data-toggle="Quản lý hợp đồng"]')).toHaveCount(0);
   const kids = await page.evaluate(() => {
     let n = document.querySelector('.sb-nav [data-toggle="Quản lý đề xuất mua sắm"]').nextElementSibling;
@@ -106,7 +110,7 @@ test('D-76, D-78, D-105: menu ẩn Quản lý thầu / hợp đồng (route gi�
     for (; n && n.classList.contains('child'); n = n.nextElementSibling) out.push(n.querySelector('.l').textContent);
     return out;
   });
-  expect(kids).toEqual(['Đề xuất mua sắm', 'Quản lý tài liệu ĐXMS', 'Yêu cầu báo giá ĐXMS']);
+  expect(kids).toEqual(['Đề xuất mua sắm', 'Quản lý tài liệu ĐXMS']); // 12/11: YCBG thành menu cấp 1
   // Route Thầu vẫn mở.
   await page.evaluate(() => { location.hash = '#/goi-thau'; });
   await expect(page.locator('.pg-title')).toHaveText('Danh sách gói thầu');
@@ -129,7 +133,10 @@ test('D-76, D-78, D-105: menu ẩn Quản lý thầu / hợp đồng (route gi�
   await page.locator('[data-qhadv] button[type="submit"]').click();
   await expect(page.locator('main .vtable-empty')).toContainText('Không tìm thấy dữ liệu phù hợp');
   // AC-0153-14: ngày đầu lớn hơn ngày cuối.
-  await page.fill('#qh-date', '10/11/2026 – 01/11/2026');
+  // T56: hai ô ngày + "-" ghép vào ô ẩn #qh-date.
+  await page.locator('[data-qhadv] input[data-vrange="a"]').fill('10112026');
+  await page.locator('[data-qhadv] input[data-vrange="b"]').fill('01112026');
+  await expect(page.locator('#qh-date')).toHaveValue('10/11/2026 – 01/11/2026');
   await page.locator('[data-qhadv] button[type="submit"]').click();
   await expect(page.locator('.vfield.invalid .msg')).toHaveText('Ngày cập nhật không hợp lệ.');
   await page.locator('[data-qh="reset"]').click();
@@ -170,13 +177,14 @@ test('D-81, #4 + B19: bước 1 mở màn Lập ĐXMS (không popup), căn cứ 
   await expect(page).toHaveURL(/#\/viec-cua-toi$/);
   // Bước 5.1 (Chỉ huy ĐVĐX): Thông tin chung có Giá trị dự kiến, Tổng giá trị trống, phần khả dụng.
   await jump(page, '5.1');
-  const gi = page.locator('.tmain .ginfo').first();
+  // T58: Thông tin chung như màn Chi tiết ĐXMS — Giá trị đề xuất, Giá trị dự kiến; không còn Tổng giá trị (gồm VAT).
+  const gi = page.locator('.dx-body .gen .ginfo').first();
   await expect(gi).toContainText('Giá trị dự kiến');
-  await expect(gi.locator('div', { has: page.locator('.k', { hasText: /^Tổng giá trị/ }) }).locator('.v')).toHaveText('-');
+  await expect(gi).toContainText('Giá trị đề xuất');
+  await expect(gi).not.toContainText('Tổng giá trị');
   await expect(page.locator('[data-basis-avail]')).toHaveCount(0); // T37 #4
-  // Sau bước 10 (đã chốt báo giá) có Tổng giá trị.
   await jump(page, 13);
-  await expect(page.locator('.tmain .ginfo').first()).not.toContainText('Giá trị dự kiến');
+  await expect(page.locator('.dx-body .gen .ginfo').first()).toContainText('Giá trị đề xuất');
   await expect(page.locator('[data-basis-avail]')).toHaveCount(0);
   expect(page.errors).toEqual([]);
 });

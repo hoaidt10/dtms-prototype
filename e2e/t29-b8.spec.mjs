@@ -73,7 +73,7 @@ test('SCR-104: 5 tab cho mọi Loại (T31 B2); dự toán chỉ xem (góp ý 05
   await go(page, '#/de-tai/' + encodeURIComponent(DT));
   await expect(page.locator('main .ginfo').first()).toContainText('Đồng bộ KHCN');
   await page.locator('[data-dt-tab="du-toan"]').click();
-  await expect(page.locator('[data-dt-kpi]')).toContainText('Đang giữ (ĐXMS / KĐT đang xử lý)');
+  await expect(page.locator('[data-dt-kpi] .dt-tip').nth(1)).toHaveAttribute('title', 'Đề xuất mua sắm, khoản đầu tư đang xử lý'); // V1.4: nhãn Đang giữ, tooltip
   // Chỉ xem: không Thêm mới, không cột Thao tác (Sao chép / Sửa / Xoá) — kể cả đơn vị lập đề tài.
   await expect(page.locator('[data-dt-x="add"]')).toHaveCount(0);
   await expect(page.locator('[data-dt-edit], [data-dt-copy], [data-dt-del]')).toHaveCount(0);
@@ -102,30 +102,50 @@ test('SCR-104: 5 tab cho mọi Loại (T31 B2); dự toán chỉ xem (góp ý 05
   expect(page.errors).toEqual([]);
 });
 
-test('SCR-104: Chi mua sắm chỉ TTMS; bỏ tích bị chặn khi ĐXMS đang giữ (D-64); Trạng thái chỉ hiện khi tích, TTMS chọn Hoàn thành → không bóc tách thêm (P-203)', async ({ page }) => {
+test('SCR-104 (SRS-DADT V1.4 BR-DADT-02-10): Chi mua sắm / Hoàn thành qua chế độ chỉnh sửa; bỏ khi đang giữ bị chặn lúc [Lưu]; Hoàn thành → không bóc tách thêm (P-203)', async ({ page }) => {
   await fresh(page, '#/de-tai/' + encodeURIComponent(DT));
   await page.evaluate(() => Flow.setPersona('lan'));
   await page.locator('[data-dt-tab="du-toan"]').click();
+  // Mặc định chỉ xem, kể cả TTMS.
+  await expect(page.locator(`[data-dt-buy="${DT}-1"]`)).toBeDisabled();
+  await page.locator('[data-dt-e="edit"]').click();
+  // Bỏ Chi mua sắm khoản mục đang giữ: chỉ là nháp, bị chặn khi [Lưu], không ghi gì, giữ nháp.
   await page.locator(`[data-dt-buy="${DT}-1"]`).click();
+  await expect(line(page, `${DT}-1`).locator('[data-dt-dirty]')).toHaveCount(1);
+  await page.locator('[data-dt-e="save"]').click();
   expect(await lastToast(page)).toContain('Khoản mục đang được giữ bởi ĐXMS-2026-0101');
+  await expect(page.locator(`[data-dt-buy="${DT}-1"]`)).not.toBeChecked();
+  expect(await page.evaluate((c) => D.duToanOf(c).find((l) => l.id === c + '-1').buy, DT)).toBe(true);
+  await page.locator('[data-dt-e="cancel"]').click();
   await expect(page.locator(`[data-dt-buy="${DT}-1"]`)).toBeChecked();
-  // Dòng chưa tích: không có Trạng thái.
+  // Dòng chưa đánh dấu: không có Trạng thái. Đánh dấu trong nháp: Trạng thái suy, chưa chọn Hoàn thành được tới khi lưu.
+  await page.locator('[data-dt-e="edit"]').click();
   await expect(line(page, `${DT}-5`).locator('[data-vsel]')).toHaveCount(0);
   await expect(line(page, `${DT}-5`)).not.toContainText('Chưa mua sắm');
   await page.locator(`[data-dt-buy="${DT}-5"]`).check();
-  expect(await lastToast(page)).toContain('Cập nhật Chi mua sắm thành công');
+  await expect(line(page, `${DT}-5`)).toContainText('Chưa mua sắm');
+  await expect(line(page, `${DT}-5`).locator('[data-vsel]')).toHaveCount(0);
+  await page.locator('[data-dt-e="save"]').click();
+  expect(await lastToast(page)).toContain('Cập nhật khoản mục thành công.');
+  expect(await page.evaluate((c) => D.duToanOf(c).find((l) => l.id === c + '-5').buy, DT)).toBe(true);
+  // TTMS chọn Hoàn thành → [Lưu] hỏi xác nhận "Cập nhật khoản mục".
+  await page.locator('[data-dt-e="edit"]').click();
   const st = line(page, `${DT}-5`).locator(`[data-vsel="dts-${DT}-5"]`);
   await expect(st).toContainText('Chưa mua sắm');
-  expect(await page.evaluate((c) => D.duToanOf(c).find((l) => l.id === c + '-5').buy, DT)).toBe(true);
-  // TTMS chọn Hoàn thành.
   await st.click();
   await page.locator('.vsel-panel .vsel-opt', { hasText: 'Hoàn thành' }).click();
-  expect(await lastToast(page)).toContain('Cập nhật Trạng thái thành công');
-  await expect(line(page, `${DT}-5`).locator(`[data-vsel="dts-${DT}-5"]`)).toContainText('Hoàn thành');
-  expect(await page.evaluate((c) => D.duToanOf(c).find((l) => l.id === c + '-5').status, DT)).toBe('Hoàn thành');
-  // Khoản mục Hoàn thành không còn trong danh sách bóc tách khi tạo KĐT (GIẢ LẬP P-203): dòng 6 (PL2) đang Chi mua sắm.
   await line(page, `${DT}-6`).locator(`[data-vsel="dts-${DT}-6"]`).click();
   await page.locator('.vsel-panel .vsel-opt', { hasText: 'Hoàn thành' }).click();
+  await page.locator('[data-dt-e="save"]').click();
+  const dlg = page.locator('[data-dt-confirm]');
+  await expect(dlg).toContainText('Khoản mục Dự phòng phí sẽ không còn bóc tách được vào đề xuất mua sắm, khoản đầu tư.');
+  await expect(dlg).toContainText('Khoản mục Máy tính xách tay cấu hình cao sẽ không còn bóc tách được');
+  await expect(dlg).toContainText('Bạn có chắc chắn?');
+  await page.locator('[data-dt-ok]').click();
+  expect(await lastToast(page)).toContain('Cập nhật khoản mục thành công.');
+  await expect(line(page, `${DT}-5`)).toContainText('Hoàn thành');
+  expect(await page.evaluate((c) => D.duToanOf(c).find((l) => l.id === c + '-5').status, DT)).toBe('Hoàn thành');
+  // Khoản mục Hoàn thành không còn trong danh sách bóc tách khi tạo KĐT (GIẢ LẬP P-203): dòng 6 (PL2) đã Hoàn thành.
   await go(page, '#/kdt/create');
   await page.locator('[data-vsel="k-nv"]').click();
   await page.locator(`.vsel-panel [data-opt="${DT}"]`).click();

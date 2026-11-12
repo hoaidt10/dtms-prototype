@@ -60,7 +60,7 @@ test('SCR-20 KĐT mẫu: tiến độ, lịch sử, văn bản đầu ra theo b�
   await fresh(page, '#/ho-so-kdt/HS-2026-0012');
   const gi = page.locator('.ginfo');
   await expect(gi).toContainText('Quy trìnhMS13 · KĐT đơn giản');
-  await expect(gi).toContainText('Nhánh hồ sơHai giai đoạn (BM-01 → BM-03)');
+  await expect(gi).toContainText('Nhánh hồ sơBM01→BM03');
   await expect(gi).toContainText('Trạng tháiHoàn thành');
   await expect(gi).toContainText('Tổng mức vốn thực tế (gồm VAT)138,50 tỷ đồng');
   await expect(page.locator('.vsteps .vsteps-c.active')).toHaveCount(0);
@@ -88,7 +88,7 @@ test('SCR-20 KĐT mẫu: tiến độ, lịch sử, văn bản đầu ra theo b�
   await expect(page.locator('.bp-vp')).toHaveAttribute('data-active', '46');
 
   await go(page, '#/ho-so-kdt/HS-2026-0031');
-  await expect(gi).toContainText('Nhánh hồ sơGộp BM-00');
+  await expect(gi).toContainText('Nhánh hồ sơBM00');
   await expect(gi).toContainText('Quy trìnhMS13 · KĐT đơn giản');
 
   // Hồ sơ đã chuyển luồng ↔ hồ sơ mới MS14 liên kết hai chiều.
@@ -107,7 +107,7 @@ test('SCR-20 KĐT đang chạy: cảnh K5 (bước 27 của khối chung, vòng 
   const code = await page.evaluate(() => Flow.state.code);
   // Xem BPMN từ màn xử lý task: tô đúng bước của khối chung (D-32), tiêu đề ghi vòng thẩm định.
   await page.evaluate(() => { location.hash = '#/task/' + Flow.state.tokens[0].id; });
-  await page.locator('.task-acts .vbtn', { hasText: 'Xem BPMN' }).click();
+  await page.locator('.pg-head [data-go$="/bpmn"]').click();
   await expect(page.locator('.bp-vp')).toHaveAttribute('data-active', '27');
   await expect(page.locator('.bp-h h2')).toContainText('(Thẩm định chủ trương BM-01)');
   expect(await mainText(page)).not.toMatch(BA);
@@ -254,7 +254,7 @@ test('C3: màn xử lý task của mọi bước người dùng MS13 cấp VHT (
     const id = await page.evaluate((t) => (Flow.state.tokens.find((k) => String(k.task) === String(t)) || {}).id, task);
     expect(id, `phải có việc ở bước ${task} (${kdt})`).toBeTruthy();
     await page.evaluate((x) => { const t = Flow.token(x); Flow.setPersona(t.who); location.hash = '#/task/' + x; }, id);
-    await expect(page.locator('.pg-title')).toContainText('Xem chi tiết hồ sơ');
+    await expect(page.locator('.pg-title')).toHaveText(/Xem chi tiết hồ sơ|Xử lý hồ sơ/);
     await expect(page.locator('.pg-title .info-i')).toBeVisible();
     const txt = await mainText(page);
     expect(txt, `bước ${task}`).not.toMatch(BA);

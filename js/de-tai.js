@@ -134,16 +134,21 @@
     });
     return out;
   }
+  /* Chỉ số thực hiện của đề tài (SRS-DADT V1.4 BR-DADT-02-07, 10 chỉ số). Đã đăng ký, Đang giữ, ba mốc, Giá trị tiết kiệm: tổng mọi khoản mục
+     (kể cả khoản mục đã bỏ Chi mua sắm còn phần đã dùng); ba mốc, tiết kiệm chỉ cộng khoản mục có giá trị, không có thì null ("-").
+     Còn lại khả dụng = Giá trị chi mua sắm − Đã đăng ký − Đang giữ. */
   function totals(code) {
     const lines = D.duToanOf(code), uses = usesOf(code);
-    const t = { value: 0, buy: 0, ok: 0, held: 0, exec: 0, saving: 0, remain: 0 };
+    const t = { value: 0, buy: 0, ok: 0, held: 0, bid: null, hd: null, tt: null, saving: null };
     lines.forEach((l) => {
       t.value += l.value;
-      if (!l.buy) return;
+      if (l.buy) t.buy += l.value;
       const s = D.duToanStats(l, uses[l.id]);
-      t.buy += l.value; t.ok += s.ok; t.held += s.held; t.exec += s.exec; t.saving += s.saving; t.remain += s.remain;
+      t.ok += s.ok; t.held += s.held;
+      ['bid', 'hd', 'tt', 'saving'].forEach((k) => { if (s[k] != null) t[k] = (t[k] || 0) + s[k]; });
     });
-    Object.keys(t).forEach((k) => { t[k] = r2(t[k]); });
+    Object.keys(t).forEach((k) => { if (t[k] != null) t[k] = r2(t[k]); });
+    t.remain = r2(t.buy - t.ok - t.held);
     return t;
   }
 
@@ -225,7 +230,7 @@
         ${sel('level', 'Cấp phê duyệt', 'Tất cả', catNames('cap-phe-duyet'))}
         ${sel('block', 'Khối đơn vị', 'Chọn khối đơn vị', D.blocks, { onChange: (v) => { d.block = v; if (d.unit && !unitsOf(v).includes(d.unit)) d.unit = null; rerender(); } })}
         ${sel('unit', 'Đơn vị lập ĐT/DA', 'Chọn đơn vị lập', unitsOf(d.block), { searchable: true })}
-        ${date('from', 'Ngày QĐ đầu tư từ')}${date('to', 'Ngày QĐ đầu tư đến')}
+        ${window.UI.vDateRange({ label: 'Ngày QĐ đầu tư', from: ['data-dtf="from"', d.from], to: ['data-dtf="to"', d.to], err: S.err.from || S.err.to })}
         ${sel('fund', 'Nguồn vốn', 'Chọn nguồn vốn', funds)}
         ${sel('st', 'Trạng thái', 'Chọn trạng thái', Object.keys(STATUS))}
         ${sel('loai', 'Loại dự án / đề tài', 'Chọn loại dự án / đề tài', catNames('loai-dadt'), { onChange: (v) => { d.loai = v; const ok = loaiCtOf(v); d.loaiCt = d.loaiCt.filter((x) => ok.includes(x)); rerender(); } })}
@@ -282,7 +287,23 @@
   const exportList = () => csv('Danh sach Du an De tai.csv', [['DANH SÁCH DỰ ÁN ĐỀ TÀI - TCT CÔNG NGHIỆP CÔNG NGHỆ CAO VIETTEL'], [], EXPORT_HEAD].concat(filtered().map(exportRow)));
 
   /* ---------- SCR-104 Chi tiết đề tài / dự án ---------- */
-  const T = { code: null, tab: 'info', open: new Set(), seen: false };
+  const T = { code: null, tab: 'info', open: new Set(), seen: false, edit: false, draft: {} };
+  /* SRS-DADT V1.4 BR-DADT-02-10 — chế độ chỉnh sửa Chi mua sắm, Trạng thái: bảng mặc định chỉ xem, TTMS bấm [Chỉnh sửa]; đổi là nháp trên màn
+     (T.draft: mã dòng → { buy, done }), chưa ghi, chưa kiểm tra; [Lưu] kiểm tra mọi khoản mục rồi ghi một lần; [Hủy] bỏ nháp.
+     Thật: FE giữ nháp + phiên bản từng khoản mục, BE POST /projects/{id}/cost-items/save trong một giao dịch, khóa lạc quan (be/dtms T55 L2). */
+  const savedOf = (l) => ({ buy: !!l.buy, done: l.status === 'Hoàn thành' });
+  const curOf = (l) => Object.assign(savedOf(l), T.edit ? T.draft[l.id] || {} : {});
+  const isChanged = (l) => { const a = savedOf(l), b = curOf(l); return a.buy !== b.buy || a.done !== b.done; };
+  const dirty = () => T.edit && !!T.code && D.duToanOf(T.code).some(isChanged);
+  function setDraft(l, patch) {
+    const v = Object.assign(curOf(l), patch), s = savedOf(l);
+    if (!v.buy) v.done = false; /* bỏ Chi mua sắm thì bỏ Hoàn thành của nháp */
+    if (v.buy === s.buy && v.done === s.done) delete T.draft[l.id]; else T.draft[l.id] = v;
+  }
+  const endEdit = () => { T.edit = false; T.draft = {}; };
+  /* Dấu "đã sửa" (FE: chấm đỏ + tooltip PROJECT_MANAGEMENT.DETAIL.ESTIMATE.CHANGED). */
+  const DIRTY_DOT = '<span class="dt-dirty" title="Đã sửa" aria-label="Đã sửa" data-dt-dirty></span>';
+  const discardOk = () => window.Catalog.confirm({ sev: 'warning', title: 'Xác nhận', desc: 'Các thay đổi chưa lưu sẽ bị bỏ. Bạn có chắc chắn?', hl: '', cancel: 'Hủy', ok: 'Đồng ý' });
   const typeName = (t) => (D.costTypes.find(([k]) => k === t) || [t, t])[1];
   const dxmsHref = (code) => (window.Luong.isGop() ? 'luong/' : 'dxms/') + encodeURIComponent(code);
   const dxBadge = (s) => badge(window.Screens.DXMS_STATUS[s][0], window.Screens.DXMS_STATUS[s][1]);
@@ -321,18 +342,46 @@
     return live.every((u) => u.st === 'OK') ? 'Đã phê duyệt' : 'Đang mua sắm';
   }
   const lineBadge = (s) => badge(s, LINE_BADGE[s] || 'default');
-  const stSel = (l, us) => { const auto = lineState(Object.assign({}, l, { status: '' }), us);
-    return vSelect({ id: 'dts-' + l.id, value: l.status === 'Hoàn thành' ? 'Hoàn thành' : 'auto', searchable: false,
-      options: [{ value: 'auto', label: auto }, { value: 'Hoàn thành', label: 'Hoàn thành' }],
-      onChange: (v) => { const nv = v === 'Hoàn thành' ? 'Hoàn thành' : ''; if (nv === (l.status === 'Hoàn thành' ? 'Hoàn thành' : '')) return;
-        D.duToanSave(T.code, Object.assign({}, l, { status: nv })); toast('<b>Thành công</b><br>Cập nhật Trạng thái thành công'); rerender(); } }); };
+  /* Ô Trạng thái trong chế độ chỉnh sửa (BR-DADT-02-04): hai lựa chọn — trạng thái suy hiện tại và Hoàn thành; đổi là nháp. */
+  const stSel = (l, auto, c) => vSelect({ id: 'dts-' + l.id, value: c.done ? 'Hoàn thành' : 'auto', searchable: false,
+    options: [{ value: 'auto', label: auto }, { value: 'Hoàn thành', label: 'Hoàn thành' }],
+    onChange: (v) => { setDraft(l, { done: v === 'Hoàn thành' }); rerender(); } });
+  const negNum = (v) => (v == null ? dash : `<span class="${v < 0 ? 't-err' : ''}">${num(v)}</span>`);
+  /* 10 chỉ số (BR-DADT-02-07; nhãn, tooltip theo FE PROJECT_MANAGEMENT.DETAIL.INDICATOR.*): [nhãn, giá trị tỷ đồng | null, tooltip, âm tô đỏ].
+     Tỷ lệ đã đăng ký mua = (Đã đăng ký + Đang giữ) / Giá trị chi mua sắm, 1 chữ số thập phân; Giá trị chi mua sắm = 0 thì "-". */
+  const kpiRows = (t) => [
+    ['Tổng dự toán (gồm VAT)', t.value], ['Giá trị chi mua sắm', t.buy],
+    ['Đã đăng ký', t.ok, 'Đề xuất mua sắm, khoản đầu tư đã phê duyệt'], ['Đang giữ', t.held, 'Đề xuất mua sắm, khoản đầu tư đang xử lý'],
+    ['Còn lại khả dụng', t.remain, '', true], ['Giá trị chọn thầu', t.bid], ['Giá trị chọn HĐ', t.hd], ['Giá trị sau khi tất toán HĐ', t.tt],
+    ['Giá trị tiết kiệm', t.saving, 'Giá trị dự toán − Giá trị mới nhất', true],
+    ['Tỷ lệ đã đăng ký mua', t.buy ? Math.round(((t.ok + t.held) / t.buy) * 1000) / 10 : null, '', false, '%'],
+  ];
+  const kpiText = (v, pctUnit) => (pctUnit ? String(v).replace('.', ',') + '%' : ty(v) + ' tỷ đồng');
+  const kpiBlock = (t) => `<section class="vcard pad24 gen" data-dt-kpi><h3>Chỉ số thực hiện</h3><div class="ginfo c5">
+      ${kpiRows(t).map(([k, v, tip, neg, pctUnit]) => kv(tip ? `<span class="dt-tip" title="${esc(tip)}">${esc(k)} ${icon('info')}</span>` : esc(k),
+        v == null ? null : `<span class="${neg && v < 0 ? 't-err' : ''}">${kpiText(v, pctUnit)}</span>`)).join('')}</div></section>`;
   function duToanTab(r) {
-    const lines = D.duToanOf(r.code), uses = usesOf(r.code), t = totals(r.code), tick = canTick();
+    const lines = D.duToanOf(r.code), uses = usesOf(r.code), t = totals(r.code), tick = canTick(), editing = tick && T.edit;
     const groups = [...new Set(lines.map((l) => l.type))].sort().map((type) => {
       const ls = lines.filter((l) => l.type === type);
       return { key: 'g:' + type, kind: 'g', type, pre: ls.reduce((s, l) => s + l.pre, 0), tax: ls.reduce((s, l) => s + l.tax, 0), value: ls.reduce((s, l) => s + l.value, 0),
-        children: ls.map((l) => ({ key: l.id, kind: 'l', l, s: D.duToanStats(l, uses[l.id]), children: uses[l.id].map((u, i) => ({ key: `${l.id}:${u.x.code}`, kind: 'u', u, n: i + 1 })) })) };
+        children: ls.map((l) => ({ key: l.id, kind: 'l', l, s: D.duToanStats(l, uses[l.id]),
+          children: uses[l.id].map((u, i) => ({ key: `${l.id}:${u.x.code}`, kind: 'u', u, n: i + 1, moc: D.duToanMocOf(l.id, u.x.code) })) })) };
     });
+    /* Chi mua sắm: mờ khi chưa vào chế độ chỉnh sửa hoặc không phải TTMS; khoản mục Ngừng sử dụng chưa đánh dấu thì mờ + tooltip. */
+    const buyCell = (x) => {
+      const c = curOf(x.l), stop = x.l.active === false && !x.l.buy, on = editing && !stop;
+      return `<span class="dt-cell"><label class="check" ${editing && stop ? 'title="Khoản mục ngừng sử dụng"' : ''}><input type="checkbox" data-dt-buy="${esc(x.l.id)}" aria-label="Chi mua sắm" ${c.buy ? 'checked' : ''} ${on ? '' : 'disabled'}></label>${editing && c.buy !== x.l.buy ? DIRTY_DOT : ''}</span>`;
+    };
+    /* Trạng thái: chỉ khi Chi mua sắm (theo nháp) = Có; ngoài chế độ chỉnh sửa là nhãn; khoản mục vừa đánh dấu trong nháp hiện trạng thái suy, chưa chọn Hoàn thành được. */
+    const stCell = (x) => {
+      const c = curOf(x.l);
+      if (!c.buy) return dash;
+      const auto = lineState(Object.assign({}, x.l, { status: '' }), uses[x.l.id]);
+      if (!editing || !x.l.buy) return lineBadge(c.done ? 'Hoàn thành' : auto);
+      return `<span class="dt-cell">${stSel(x.l, auto, c)}${c.done !== savedOf(x.l).done ? DIRTY_DOT : ''}</span>`;
+    };
+    const moc = (k) => cell({ l: (x) => num(x.s[k]), u: (x) => (x.moc ? num(x.moc[k]) : dash) });
     if (!T.seen) { groups.forEach((g) => T.open.add(g.key)); T.seen = true; }
     const cell = (f) => (x) => (f[x.kind] ? f[x.kind](x) : '');
     const columns = [
@@ -347,38 +396,46 @@
       { h: '%VAT', w: 70, align: 'r', cell: cell({ l: (x) => x.l.vat + '%' }) },
       { h: 'Thuế GTGT', w: 110, align: 'r', cell: cell({ g: (g) => num(g.tax), l: (x) => num(x.l.tax) }) },
       { h: 'Giá trị sau thuế', w: 130, align: 'r', cell: cell({ g: (g) => num(g.value), l: (x) => num(x.l.value), u: (x) => num(x.u.value) }) },
-      { h: 'Giá trị thực hiện', w: 130, align: 'r', cell: cell({ l: (x) => (x.l.buy ? num(x.s.exec) : dash), u: (x) => (x.u.st === 'OK' ? num(x.u.value * D.duToanExecRate) : dash) }) },
-      { h: 'Giá trị tiết kiệm', w: 130, align: 'r', cell: cell({ l: (x) => (x.l.buy ? num(x.s.saving) : dash) }) },
+      /* V1.4 BR-DADT-02-05: ba mốc thay cột Giá trị thực hiện; chưa có thì "-". */
+      { h: 'Giá trị chọn thầu', w: 130, align: 'r', cell: moc('bid') },
+      { h: 'Giá trị chọn HĐ', w: 130, align: 'r', cell: moc('hd') },
+      { h: 'Giá trị sau khi tất toán HĐ', w: 150, align: 'r', cell: moc('tt') },
+      { h: 'Giá trị tiết kiệm', w: 130, align: 'r', cell: cell({ l: (x) => negNum(x.s.saving), u: (x) => (x.moc ? negNum(r2((x.u.value || 0) - x.moc.latest)) : dash) }) },
       { h: 'Khối lượng đã thực hiện', w: 150, align: 'r', cell: cell({ l: (x) => (x.l.buy ? String(x.s.qty) : dash), u: (x) => (x.u.qty == null ? dash : String(x.u.qty)) }) },
       { h: 'Còn lại khả dụng', w: 130, align: 'r', cell: cell({ l: (x) => (x.l.buy ? `<span class="${x.s.remain < 0 ? 't-err' : ''}">${num(x.s.remain)}</span>` : dash) }) },
-      { h: 'Chi mua sắm', w: 110, align: 'c', cell: cell({ l: (x) => `<label class="check"><input type="checkbox" data-dt-buy="${esc(x.l.id)}" aria-label="Chi mua sắm" ${x.l.buy ? 'checked' : ''} ${tick ? '' : 'disabled'}></label>` }) },
-      { h: 'Trạng thái', w: 170, align: 'c', cell: cell({ l: (x) => (!x.l.buy ? dash : tick ? stSel(x.l, uses[x.l.id]) : lineBadge(lineState(x.l, uses[x.l.id]))), u: (x) => (x.u.kdt ? badge(window.Kdt.KDT_STAGE[x.u.stage][0], window.Kdt.KDT_STAGE[x.u.stage][1]) : dxBadge(x.u.st)) }) },
+      { h: 'Chi mua sắm', w: 110, align: 'c', cell: cell({ l: buyCell }) },
+      { h: 'Trạng thái', w: 190, align: 'c', cell: cell({ l: stCell, u: (x) => (x.u.kdt ? badge(window.Kdt.KDT_STAGE[x.u.stage][0], window.Kdt.KDT_STAGE[x.u.stage][1]) : dxBadge(x.u.st)) }) },
       { h: 'Ghi chú', w: 200, cell: cell({ l: (x) => clamp(x.l.note) }) },
     ]);
-    const pct = t.buy ? Math.round(((t.ok + t.held) / t.buy) * 1000) / 10 : 0;
-    return `<section class="vcard pad24 gen" data-dt-kpi><h3>Chỉ số thực hiện</h3><div class="ginfo c3">
-        ${kv('Tổng dự toán (gồm VAT)', ty(t.value) + ' tỷ đồng')}${kv('Giá trị chi mua sắm', ty(t.buy) + ' tỷ đồng')}${kv('Đã đăng ký mua (ĐXMS / KĐT đã phê duyệt)', ty(t.ok) + ' tỷ đồng')}
-        ${kv('Đang giữ (ĐXMS / KĐT đang xử lý)', ty(t.held) + ' tỷ đồng')}${kv('Còn lại khả dụng', ty(t.remain) + ' tỷ đồng')}${kv('Giá trị thực hiện (hợp đồng)', ty(t.exec) + ' tỷ đồng')}
-        ${kv('Giá trị tiết kiệm', ty(t.saving) + ' tỷ đồng')}${kv('Tỷ lệ đã đăng ký mua', String(pct).replace('.', ',') + '%')}</div></section>
+    /* [Chỉnh sửa] chỉ TTMS, chỉ khi đề tài có dự toán chi tiết; đang chỉnh sửa thì [Hủy], [Lưu]. */
+    const editBtns = !tick || !lines.length ? '' : T.edit
+      ? '<button type="button" class="vbtn secondary" data-dt-e="cancel">Hủy</button><button type="button" class="vbtn primary" data-dt-e="save">Lưu</button>'
+      : `<button type="button" class="vbtn secondary" data-dt-e="edit">${icon('edit')} Chỉnh sửa</button>`;
+    return `${kpiBlock(t)}
       <section class="vcard" data-dt-dutoan><div class="vcard-h"><h3>Dự toán chi phí</h3><div class="row"><span class="cap">Đơn vị tiền: tỷ đồng</span>
-        <button type="button" class="vbtn secondary" data-dt-x="export">${icon('excel')} Xuất Excel</button></div></div>
+        ${editBtns}<button type="button" class="vbtn secondary" data-dt-x="export">${icon('excel')} Xuất Excel</button></div></div>
         ${vTreeTable({ id: 'dt-dutoan', columns, rows: groups, expanded: T.open, empty: 'Chưa có dự toán',
           onToggle: (k) => { if (T.open.has(k)) T.open.delete(k); else T.open.add(k); rerender(); } })}</section>`;
   }
-  /* Xuất dự toán theo cột Note màn 4. */
+  /* Xuất dự toán (DTMS_CN_0246, BR-DADT-02-08 V1.4): cùng cột với màn, ba mốc + Giá trị tiết kiệm; phần "Chỉ số thực hiện" 10 chỉ số, chỉ số "-" để trống.
+     Theo giá trị đã lưu (nháp của chế độ chỉnh sửa không vào tệp). GIẢ LẬP: một tệp CSV, phần Chỉ số thực hiện nằm dưới bảng (thật: tệp Excel hai sheet). */
   function exportDuToan(code) {
-    const uses = usesOf(code);
-    csv(`Du toan ${code}.csv`, [['STT', 'Loại chi phí', 'Khoản mục chi phí', 'Khối lượng cần thực hiện', 'ĐVT', 'Giá trị trước thuế', '%VAT', 'Thuế GTGT', 'Giá trị sau thuế', 'Giá trị thực hiện', 'Giá trị tiết kiệm',
-      'Khối lượng đã thực hiện', 'Chi mua sắm', 'Trạng thái', 'Ghi chú']].concat(D.duToanOf(code).map((l, i) => {
+    const uses = usesOf(code), v = (x) => (x == null ? '' : x);
+    const head = ['STT', 'Loại chi phí', 'Khoản mục chi phí', 'Khối lượng cần thực hiện', 'ĐVT', 'Giá trị trước thuế', '%VAT', 'Thuế GTGT', 'Giá trị sau thuế',
+      'Giá trị chọn thầu', 'Giá trị chọn HĐ', 'Giá trị sau khi tất toán HĐ', 'Giá trị tiết kiệm', 'Khối lượng đã thực hiện', 'Còn lại khả dụng', 'Chi mua sắm', 'Trạng thái', 'Ghi chú'];
+    const body = D.duToanOf(code).map((l, i) => {
       const s = D.duToanStats(l, uses[l.id]);
-      return [i + 1, typeName(l.type), l.item, l.qty, l.uom, l.pre, l.vat, l.tax, l.value, l.buy ? s.exec : '', l.buy ? s.saving : '', l.buy ? s.qty : '', l.buy ? 'Có' : 'Không', l.buy ? lineState(l, uses[l.id]) : '', l.note];
-    })));
+      return [i + 1, typeName(l.type), l.item, l.qty, l.uom, l.pre, l.vat, l.tax, l.value, v(s.bid), v(s.hd), v(s.tt), v(s.saving),
+        l.buy ? s.qty : '', l.buy ? s.remain : '', l.buy ? 'Có' : 'Không', l.buy ? lineState(l, uses[l.id]) : '', l.note];
+    });
+    const kpi = kpiRows(totals(code)).map(([k, x]) => [k, v(x)]);
+    csv(`Du toan ${code}.csv`, [['Dự toán chi phí'], head].concat(body, [[], ['Chỉ số thực hiện'], ['Chỉ số', 'Giá trị (tỷ đồng; tỷ lệ: %)']], kpi));
   }
   function dxmsTab(r) {
     const cases = window.Screens.allCases();
     const list0 = dxmsOf(r.code).map((x) => Object.assign({ m: window.Screens.dxmsMeta(x, cases) }, x));
     return `<section class="vcard"><h3>ĐXMS liên quan</h3>
-      ${table([['Trạng thái', 150, 'c'], ['Mã ĐXMS', 170], ['Tên ĐXMS', 340], ['Đợt', 70, 'c'], ['Đơn vị đề xuất', 200], ['Giá trị hiệu lực (tỷ đồng)', 180, 'r'], ['Người tạo', 170], ['Ngày cập nhật', 140]], list0,
+      ${table([['Trạng thái', 150, 'c'], ['Mã ĐXMS', 170], ['Tên ĐXMS', 340], ['Đợt', 70, 'c'], ['Đơn vị đề xuất', 200], ['Giá trị đề xuất (tỷ đồng)', 180, 'r'], ['Người tạo', 170], ['Ngày cập nhật', 140]], list0,
     (x) => `<td class="c">${dxBadge(x.m.state)}</td><td><a class="link" data-go="${dxmsHref(x.code)}">${esc(x.code)}</a></td><td>${clamp(x.title)}</td>
         <td class="c">${window.Screens.s5.dotOf(x) || dash}</td><td>${clamp(x.unit)}</td><td class="r num">${x.m.value != null ? ty(x.m.value) : dash}</td><td>${clamp(x.creator)}</td><td class="num">${esc(x.updated)}</td>`, 'Chưa có ĐXMS')}</section>
 `;
@@ -391,7 +448,7 @@
     return `<section class="vcard" data-dt-kdt><h3>KĐT liên quan</h3>
       ${table([['Trạng thái', 200, 'c'], ['Mã KĐT', 150], ['Tên KĐT', 340], ['Đơn vị đề xuất', 200], ['Nhóm KĐT', 170], ['Tổng mức vốn (tỷ đồng)', 170, 'r'], ['Người tạo', 170], ['Ngày cập nhật', 140]], list0,
     (x) => `<td class="c">${badge(K.KDT_STAGE[x.m.stage][0], K.KDT_STAGE[x.m.stage][1])}</td><td><a class="link" data-go="kdt/${encodeURIComponent(x.code)}">${esc(x.code)}</a></td><td>${clamp(x.title)}</td>
-        <td>${clamp(x.unit)}</td><td>${x.m.group ? esc(D.kdtGroups[x.m.group]) : '<span class="faint">Chưa xác định</span>'}</td><td class="r num">${x.m.value != null ? ty(x.m.value) : dash}</td>
+        <td>${clamp(x.unit)}</td><td>${x.m.group ? esc(D.kdtGroups[x.m.group]) : dash}</td><td class="r num">${x.m.value != null ? ty(x.m.value) : dash}</td>
         <td>${clamp(x.creator)}</td><td class="num">${esc(x.updated)}</td>`, 'Chưa có KĐT')}</section>`;
   }
   /* T31 B2 — IA dòng 4, TPL-DADT-EX Sheet2, Sheet6: gói thầu của KHLCNT lập từ ĐXMS / KĐT của đề tài; hợp đồng của gói thầu. Gói có nhiều nguồn
@@ -441,18 +498,20 @@
        hiện mặc định (KĐT đã trong phạm vi từ T45); cờ D.show.dtKdt vẫn tắt được khi đóng gói bản chỉ ĐXMS. */
     const tabs = [['info', 'Thông tin chung'], ['du-toan', 'Dự toán chi phí'], ['dxms', 'ĐXMS liên quan'], ['kdt', 'KĐT liên quan'],
       ['thau', 'Gói thầu / Hợp đồng'], ['phap-ly', 'Văn bản pháp lý']].filter(([k]) => (k !== 'thau' || D.show.dtThau) && (k !== 'kdt' || D.show.dtKdt));
-    if (T.code !== code) Object.assign(T, { code, tab: 'info', open: new Set(), seen: false });
+    if (T.code !== code) Object.assign(T, { code, tab: 'info', open: new Set(), seen: false, edit: false, draft: {} });
     if (!tabs.some(([k]) => k === T.tab)) T.tab = 'info';
     const body = { info: infoTab, 'du-toan': duToanTab, dxms: dxmsTab, kdt: kdtTab, thau: thauTab, 'phap-ly': phapLyTab }[T.tab](r);
     const info = {
       scr: 'SCR-104', name: 'Chi tiết đề tài / dự án', uc: 'YC-DXMS-PROTO §2.2, §3 · HT-DXMS-NOTE màn 3–6 · TPL-DADT-EX sheet2, 5, 6 · IA-DXMS dòng 4–9 · plan T29 S6, S7 (D-60, D-64, D-65, D-66), plan T31 K3 (D-69)',
       notes: [
         'Thông tin chung chỉ xem: Loại KHCN đồng bộ từ phân hệ KHCN (GIẢ LẬP, <code>DTMS_Q_0070</code>), loại khác từ hệ thống cũ (P-195). Trường theo YC-DXMS-PROTO §2.2 (Tên, Mã, Chủ nhiệm, Đơn vị chủ trì, Tổng kinh phí, Thời gian, Lĩnh vực) và Note màn 3. Lĩnh vực chỉ YC-DXMS-PROTO có.',
+        '<b>SRS-DADT V1.4</b> (11/11/2026, đối chiếu bản viết lại V3.0 — <code>docs/SRS/10-srs-dadt/doi-chieu-v3.md</code>): tab Dự toán chi phí theo DTMS_CN_0243 – 0246 — chế độ chỉnh sửa BR-DADT-02-10, ba mốc giá trị BR-DADT-02-05, 10 chỉ số BR-DADT-02-07, tệp xuất BR-DADT-02-08. Điểm V3.0 không nhận (Hoàn thành tự động, Mật, HR Tool, Đồng bộ ngay…) chờ trả lời <code>DTMS_Q_0673</code> – <code>DTMS_Q_0675</code>. Code thật đã có ở <code>fe/repo-khcn-dtms-fe</code> <code>project-management</code> (T55 L6).',
         '<b>Dự toán chi phí chỉ xem</b> (góp ý người dùng 05/11, thay phần nhập tại ĐTMS của D-65): không có Thêm mới / Sao chép / Sửa / Xoá; mọi người xem và Xuất Excel. Nguồn dữ liệu chờ trả lời P-204 (GIẢ LẬP: dữ liệu mẫu). Cột <b>Loại chi phí / Khoản mục chi phí</b> ghim khi cuộn ngang. Một bảng dự toán dùng chung với card bóc tách ở Thêm mới luồng mua sắm và Thêm mới KĐT.',
-        'Khối lượng cần thực hiện = số lượng dự toán; Khối lượng đã thực hiện, Giá trị thực hiện, Giá trị tiết kiệm tính từ ĐXMS / KĐT, hợp đồng.',
+        'Khối lượng cần thực hiện = số lượng dự toán; Khối lượng đã thực hiện tính từ ĐXMS / KĐT. <b>Ba mốc</b> (BR-DADT-02-05): Giá trị chọn thầu = giá trúng thầu, Giá trị chọn HĐ = giá trị ký, Giá trị sau khi tất toán HĐ = giá trị sau tất toán, mỗi mốc × tỉ lệ của hạng mục trong gói; lấy từ Lựa chọn nhà thầu, Hợp đồng, không nhập trên ĐTMS; chưa có thì "-". <b>Giá trị tiết kiệm</b> = giá trị dự toán của phần đã có mốc − Giá trị mới nhất (tất toán, chưa có thì chọn HĐ, chưa có thì chọn thầu), âm tô đỏ. GIẢ LẬP: số mốc mẫu ở <code>D.duToanMoc</code> (đề tài NV-KHCN-2026-006 đủ ba mốc / hai mốc, NV-KHCN-2025-031 một mốc; đề tài khác "-"), chưa nối gói thầu / hợp đồng của prototype.',
         'Khuôn bảng <code>vht-tree-table</code>: Loại chi phí (PL1–PL6) → Khoản mục → <b>các đợt ĐXMS</b> của khoản mục (YC-DXMS-PROTO §3.2), mã ĐXMS mở chi tiết.',
-        '<b>Chi mua sắm</b> (YC-DXMS-PROTO §3.1): chỉ TTMS tích / bỏ tích, lưu ở ĐTMS. Không bỏ tích được khi khoản mục đang có ĐXMS giữ (D-64). Đơn vị đề xuất chỉ bóc tách được khoản mục đã tích (B9). Dòng không tích thì không có Trạng thái (Note màn 4). <b>Trạng thái</b> (góp ý 05/11): TTMS chọn Đang thực hiện / Hoàn thành ngay trên bảng, chỉ hiện khi đã tích Chi mua sắm; vai khác xem nhãn. Hoàn thành thì khoản mục không còn bóc tách được ở ĐXMS / KĐT (GIẢ LẬP P-203).',
-        'Chỉ số (YC-DXMS-PROTO §3.3, BG-0411 mục 4), trên khoản mục Chi mua sắm: Đã đăng ký mua = ĐXMS đã phê duyệt; Đang giữ = ĐXMS đang xử lý; Còn lại khả dụng = dự toán − đã đăng ký − đang giữ (cùng cách tính cột "Còn có thể sử dụng" của căn cứ, BR-DXMS-02-04). Giá trị thực hiện từ hợp đồng, quyết toán từ SAP: GIẢ LẬP 94 % phần đã phê duyệt; tiết kiệm = đã phê duyệt − thực hiện. <b>Cần dev riêng</b>: bảng giữ chỗ dòng dự toán ↔ hạng mục ĐXMS và truy vấn tổng hợp.',
+        '<b>Chế độ chỉnh sửa</b> (BR-DADT-02-10, DTMS_CN_0244): bảng mặc định chỉ xem, kể cả TTMS. Chỉ TTMS thấy <b>[Chỉnh sửa]</b> (đề tài chưa có dự toán chi tiết thì không có nút); vào chế độ chỉnh sửa thì hộp Chi mua sắm, ô Trạng thái đổi được, hiện [Hủy], [Lưu]. Đổi là <b>nháp trên màn</b> (chấm đỏ "Đã sửa"), chưa ghi, chưa kiểm tra, khối Chỉ số chưa đổi. <b>[Lưu]</b> kiểm tra mọi khoản mục đã đổi: một khoản mục không đạt (bỏ Chi mua sắm khi còn ĐXMS / KĐT Đang giữ — BR-DADT-02-03; đánh dấu khoản mục Ngừng sử dụng) thì không ghi khoản mục nào, toast lỗi (nhiều khoản mục: mỗi khoản mục một dòng, đầu dòng là tên), giữ nháp; đạt mà có bỏ Chi mua sắm hoặc chọn Hoàn thành thì hộp xác nhận "Cập nhật khoản mục" một dòng mỗi khoản mục; đồng ý thì ghi một lần, toast "Cập nhật khoản mục thành công.". Không đổi gì thì [Lưu] chỉ thoát. <b>[Hủy]</b> bỏ nháp. Còn nháp mà chuyển tab, rời màn, tải lại thì hỏi "Các thay đổi chưa lưu sẽ bị bỏ. Bạn có chắc chắn?" (tải lại: hộp của trình duyệt). Kiểm tra phiên bản dữ liệu (khóa lạc quan) chỉ có ở code thật.',
+        '<b>Chi mua sắm</b> (YC-DXMS-PROTO §3.1, BR-DADT-02-03): đơn vị đề xuất chỉ bóc tách được khoản mục đã đánh dấu (B9). Dòng không đánh dấu thì Trạng thái "-" (Note màn 4). <b>Trạng thái</b> (BR-DADT-02-04): hệ thống suy Chưa mua sắm / Đang mua sắm / Đã phê duyệt; trong chế độ chỉnh sửa TTMS chọn giữa trạng thái suy và Hoàn thành; khoản mục vừa đánh dấu trong nháp chưa chọn Hoàn thành được tới khi lưu; bỏ Chi mua sắm thì bỏ Hoàn thành. Hoàn thành thì khoản mục không còn bóc tách được ở ĐXMS / KĐT (P-203).',
+        '<b>Chỉ số thực hiện — 10 chỉ số</b> (BR-DADT-02-07): Tổng dự toán, Giá trị chi mua sắm, Đã đăng ký (ĐXMS / KĐT đã phê duyệt), Đang giữ (đang xử lý), Còn lại khả dụng = chi mua sắm − đã đăng ký − đang giữ (cùng số với phần còn dùng được khi làm văn bản căn cứ, BR-DADT-C-06), ba mốc, Giá trị tiết kiệm, Tỷ lệ đã đăng ký mua = (đã đăng ký + đang giữ) / chi mua sắm. Đã đăng ký, Đang giữ, ba mốc, tiết kiệm cộng mọi khoản mục, kể cả khoản mục đã bỏ Chi mua sắm còn phần đã dùng. <b>Cần dev riêng</b>: bảng giữ chỗ dòng dự toán ↔ hạng mục ĐXMS / KĐT và truy vấn tổng hợp. Xuất Excel (BR-DADT-02-08): cùng cột với bảng + phần Chỉ số thực hiện, theo giá trị đã lưu — GIẢ LẬP một tệp CSV (thật: Excel hai sheet).',
         'Đợt của ĐXMS mẫu GIẢ LẬP; ĐXMS tạo ở Thêm mới luồng lấy từ bảng bóc tách chi phí đã lưu (chưa có số lượng — B9). Tab Văn bản pháp lý theo TPL-DADT-EX sheet5, thêm cột <b>Thao tác</b> tải file văn bản (góp ý 05/11; tên tệp GIẢ LẬP theo số văn bản).',
         '<b>T31 B2</b> (IA-DXMS dòng 4–7; D-69): Thông tin chung thêm các trường IA còn thiếu — Lập theo kế hoạch năm, Loại sản phẩm, Mã dự án theo KHĐT năm, ID dự án trên cổng Đấu thầu QG, Người phụ trách báo cáo, Địa điểm đầu tư, Ngày nghiệm thu, Nội dung, quy mô dự án; card <b>Phê duyệt</b>: Số / ngày TTr chủ trương, QĐ phê duyệt dự án, QĐ phê duyệt dự toán, Người phê duyệt chủ trương / dự án / dự toán / quyết toán. "Tình trạng dự án" = Trạng thái. Người phê duyệt là <b>text</b> như IA (mặc định Tổng Giám đốc cho chủ trương, dự án) — khác SRS-KDT (người phê duyệt theo <code>profile_classification</code>). GIẢ LẬP: giá trị mẫu; IA không cho danh sách giá trị Loại sản phẩm, Nhóm dự án.',
         '<b>T31 B2</b>: tab <b>ĐXMS / KĐT liên quan</b> thêm bảng KĐT chọn đề tài này (D-45; trạng thái, nhóm, tổng mức vốn như Danh sách KĐT). Tab <b>Gói thầu / Hợp đồng</b> (IA dòng 4, TPL-DADT-EX Sheet2, Sheet6): gói thầu của các KHLCNT lập từ ĐXMS / KĐT của đề tài, gói có nhiều nguồn hiện Giá trị phân bổ cho đề tài; hợp đồng của các gói đó. Thật: truy vấn liên kết KHLCNT ↔ nguồn ↔ đề tài, không dev riêng. Hợp đồng không qua gói thầu (Sheet3) chưa có trên prototype.',
@@ -472,9 +531,20 @@
   document.addEventListener('click', async (e) => {
     const t = e.target;
     const tb = t.closest('[data-dt-tab]');
-    if (tb) { T.tab = tb.dataset.dtTab; rerender(); return; }
+    if (tb) {
+      if (tb.dataset.dtTab === T.tab) return;
+      if (dirty() && !(await discardOk())) return;
+      endEdit(); T.tab = tb.dataset.dtTab; rerender(); return;
+    }
     const x = t.closest('[data-dt-x]');
     if (x) { exportDuToan(T.code); return; }
+    const ed = t.closest('[data-dt-e]');
+    if (ed) {
+      if (!canTick()) return;
+      if (ed.dataset.dtE === 'edit') { T.edit = true; T.draft = {}; rerender(); return; }
+      if (ed.dataset.dtE === 'cancel') { endEdit(); rerender(); return; }
+      if (ed.dataset.dtE === 'save') { await saveDraft(); return; }
+    }
     if (!onList()) return;
     const pg = t.closest('[data-pager="dt"]');
     if (pg) {
@@ -493,23 +563,65 @@
     if (a.dataset.dt === 'reset') { S.kw = ''; S.kwIn = ''; S.d = emptyF(); S.f = emptyF(); S.err = {}; S.page = 1; }
     rerender();
   });
+  /* Chi mua sắm trong chế độ chỉnh sửa: chỉ ghi nháp, không kiểm tra (BR-DADT-02-10). */
   document.addEventListener('change', (e) => {
     const c = e.target.closest && e.target.closest('[data-dt-buy]');
     if (!c) return;
     const l = lineOf(c.dataset.dtBuy);
-    if (!l || !canTick()) { rerender(); return; }
-    if (!c.checked) {
-      const held = usesOf(T.code)[l.id].filter((u) => HELD.includes(u.st));
-      if (held.length) {
-        c.checked = true;
-        toast(`<b>Không thể bỏ Chi mua sắm</b><br>Khoản mục đang được giữ bởi ${held.map((u) => esc(u.x.code)).join(', ')}.`, 'error');
-        return;
-      }
-    }
-    D.duToanSave(T.code, Object.assign({}, l, { buy: c.checked }));
-    toast('<b>Thành công</b><br>Cập nhật Chi mua sắm thành công');
+    if (l && canTick() && T.edit) setDraft(l, { buy: c.checked });
     rerender();
   });
+  /* Hộp xác nhận "Cập nhật khoản mục" (DTMS_CN_0244 ô 6): mỗi khoản mục một dòng; [Hủy] / Esc giữ nháp. */
+  const confirmSave = (notes) => new Promise((resolve) => {
+    const m = window.UI.vModal({ title: 'Cập nhật khoản mục', size: 'md',
+      body: `<div class="dt-confirm" data-dt-confirm>${notes.map((n) => `<p>${esc(n)}</p>`).join('')}<p>Bạn có chắc chắn?</p></div>`,
+      actions: '<button type="button" class="vbtn secondary" data-close>Hủy</button><button type="button" class="vbtn primary" data-dt-ok>Đồng ý</button>' });
+    let done = false;
+    const end = (v) => { if (!done) { done = true; resolve(v); } };
+    m.el.querySelector('[data-dt-ok]').onclick = () => { end(true); m.close(); };
+    new MutationObserver((_, ob) => { if (!m.el.isConnected) { ob.disconnect(); end(false); } }).observe(document.body, { childList: true });
+  });
+  /* [Lưu] (BR-DADT-02-10): kiểm tra mọi khoản mục đã đổi theo BR-DADT-02-03, 02-04; một khoản mục không đạt thì không ghi gì, giữ nháp. */
+  async function saveDraft() {
+    const ch = D.duToanOf(T.code).filter(isChanged);
+    if (!ch.length) { endEdit(); rerender(); return; }
+    const uses = usesOf(T.code), errs = [];
+    ch.forEach((l) => {
+      const c = curOf(l);
+      if (l.buy && !c.buy) {
+        const held = uses[l.id].filter((u) => HELD.includes(u.st));
+        if (held.length) errs.push([l, 'Không thể bỏ Chi mua sắm.', `Khoản mục đang được giữ bởi ${held.map((u) => u.x.code).join(', ')}.`]);
+      }
+      if (!l.buy && c.buy && l.active === false) errs.push([l, 'Không thể đánh dấu Chi mua sắm.', 'Khoản mục đã ngừng sử dụng, không đánh dấu Chi mua sắm được.']);
+    });
+    if (errs.length) {
+      toast(errs.length === 1 ? `<b>${esc(errs[0][1])}</b><br>${esc(errs[0][2])}`
+        : `<b>Không thể lưu</b><br>${errs.map(([l, a, b]) => `${esc(l.item)}: ${esc(a)} ${esc(b)}`).join('<br>')}`, 'error');
+      return;
+    }
+    const notes = [];
+    ch.forEach((l) => {
+      const c = curOf(l), s = D.duToanStats(l, uses[l.id]);
+      if (l.buy && !c.buy) notes.push(`Khoản mục ${l.item} sẽ không còn bóc tách được vào đề xuất mua sắm, khoản đầu tư và không tính vào Tổng giá trị đầu tư mua sắm.${s.ok > 0 ? ` Khoản mục đã được đăng ký ${ty(s.ok)} tỷ đồng; phần này giữ nguyên.` : ''}`);
+      else if (c.done && !savedOf(l).done) notes.push(`Khoản mục ${l.item} sẽ không còn bóc tách được vào đề xuất mua sắm, khoản đầu tư.`);
+    });
+    if (notes.length && !(await confirmSave(notes))) return;
+    ch.forEach((l) => { const c = curOf(l); D.duToanSave(T.code, Object.assign({}, l, { buy: c.buy, status: c.buy && c.done ? 'Hoàn thành' : '' })); });
+    endEdit();
+    toast('<b>Thành công</b><br>Cập nhật khoản mục thành công.');
+    rerender();
+  }
+  /* Còn nháp mà rời màn (liên kết, nút quay lại, menu): hỏi trước (capture — chạy trước bộ điều hướng của app). Tải lại: hộp của trình duyệt. */
+  document.addEventListener('click', async (e) => {
+    const nav = e.target.closest && e.target.closest('[data-go], [data-back]');
+    if (!nav || !dirty() || nav.closest('.overlay')) return;
+    e.preventDefault(); e.stopPropagation();
+    if (!(await discardOk())) return;
+    endEdit();
+    nav.click();
+  }, true);
+  window.addEventListener('beforeunload', (e) => { if (dirty()) { e.preventDefault(); e.returnValue = ''; } });
+  window.addEventListener('hashchange', () => { if (T.code && !location.hash.startsWith('#/' + href(T.code))) endEdit(); });
   /* [Tìm kiếm] (ô 17): kiểm tra ô ngày, áp đồng thời từ khóa và mọi điều kiện, về trang 1. */
   function applySearch() {
     S.kw = S.kwIn.trim();

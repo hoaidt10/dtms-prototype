@@ -157,7 +157,9 @@ test('SCR-97 (tab chuyển từ SCR-29): ĐXMS đã phê duyệt có điều ch�
   await expect(page.locator('main .vcard', { hasText: 'Hạng mục mua sắm' })).toHaveCount(0);
   await tab(page, 'Rà soát tồn kho');
   await expect(card(page, 'Lịch sử rà soát tồn kho').locator('tbody tr')).toHaveCount(2);
-  await expect(card(page, 'Lịch sử rà soát tồn kho').locator('tbody tr').first()).toContainText('HS-2026-0126');
+  // T59 #48: cột Hồ sơ → Kết quả rà soát tồn kho (tên tệp, tải được). [T59 #48] cũ: toContainText('HS-2026-0126')
+  await expect(card(page, 'Lịch sử rà soát tồn kho').locator('thead')).toContainText('Kết quả rà soát tồn kho');
+  await expect(card(page, 'Lịch sử rà soát tồn kho').locator('tbody tr').first().locator('[data-dl]')).toHaveCount(1);
   await tab(page, 'Yêu cầu báo giá');
   await expect(card(page, 'Danh sách yêu cầu báo giá').locator('tbody tr')).toHaveCount(1);
   await expect(card(page, 'Danh sách yêu cầu báo giá')).toContainText('Báo giá đạt');
@@ -196,6 +198,7 @@ test('SCR-97 (tab chuyển từ SCR-29): ĐXMS chưa có hồ sơ — các tab b
 
 test('SCR-73/74: Danh sách yêu cầu báo giá — tìm kiếm nâng cao, mở chi tiết, xuất file; mọi dòng mở được', async ({ page }) => {
   await fresh(page, '#/viec-cua-toi');
+  await page.locator('.sb-nav [data-toggle="Quản lý thầu"]').click(); // T56 Q1: Yêu cầu báo giá thuộc Quản lý thầu
   await page.locator('.sb-nav [data-go="ycbg"]').click();
   await expect(page).toHaveURL(/#\/ycbg$/);
   await expect(page.locator('.pg-title')).toHaveText('Danh sách yêu cầu báo giá');
@@ -224,7 +227,8 @@ test('SCR-73/74: Danh sách yêu cầu báo giá — tìm kiếm nâng cao, mở
   await page.locator('.pg-head [data-y-export]').click();
   expect((await dl).suggestedFilename()).toBe(codes[0] + '.csv');
   await go(page, '#/ycbg');
-  await rows.first().locator('td:nth-child(5) a').click();
+  // 12/11: menu gộp — cột 5 Loại đối tượng, cột 6 mã đối tượng; chọn dòng ĐXMS.
+  await rows.filter({ has: page.locator('td:nth-child(5)', { hasText: /^ĐXMS$/ }) }).filter({ has: page.locator('td:nth-child(6) a') }).first().locator('td:nth-child(6) a').click();
   await expect(page).toHaveURL(/#\/luong\//); // T34: liên kết ĐXMS mở Chi tiết luồng (SCR-97)
   expect(page.errors).toEqual([]);
 });

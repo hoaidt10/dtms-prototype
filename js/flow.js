@@ -50,6 +50,8 @@
   /* nv: ĐXMS demo thuộc nhiệm vụ gNodeB thế hệ 2 (căn cứ qd1, D.nhiemVu) — T29 B12 cần cho bước 5 thêm hạng mục từ dự toán (Huylx4 #20). */
   const demoDxms = () => ({ code: D.dxmsCode0, nv: 'NV-KHCN-2026-014', title: D.caseInfo.title, unit: D.caseInfo.unit, priority: D.caseInfo.priority, est: D.aiEstimate,
     period: D.caseInfo.period, secret: false, purpose: 'Trang bị thiết bị đo kiểm RF và OTA phục vụ phát triển trạm gNodeB thế hệ 2.',
+    /* T59 #44: Nội dung căn cứ pháp lý mẫu (nhập ở Thêm mới, hiện ở tab Căn cứ & hạng mục). */
+    legal: D.legalSample[D.dxmsCode0],
     creator: 'Nguyễn Văn Minh', created: '01/10/2026', updated: '01/10/2026' });
 
   /* Mã hồ sơ đã dùng (mẫu, đã tạo, đang chạy, đã chuyển quy trình). Hồ sơ Phê duyệt đầu tiên giữ 4 số của ĐXMS; còn lại lấy số trống từ 0127. */
@@ -84,6 +86,7 @@
     if (fam() === 'MS02') return startAdj(opts);
     S.dxms = opts.dxms || D.dxmsCode0;
     D.useCase(S.dxms);
+    useOver();
     if (!Flow.findDxms(S.dxms)) S.dxmsUser.push(demoDxms());
     S.code = opts.code || nextCaseCode(S.dxms);
     S.name = opts.name || null;
@@ -158,6 +161,7 @@
   function startKdt(opts) {
     S.kdt = opts.kdt || opts.dxms || D.kdtCode0;
     D.useCase(S.kdt);
+    useOver();
     if (!Flow.findKdt(S.kdt) && S.kdt === D.kdtCode0) S.kdtUser.push(Object.assign({}, D.kdtDemo));
     const k = Flow.findKdt(S.kdt) || {};
     S.vars.factors = { field: k.field, type: k.type, nature: k.nature, est: k.est };
@@ -181,6 +185,10 @@
   const kindOf = () => S.kdtKind || 'CT';
   const scopeOf = () => (S.vars.branch === 'BM00' ? 'CT_KDT' : 'CT');
   /* Giá trị của hồ sơ KĐT = Tổng mức vốn KĐT nhập lúc tạo (như useAdj của hồ sơ Điều chỉnh). Gọi lại sau mỗi lần D.useCase. */
+  /* Hồ sơ mẫu nạp vào luồng chạy (runSample): giá trị của hồ sơ mẫu thay giá trị của bộ dữ liệu mẫu dùng chung (D.caseInfo). Gọi lại sau mỗi lần D.useCase. */
+  function useOver() {
+    if (S && S.over && S.over.ci) D.caseInfo = Object.assign({}, D.caseInfo, S.over.ci);
+  }
   function useKdt() {
     if (S && S.kdt && S.kdtKind === 'KDT' && S.est != null) D.caseInfo = Object.assign({}, D.caseInfo, { total: S.est });
   }
@@ -203,7 +211,7 @@
   function kdtCtChoices(kdt) {
     const hs = Flow.kdtCases().filter((c) => c.kdt === kdt);
     return hs.filter((c) => (c.kind || 'CT') === 'CT' && c.st === 'done' && (c.scope || 'CT') === 'CT'
-      && !hs.some((x) => x.kind === 'KDT' && x.parent === c.code && x.st !== 'stopped'));
+      && !hs.some((x) => x.kind === 'KDT' && x.parent === c.code && x.st !== 'stopped' && !(S.over && S.over.kdtCode === x.code)));
   }
   const deep = (x) => (x == null ? x : JSON.parse(JSON.stringify(x)));
   /* Tạo hồ sơ KĐT (opts: kdt, parent, est, reason, name). Hồ sơ đang chạy được đóng băng (kèm bản chụp biến) trước. Trả về mã hồ sơ. Không emit. */
@@ -215,11 +223,11 @@
     const luong = kdtLuong(k, est), luongCt = ct.flow || 'MS13';
     if (luong === 'MS15') throw new Error(`Tổng mức vốn KĐT ${est} tỷ thuộc MS15 — chưa hỗ trợ tạo hồ sơ (chặn Lưu)`);
     const lech = luong !== luongCt ? { from: luongCt, to: luong, reason: opts.reason || '' } : null;
-    const who = S.persona, creator = (D.personas.find((p) => p.id === who) || D.personas[0]).name;
+    const who = S.persona, creator = (D.personas.find((p) => p.id === who) || D.personas[0]).name, over = S.over || null;
     freezeKdt();
     /* Bản chụp hồ sơ CT (vừa đóng băng ở trên, hoặc từ lần trước). Hồ sơ CT mẫu không có bản chụp → biến tối thiểu. */
     const own = S.kdtCases.find((c) => c.code === ct.code), snap = (own && own.snap) || null;
-    const code = nextKdtHsCode(kdt);
+    const code = opts.code || nextKdtHsCode(kdt);
     if (luong !== 'MS13' || luongCt !== 'MS13') {
       const at = Flow.dateOf(S.clock);
       S.kdtCases.unshift({ code, kdt, kind: 'KDT', parent: ct.code, luongCt, est, lech, title: opts.name || ct.title || k.title, flow: luong, stage: 'HS', st: 'processing',
@@ -231,6 +239,7 @@
     }
     S = carry(S, fresh('MS13'));
     S.persona = who;
+    if (over) S.over = over;
     if (snap) {
       Object.assign(S.vars, deep(snap.vars));
       S.ui = deep(snap.ui) || {};
@@ -244,6 +253,7 @@
     Object.assign(S, { kdt, kdtKind: 'KDT', ctParent: ct.code, luongCt, est, lech, code, name: opts.name || ct.title || k.title || null, creator, status: 'running' });
     D.useCase(kdt);
     useKdt();
+    useOver();
     log('START', { system: true, action: `Khởi tạo ${code} — Phê duyệt KĐT (kế thừa hồ sơ chủ trương ${ct.code})` });
     enter(49, {});
     return code;
@@ -359,6 +369,7 @@
     D.useCase(S.kdt || S.dxms || demoSet().dxms || demoSet().kdt);
     useAdj();
     useKdt();
+    useOver();
   }
   /* Về luồng chính. Không emit: gọi trong lúc đổi route, trước khi vẽ màn. */
   function toMain() {
@@ -788,16 +799,17 @@
     if (target === 'NEW') { S.vars.process = null; D.useCase(dxms || D.dxmsCode0); return; }
     /* pre.adj (bộ Điều chỉnh MS02): giá trị / lý do sau điều chỉnh truyền vào startAdj như đã xác nhận ở bước 4. */
     /* pre.via: tua qua bước này trước (vd. 28 → bước 19 của lần thẩm định sau). */
-    const p = pre ? JSON.parse(JSON.stringify(pre)) : null, adj = p && p.adj, via = p && p.via;
-    if (p) { delete p.adj; delete p.via; }
-    start(Object.assign({ dxms }, adj || {}));
+    /* pre.start: tham số khởi tạo (mã hồ sơ); pre.over: giá trị của hồ sơ mẫu (useOver); pre.kdtCode: mã hồ sơ KĐT (49–60) tạo sau hồ sơ CT — dùng cho runSample. */
+    const p = pre ? JSON.parse(JSON.stringify(pre)) : null, adj = p && p.adj, via = p && p.via, st0 = p && p.start, kdtCode = p && p.kdtCode;
+    if (p) { delete p.adj; delete p.via; delete p.start; delete p.kdtCode; if (p.over) { S.over = p.over; delete p.over; } }
+    start(Object.assign({ dxms }, adj || {}, st0 || {}));
     if (p) Object.assign(S.vars, p);
     if (via) advanceTo(via);
     /* T45: 'CT_END' = tua hồ sơ CT tới kết thúc (chủ trương đã duyệt), không tạo hồ sơ KĐT. */
     advanceTo(target === 'CT_END' ? 'END' : target, settle);
     /* T45: đích thuộc hồ sơ KĐT (49–60, END của KĐT) — hồ sơ CT đã duyệt chủ trương thì đóng băng, tạo hồ sơ KĐT (est = tổng mức vốn của CT) rồi tua tiếp. */
     if (target !== 'CT_END' && S.kdt && kindOf() === 'CT' && S.status === 'approved' && scopeOf() === 'CT') {
-      startKdtHs({ kdt: S.kdt, parent: S.code, est: D.caseInfo.total });
+      startKdtHs({ kdt: S.kdt, parent: S.code, est: D.caseInfo.total, code: kdtCode || undefined });
       advanceTo(target, settle);
     }
   }
@@ -846,6 +858,30 @@
        caseTokens = việc đang chờ của `pid` trên mọi hồ sơ con, kèm caseCode vì mã token chỉ duy nhất trong một hồ sơ. */
     startCase,
     openCase,
+    /* Hồ sơ mẫu (D.otherCases, D.kdtCases) đang xử lý chạy được khi quy trình có luồng chạy trên prototype: MS01.01 / .02 / .03, MS13.
+       MS02 (Điều chỉnh) và MS14 vẫn là bản ghi tĩnh. */
+    sampleCase(code) { return D.otherCases.find((c) => c.code === code) || D.kdtCases.find((c) => c.code === code) || null; },
+    canRunSample(c) {
+      if (!c || c.st !== 'processing' || !c.task) return false;
+      return c.kdt ? (c.flow || 'MS13') === 'MS13' : /^MS01\.0[123]$/.test(c.flow || '');
+    },
+    /* Nạp hồ sơ mẫu vào luồng chạy: tua nhanh từ đầu theo nhánh chính (c.ui, c.pre, c.settle như nhánh phụ của Công cụ demo) tới bước đang chờ,
+       giữ mã hồ sơ mẫu và giá trị (tổng mức vốn). Prototype chạy một hồ sơ: hồ sơ đang chạy trước đó bị thay (KĐT giữ lại ở trạng thái lúc đó).
+       Dữ liệu chi tiết (hạng mục, báo giá, ý kiến) lấy theo bộ dữ liệu mẫu dùng chung — GIẢ LẬP. Trả về việc đang chờ ở bước của hồ sơ mẫu. */
+    runSample(code) {
+      const c = Flow.sampleCase(code);
+      if (!Flow.canRunSample(c)) return null;
+      const at = (t) => String(t.task) === String(c.task);
+      if (S.code === code && S.status === 'running') return S.tokens.find(at) || S.tokens[0] || null;
+      const kd = !!c.kdt && c.kind === 'KDT', who = S.persona;
+      freezeKdt();
+      const over = { code, kdtCode: kd ? code : null, ci: c.total != null ? { total: c.total } : {} };
+      const pre = Object.assign({}, c.pre || {}, { start: { code: kd ? c.parent : code }, over, kdtCode: kd ? code : null });
+      fastForward(c.task, c.kdt ? 'MS13' : c.flow, c.kdt || c.dxms, c.ui, c.settle, pre);
+      S.persona = who;
+      emit();
+      return S.tokens.find(at) || S.tokens[0] || null;
+    },
     toMain,
     focus,
     inCase: () => !!MAIN,
@@ -956,6 +992,27 @@
       S.memberLog = (S.memberLog || []).concat([rec]);
       emit();
       return rec;
+    },
+    /* T59 #50 (D-114 Q2, Q3): Lưu bảng Thành phần tham gia (sửa tại chỗ ở tab của Chi tiết ĐXMS / màn xử lý việc).
+       o = { roles: [{ role, tasks: [bước chưa xong], list: [người] }], team: [{ role, person }], text }. Mỗi vai trò bị đổi: giao lại việc đang mở
+       và lần tới bước theo danh sách mới (list rỗng = giao theo vai trò như quy trình); ĐXMS lưu roleMembers = team; MỘT dòng Lịch sử xử lý (text).
+       Không ghi memberLog (Q3 bỏ Lịch sử thay đổi nhân sự). Trả về số việc đang mở đã giao lại. */
+    saveTeam(o) {
+      let moved = 0;
+      (o.roles || []).forEach((r) => (r.tasks || []).map(String).forEach((k) => {
+        const cur = Flow.membersOf(k).list, def = (F()[k] || {}).who;
+        const list = r.list.length ? r.list : def && !def.startsWith('cqcm:') ? [def] : [];
+        if (!list.length) return;
+        moved += applyMembers(k, cur, list).moved.length;
+        /* Vai trò không còn người chỉ định: bỏ chỉ định, bước giao theo vai trò như quy trình. */
+        if (!r.list.length && S.members) { delete S.members[k]; const own0 = S.dxmsUser.find((x) => x.code === S.dxms); if (own0 && own0.members) delete own0.members[k]; }
+      }));
+      const own = S.dxmsUser.find((x) => x.code === S.dxms);
+      if (own) own.roleMembers = (o.team || []).map((r) => ({ role: r.role, person: r.person }));
+      S.ui = S.ui || {};
+      S.ui.teamEvents = (S.ui.teamEvents || []).concat([{ who: S.persona, at: S.clock, text: o.text }]);
+      emit();
+      return moved;
     },
     /* SCR-28 Lưu: tạo ĐXMS (không start quy trình — D-11). Trả về mã ĐXMS. */
     createDxms(data) {

@@ -12,7 +12,7 @@ async function openTask(page, who, n) {
   await as(page, who);
   const id = await page.evaluate(([w, k]) => Flow.caseTokens(w).find((t) => String(t.task) === String(k)).id, [who, n]);
   await goto(page, '#/task/' + id);
-  await expect(page.locator('.pg-title, h1').first()).toContainText('Xem chi tiết hồ sơ');
+  await expect(page.locator('.pg-title, h1').first()).toHaveText(/Xem chi tiết hồ sơ|Xử lý hồ sơ/);
 }
 const act = (page, label) => page.locator('.task-acts [data-act]', { hasText: label }).click();
 const ok = (page) => page.locator('.vmodal #ok').click();

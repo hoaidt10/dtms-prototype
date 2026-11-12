@@ -74,7 +74,7 @@
     const info = {
       scr: 'SCR-106', name: edit ? 'Cập nhật yêu cầu báo giá' : 'Thêm mới yêu cầu báo giá', uc: 'UC-07-03 · UR-PRE-21/22',
       notes: [
-        '<b>T29 B3b (RV-PROTO-0511 #10, câu hỏi 7):</b> tạo / cập nhật yêu cầu báo giá trực tiếp ở menu Yêu cầu báo giá ĐXMS, bố cục theo màn "Cập nhật yêu cầu báo giá" của hệ thống cũ (HT-DXMS-IMG).',
+        '<b>T29 B3b (RV-PROTO-0511 #10, câu hỏi 7):</b> tạo / cập nhật yêu cầu báo giá trực tiếp ở menu Yêu cầu báo giá (gộp ĐXMS / KĐT 12/11), bố cục theo màn "Cập nhật yêu cầu báo giá" của hệ thống cũ (HT-DXMS-IMG).',
         '<b>T29 B18 (HT-DXMS-IMG đủ 3 ảnh, BM-YCKT; cùng mẫu với eForm bước 8):</b> lưu ý bảo mật đầu form; Dự án / Đề tài → bảng Mã, Tên, Loại, <b>Nguồn vốn</b> (SCR-104); Đối tác → bảng Mã, Tên, <b>Email nhận yêu cầu báo giá</b>, Email CC (danh mục Nhà cung cấp SCR-31) — đối tác thiếu email thì không Gửi được; <b>Thời hạn tiếp nhận báo giá</b> (ngày, dùng nhắc hạn); Model → Model / Mã NSX tham khảo; <b>Đầu mối tiếp nhận báo giá</b> chọn nhiều người dùng (mặc định người tạo) → bảng Họ tên, Đơn vị, Điện thoại, Email; Bảo hành tối thiểu, Năm sản xuất từ.',
         '<b>Danh mục hàng hoá</b> giữ bảng theo dòng (cần cho so sánh báo giá theo dòng, BR-DXMS-04-09) thay ô soạn văn bản của hệ thống cũ. <b>Nhập từ Excel</b>: prototype đọc tệp .csv theo mẫu tải về (cột Hàng hoá / dịch vụ, Model / Mã NSX tham khảo, ĐVT, Số lượng, Chỉ tiêu kỹ thuật), thêm vào cuối bảng; bản thật đọc .xlsx phía BE — cần dev riêng.',
         '<b>GIẢ LẬP P-213 — Đặt giá trị mặc định:</b> điền Điều kiện thanh toán, Địa điểm giao hàng, Các yêu cầu khác, Bảo hành, Năm sản xuất từ một bộ giá trị mẫu (D.ycbgTerms0). Giá trị mặc định cấu hình theo toàn hệ thống / đơn vị / loại hàng: hỏi BA.',
@@ -107,9 +107,9 @@
       <section class="vcard"><h3>Thông tin chung</h3><div class="grid3">
         ${field('Mã yêu cầu báo giá', `<input class="vctl" value="${esc(F.code || '')}" placeholder="Hệ thống tự sinh" disabled>`)}
         ${field('Tên yêu cầu báo giá', txt('title', 'Nhập tên (tiêu đề email gửi đối tác)', 500), { req: true, err: err.title, cls: 'span2' })}
-        ${field('Ngày YCBG', txt('date', 'DD/MM/YYYY', 10), { req: true, err: err.date })}
+        ${field('Ngày YCBG', window.UI.vDate('data-yc-in="date"', v.date), { req: true, err: err.date })}
         ${field('Đơn vị đề xuất', vSelect({ id: 'yc-unit', value: v.unit, options: units.map((x) => ({ value: x, label: x })), onChange: upd((x) => { v.unit = x; }) }))}
-        ${field('Thời hạn tiếp nhận báo giá', txt('due', 'DD/MM/YYYY', 10), { req: true, err: err.due })}
+        ${field('Thời hạn tiếp nhận báo giá', window.UI.vDate('data-yc-in="due"', v.due), { req: true, err: err.due })}
         ${field('Người tạo', `<input class="vctl" value="${esc((persona(v.by || Flow.state.persona) || {}).name || '')}" disabled>`)}
         ${field('Dự án / Đề tài', vSelect({ id: 'yc-nv', value: v.nv, multi: true, searchable: true, placeholder: 'Chọn dự án / đề tài', invalid: !!err.nv, options: nvOpts, onChange: upd((x) => { v.nv = x; delete err.nv; }) }), { req: true, err: err.nv, cls: 'span2' })}
         <div class="span3">${table('data-yc-nvt', [['Mã dự án / đề tài', 160], ['Tên dự án / đề tài', 260], ['Loại', 140], ['Nguồn vốn', 180]], nvRows)}</div>

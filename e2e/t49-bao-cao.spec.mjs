@@ -21,21 +21,21 @@ const bar = (page, card, label) => page.locator('.bc-card', { hasText: card }).l
 
 test('Tổng quan (T48): ĐXMS không đếm nháp, giá trị không đếm đôi chuỗi điều chỉnh; KĐT tách chủ trương; phễu theo lọc', async ({ page }) => {
   await as(page, 'minh', '#/tong-quan');
-  // 15 ĐXMS mẫu, 3 Chưa khởi tạo (0124, 0119, 0098) → 12
-  await expect(tileN(page, 'Tổng số ĐXMS')).toHaveText('12');
+  // 30 ĐXMS mẫu (T58 thêm 15), 3 Chưa khởi tạo (0124, 0119, 0098) → 27
+  await expect(tileN(page, 'Tổng số ĐXMS')).toHaveText('27');
   // Giá trị: chuỗi 0084 → 0112 chỉ cộng 0112; 0077 (Đang điều chỉnh) → 0126 (đang chạy) chỉ cộng 0077
-  const v = await page.evaluate(() => UI.ty(841.2, 2));
+  const v = await page.evaluate(() => UI.ty(1963.6, 2)); // T58: + 1122,4 (chuỗi 0141 → 0142 → 0140 chỉ cộng 0142)
   await expect(tileN(page, 'Giá trị ĐXMS')).toHaveText(v);
-  await expect(tileD(page, 'Tổng số khoản đầu tư')).toHaveText('6 đã duyệt chủ trương, 2 đã duyệt KĐT');
+  await expect(tileD(page, 'Tổng số khoản đầu tư')).toHaveText('7 đã duyệt chủ trương, 2 đã duyệt KĐT');
   await page.locator('[data-tqtab="td"]').click();
   const fun = page.locator('.bc-card', { hasText: 'Từ nhu cầu đến hợp đồng' });
   await expect(fun.locator('.bc-hr')).toHaveCount(10);
-  await expect(bar(page, 'Từ nhu cầu đến hợp đồng', 'ĐXMS')).toHaveText('12');
-  await expect(bar(page, 'Từ nhu cầu đến hợp đồng', 'KĐT đã duyệt chủ trương')).toHaveText('6');
+  await expect(bar(page, 'Từ nhu cầu đến hợp đồng', 'ĐXMS')).toHaveText('27');
+  await expect(bar(page, 'Từ nhu cầu đến hợp đồng', 'KĐT đã duyệt chủ trương')).toHaveText('7');
   // Lọc Đơn vị → phễu đổi theo tập đã lọc (trước T48 phễu bỏ qua bộ lọc)
   await pick(page, 'rp-tq-unit', 'Phòng Chất lượng');
   await page.locator('[data-rpa="tq:go"]').click();
-  await expect(bar(page, 'Từ nhu cầu đến hợp đồng', 'ĐXMS')).not.toHaveText('12');
+  await expect(bar(page, 'Từ nhu cầu đến hợp đồng', 'ĐXMS')).not.toHaveText('27');
   // Lọc Trạng thái = Chưa khởi tạo (một loại ĐXMS) → ĐXMS nháp hiện
   await page.locator('[data-rpa="tq:reset"]').click();
   await pick(page, 'rp-tq-kind', 'ĐXMS');
@@ -48,23 +48,23 @@ test('Tổng quan (T48): ĐXMS không đếm nháp, giá trị không đếm đ�
 
 test('Báo cáo ĐXMS, KĐT (T49 R1–R7): đã phê duyệt gồm DC / SUP; phát sinh điều chỉnh theo ĐXMS gốc; KĐT theo loại hồ sơ; quá hạn có loại hồ sơ và hợp đồng', async ({ page }) => {
   await as(page, 'minh', '#/bao-cao/dxms');
-  await expect(tileN(page, 'Tổng số ĐXMS')).toHaveText('12');
-  await expect(tileN(page, 'Đã phê duyệt')).toHaveText('6'); // 0112, 0103, 0089, 0084 (SUP), 0077 (DC), 0072
-  await expect(tileN(page, 'Phát sinh điều chỉnh')).toHaveText('2');
-  await expect(tileD(page, 'Phát sinh điều chỉnh')).toContainText('2 lần điều chỉnh');
+  await expect(tileN(page, 'Tổng số ĐXMS')).toHaveText('27');
+  await expect(tileN(page, 'Đã phê duyệt')).toHaveText('8'); // 0112, 0103, 0089, 0084 (SUP), 0077 (DC), 0072; T58: 0141 (SUP), 0142 (DC)
+  await expect(tileN(page, 'Phát sinh điều chỉnh')).toHaveText('3'); // T58: + chuỗi 0141
+  await expect(tileD(page, 'Phát sinh điều chỉnh')).toContainText('4 lần điều chỉnh'); // 0112, 0126, 0142, 0140
   await page.locator('.rp-tile', { hasText: 'Phát sinh điều chỉnh' }).click();
-  await expect(page.locator('.rp-det tbody tr')).toHaveCount(4); // cả 2 chuỗi
+  await expect(page.locator('.rp-det tbody tr')).toHaveCount(7); // cả 3 chuỗi (T58: 0141, 0142, 0140)
   await expect(page.locator('.rp-det tbody')).toContainText('ĐXMS-2026-0084');
   await go(page, '#/bao-cao/kdt');
   await expect(page.locator('.bc-card', { hasText: 'Theo loại hồ sơ đang chạy' })).toBeVisible();
-  await expect(bar(page, 'Theo loại hồ sơ đang chạy', 'Hồ sơ phê duyệt KĐT')).toHaveText('4');
+  await expect(bar(page, 'Theo loại hồ sơ đang chạy', 'Hồ sơ phê duyệt KĐT')).toHaveText('5'); // T58: + HS-2026-0039-2
   await go(page, '#/bao-cao/tong-hop');
   await page.locator('[data-rptab="tong-hop:chuoi"]').click();
   await expect(bar(page, 'Số lượng theo giai đoạn nghiệp vụ', 'KĐT – chủ trương')).toBeVisible();
-  await expect(bar(page, 'Số lượng theo giai đoạn nghiệp vụ', 'KĐT – phê duyệt KĐT')).toHaveText('4');
+  await expect(bar(page, 'Số lượng theo giai đoạn nghiệp vụ', 'KĐT – phê duyệt KĐT')).toHaveText('5'); // T58: + HS-2026-0039-2
   await go(page, '#/bao-cao/tien-do');
   await page.locator('[data-rptab="tien-do:qua-han"]').click();
-  await expect(page.locator('.rp-det tbody tr')).toHaveCount(3);
+  await expect(page.locator('.rp-det tbody tr')).toHaveCount(5); // T58: + HS-2026-0134, HS-2026-0036 quá hạn
   await expect(page.locator('.rp-det tbody')).toContainText('Hồ sơ phê duyệt KĐT');
   await expect(page.locator('.rp-det tbody')).toContainText('HĐ-2025-0187');
   await expect(tileN(page, 'Hợp đồng chậm mốc')).toHaveText('1');
@@ -110,6 +110,8 @@ test('Báo cáo (T49 R8–R13): 2 kiểu xuất; KPI đến ký HĐ + đối tư
 test('Dữ liệu mẫu báo cáo (T49 Q3, R13): KĐT nhiều đề tài khác nguồn chia giá trị theo dòng bóc tách; kiến nghị trải đủ khoảng thời gian xử lý', async ({ page }) => {
   await as(page, 'minh', '#/bao-cao/kdt');
   // KĐT-2026-0028: 52,0 (Đầu tư phát triển) + 22,5 (Quỹ phát triển KHCN) → 70% / 30%
+  await page.locator('.rp-det [data-ps-open], [data-ps-open]').first().click(); // T58: thêm KĐT mẫu → 50 bản ghi/trang
+  await page.locator('[data-ps="50"]').first().click();
   const r28 = page.locator('.rp-det tbody tr', { hasText: 'KĐT-2026-0028' });
   await expect(r28).toContainText('70%');
   await expect(r28).toContainText('30%');

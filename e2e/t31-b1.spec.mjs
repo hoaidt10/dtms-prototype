@@ -58,12 +58,16 @@ test('K1, K2: Danh sách hồ sơ KĐT — Số / Ngày tờ trình, lọc CQCM 
   await fresh(page, '#/ho-so-kdt');
   await expect(page).toHaveURL(/#\/ho-so-ct-kdt$/);
   await expect(page.locator('.pg-title')).toHaveText('Danh sách hồ sơ chủ trương KĐT');
+  // T58: thêm hồ sơ mẫu → xem 50 bản ghi/trang để HS-2026-0027, 0030 cùng trang đầu.
+  await page.locator('[data-ps-open]').first().click();
+  await page.locator('[data-ps="50"]').first().click();
   await expect(page.locator('tr[data-code="HS-2026-0027"] td').nth(13)).toHaveText(/^027\/TTr-/);
   await expect(page.locator('tr[data-code="HS-2026-0030"] td').nth(13)).toHaveText('-');
 
   const reviewing = async () => {
     await page.locator('[data-hk="adv"]').click();
     await pick(page, 'hkf-rvSt', 'Đang xem');
+    await page.keyboard.press('Escape'); // T56: form ngắn hơn (khoảng ngày gộp) — đóng panel chọn nhiều trước khi bấm Tìm kiếm
     await submit(page);
     const open = await rowCodes(page);
     const st = await page.evaluate((cs) => cs.map((c) => Kdt.reviewOf(Flow.kdtCases().find((x) => x.code === c)).some((r) => r.st === 'Đang xem')), open);

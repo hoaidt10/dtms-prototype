@@ -20,7 +20,7 @@
     ['BM-08', 'Quyết định phê duyệt ĐXMS'], ['BM-09', 'Tờ trình đề xuất mua sắm (thẩm định, phê duyệt trực tiếp)'], ['CL01', 'Checklist 01 — danh mục hồ sơ'], ['CL02', 'Checklist 02 — danh mục hồ sơ']];
   const SIGNED = ['BM-01', 'BM-03', 'BM-04', 'BM-05', 'BM-06', 'BM-08', 'BM-09', 'CL01', 'CL02'];
   /* SRS 29 mục 2.3 + màu mục 4. */
-  const ST = { 'Dự thảo': 'info', 'Chờ ký': 'warning', 'Đã ký': 'success', 'Từ chối': 'error', 'Lỗi gửi': 'error', 'Đã hủy': 'default', 'Đang hiệu lực': 'success', 'Đã thay thế': 'default' };
+  const ST = { 'Dự thảo': 'info', 'Chờ ký': 'warning', 'Đã ký': 'success', 'Hoàn thành': 'success', 'Từ chối': 'error', 'Lỗi gửi': 'error', 'Đã hủy': 'default', 'Đang hiệu lực': 'success', 'Đã thay thế': 'default' };
   const KINDS = ['Tạo mới', 'Điều chỉnh'];
   const emptyF = () => ({ dxms: null, code: null, st: [], kind: null, date: '' });
   const L = { kw: '', adv: false, f: emptyF(), d: emptyF(), err: '', page: 1, size: 10, psOpen: false };
@@ -40,7 +40,9 @@
     if (r.signs.some((sg) => sg.st === 'PENDING')) return 'Chờ ký';
     if (r.signs.some((sg) => sg.st === 'REJECTED')) return 'Từ chối';
     if (r.signs.length) return 'Đã ký';
-    return !live && SIGNED.includes(r.code) ? 'Đã ký' : 'Dự thảo';
+    /* T56 Q8 (review Nhi 12/11 #11): văn bản không có bước ký (ngoài SIGNED, vd BM-02, BM-07) đã sinh ở bước của nó → Hoàn thành. ❓ tên trạng thái chờ Nhi xác nhận. */
+    if (!SIGNED.includes(r.code)) return 'Hoàn thành';
+    return !live ? 'Đã ký' : 'Dự thảo';
   }
   const kindOf = (x) => {
     if (!x.adjFrom) return 'Tạo mới';
@@ -76,8 +78,7 @@
         ${sel('code', 'Loại biểu mẫu', 'Chọn loại biểu mẫu', FORMS.map(([v, n]) => ({ value: v, label: `${v} ${n}` })))}
         ${sel('st', 'Trạng thái', 'Tất cả', Object.keys(ST).map((v) => ({ value: v, label: v })), { multi: true, searchable: false })}
         ${sel('kind', 'Loại ĐXMS', 'Tất cả', KINDS.map((v) => ({ value: v, label: v })), { searchable: false })}
-        <div class="vfield ${L.err ? 'invalid' : ''}"><div class="lr"><label>Ngày cập nhật</label></div><input class="vctl" id="qh-date" maxlength="25" placeholder="DD/MM/YYYY – DD/MM/YYYY" value="${esc(d.date)}">
-          ${L.err ? `<div class="msg">${esc(L.err)}</div>` : ''}</div></div>
+        ${window.UI.vDateRange({ label: 'Ngày cập nhật', combined: ['id="qh-date"', d.date], err: L.err })}</div>
       <div class="acts"><button type="button" class="vbtn secondary" data-qh="reset">Làm mới</button><button type="submit" class="vbtn primary">Tìm kiếm</button></div></form>`;
   }
   function page() {
@@ -97,6 +98,7 @@
       notes: [
         '<b>D-105</b> (người dùng 10/11): đổi tên menu Quản lý hồ sơ → <b>Quản lý tài liệu ĐXMS</b>; đặc tả SRS 29 (<code>docs/SRS/29-srs-dxms-tai-lieu</code>). Nghĩa màn giữ <b>D-78</b>: danh sách văn bản đầu ra (phiên bản hiện hành) của mọi ĐXMS.',
         'Tìm nhanh theo mã / tên biểu mẫu, mã ĐXMS, tên đề xuất; Tìm kiếm nâng cao: Đề xuất mua sắm, Loại biểu mẫu (theo danh mục), Trạng thái (nhiều lựa chọn), Loại ĐXMS, Ngày cập nhật. Tải xuống từng văn bản ("{Mã biểu mẫu}-{Mã ĐXMS}"); mã ĐXMS mở Chi tiết, tab Tài liệu & văn bản.',
+        '<b>T56 (review Nhi 12/11 #11, Q8):</b> thêm trạng thái <b>Hoàn thành</b> cho văn bản không cần trình ký (BM-02, BM-07 — không có bước ký trên ĐTMS); ❓ tên trạng thái chờ Nhi xác nhận. Lệch SRS 29 mục 2.3. Ngày cập nhật chọn bằng hai ô ngày (Từ - Đến).',
         '<b>Trạng thái</b> theo SRS 29 mục 2.3 (Dự thảo, Chờ ký, Đã ký, Từ chối, Lỗi gửi, Đã hủy; văn bản phê duyệt Đang hiệu lực / Đã thay thế), cùng nguồn với tab Tài liệu & văn bản. GIẢ LẬP P-209: hồ sơ mẫu chưa có lượt ký — văn bản có bước ký coi là Đã ký.',
         'GIẢ LẬP: chưa lọc phạm vi xem ĐXMS (BR-QTL-C-01), như Danh sách đề xuất mua sắm. Thật: API tìm kiếm chung, thêm cột vào <code>wf_profile_documents</code> (SRS 29 mục 5, câu hỏi 4).',
         'Câu hỏi mở SRS 29: tài liệu tải lên có vào màn không (0593), tải nhiều (0594), quyền vào màn (0595), bảng lưu văn bản (0596).',

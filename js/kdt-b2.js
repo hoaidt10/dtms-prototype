@@ -60,7 +60,8 @@
   function advPanel() {
     const d = L.d, K = window.Kdt, kd = K0 === 'KDT';
     const txt = (k, label) => `<div class="vfield"><div class="lr"><label>${label}</label></div><input class="vctl" data-hkf="${k}" maxlength="255" placeholder="Nhập ${label.toLowerCase()}" value="${esc(d[k])}"></div>`;
-    const date = (k, label) => `<div class="vfield"><div class="lr"><label>${label}</label></div><input class="vctl" data-hkf="${k}" maxlength="10" placeholder="DD/MM/YYYY" value="${esc(d[k])}"></div>`;
+    /* T56: khoảng ngày = hai vht-calendar + "-" (UI.vDateRange). */
+    const range = (a, b, label) => window.UI.vDateRange({ label, from: [`data-hkf="${a}"`, d[a]], to: [`data-hkf="${b}"`, d[b]] });
     const sel = (k, label, o) => `<div class="vfield"><div class="lr"><label>${label}</label></div>${vSelect(Object.assign({ id: 'hkf-' + k, value: d[k], clear: true, searchable: true,
       placeholder: 'Chọn ' + label.toLowerCase(), onChange: (v) => { d[k] = v; rerender(); } }, o))}</div>`;
     const units = [...new Set(rows().map((c) => c.unit))].filter((u) => !d.block || D.blockOf(u) === d.block);
@@ -79,9 +80,9 @@
         ${sel('secret', 'Mật', { searchable: false, placeholder: 'Tất cả', options: ['Có', 'Không'].map((p) => ({ value: p, label: p })) })}
         ${sel('cqcm', 'Người thẩm định (CQCM)', { multi: true, placeholder: 'Chọn CQCM', options: D.cqcm.map((c) => ({ value: c.id, label: `${c.unit} — ${persona(c.doer).name}` })) })}
         ${sel('rvSt', 'Trạng thái với người thẩm định', { multi: true, searchable: false, placeholder: 'Tất cả', options: RV_ST.map((v) => ({ value: v, label: v })) })}
-        ${date('from', 'Ngày tạo từ')}${date('to', 'Ngày tạo đến')}
-        ${date('rvFrom', 'Ngày thẩm định từ')}${date('rvTo', 'Ngày thẩm định đến')}
-        ${date('ttFrom', 'Ngày tờ trình từ')}${date('ttTo', 'Ngày tờ trình đến')}</div>
+        ${range('from', 'to', 'Ngày tạo')}
+        ${range('rvFrom', 'rvTo', 'Ngày thẩm định')}
+        ${range('ttFrom', 'ttTo', 'Ngày tờ trình')}</div>
       <div class="acts"><button type="button" class="vbtn secondary" data-hk="reset">Làm mới</button><button type="submit" class="vbtn primary">Tìm kiếm</button></div></form>`;
   }
   const nvsCell = (c) => (c.nvs.length ? `<span class="clamp">${c.nvs.map((v) => window.Kdt.nvLink(v)).filter(Boolean).join(', ')}</span>` : dash);
@@ -100,7 +101,7 @@
         ['Đề tài / dự án', 260, '', nvsCell, (c) => c.nvs.map((v) => K.nvText(v)).join('; ')],
         ['Loại hồ sơ', 190, '', (c) => esc(kindText(c)), kindText],
         ['Đơn vị đề xuất', 200, '', (c) => clamp(c.unit), (c) => c.unit],
-        ['Nhóm KĐT', 200, '', (c) => (c.flow ? esc(D.kdtGroups[c.flow]) : '<span class="faint">Chưa xác định</span>'), (c) => (c.flow ? D.kdtGroups[c.flow] : 'Chưa xác định')],
+        ['Nhóm KĐT', 200, '', (c) => (c.flow ? esc(D.kdtGroups[c.flow]) : dash), (c) => (c.flow ? D.kdtGroups[c.flow] : 'Chưa xác định')],
         ['Nhánh hồ sơ', 220, '', (c) => (c.branch ? esc(D.kdtBranches[c.branch]) : dash), (c) => (c.branch ? D.kdtBranches[c.branch] : '')],
         [kind === 'KDT' ? 'Tổng mức vốn KĐT (tỷ đồng)' : 'Tổng mức vốn (tỷ đồng)', 190, 'r num', (c) => (c.total != null ? ty(c.total) : dash), (c) => (c.total != null ? ty(c.total) : '')],
         ['Bước hiện tại', 240, '', (c) => clamp(c.step), (c) => c.step || ''],
@@ -123,6 +124,7 @@
     return {
       scr: 'SCR-75', name: LIST[kind].title, uc: 'UC-05-01 · Backlog W1_T10 › Hồ sơ KĐT (dòng 307–309) · IA-DXMS dòng 19–21 (plan T31 K1, K2, K3; D-67, D-69) · T45 (D-103, D-104)',
       notes: notes.concat([
+        '<b>T56 (review minhnh57 BA 12/11 #28, #35, #38; Phong BA #30):</b> Nhóm KĐT ghi <b>Đơn giản</b> / <b>Thông thường</b> / <b>Phức tạp</b> (không ghi mã MS13 / MS14 / MS15); Nhánh hồ sơ <b>BM00</b> / <b>BM01→BM03</b>; chưa xác định thì "-". Menu đổi tên <b>Chủ trương KĐT</b> / <b>Phê duyệt KĐT</b>.',
         'Hồ sơ là đối tượng con của KĐT (D-12). <b>T45 §1.7</b>: nút <b>Thêm mới</b> mở Thêm mới hồ sơ với Loại hồ sơ cố định theo danh sách, chọn Khoản đầu tư (như Hồ sơ ĐXMS › Thêm mới); vẫn tạo được từ Chỉnh sửa KĐT › Tạo hồ sơ. Mã hồ sơ mở Chi tiết hồ sơ KĐT; Mã KĐT mở Chi tiết KĐT.',
         'Nhóm KĐT do hệ thống xác định sau bước 12 (trước đó "Chưa xác định"). Không có cột Thao tác (D-43, team BA 30/10/2026); xử lý việc mở từ Việc của tôi.',
         '<b>T31 — theo IA-DXMS</b> (màn Thẩm định TTr, dòng 19–21; D-67): Tìm kiếm nâng cao thêm Khối đơn vị (Đơn vị đề xuất hiện theo khối), Người tạo, Mật, Ngày tạo, <b>Người thẩm định (CQCM)</b>, <b>Trạng thái với người thẩm định</b> (Chưa xem / Đang xem / Đã đồng ý / Yêu cầu sửa), Ngày thẩm định, Ngày tờ trình — điều kiện CQCM, tình trạng, ngày thẩm định cùng thỏa trên một CQCM; cột Số / Ngày tờ trình, Ngày gửi thẩm định, Người tạo, Ngày tạo; <b>Xuất Excel</b>.',
@@ -238,7 +240,7 @@
           ${kv('Nhánh hồ sơ', c.branch ? esc(D.kdtBranches[c.branch]) : null)}
           ${kv('Hình thành TSCĐ', g.did(11) ? 'Có' : null)}${kv('Ban Tài chính xác nhận', by(g, 11, 'thu', 11))}${kv('Hồ sơ chủ trương', `<a class="link-red" href="#/${caseHref(c)}">${esc(c.code)}</a>`)}
           ${kc ? kv('Hồ sơ phê duyệt KĐT', `<a class="link-red" href="#/${caseHref(kc)}">${esc(kc.code)}</a>`) + kv('Tổng mức vốn KĐT', kc.est != null ? ty(kc.est, 2) + ' tỷ đồng' : null)
-    + kv('Luồng của hồ sơ KĐT', kc.flow ? esc(D.kdtGroups[kc.flow]) : null) + (kc.lech ? kv('Luồng khác chủ trương', `${badge(lechText(kc), 'warning')}`) : '') : ''}</div>`,
+    + kv('Luồng của hồ sơ KĐT', kc.flow ? esc(D.kdtProcs[kc.flow]) : null) + (kc.lech ? kv('Luồng khác chủ trương', `${badge(lechText(kc), 'warning')}`) : '') : ''}</div>`,
         c.st === 'moved' || c.replaces ? 'Tổng mức vốn thực tế không thuộc MS13 — hồ sơ đã chuyển luồng' : kc && kc.lech ? `Tổng mức vốn KĐT thuộc ${esc(kc.lech.to)}, khác luồng chủ trương ${esc(kc.lech.from)}` : '')
       + card('Điều kiện áp dụng hồ sơ gộp (BM-00)', Y.table([['Điều kiện', 420], ['Kết quả', 160, 'c']], group ? merge : [],
         (r, i) => `${Y.ord(i)}<td>${esc(r[0])}</td><td class="c">${r[1] ? badge('Đạt', 'success') : badge('Không đạt', 'default')}</td>`),
@@ -292,9 +294,7 @@
         ${kv('Hồ sơ phê duyệt KĐT', gop ? hsLink(ctDone) : hsLink(kdRef))}${kv('Báo cáo thẩm định KĐT', bc ? `${esc(no(bc))} · ${esc(bc.at)}` : null)}${kv('Luồng khác chủ trương', kdRef && kdRef.lech ? badge(lechText(kdRef), 'warning') : null)}
         ${kv('Tổng mức vốn được duyệt', kdDone && kdDone.total != null ? ty(kdDone.total, 2) + ' tỷ đồng' : null)}${kv('Nguồn vốn được duyệt', kdDone ? esc(fund) : null)}${kv('Cấp phê duyệt', kdCap ? esc(kdCap) : null)}</div>`,
         gop ? 'Phê duyệt cùng chủ trương (BM-00)' : '')
-      + card('Văn bản đầu ra', Y.table([['Văn bản', 340], ['Số văn bản', 160], ['Hồ sơ', 150], ['Loại hồ sơ', 200], ['Ngày ký', 120], ['Tệp', 80, 'c']], docs,
-        (d, i) => `${Y.ord(i)}<td>${esc(d.code + ' ' + DOC[d.code])}</td><td>${esc(no(d))}</td><td><a class="link" data-go="${caseHref(d.c)}">${esc(d.c.code)}</a></td><td>${esc(kindText(d.c))}</td><td class="num">${esc(d.at)}</td>
-          <td class="c"><button type="button" class="vbtn icon ghost" aria-label="Tải xuống" data-dl="${esc(no(d).replace(/\//g, '-'))}.pdf">${icon('download')}</button></td>`))
+      /* [12/11 chuyển sang tab Tài liệu & văn bản] card Văn bản đầu ra (Văn bản, Số văn bản, Hồ sơ, Loại hồ sơ, Ngày ký, Tệp). */
       + (stop ? card('Chỉ đạo dừng / bàn giao xử lý', `<div class="ginfo c3">${kv('Hồ sơ', `<a class="link-red" href="#/${caseHref(stop)}">${esc(stop.code)}</a>`)}${kv('Ngày', esc(stop.updated))}${kv('Người chỉ đạo', 'Thủ trưởng VHT')}
           ${kv('Nội dung chỉ đạo', 'Không ký chủ trương; dừng KĐT do nhu cầu đã được đáp ứng bằng thiết bị điều chuyển nội bộ. Bàn giao ' + esc(x.unit) + ' rà soát lại nhu cầu năm 2027.', 'span3')}</div>`) : '')
       + card('Triển khai mua sắm', Y.table([['Mã KHLCNT', 170], ['Tên KHLCNT', 360], ['Số gói thầu', 110, 'c'], ['Trạng thái', 200, 'c']], plans,
@@ -303,7 +303,7 @@
   }
 
   const TAB_LIST = [['info', 'Thông tin chung'], ['can-cu', 'Căn cứ & hạng mục'], ['ton-kho', 'Rà soát tồn kho'], ['ycbg', 'Yêu cầu báo giá'],
-    ['phan-loai', 'Phân loại & định danh'], ['thanh-phan', 'Thành phần tham gia'], ['ket-qua-kdt', 'Kết quả & triển khai']];
+    ['phan-loai', 'Phân loại & định danh'], ['tai-lieu', 'Tài liệu & văn bản'], ['thanh-phan', 'Thành phần tham gia'], ['ket-qua-kdt', 'Kết quả & triển khai']];
   const TAB_INFO = [
     'Tab theo Backlog W1_T10 › Quản lý KĐT (T16 B2): app-tabs như Chi tiết ĐXMS; tab Thông tin chung giữ bố cục task-create mode detail. Các tab khác chỉ xem — dữ liệu do các bước MS13 ghi (S2, S4).',
     'Căn cứ & hạng mục (bước 1, 5), Rà soát tồn kho (bước 6, 7), Yêu cầu báo giá (bước 8–10): cùng cơ chế với ĐXMS (B1) — cần dev bảng giữ chỗ căn cứ, API giữ chỗ tồn kho + snapshot, bảng YCBG.',
@@ -312,7 +312,27 @@
     'Kết quả & triển khai: kết quả phê duyệt chủ trương (BM-01 / BM-00), Quyết định phê duyệt KĐT (BM-18 / BM-00), tổng mức vốn và nguồn vốn được duyệt, chỉ đạo dừng (hồ sơ Dừng theo chỉ đạo), KHLCNT lập từ KĐT. Nút Lập KHLCNT trên hàng tiêu đề khi KĐT đã phê duyệt.',
     '<b>T45 (D-103)</b>: KĐT có hai hồ sơ. Căn cứ & hạng mục, Rà soát tồn kho, Yêu cầu báo giá, Phân loại & định danh (bước 1–12) đọc <b>hồ sơ chủ trương</b>; Phân loại thêm Hồ sơ phê duyệt KĐT, Tổng mức vốn KĐT và luồng tính lại theo Tổng mức vốn KĐT (Flow.kdtLuong — cùng ngưỡng với cổng phân luồng), tag Luồng khác chủ trương khi lệch. Thành phần tham gia: vòng chủ trương (41) / gộp (22) trên hồ sơ chủ trương, vòng KĐT (52) trên hồ sơ phê duyệt KĐT. Kết quả tách hai card: <b>Kết quả phê duyệt chủ trương</b> (BM-01, gộp BM-00) và <b>Kết quả phê duyệt KĐT</b> (BM-14, BM-18; gộp: BM-00 duyệt cả KĐT); Văn bản đầu ra có cột Loại hồ sơ.',
   ];
-  const tabOpt = { list: TAB_LIST, bodies: { 'phan-loai': tabPhanLoai, 'thanh-phan': tabThanhPhan, 'ket-qua-kdt': tabKetQua } };
+  /* Tab Tài liệu & văn bản (người dùng 12/11: "giống Đề xuất mua sắm"): như tab cùng tên của Chi tiết ĐXMS — Văn bản đầu ra, Danh sách tài liệu,
+     khối Trình ký — gom từ mọi hồ sơ của KĐT (chủ trương + phê duyệt KĐT), nên thêm cột Hồ sơ, Loại hồ sơ. Dữ liệu từng hồ sơ như Chi tiết hồ sơ (SCR-20). */
+  function tabTaiLieu(g) {
+    const x = g.x, hs = window.Kdt.meta(x).hs;
+    const vms = hs.map((c) => ({ c, vm: S.kdtCaseVm(c.code) })).filter((o) => o.vm);
+    const outs = vms.flatMap(({ c, vm }) => (vm.outs || []).map((r) => Object.assign({ c }, r)));
+    /* Hồ sơ phê duyệt KĐT kế thừa tệp căn cứ / tồn kho / báo giá của hồ sơ chủ trương → mỗi tệp một dòng, ghi theo hồ sơ chủ trương (hồ sơ gốc). */
+    const seen = new Set(), files = vms.slice().sort((p, q) => (kindOf(p.c) === 'CT' ? 0 : 1) - (kindOf(q.c) === 'CT' ? 0 : 1))
+      .flatMap(({ c, vm }) => (vm.files || []).map((r) => Object.assign({ c }, r))).filter((r) => !seen.has(r.name) && seen.add(r.name));
+    const dl = (name, label) => `<button type="button" class="vbtn icon ghost" aria-label="${label}" title="${label}" data-dl="${esc(name)}">${icon(label === 'Tải xuống PDF' ? 'file' : 'download')}</button>`;
+    const pdf = (name) => String(name).replace(/\.(docx?|xlsx?|pdf)$/i, '') + '.pdf';
+    const hsCells = (c) => `<td><a class="link" data-go="${caseHref(c)}">${esc(c.code)}</a></td><td>${esc(kindText(c))}</td>`;
+    return card('Văn bản đầu ra', Y.table([['Thao tác', 100, 'c'], ['Văn bản', 300], ['Hồ sơ', 150], ['Loại hồ sơ', 200], ['Trạng thái', 130, 'c'], ['Ngày', 110]], outs,
+        (r, i) => `${Y.ord(i)}<td class="c"><div class="acts">${dl(r.name, 'Tải xuống')}<span class="sep"></span>${dl(pdf(r.name), 'Tải xuống PDF')}</div></td>
+          <td><button type="button" class="link-btn" data-preview-doc="${esc(r.name)}|${esc(r.at)}|${esc(r.c.code)}">${esc(r.name)}</button></td>${hsCells(r.c)}
+          <td class="c">${badge(r.st || 'Hoàn thành', (r.st || 'Hoàn thành') === 'Hoàn thành' ? 'success' : 'info')}</td><td class="num">${esc(r.at || '')}</td>`))
+      + card('Danh sách tài liệu', Y.table([['Thao tác', 100, 'c'], ['Tên tài liệu', 300], ['Hồ sơ', 150], ['Loại hồ sơ', 200], ['Ngày tạo', 110]], files,
+        (r, i) => `${Y.ord(i)}<td class="c">${dl(r.name, 'Tải xuống')}</td><td>${clamp(r.name)}</td>${hsCells(r.c)}<td class="num">${esc(r.at || '')}</td>`))
+      + window.TrinhKy.block(x.code, { pad: true });
+  }
+  const tabOpt = { list: TAB_LIST, bodies: { 'phan-loai': tabPhanLoai, 'tai-lieu': tabTaiLieu, 'thanh-phan': tabThanhPhan, 'ket-qua-kdt': tabKetQua } };
 
   window.KdtB2 = { caseList, listOf, kindText, scopeText, lechText, tabOpt, TAB_INFO };
 })();

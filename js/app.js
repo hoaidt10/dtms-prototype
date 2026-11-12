@@ -23,7 +23,6 @@
     /* T45 §1.7: hai mục Hồ sơ chủ trương KĐT / Hồ sơ phê duyệt KĐT; Chi tiết hồ sơ (#/ho-so-kdt/<mã>) sáng mục theo loại hồ sơ. */
     if (/^ho-so-(ct|pd)-kdt(\/create)?$/.test(r)) return r.split('/')[0];
     if (r.startsWith('ho-so-kdt')) return window.KdtB2.listOf(decodeURIComponent(r.split('/')[1] || ''));
-    if (r.startsWith('ycbg-kdt')) return 'ycbg-kdt';
     if (r.startsWith('khlcnt')) return 'khlcnt';
     if (r.startsWith('goi-thau')) return 'goi-thau';
     if (r.startsWith('cong-khai-thau')) return 'cong-khai-thau';
@@ -58,7 +57,7 @@
 
   function navItem(m, level, act) {
     /* Danh mục dùng chung: chỉ hiện danh mục vai hiện tại được xem (P-36). */
-    const kids = (m.children || []).filter((k) => !k.dmdc || window.Catalog.canSee(k.dmdc));
+    const kids = (m.children || []).filter((k) => (!k.dmdc || window.Catalog.canSee(k.dmdc)) && !(k.show && !D.show[k.show]));
     const childActive = kids.some((k) => k.path === act);
     const isActive = m.path && m.path === act;
     const open = openGroups.has(m.label) || childActive;
@@ -95,7 +94,7 @@
 
   /* Route cũ của Quy trình BPMN / Ma trận hành động trước khi tách menu Quản trị quy trình (D-2); E-Form, Khoản đầu tư trước khi có màn thật (D-4, D-9). */
   const MOVED = { 'ph/quy-trinh': 'quy-trinh', 'ph/ma-tran': 'ma-tran/display-rule', 'ma-tran': 'ma-tran/display-rule', 'ph/dieu-chinh': 'ho-so-dxms', 'ph/eform': 'eform', 'ph/kdt': 'kdt', 'ph/ycbg': 'ycbg',
-    'ph/ho-so-kdt': 'ho-so-ct-kdt', 'ho-so-kdt': 'ho-so-ct-kdt', 'ph/ycbg-kdt': 'ycbg-kdt', 'ph/khlcnt': 'khlcnt', 'ph/goi-thau': 'goi-thau', 'ph/ds-cam': 'nha-thau', 'ph/cong-khai-thau': 'cong-khai-thau',
+    'ph/ho-so-kdt': 'ho-so-ct-kdt', 'ho-so-kdt': 'ho-so-ct-kdt', 'ph/ycbg-kdt': 'ycbg', 'ycbg-kdt': 'ycbg', 'ph/khlcnt': 'khlcnt', 'ph/goi-thau': 'goi-thau', 'ph/ds-cam': 'nha-thau', 'ph/cong-khai-thau': 'cong-khai-thau',
     'ph/hop-dong': 'hop-dong', 'ph/po': 'thoa-thuan-khung', 'ph/mau-thong-bao': 'mau-thong-bao', 'ph/kenh-thong-bao': 'kenh-thong-bao', 'ph/trigger-thong-bao': 'trigger-thong-bao',
     'ph/bao-cao': 'bao-cao/tong-hop', 'ph/bao-cao-dxms': 'bao-cao/dxms', 'ph/bao-cao-kdt': 'bao-cao/kdt', 'ph/bao-cao-lcnt': 'bao-cao/lcnt', 'ph/bao-cao-hop-dong': 'bao-cao/hop-dong', 'ph/bao-cao-tien-do': 'bao-cao/tien-do', 'bao-cao': 'bao-cao/tong-hop' };
 
@@ -116,8 +115,9 @@
     if (a === 'luong') return window.Luong.route(r.split('/'));
     /* T29 S6, S7: SCR-103 Danh sách đề tài / dự án, SCR-104 Chi tiết (de-tai.js). */
     if (a === 'de-tai') return window.DeTai.route(r.split('/'));
-    /* T29 B3a: SCR-105 Rà soát tồn kho — việc của Phòng QLTS / Thủ kho (ngoài sơ đồ). */
-    if (a === 'ra-soat-kho') return window.RaSoatKho.page();
+    /* T29 B3a: SCR-105 Rà soát tồn kho. T59 #54 (D-114 Q4): không còn màn riêng — chuyển hướng về màn xử lý việc bước 7, tab Rà soát tồn kho
+       (không có việc bước 7 đang mở: Chi tiết ĐXMS tab Rà soát tồn kho). */
+    if (a === 'ra-soat-kho') return redirect(window.RaSoatKho.target());
     /* T29 B12 (D-78): SCR-107 Quản lý hồ sơ — biểu mẫu / văn bản đã sinh của mọi luồng. */
     if (a === 'quan-ly-ho-so') return window.QuanLyHoSo.page();
     /* T54 (SRS 32 DTMS_CN_0274): màn Trình ký. */
@@ -133,9 +133,11 @@
     /* T29 B3b: SCR-106 Thêm mới / Cập nhật yêu cầu báo giá (ycbg/create, ycbg/<mã>/edit). */
     if (a === 'ycbg' && b === 'create') return window.YcbgForm.form(null);
     if (a === 'ycbg' && b && r.split('/')[2] === 'edit') return window.YcbgForm.form(decodeURIComponent(b));
-    if (a === 'ycbg') return b ? window.Ycbg.detail(decodeURIComponent(b)) : window.Ycbg.list('dxms');
+    if (a === 'ycbg') return b ? window.Ycbg.detail(decodeURIComponent(b)) : window.Ycbg.list('all');
     /* T16 B2: YCBG KĐT (SCR-76/77), Danh sách hồ sơ KĐT (SCR-75), Quản lý thầu (SCR-78…83, thau.js). */
-    if (a === 'ycbg-kdt') return b ? window.Ycbg.detail(decodeURIComponent(b)) : window.Ycbg.list('kdt');
+    if (a === 'ycbg-kdt') return b ? window.Ycbg.detail(decodeURIComponent(b)) : redirect('#/ycbg'); /* 12/11: danh sách gộp vào #/ycbg */
+    if (a === 'tai-lieu-ct-kdt') return window.KdtTaiLieu.page('CT');
+    if (a === 'tai-lieu-pd-kdt') return window.KdtTaiLieu.page('KDT');
     if (a === 'ho-so-ct-kdt') return b === 'create' ? window.Kdt.caseCreateFrom('CT') : window.KdtB2.caseList('CT');
     if (a === 'ho-so-pd-kdt') return b === 'create' ? window.Kdt.caseCreateFrom('KDT') : window.KdtB2.caseList('KDT');
     if (a === 'ho-so-kdt' && !b) return redirect('#/ho-so-ct-kdt');
@@ -236,6 +238,15 @@
   function render() {
     const r = route();
     if (MOVED[r]) { location.replace('#/' + MOVED[r]); return; }
+    /* Việc đang chờ trên hồ sơ mẫu (Việc của tôi): nạp hồ sơ vào luồng chạy rồi mở màn xử lý việc. */
+    const rm = /^chay-mau\/([^/]+)$/.exec(r);
+    if (rm) {
+      const code = decodeURIComponent(rm[1]), st = Flow.state;
+      if (st.status === 'running' && st.code && st.code !== code) { location.replace('#/viec-cua-toi'); runSample(code); return; }
+      const tok = Flow.runSample(code);
+      location.replace(tok ? '#/task/' + tok.id : '#/viec-cua-toi');
+      return;
+    }
     /* D-47: màn của hồ sơ con nạp S của hồ sơ đó; màn khác dùng luồng chính. */
     Flow.focus(r);
     const base = r.split('/').slice(0, 2).join('/');
@@ -244,14 +255,28 @@
     lastRoute = r;
     const act = activePath(r);
     const main = document.querySelector('.main');
-    const keepScroll = main && main.dataset.route === r ? main.scrollTop : 0;
+    const sameRoute = !!main && main.dataset.route === r;
+    const keepScroll = sameRoute ? main.scrollTop : 0;
+    const oldNav = document.querySelector('.sb-nav');
+    const navScroll = oldNav ? oldNav.scrollTop : 0;
     const app = appOf(r);
     document.getElementById('app').innerHTML = topbar(app)
       + `<div class="shell">${app === 'picker' ? '' : sidebar(act, app)}<main class="main" data-route="${esc(r)}">${content(r)}</main></div>` + demoPanel();
     document.querySelector('.main').scrollTop = keepScroll;
-    /* Đổi trang: đưa mục menu đang chọn vào tầm nhìn (các mục cuối menu như Danh mục dùng chung). */
-    const on = !keepScroll && document.querySelector('.sb-nav .nav.active');
-    if (on) on.scrollIntoView({ block: 'nearest' });
+    /* Giữ vị trí cuộn menu trái qua lần vẽ lại (mở/đóng nhóm không làm menu nhảy về đầu); chỉ khi đổi trang mới đưa mục đang chọn vào tầm nhìn
+       (các mục cuối menu như Danh mục dùng chung). Chỉ cuộn khung .sb-nav — không dùng
+       scrollIntoView vì nó cuộn cả trang/khung cha làm toàn trang bị dịch lên. */
+    const nav = document.querySelector('.sb-nav');
+    if (nav) {
+      nav.scrollTop = navScroll;
+      const on = !sameRoute && nav.querySelector('.nav.active');
+      if (on) {
+        const nr = nav.getBoundingClientRect(), or = on.getBoundingClientRect();
+        if (or.top < nr.top) nav.scrollTop += or.top - nr.top;
+        else if (or.bottom > nr.bottom) nav.scrollTop += or.bottom - nr.bottom;
+      }
+    }
+    window.scrollTo(0, 0);
     if (window.BpmnView) window.BpmnView.mount();
     document.title = 'ĐTMS';
   }
@@ -285,7 +310,9 @@
     if (lock) { toast(esc(typeof lock === 'string' ? lock : 'Chưa đủ điều kiện thực hiện hành động này.'), 'warn'); return; }
     /* Review nhi 06/11 #21, #31: bước làm trên màn riêng (f.page, vd bước 7 → SCR-105): nút mở màn, Gửi trên màn mới hoàn thành bước. */
     const f0 = Flow.def()[tok.task] || {};
-    if (!choice && f0.page && window.RaSoatKho && window.RaSoatKho.inFlow()) { location.hash = '#/' + f0.page; return; }
+    /* [T59 Q4] trước: if (!choice && f0.page && …inFlow()) { location.hash = '#/' + f0.page; return; } — màn riêng SCR-105 đã bỏ.
+       T59: bước nhập trên tab của màn việc (f.tab, bước 7): nút đóng việc kiểm và lưu dữ liệu của tab rồi hoàn thành bước (RaSoatKho.submit). */
+    if (!choice && f0.tab === 'ton-kho' && window.RaSoatKho && window.RaSoatKho.inFlow()) { window.RaSoatKho.submit(tok); return; }
     /* Nút → eForm của task (dialog) hoặc dialog nhận xét (nút từ chối, G6) → trình ký → hoàn thành (task-forms.js). */
     const r = await window.TaskForms.run(tok, choice);
     if (!r) return;
@@ -345,6 +372,27 @@
     }
     ok(choice && choice.sign ? (kdt && sg && sg.mode === 'hard' ? 'Đã chuyển ký ngoài hệ thống (bước 77).' : 'Đã gửi văn bản đi trình ký.') : 'Thực hiện hành động thành công.');
     location.hash = '#/viec-cua-toi';
+  }
+
+  /* Hồ sơ mẫu (Screens.sampleBar, Việc của tôi): nạp vào luồng chạy tại bước đang chờ (Flow.runSample) rồi mở màn xử lý việc; choice = nút đã bấm
+     trên thanh trạng thái (số = thực hiện luôn hành động đó, 'more' = chỉ mở màn). Hồ sơ khác đang chạy dở → hỏi trước vì prototype chạy một hồ sơ một lúc. */
+  async function runSample(code, choice) {
+    const st = Flow.state;
+    if (st.status === 'running' && st.code && st.code !== code) {
+      const ok = await new Promise((res) => {
+        const m = window.UI.vModal({ title: 'Chạy hồ sơ mẫu', body: `<p>Hồ sơ <b>${esc(code)}</b> là hồ sơ mẫu. Để thao tác, prototype nạp hồ sơ này vào luồng chạy tại bước đang chờ.</p>
+          <p>Prototype chạy một hồ sơ một lúc: hồ sơ đang chạy <b>${esc(st.code)}</b> sẽ dừng ở trạng thái hiện tại${st.kdt ? '' : ' (hồ sơ ĐXMS trở về dữ liệu mẫu)'}.</p>`,
+          actions: '<button class="vbtn secondary" data-close>Hủy</button><button class="vbtn primary" id="rs-ok">Tiếp tục</button>' });
+        m.el.querySelector('#rs-ok').onclick = () => { m.close(); res(true); };
+        m.el.querySelectorAll('[data-close]').forEach((b) => b.addEventListener('click', () => res(false)));
+      });
+      if (!ok) return;
+    }
+    const tok = Flow.runSample(code);
+    if (!tok) { toast('Hồ sơ này chưa chạy được trên prototype.', 'warn'); return; }
+    const h = '#/task/' + tok.id, idx = Number(choice);
+    const go = () => { if (choice != null && choice !== '' && !Number.isNaN(idx) && Flow.token(tok.id)) act(tok.id, idx); };
+    if (location.hash === h) { render(); go(); } else { window.addEventListener('hashchange', () => setTimeout(go, 0), { once: true }); location.hash = h; }
   }
 
   function exportNotes(kind) {
@@ -455,6 +503,8 @@
     if (t.closest('#reset-eform')) { window.Catalog.reset(); window.EForm.reset(); window.Thau.reset(); window.CongKhai.reset(); window.HopDong.reset(); window.ThongBao.reset(); window.MaTran.reset(); window.QuyTrinh.resetSync(); D.duToanReset(); demoOpen = false; render(); toast('Đã khôi phục dữ liệu DMDC, E-Form, thầu, hợp đồng, thông báo, quy trình, luật hiển thị, dự toán đề tài / dự án.'); return; }
     const a = t.closest('[data-act]');
     if (a && !a.disabled) { act(a.dataset.act, Number(a.dataset.choice)); return; }
+    const rs = t.closest('[data-run-sample]');
+    if (rs) { runSample(rs.dataset.runSample, rs.dataset.runChoice); return; }
     const ex = t.closest('[data-export]');
     if (ex) { exportNotes(ex.dataset.export); return; }
     if (go) { e.preventDefault(); location.hash = '#/' + go.dataset.go; }

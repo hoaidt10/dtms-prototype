@@ -60,9 +60,9 @@ export async function primary(page, label) {
   if (!(await btn.count()) && label && /^(Đồng ý|Không đồng ý|Từ chối|Trả lại)/.test(label)) btn = page.locator('.task-acts [data-act]', { hasText: /Phê duyệt|Xác nhận danh sách CQCM/ }).first();
   if (!(await btn.count())) return false;
   const text = await btn.textContent();
+  // T59 Q4: bước 7 nhập trên tab Rà soát tồn kho của màn việc — tải tệp (đọc Excel điền bảng) rồi bấm Gửi Chỉ huy Kho.
+  if (/Gửi Chỉ huy Kho/.test(text)) { await fillRsk(page); return true; }
   await btn.click();
-  // Review nhi 06/11 #21, #31: bước 7 mở màn SCR-105, tải tệp Excel (điền bảng) rồi Gửi Chỉ huy Kho.
-  if (/Cập nhật kết quả rà soát/.test(text)) { await fillRsk(page); return true; }
   for (let i = 0; i < 2; i++) {
     const overlay = page.locator('.overlay');
     if (!(await overlay.count())) break;
@@ -101,19 +101,26 @@ export async function aiFill(page) {
   await expect(page.locator('.vmodal.ef [data-ef-aifill]')).toBeEnabled();
 }
 
-// Review nhi 06/11 #21, #31–33: nhập kết quả rà soát trên màn SCR-105 rồi Gửi Chỉ huy Kho.
-// T37 (RV-PROTO-0911 #5): tệp chỉ đính kèm, hệ thống không đọc Excel — test nhập bảng bằng số mẫu (D.rstkSample) như người dùng gõ tay.
+// T59 Q4, Q8 (D-114): nhập kết quả rà soát trên tab Rà soát tồn kho của màn việc bước 7 rồi Gửi Chỉ huy Kho (nút trên thanh trạng thái).
+// Tệp kết quả Excel → hệ thống điền bảng (GIẢ LẬP số mẫu); Biên bản kiểm đếm có ký bắt buộc. Vẫn điền số mẫu vào ô cho chắc.
 export async function fillRsk(page, send = true) {
   await page.locator('[data-rsk-ed]').waitFor();
   await page.locator('#rsk-file').setInputFiles({ name: 'Ket-qua-ra-soat.xlsx', mimeType: 'application/vnd.ms-excel', buffer: Buffer.alloc(16) });
   await expect(page.locator('.rsk-file')).toHaveText('Ket-qua-ra-soat.xlsx');
+  await page.locator('#rsk-sign').setInputFiles({ name: 'Bien-ban-kiem-dem.pdf', mimeType: 'application/pdf', buffer: Buffer.alloc(16) });
+  await expect(page.locator('.rsk-sign')).toHaveText('Bien-ban-kiem-dem.pdf');
   await page.evaluate(() => {
     D.rstkSample(D.items, Flow.state.clock).kq.rows.forEach((r) => Object.keys(r).forEach((k) => {
       const el = document.querySelector(`[data-rsk-in="${r.n}:${k}"]`);
       if (el) el.value = r[k] == null ? '' : String(r[k]);
     }));
   });
-  if (send) { await page.locator('[data-rsk-save]').click(); await expect(page).toHaveURL(/#\/viec-cua-toi$/); }
+  if (send) {
+    const own = page.locator('[data-rsk-save]');
+    if (await own.count()) await own.click();
+    else await page.locator('.task-acts [data-act]', { hasText: 'Gửi Chỉ huy Kho' }).first().click();
+    await expect(page).toHaveURL(/#\/viec-cua-toi$/);
+  }
 }
 
 // Màn xử lý task (B0.4 (2)): bấm nút hành động mở dialog eForm của task (my-task-eform-dialog). Trả locator dialog.

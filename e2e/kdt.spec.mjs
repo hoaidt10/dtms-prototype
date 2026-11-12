@@ -30,21 +30,24 @@ test('SCR-54: cột, trạng thái suy từ hồ sơ, nhóm KĐT, phân trang, X
   await fresh(page, '#/kdt');
   await expect(page.locator('.vtable th')).toHaveText(['STT', 'Thao tác', 'Trạng thái', 'Mã KĐT', 'Tên KĐT', 'Đề tài / dự án', 'Đơn vị đề xuất', 'Loại KĐT', 'Nhóm KĐT', 'Tổng mức vốn (tỷ đồng)', 'Ngày gửi thẩm định', 'Người tạo', 'Ngày tạo', 'Ngày cập nhật']);
   await expect(page.locator('.vtable tbody tr')).toHaveCount(10);
-  await expect(page.locator('[data-pager="kdt"] .tot')).toHaveText('Tổng số bản ghi: 14');
+  await expect(page.locator('[data-pager="kdt"] .tot')).toHaveText('Tổng số bản ghi: 21'); // T58: thêm KĐT-2026-0034…0040
   await expect(row(page, 'KĐT-2026-0033').locator('.vbadge')).toHaveText('Chưa có hồ sơ');
-  await expect(row(page, 'KĐT-2026-0033')).toContainText('Chưa xác định');
+  // T56 Q9: Nhóm KĐT chưa xác định hiện "-".
+  await expect(row(page, 'KĐT-2026-0033')).not.toContainText('Chưa xác định');
   await expect(row(page, 'KĐT-2026-0033').locator('[data-del-kdt]')).toHaveCount(1);
   await expect(row(page, 'KĐT-2026-0031').locator('.vbadge')).toHaveText('Đang lập hồ sơ gộp');
-  await expect(row(page, 'KĐT-2026-0031')).toContainText('MS13');
+  await expect(row(page, 'KĐT-2026-0031')).toContainText('Đơn giản'); // T56 Q7
   await expect(row(page, 'KĐT-2026-0031').locator('[data-del-kdt]')).toHaveCount(0);
-  await expect(row(page, 'KĐT-2026-0029').locator('.vbadge')).toHaveText('Chờ xác nhận phân loại');
-  // Trang 2: đã phê duyệt (tổng mức vốn = của hồ sơ Hoàn thành), chuyển MS14.
+  // Trang 2: chờ phân loại, chuyển MS14; trang 3: đã phê duyệt (tổng mức vốn = của hồ sơ Hoàn thành).
   await page.locator('[data-pager="kdt"] .pgn[data-pg="2"]').click();
-  await expect(page.locator('.vtable tbody tr')).toHaveCount(4);
+  await expect(row(page, 'KĐT-2026-0029').locator('.vbadge')).toHaveText('Chờ xác nhận phân loại');
+  await expect(row(page, 'KĐT-2026-0018').locator('.vbadge')).toHaveText('Chuyển MS14');
+  await page.locator('[data-pager="kdt"] .pgn[data-pg="3"]').click();
+  await expect(page.locator('.vtable tbody tr')).toHaveCount(1);
   await expect(row(page, 'KĐT-2026-0012').locator('.vbadge')).toHaveText('Đã phê duyệt');
   await expect(row(page, 'KĐT-2026-0012')).toContainText('138,50');
-  await expect(row(page, 'KĐT-2026-0018').locator('.vbadge')).toHaveText('Chuyển MS14');
-  await expect(row(page, 'KĐT-2026-0018')).toContainText('MS14');
+  await page.locator('[data-pager="kdt"] .pgn[data-pg="2"]').click();
+  await expect(row(page, 'KĐT-2026-0018')).toContainText('Thông thường'); // T56 Q7
   expect(await mainText(page)).not.toMatch(BA);
   expect(page.errors).toEqual([]);
 });
@@ -58,8 +61,8 @@ test('SCR-54: tìm kiếm Enter và tìm kiếm nâng cao (Nhóm KĐT, Trạng t
   await expect(page.locator('#kdt-kw')).toHaveCount(0);
   await pick(page, 'kf-group', 'Chưa xác định');
   await page.locator('[data-kdt-adv] button[type="submit"]').click();
-  // 0033 (chưa có hồ sơ), 0030 (bước 8), 0029 (bước 11–12) chưa qua bước 12.
-  await expect(page.locator('.vtable tbody tr')).toHaveCount(3);
+  // 0033, 0040 (chưa có hồ sơ), 0030 (bước 8), 0029 (bước 11–12) chưa qua bước 12.
+  await expect(page.locator('.vtable tbody tr')).toHaveCount(4);
   await page.locator('[data-kl="reset"]').click();
   // T45: "Đã phê duyệt chủ trương" là trạng thái khác — chọn đúng nhãn.
   await pick(page, 'kf-stage', /^Đã phê duyệt$/);
@@ -102,19 +105,21 @@ test('SCR-55: Thêm mới — bắt buộc, không có trường Quy trình, Lư
 
 test('SCR-56 / SCR-55 sửa: chi tiết, 3 yếu tố phân luồng khoá khi đã có hồ sơ, danh sách hồ sơ và tài liệu', async ({ page }) => {
   await fresh(page, '#/kdt');
-  await page.locator('[data-pager="kdt"] .pgn[data-pg="2"]').click();
+  await page.locator('[data-pager="kdt"] .pgn[data-pg="3"]').click();
   await row(page, 'KĐT-2026-0012').locator('td').nth(4).click();
   await expect(page).toHaveURL(/#\/kdt\/K%C4%90T-2026-0012$/);
   await expect(page.locator('.pg-title')).toHaveText('Xem chi tiết khoản đầu tư');
-  await expect(page.locator('.ginfo')).toContainText('MS13 · KĐT đơn giản');
-  await expect(page.locator('.ginfo')).toContainText('Hai giai đoạn (BM-01 → BM-03)');
+  await expect(page.locator('.ginfo')).toContainText('Nhóm KĐTĐơn giản'); // T56 Q7
+  await expect(page.locator('.ginfo')).toContainText('BM01→BM03');
   await expect(page.locator('.ginfo')).toContainText('138,50 tỷ đồng');
   // T45 (D-103): hồ sơ chủ trương + hồ sơ phê duyệt KĐT.
   await expect(page.locator('[data-kdt-profiles] tbody tr')).toHaveCount(2);
   await expect(page.locator('[data-kdt-profiles] tbody')).toContainText('Phê duyệt chủ trương KĐT');
   await expect(page.locator('[data-kdt-profiles] tbody')).toContainText('HS-2026-0012-2');
   await expect(page.locator('[data-kdt-profiles] .vcard-h [data-go$="/tao-ho-so"]')).toHaveCount(0);
+  await page.locator('[data-dtab="tai-lieu"]').click(); // 12/11: văn bản ở tab Tài liệu & văn bản
   await expect(page.locator('main')).toContainText('BM-18 Quyết định phê duyệt KĐT');
+  await page.locator('[data-dtab="info"]').click();
   await page.locator('.pg-head [data-go$="/edit"]').click();
   await expect(page.locator('.pg-title')).toHaveText('Chỉnh sửa khoản đầu tư');
   await expect(page.locator('[data-vsel="k-field"]')).toHaveClass(/(^|\s)dis(\s|$)/);
@@ -122,7 +127,7 @@ test('SCR-56 / SCR-55 sửa: chi tiết, 3 yếu tố phân luồng khoá khi đ
   await page.evaluate(() => { location.hash = '#/kdt/' + encodeURIComponent('KĐT-2026-0018'); });
   await expect(page.locator('[data-kdt-profiles] tbody tr')).toHaveCount(2);
   await expect(page.locator('[data-kdt-profiles]')).toContainText('Đã chuyển luồng');
-  await expect(page.locator('[data-kdt-profiles]')).toContainText('MS14 · KĐT thông thường');
+  await expect(page.locator('[data-kdt-profiles]')).toContainText('Thông thường'); // T56 Q7
   expect(await mainText(page)).not.toMatch(BA);
   expect(page.errors).toEqual([]);
 });

@@ -265,12 +265,41 @@
     const f = o.options.find((x) => x.value === o.value);
     return f ? (f.short || f.label) : '';
   }
+  /* T59 #43 (D-114 Q1): multi hiện giá trị đã chọn dạng chip (vht-multi-select display="chip"): mỗi chip có icon x bỏ chọn,
+     chip không vừa một hàng gộp thành chip "+n" (fitChips đo bề rộng thật, như measureVisibleChipCount). */
+  function selChips(o) {
+    const picked = (o.value || []).map((v, i) => [i, (o.options.find((x) => x.value === v) || {}).label]).filter((x) => x[1]);
+    return `<span class="vsel-label vsel-chips">${picked.map(([i, l]) => `<span class="vsel-chip" data-chip="${i}"><span class="vsel-chip-l">${esc(l)}</span>${o.disabled ? '' : `<span class="vsel-chip-x" data-vsel-rm="${esc(o.id)}" data-i="${i}" role="button" aria-label="Bỏ chọn ${esc(l)}">${icon('x')}</span>`}</span>`).join('')}<span class="vsel-chip more" hidden></span></span>`;
+  }
+  function fitChips() {
+    document.querySelectorAll('.vsel-chips').forEach((box) => {
+      if (!box.clientWidth) return;
+      const chips = [...box.querySelectorAll('.vsel-chip:not(.more)')], more = box.querySelector('.vsel-chip.more');
+      chips.forEach((c) => { c.hidden = false; }); more.hidden = true;
+      let n = 0;
+      while (box.scrollWidth > box.clientWidth + 1 && n < chips.length) {
+        n += 1; chips[chips.length - n].hidden = true;
+        more.hidden = false; more.textContent = '+' + n;
+        more.title = chips.slice(chips.length - n).map((c) => c.textContent.trim()).join(', ');
+      }
+    });
+  }
+  let fitQ = 0;
+  const fitSoon = () => { if (!fitQ) fitQ = requestAnimationFrame(() => { fitQ = 0; fitChips(); }); };
+  new MutationObserver(fitSoon).observe(document.documentElement, { childList: true, subtree: true });
+  window.addEventListener('resize', fitSoon);
+  /* Vẽ lại riêng ô chọn (sau khi đổi giá trị mà màn không vẽ lại) — lấy cấu hình mới nhất trong SEL. */
+  function selRefresh(id) {
+    const o = SEL.get(id), t = document.querySelector(`[data-vsel="${CSS.escape(id)}"]`);
+    if (o && t) t.outerHTML = vSelect(o);
+  }
   function vSelect(o) {
     SEL.set(o.id, o);
     const lab = selLabel(o);
     const empty = !lab;
-    return `<div class="vsel ${o.invalid ? 'invalid' : ''} ${o.disabled ? 'dis' : ''}" data-vsel="${esc(o.id)}" ${o.disabled ? '' : 'tabindex="0"'} role="combobox" aria-haspopup="listbox">
-      <span class="vsel-label ${empty ? 'ph' : ''}">${esc(empty ? (o.placeholder || '') : lab)}</span>
+    const chips = o.multi && !empty;
+    return `<div class="vsel ${o.invalid ? 'invalid' : ''} ${o.disabled ? 'dis' : ''} ${chips ? 'chip' : ''}" data-vsel="${esc(o.id)}" ${o.disabled ? '' : 'tabindex="0"'} role="combobox" aria-haspopup="listbox">
+      ${chips ? selChips(o) : `<span class="vsel-label ${empty ? 'ph' : ''}">${esc(empty ? (o.placeholder || '') : lab)}</span>`}
       ${o.clear && !empty && !o.disabled ? `<span class="vsel-clear" data-vsel-clear="${esc(o.id)}" aria-label="Xoá">${icon('x')}</span>` : ''}
       <span class="vsel-chev">${icon('chev')}</span></div>`;
   }
@@ -309,14 +338,25 @@
         const cur = (o.value || []).slice();
         const i = cur.indexOf(v); if (i >= 0) cur.splice(i, 1); else cur.push(v);
         o.value = cur; if (o.onChange) o.onChange(cur);
-        selPanel(id, true);
+        selRefresh(id); selPanel(id, true);
       } else { o.value = v; selClose(); if (o.onChange) o.onChange(v); }
     };
     selOpen = id;
   }
   document.addEventListener('click', (e) => {
+    /* Icon x trên chip: bỏ một giá trị, không mở danh sách. */
+    const rm = e.target.closest('[data-vsel-rm]');
+    if (rm) {
+      e.stopPropagation(); const id = rm.dataset.vselRm, o = SEL.get(id);
+      if (!o || o.disabled) return;
+      const was = selOpen === id;
+      const cur = (o.value || []).slice(); cur.splice(+rm.dataset.i, 1);
+      o.value = cur; if (o.onChange) o.onChange(cur);
+      selRefresh(id); if (was) selPanel(id, true); else selClose();
+      return;
+    }
     const c = e.target.closest('[data-vsel-clear]');
-    if (c) { e.stopPropagation(); const o = SEL.get(c.dataset.vselClear); selClose(); o.value = o.multi ? [] : null; if (o.onChange) o.onChange(o.value); return; }
+    if (c) { e.stopPropagation(); const o = SEL.get(c.dataset.vselClear); selClose(); o.value = o.multi ? [] : null; if (o.onChange) o.onChange(o.value); selRefresh(c.dataset.vselClear); return; }
     const t = e.target.closest('[data-vsel]');
     if (t && !t.classList.contains('dis')) { const id = t.dataset.vsel; if (selOpen === id) selClose(); else selPanel(id); return; }
     if (!e.target.closest('.vsel-panel')) selClose();
@@ -438,5 +478,60 @@
     return t[0].toUpperCase() + t.slice(1);
   }
 
-  window.UI = { esc, icon, persona, avatar, initials, ty, pad2, cqcmUnit, qChip, qStrip, modal, vModal, vMaximize, vRadio, vSteps, toast, askReason, signDialog, qDialog, infoBtn, vSelect, badge, pager, norm, vTreeTable, vAccordion, inWords };
+  /* ---------- vht-calendar (T56, review ChauNNM1 12/11 #2–#8): ô DD/MM/YYYY + icon lịch; khoảng ngày = hai ô + dấu "-" ----------
+     vDate(attrs, value): attrs là thuộc tính của ô (vd 'data-kf="from"') để màn giữ cách đọc giá trị cũ.
+     vDateRange({ label, from: [attrs, value], to: [attrs, value] }) — hoặc combined: [attrs, "từ – đến"] cho màn lưu một chuỗi
+     (ô ẩn mang attrs, hai ô nhìn thấy ghép lại). Gõ số tự chèn "/"; icon mở bộ chọn ngày của trình duyệt (thật: p-datepicker của vht-calendar). */
+  const CAL = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><rect x="3.5" y="5" width="17" height="15.5" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M3.5 9.5h17M8 3v4M16 3v4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>';
+  function vDate(attrs, value, o) {
+    o = o || {};
+    return `<div class="vdate"><input class="vctl" data-vdate ${attrs || ''} maxlength="10" inputmode="numeric" placeholder="${o.ph || 'DD/MM/YYYY'}" value="${esc(value || '')}"${o.disabled ? ' disabled' : ''}${o.invalid ? ' aria-invalid="true"' : ''}>
+      <button type="button" class="vdate-ic" data-vdate-pick tabindex="-1" aria-label="Chọn ngày"${o.disabled ? ' disabled' : ''}>${CAL}</button><input type="date" class="vdate-native" tabindex="-1" aria-hidden="true"></div>`;
+  }
+  const DMY = /\d{1,2}\/\d{1,2}\/\d{4}/g;
+  function vDateRange(o) {
+    let a, b, hid = '';
+    if (o.combined) {
+      const m = String(o.combined[1] || '').match(DMY) || [];
+      a = vDate('data-vrange="a"', m[0] || ''); b = vDate('data-vrange="b"', m[1] || '');
+      hid = `<input type="hidden" data-vrange-val ${o.combined[0]} value="${esc(o.combined[1] || '')}">`;
+    } else { a = vDate(o.from[0], o.from[1]); b = vDate(o.to[0], o.to[1]); }
+    return `<div class="vfield vrange ${o.cls || ''} ${o.err ? 'invalid' : ''}"><div class="lr"><label>${o.label}</label></div>
+      <div class="vrange-row">${a}<span class="vrange-sep">-</span>${b}${hid}</div>${o.err ? `<p class="msg">${esc(o.err)}</p>` : ''}</div>`;
+  }
+  const fire = (el, type) => el.dispatchEvent(new Event(type, { bubbles: true }));
+  /* Chạy ở pha capture: định dạng xong trước khi bộ nghe của từng màn đọc giá trị. */
+  document.addEventListener('input', (e) => {
+    const t = e.target;
+    if (!t.matches || !t.matches('input[data-vdate]')) return;
+    const d = t.value.replace(/\D/g, '').slice(0, 8);
+    t.value = [d.slice(0, 2), d.slice(2, 4), d.slice(4)].filter(Boolean).join('/');
+    if (t.dataset.vrange) {
+      const row = t.closest('.vrange-row'), hid = row && row.querySelector('[data-vrange-val]');
+      if (hid) {
+        const [x, y] = [...row.querySelectorAll('input[data-vrange]')].map((i) => i.value.trim());
+        hid.value = x && y ? `${x} – ${y}` : x || y;
+        fire(hid, 'input');
+      }
+    }
+  }, true);
+  document.addEventListener('click', (e) => {
+    const b = e.target.closest && e.target.closest('[data-vdate-pick]');
+    if (!b) return;
+    const box = b.closest('.vdate'), inp = box.querySelector('input[data-vdate]'), nat = box.querySelector('.vdate-native');
+    const m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(inp.value.trim());
+    nat.value = m ? `${m[3]}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}` : '';
+    try { nat.showPicker(); } catch (er) { nat.focus(); }
+  });
+  document.addEventListener('change', (e) => {
+    const nat = e.target;
+    if (!nat.matches || !nat.matches('.vdate-native') || !nat.closest('.vdate') || !nat.value) return;
+    const inp = nat.closest('.vdate').querySelector('input[data-vdate]');
+    if (!inp) return;
+    const [y, mo, d] = nat.value.split('-');
+    inp.value = `${d}/${mo}/${y}`;
+    fire(inp, 'input'); fire(inp, 'change');
+  });
+
+  window.UI = { esc, icon, persona, avatar, initials, ty, pad2, cqcmUnit, qChip, qStrip, modal, vModal, vMaximize, vRadio, vSteps, toast, askReason, signDialog, qDialog, infoBtn, vSelect, badge, pager, norm, vTreeTable, vAccordion, inWords, vDate, vDateRange };
 })();

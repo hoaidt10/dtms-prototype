@@ -206,7 +206,10 @@
     6: { varGate: { basisOk: { true: 7, false: 4 } } },
     /* DX-10 (c), (d): Kho rà soát tồn kho trên sơ đồ (SCR-105), Chỉ huy Kho duyệt. */
     /* Review nhi 06/11 #21, #31–33: nút mở thẳng màn SCR-105 (page), nhập trên màn; Gửi = hoàn thành bước, không còn nút Hoàn thành riêng. */
-    7: { who: 'qlts', scr: 'SCR-06', next: '7.1', nlv: 1, actionLabel: 'Cập nhật kết quả rà soát', page: 'ra-soat-kho' },
+    /* T59 #54, C0 (D-114 Q4): không còn màn riêng SCR-105 — Kho nhập ở tab Rà soát tồn kho của màn xử lý việc bước 7 (mở sẵn tab này);
+       nút đóng việc "Gửi Chỉ huy Kho" theo luật hiển thị như mọi bước (kiểm dữ liệu của tab khi bấm — RaSoatKho.submit).
+       [T59] trước: actionLabel: 'Cập nhật kết quả rà soát', page: 'ra-soat-kho' (nút mở màn riêng). */
+    7: { who: 'qlts', scr: 'SCR-06', next: '7.1', nlv: 1, actionLabel: 'Gửi Chỉ huy Kho', tab: 'ton-kho' },
     '7.1': approve('khoch', 'SCR-06', 8, 7),
     /* DX-10 (e): Thầu TTMS khởi tạo YCBG, hệ thống gửi (9), Thầu tổng hợp báo giá (10); không đạt → YCBG mới. */
     8: { who: 'thau', scr: 'SCR-07', next: 9, nlv: 0.5, actionLabel: 'Tạo yêu cầu báo giá' },
@@ -844,8 +847,11 @@
   D.kdtRules = () => [
     { field: 'VTCNTT', asset: '*', from: 0, to: 160, procs: ['MS13'] }, { field: 'KHAC', asset: '*', from: 0, to: 90, procs: ['MS13'] },
     { field: 'VTCNTT', asset: '*', from: 160, to: 1000, procs: ['MS14'] }, { field: 'KHAC', asset: '*', from: 90, to: 500, procs: ['MS14'] }];
-  D.kdtGroups = { MS13: 'MS13 · KĐT đơn giản', MS14: 'MS14 · KĐT thông thường', MS15: 'MS15 · KĐT phức tạp' };
-  D.kdtBranches = { BM00: 'Gộp BM-00', '2GD': 'Hai giai đoạn (BM-01 → BM-03)' };
+  /* T56 Q7 (review minhnh57 BA 12/11 #28, #35, #38): Nhóm KĐT ghi thẳng giá trị, không ghi mã; Nhánh hồ sơ ghi theo biểu mẫu "BM01→BM03".
+     Mã quy trình chỉ còn ở trường Quy trình (D.kdtProcs), (i) và màn Quản lý quy trình. */
+  D.kdtGroups = { MS13: 'Đơn giản', MS14: 'Thông thường', MS15: 'Phức tạp' };
+  D.kdtProcs = { MS13: 'MS13 · KĐT đơn giản', MS14: 'MS14 · KĐT thông thường', MS15: 'MS15 · KĐT phức tạp' };
+  D.kdtBranches = { BM00: 'BM00', '2GD': 'BM01→BM03' };
   /* Phân cấp thẩm quyền KĐT (bước 13, D-33): loại KĐT + lĩnh vực + [từ, đến dưới) tỷ → cấp duyệt chủ trương / KĐT. GIẢ LẬP P-90 theo UQ-GUQ §1.2:
      1.2.1 KHCN (trang bị CSVC-KT) < 45 tỷ → KĐT VHT trên chủ trương Tập đoàn; 1.2.2 KĐT khác (gồm KHCN không thuộc 1.2.1) → VHT / VHT, trừ
      KĐT kinh doanh, BĐS, phương tiện vận tải → Tập đoàn. "Hệ thống CNTT nội bộ" chưa có trường dữ liệu → chưa có dòng (P-90).
@@ -869,6 +875,7 @@
   D.scenes = [
     { n: 1, name: 'Tạo luồng / ĐXMS, tạo hồ sơ, bóc tách', start: 'NEW', tasks: '—, 01–07', who: 'minh' },
     /* T29 B3a: Phòng QLTS / Thủ kho rà soát tồn kho (việc ngoài sơ đồ, SCR-105) khi hồ sơ ở bước 7. */
+    /* T59 Q4: mở việc bước 7 (màn xử lý việc, tab Rà soát tồn kho); #/ra-soat-kho chỉ còn chuyển hướng. */
     { n: '1b', name: 'Kho rà soát tồn kho (Phòng QLTS)', start: 7, tasks: '07–07.1 (Kho, Chỉ huy Kho)', who: 'qlts', go: 'ra-soat-kho' },
     { n: 2, name: 'Báo giá (Thầu TTMS)', start: 8, tasks: '08–10.1', who: 'thau' },
     { n: 3, name: 'Dự thảo, chọn CQCM', start: 12, tasks: '12–18', who: 'minh' },
@@ -932,6 +939,24 @@
   /* ĐXMS mẫu (đối tượng cha, D-10 — như nhiệm vụ KHCN wf_tasks). est = giá trị dự kiến nhập khi tạo ĐXMS;
      giá trị hiệu lực suy từ hồ sơ Hoàn thành gần nhất (R4). Trạng thái ĐXMS suy từ hồ sơ (R5). */
   D.dxmsList = [
+    /* T58 (12/11/2026, phuctd7 "mock thêm dữ liệu cho dễ kiểm chứng"): ĐXMS mẫu phủ thẩm định, giải trình, trình ký, phê duyệt, Mật, MS01.02, quá hạn,
+       điều chỉnh lần 2, dừng theo chỉ đạo. Hồ sơ của các ĐXMS đang xử lý chạy được (Flow.runSample) — bấm nút trên thanh trạng thái hoặc mở từ Việc của tôi. */
+    /* Chuỗi điều chỉnh riêng của T58 (0141 → 0142 lần 1 → 0140 lần 2), không đụng 0084 → 0112 của kịch bản T34 (0112 vẫn điều chỉnh được). */
+    { code: 'ĐXMS-2026-0142', nv: 'KHN-2026-VHT', title: 'Mua sắm dịch vụ bảo trì hệ thống điều hoà phòng sạch', unit: 'Nhà máy sản xuất thử nghiệm', est: 7.9, priority: 'Thường', period: '07/2026 – 06/2027', creator: 'Phan Văn Lộc', created: '10/08/2026', updated: '05/09/2026', adjFrom: 'ĐXMS-2026-0141', adjN: 1, root: 'ĐXMS-2026-0141', reason: 'Bổ sung bảo trì 02 dàn lạnh lắp thêm cho phòng sạch số 2.' },
+    { code: 'ĐXMS-2026-0141', nv: 'KHN-2026-VHT', title: 'Mua sắm dịch vụ bảo trì hệ thống điều hoà phòng sạch', unit: 'Nhà máy sản xuất thử nghiệm', est: 6.5, priority: 'Thường', period: '07/2026 – 06/2027', creator: 'Phan Văn Lộc', created: '02/06/2026', updated: '02/06/2026' },
+    { code: 'ĐXMS-2026-0140', nv: 'KHN-2026-VHT', title: 'Mua sắm dịch vụ bảo trì hệ thống điều hoà phòng sạch', unit: 'Nhà máy sản xuất thử nghiệm', est: 9.2, priority: 'Khẩn', period: '07/2026 – 06/2027', creator: 'Phan Văn Lộc', created: '29/09/2026', updated: '03/10/2026', adjFrom: 'ĐXMS-2026-0142', adjN: 2, root: 'ĐXMS-2026-0141', reason: 'Thay máy nén dàn lạnh số 1 hỏng ngoài phạm vi bảo hành.' },
+    { code: 'ĐXMS-2026-0139', nv: 'KHN-2026-VHT', title: 'Mua sắm bàn đo chống tĩnh điện (ESD) cho phòng lắp ráp', unit: 'Nhà máy sản xuất thử nghiệm', est: 4.6, priority: 'Thường', period: '10/2026 – 12/2026', creator: 'Phan Văn Lộc', created: '01/09/2026', updated: '28/09/2026' },
+    { code: 'ĐXMS-2026-0138', nv: 'NV-KHCN-2026-014', title: 'Mua sắm buồng đo phản xạ anten dải tần thấp', unit: 'Phòng Chất lượng', est: 172.5, priority: 'Thường', period: '01/2027 – 12/2027', creator: 'Bùi Minh Quang', created: '26/08/2026', updated: '01/10/2026' },
+    { code: 'ĐXMS-2026-0137', nv: 'NV-KHCN-2025-031', title: 'Mua sắm hệ thống lõi 5G SA phục vụ thử nghiệm liên mạng', unit: 'Trung tâm Mạng lõi', est: 230.0, priority: 'Khẩn', period: '11/2026 – 09/2027', creator: 'Đặng Thu Trang', created: '20/07/2026', updated: '30/09/2026' },
+    { code: 'ĐXMS-2026-0136', nv: 'KHN-2026-TTVT', title: 'Mua sắm máy hiện sóng băng rộng 33 GHz', unit: 'Trung tâm Vô tuyến', est: 19.9, priority: 'Thường', period: '12/2026 – 03/2027', creator: 'Nguyễn Văn Minh', created: '27/09/2026', updated: '02/10/2026' },
+    { code: 'ĐXMS-2026-0135', nv: 'KHN-2026-VHT', title: 'Mua sắm linh kiện thụ động cho mẫu thử bo nguồn', unit: 'Nhà máy sản xuất thử nghiệm', est: 8.4, priority: 'Thường', period: '11/2026 – 01/2027', creator: 'Phan Văn Lộc', created: '28/09/2026', updated: '01/10/2026' },
+    { code: 'ĐXMS-2026-0134', nv: 'NV-KHCN-2026-006', title: 'Mua sắm máy phân tích mạng vector dải mmWave', unit: 'Trung tâm Vô tuyến', est: 165.0, priority: 'Thượng khẩn', period: '11/2026 – 06/2027', creator: 'Phan Thị Ngọc', created: '05/09/2026', updated: '22/09/2026' },
+    { code: 'ĐXMS-2026-0133', nv: 'KHN-2026-TTVT', title: 'Mua sắm thiết bị mã hoá đường truyền chuyên dụng', unit: 'Trung tâm Vô tuyến', est: 15.8, priority: 'Khẩn', period: '11/2026 – 02/2027', creator: 'Nguyễn Văn Minh', created: '08/09/2026', updated: '29/09/2026', secret: true, sign: 'Bản cứng' },
+    { code: 'ĐXMS-2026-0132', nv: 'DA-2026-002', title: 'Mua sắm hệ thống giám sát chất lượng dây chuyền SMT', unit: 'Nhà máy sản xuất thử nghiệm', est: 192.0, basisTD: true, priority: 'Thường', period: '01/2027 – 09/2027', creator: 'Phan Văn Lộc', created: '12/08/2026', updated: '30/09/2026' },
+    { code: 'ĐXMS-2026-0131', nv: 'KHN-2026-VHT', title: 'Mua sắm máy đo công suất quang đa kênh', unit: 'Phòng Chất lượng', est: 27.6, priority: 'Thường', period: '11/2026 – 03/2027', creator: 'Bùi Minh Quang', created: '18/08/2026', updated: '01/10/2026' },
+    { code: 'ĐXMS-2026-0130', nv: 'NV-KHCN-2026-014', title: 'Mua sắm bản quyền công cụ EDA thiết kế vi mạch', unit: 'Trung tâm Thiết kế vi mạch', est: 54.2, priority: 'Khẩn', period: '12/2026 – 12/2027', creator: 'Lương Thị Hạnh', created: '14/08/2026', updated: '30/09/2026' },
+    { code: 'ĐXMS-2026-0129', nv: 'KHN-2026-VHT', title: 'Mua sắm lò hàn reflow cho dây chuyền mẫu', unit: 'Nhà máy sản xuất thử nghiệm', est: 38.5, priority: 'Thường', period: '12/2026 – 04/2027', creator: 'Phan Văn Lộc', created: '10/08/2026', updated: '28/09/2026' },
+    { code: 'ĐXMS-2026-0128', nv: 'NV-KHCN-2026-006', title: 'Mua sắm hệ thống đo kiểm OTA cho trạm 5G-Advanced', unit: 'Trung tâm Vô tuyến', est: 186.0, priority: 'Khẩn', period: '01/2027 – 10/2027', creator: 'Nguyễn Văn Minh', created: '01/09/2026', updated: '24/09/2026' },
     /* T34 (D-85…D-89): ĐXMS điều chỉnh = ĐXMS mới, adjFrom = ĐXMS được điều chỉnh, adjN = lần điều chỉnh, root = ĐXMS gốc của chuỗi; dữ liệu chép từ ĐXMS cũ. */
     { code: 'ĐXMS-2026-0126', nv: 'DA-2026-002', title: 'Mua sắm dây chuyền lắp ráp bo mạch trạm thu phát', unit: 'Nhà máy sản xuất thử nghiệm', est: 248.9, priority: 'Khẩn', period: '09/2026 – 06/2027', creator: 'Phan Văn Lộc', created: '15/09/2026', updated: '25/09/2026', adjFrom: 'ĐXMS-2026-0077', adjN: 1, root: 'ĐXMS-2026-0077', reason: 'Bổ sung 02 trạm hàn chọn lọc theo thiết kế bo mạch mới; giá linh kiện tăng.' },
     { code: 'ĐXMS-2026-0124', nv: 'DA-2026-002', title: 'Mua sắm hệ thống đo kiểm sản xuất loạt module RRU 5G', unit: 'Trung tâm Vô tuyến', est: 176.4, basisTD: true, priority: 'Thường', period: '02/2027 – 10/2027', creator: 'Nguyễn Văn Minh', created: '25/09/2026', updated: '25/09/2026', purpose: 'Đo kiểm cuối dây chuyền cho sản xuất loạt module RRU 5G theo PAKD 1876/QĐ-TĐ.' },
@@ -950,12 +975,42 @@
     { code: 'ĐXMS-2026-0072', nv: 'NV-KHCN-2026-006', title: 'Mua sắm anten mảng pha phục vụ đo kiểm', unit: 'Trung tâm Vô tuyến', est: 152.0, priority: 'Thường', period: '09/2026 – 03/2027', creator: 'Nguyễn Văn Minh', created: '25/05/2026', updated: '25/05/2026' },
   ];
 
+  /* T59 #44 (D-114): Nội dung căn cứ pháp lý mẫu (trường nhập ở Thêm mới ĐXMS) — ĐXMS-2026-0117 của luồng demo và vài ĐXMS mẫu. */
+  D.legalSample = {
+    'ĐXMS-2026-0117': 'Quyết định số 1482/QĐ-VHT ngày 12/03/2026 của Tổng Giám đốc Tổng Công ty phê duyệt nhiệm vụ KHCN "Phát triển trạm gNodeB thế hệ 2";\nQuy chế mua sắm hàng hóa, dịch vụ của Tổng Công ty ban hành kèm Quyết định số 0215/QĐ-VHT ngày 10/01/2026.',
+    'ĐXMS-2026-0138': 'Quyết định giao nhiệm vụ KHCN NV-KHCN-2026-014; Quy chế mua sắm hàng hóa, dịch vụ của Tổng Công ty (Quyết định số 0215/QĐ-VHT ngày 10/01/2026).',
+    'ĐXMS-2026-0134': 'Quyết định số 1482/QĐ-VHT ngày 12/03/2026 phê duyệt nhiệm vụ KHCN; Kế hoạch mua sắm năm 2026 của Trung tâm Vô tuyến.',
+    'ĐXMS-2026-0132': 'Quyết định số 1876/QĐ-TĐ ngày 14/04/2026 của Tổng Giám đốc Tập đoàn phê duyệt dự án; Quy chế mua sắm hàng hóa, dịch vụ của Tổng Công ty.',
+    'ĐXMS-2026-0128': 'Quyết định phê duyệt nhiệm vụ KHCN NV-KHCN-2026-006; Kế hoạch đầu tư phát triển năm 2027 (Quyết định số 2410/QĐ-VHT ngày 30/10/2026).',
+  };
+  /* T59 #47/#49: Thành phần tham gia mẫu (roleMembers — cùng nguồn khối Thành phần tham gia ở Lập ĐXMS, D-75) cho vài ĐXMS mẫu. */
+  const ROLE_SAMPLE = {
+    'ĐXMS-2026-0138': [{ role: 'R-DVDX-CQ', person: 'ngoc' }, { role: 'R-QLTS', person: 'qlts' }, { role: 'R-TTMS-THAU', person: 'thau' }],
+    'ĐXMS-2026-0134': [{ role: 'R-DVDX-CQ', person: 'ngoc' }, { role: 'R-DVDX-CH', person: 'son' }],
+  };
+  D.dxmsList.forEach((x) => { if (!x.legal && D.legalSample[x.code]) x.legal = D.legalSample[x.code]; if (!x.roleMembers && ROLE_SAMPLE[x.code]) x.roleMembers = ROLE_SAMPLE[x.code]; });
   /* ĐXMS-2026-0124 (MS01.02) và ĐXMS-2026-0098 (MS01.03) chưa có hồ sơ: hồ sơ của hai ĐXMS này chạy luồng trên prototype (T6, D.demoCases).
      Hồ sơ mẫu (đối tượng con, như wf_profile): không chạy luồng, mở được chi tiết ở trạng thái của nó (rule A5).
      kind: PD (Phê duyệt, MS01.0x) | DC (Điều chỉnh, MS02). total = giá trị trình trong hồ sơ (với DC: giá trị sau điều chỉnh).
      st: processing | done | moved | stopped — ánh xạ sang nhãn/badge ở Screens.CASE_STATUS; task = số task BPMN đang chờ (step = tên task,
      hồ sơ MS02 lấy tên từ sơ đồ). late: quá hạn xử lý bước hiện tại (Giám sát tiến trình SCR-48 hiện Quá hạn). */
   D.otherCases = [
+    /* T58: hồ sơ của ĐXMS mẫu mới. ui / pre / settle: như nhánh phụ của Công cụ demo — để tua nhanh tới đúng bước khi chạy (Flow.runSample). */
+    { code: 'HS-2026-0142', dxms: 'ĐXMS-2026-0142', kind: 'DC', title: 'Điều chỉnh lần 1 — Mua sắm dịch vụ bảo trì hệ thống điều hoà phòng sạch', total: 7.9, flow: 'MS02', st: 'done', created: '10/08/2026', updated: '05/09/2026', creator: 'Phan Văn Lộc', reason: 'Bổ sung bảo trì 02 dàn lạnh lắp thêm cho phòng sạch số 2.' },
+    { code: 'HS-2026-0141', dxms: 'ĐXMS-2026-0141', kind: 'PD', title: 'Mua sắm dịch vụ bảo trì hệ thống điều hoà phòng sạch', total: 6.5, flow: 'MS01.03', st: 'done', created: '02/06/2026', updated: '28/07/2026', creator: 'Phan Văn Lộc' },
+    { code: 'HS-2026-0140', dxms: 'ĐXMS-2026-0140', kind: 'DC', title: 'Điều chỉnh lần 2 — Mua sắm dịch vụ bảo trì hệ thống điều hoà phòng sạch', total: 9.2, flow: 'MS02', st: 'processing', task: 13, created: '29/09/2026', updated: '03/10/2026', creator: 'Phan Văn Lộc', reason: 'Thay máy nén dàn lạnh số 1 hỏng ngoài phạm vi bảo hành.' },
+    { code: 'HS-2026-0139', dxms: 'ĐXMS-2026-0139', kind: 'PD', title: 'Mua sắm bàn đo chống tĩnh điện (ESD) cho phòng lắp ráp', total: 4.6, flow: 'MS01.03', st: 'stopped', created: '01/09/2026', updated: '28/09/2026', creator: 'Phan Văn Lộc' },
+    { code: 'HS-2026-0138', dxms: 'ĐXMS-2026-0138', kind: 'PD', title: 'Mua sắm buồng đo phản xạ anten dải tần thấp', total: 172.5, flow: 'MS01.01', st: 'processing', task: 20, created: '26/08/2026', updated: '01/10/2026', creator: 'Bùi Minh Quang' },
+    { code: 'HS-2026-0137', dxms: 'ĐXMS-2026-0137', kind: 'PD', title: 'Mua sắm hệ thống lõi 5G SA phục vụ thử nghiệm liên mạng', total: 230.0, flow: 'MS01.01', st: 'processing', task: 58, created: '20/07/2026', updated: '30/09/2026', creator: 'Đặng Thu Trang' },
+    { code: 'HS-2026-0136', dxms: 'ĐXMS-2026-0136', kind: 'PD', title: 'Mua sắm máy hiện sóng băng rộng 33 GHz', total: 19.9, flow: 'MS01.03', st: 'processing', task: 13, created: '27/09/2026', updated: '02/10/2026', creator: 'Nguyễn Văn Minh' },
+    { code: 'HS-2026-0135', dxms: 'ĐXMS-2026-0135', kind: 'PD', title: 'Mua sắm linh kiện thụ động cho mẫu thử bo nguồn', total: 8.4, flow: 'MS01.03', st: 'processing', task: 7, created: '28/09/2026', updated: '01/10/2026', creator: 'Phan Văn Lộc' },
+    { code: 'HS-2026-0134', dxms: 'ĐXMS-2026-0134', kind: 'PD', title: 'Mua sắm máy phân tích mạng vector dải mmWave', total: 165.0, flow: 'MS01.01', st: 'processing', task: 10, late: true, created: '05/09/2026', updated: '22/09/2026', creator: 'Phan Thị Ngọc' },
+    { code: 'HS-2026-0133', dxms: 'ĐXMS-2026-0133', kind: 'PD', title: 'Mua sắm thiết bị mã hoá đường truyền chuyên dụng', total: 15.8, flow: 'MS01.03', st: 'processing', task: 26, created: '08/09/2026', updated: '29/09/2026', creator: 'Nguyễn Văn Minh' },
+    { code: 'HS-2026-0132', dxms: 'ĐXMS-2026-0132', kind: 'PD', title: 'Mua sắm hệ thống giám sát chất lượng dây chuyền SMT', total: 192.0, flow: 'MS01.02', st: 'processing', task: 48, created: '12/08/2026', updated: '30/09/2026', creator: 'Phan Văn Lộc' },
+    { code: 'HS-2026-0131', dxms: 'ĐXMS-2026-0131', kind: 'PD', title: 'Mua sắm máy đo công suất quang đa kênh', total: 27.6, flow: 'MS01.03', st: 'processing', task: 60, created: '18/08/2026', updated: '01/10/2026', creator: 'Bùi Minh Quang' },
+    { code: 'HS-2026-0130', dxms: 'ĐXMS-2026-0130', kind: 'PD', title: 'Mua sắm bản quyền công cụ EDA thiết kế vi mạch', total: 54.2, flow: 'MS01.03', st: 'processing', task: 39, created: '14/08/2026', updated: '30/09/2026', creator: 'Lương Thị Hạnh' },
+    { code: 'HS-2026-0129', dxms: 'ĐXMS-2026-0129', kind: 'PD', title: 'Mua sắm lò hàn reflow cho dây chuyền mẫu', total: 38.5, flow: 'MS01.03', st: 'processing', task: 28, created: '10/08/2026', updated: '28/09/2026', creator: 'Phan Văn Lộc', ui: { resp: { TC: 'Bảo lưu' } } },
+    { code: 'HS-2026-0128', dxms: 'ĐXMS-2026-0128', kind: 'PD', title: 'Mua sắm hệ thống đo kiểm OTA cho trạm 5G-Advanced', total: 186.0, flow: 'MS01.01', st: 'processing', task: 19, created: '01/09/2026', updated: '24/09/2026', creator: 'Nguyễn Văn Minh' },
     { code: 'HS-2026-0126', dxms: 'ĐXMS-2026-0126', kind: 'DC', title: 'Điều chỉnh lần 1 — Mua sắm dây chuyền lắp ráp bo mạch trạm thu phát', total: 248.9, flow: 'MS02', st: 'processing', task: 19, created: '15/09/2026', updated: '25/09/2026', creator: 'Phan Văn Lộc', reason: 'Bổ sung 02 trạm hàn chọn lọc theo thiết kế bo mạch mới; giá linh kiện tăng.' },
     { code: 'HS-2026-0121', dxms: 'ĐXMS-2026-0121', kind: 'PD', title: 'Mua sắm máy chủ phục vụ phòng lab AI', total: 12.4, flow: 'MS01.03', st: 'processing', task: 4, step: 'Rà soát và xác nhận thông tin cơ bản', created: '22/09/2026', updated: '26/09/2026', creator: 'Lương Thị Hạnh' },
     { code: 'HS-2026-0112', dxms: 'ĐXMS-2026-0112', kind: 'DC', title: 'Điều chỉnh lần 1 — Mua sắm dịch vụ thuê hạ tầng điện toán đám mây cho hệ thống OSS', total: 11.2, flow: 'MS02', st: 'done', created: '02/09/2026', updated: '20/09/2026', creator: 'Lương Thị Hạnh', reason: 'Tăng dung lượng lưu trữ theo số trạm tăng thêm năm 2027.' },
@@ -975,6 +1030,15 @@
      est = tổng mức vốn dự kiến (tỷ đồng). KĐT-2026-0032 (kịch bản chính) chưa có — tạo trên prototype ở cảnh 1; 0033 (nhánh chuyển MS14) chưa có hồ sơ. */
   D.kdtCode0 = 'KĐT-2026-0032';
   D.kdtList = [
+    /* T58: KĐT mẫu phủ thẩm định chủ trương, họp lần 2, ký chủ trương (quá hạn), gộp BM-00 Mật, chủ trương thuộc thẩm quyền Tập đoàn, hồ sơ KĐT ở bước báo cáo,
+       KĐT phức tạp (MS15, chưa có hồ sơ). */
+    { code: 'KĐT-2026-0040', nv: 'KHN-2027-DTPT', title: 'Đầu tư trung tâm dữ liệu sản xuất thông minh', unit: 'Nhà máy sản xuất thử nghiệm', field: 'VTCNTT', type: 'KHAC', nature: 'TICH_HOP', est: 1250.0, period: '01/2027 – 12/2028', creator: 'Phan Văn Lộc', created: '02/10/2026', updated: '02/10/2026', purpose: 'Hạ tầng dữ liệu tập trung cho các dây chuyền sản xuất loạt.' },
+    { code: 'KĐT-2026-0039', nv: 'NV-KHCN-2026-006', title: 'Đầu tư hệ thống kiểm thử tương thích thiết bị đầu cuối 5G', unit: 'Trung tâm Vô tuyến', field: 'VTCNTT', type: 'KHCN', nature: 'TICH_HOP', est: 88.0, period: '11/2026 – 09/2027', creator: 'Nguyễn Văn Minh', created: '05/05/2026', updated: '29/09/2026', purpose: 'Kiểm thử tương thích thiết bị đầu cuối với trạm 5G VHT.' },
+    { code: 'KĐT-2026-0038', nv: 'NV-KHCN-2026-014', title: 'Đầu tư phòng thí nghiệm vật liệu bán dẫn công suất', unit: 'Trung tâm Thiết kế vi mạch', field: 'VTCNTT', type: 'KHCN', nature: 'TICH_HOP', est: 32.0, period: '01/2027 – 10/2027', creator: 'Lương Thị Hạnh', created: '20/07/2026', updated: '30/09/2026', purpose: 'Đo đặc tính vật liệu GaN cho bộ khuếch đại công suất.' },
+    { code: 'KĐT-2026-0037', nv: 'KHN-2026-TTVT', title: 'Trang bị thiết bị mã hoá cho phòng thử nghiệm bảo mật', unit: 'Trung tâm Vô tuyến', field: 'VTCNTT', type: 'TBNB', nature: 'NGUYEN_CHIEC', est: 9.5, period: '11/2026 – 01/2027', creator: 'Nguyễn Văn Minh', created: '15/09/2026', updated: '01/10/2026', purpose: 'Thay thiết bị mã hoá đã hết hạn chứng nhận.', secret: true },
+    { code: 'KĐT-2026-0036', nv: 'KHN-2027-DTPT', title: 'Đầu tư hệ thống quản lý vòng đời sản phẩm (PLM)', unit: 'Trung tâm Phần mềm', field: 'VTCNTT', type: 'TBNB', nature: 'TICH_HOP', est: 48.0, period: '12/2026 – 09/2027', creator: 'Lương Thị Hạnh', created: '10/06/2026', updated: '21/09/2026', purpose: 'Quản lý thiết kế, BOM và thay đổi kỹ thuật tập trung.' },
+    { code: 'KĐT-2026-0035', nv: 'NV-KHCN-2025-031', title: 'Đầu tư hệ thống mô phỏng lưu lượng mạng lõi', unit: 'Trung tâm Mạng lõi', field: 'VTCNTT', type: 'KHCN', nature: 'TICH_HOP', est: 66.0, period: '01/2027 – 12/2027', creator: 'Đặng Thu Trang', created: '28/06/2026', updated: '30/09/2026', purpose: 'Mô phỏng tải mạng lõi 5G SA trước khi triển khai.' },
+    { code: 'KĐT-2026-0034', nv: 'NV-KHCN-2026-006', title: 'Đầu tư hệ thống thử nghiệm mạng truy nhập vô tuyến mở (O-RAN)', unit: 'Trung tâm Vô tuyến', field: 'VTCNTT', type: 'KHCN', nature: 'TICH_HOP', est: 72.0, period: '01/2027 – 12/2027', creator: 'Nguyễn Văn Minh', created: '02/07/2026', updated: '27/09/2026', purpose: 'Thử nghiệm tương tác O-RAN giữa RU, DU, CU của VHT và đối tác.' },
     { code: 'KĐT-2026-0033', nv: 'KHN-2027-DTPT', title: 'Mở rộng dây chuyền SMT cho nhà máy sản xuất thử nghiệm', unit: 'Nhà máy sản xuất thử nghiệm', field: 'KHAC', type: 'KHAC', nature: 'TICH_HOP', est: 85.0, period: '01/2027 – 12/2027', creator: 'Phan Văn Lộc', created: '26/09/2026', updated: '26/09/2026', purpose: 'Tăng công suất lắp ráp bo mạch cho sản xuất loạt.' },
     { code: 'KĐT-2026-0031', nv: 'DT-KHCN-2027-002', title: 'Trang bị máy trạm thiết kế cho Trung tâm Vô tuyến', unit: 'Trung tâm Vô tuyến', field: 'VTCNTT', type: 'TBNB', nature: 'NGUYEN_CHIEC', est: 12.4, period: '11/2026 – 02/2027', creator: 'Nguyễn Văn Minh', created: '21/09/2026', updated: '25/09/2026', purpose: 'Thay máy trạm thiết kế RF đã hết khấu hao.' },
     { code: 'KĐT-2026-0030', nv: 'NV-KHCN-2026-014', title: 'Đầu tư phòng đo tương thích điện từ di động', unit: 'Phòng Chất lượng', field: 'VTCNTT', type: 'KHCN', nature: 'TICH_HOP', est: 64.0, period: '01/2027 – 09/2027', creator: 'Bùi Minh Quang', created: '18/09/2026', updated: '24/09/2026', purpose: 'Đo EMC tại hiện trường cho sản phẩm trạm thu phát.' },
@@ -1001,6 +1065,14 @@
      (mã <mã CT>-2, parent = hồ sơ CT, luongCt = luồng của CT, est = Tổng mức vốn KĐT, lech = lệch luồng so với chủ trương hoặc null; MS13 từ bước 49).
      HS-2026-0026-2: chủ trương MS13, Tổng mức vốn KĐT vượt ngưỡng → MS14 (bản ghi tĩnh bước 46, GIẢ LẬP — prototype chưa có luồng MS14 chạy được). */
   D.kdtCases = [
+    /* T58: hồ sơ của KĐT mẫu mới (ui / pre như nhánh phụ của Công cụ demo để tua tới đúng bước khi chạy). */
+    { code: 'HS-2026-0039-2', kdt: 'KĐT-2026-0039', kind: 'KDT', parent: 'HS-2026-0039', luongCt: 'MS13', est: 90.5, lech: null, flow: 'MS13', branch: '2GD', stage: 'KYQD', st: 'processing', task: 57, total: 90.5, created: '20/08/2026', updated: '29/09/2026', creator: 'Nguyễn Văn Minh' },
+    { code: 'HS-2026-0039', kdt: 'KĐT-2026-0039', kind: 'CT', scope: 'CT', flow: 'MS13', branch: '2GD', stage: 'CT_OK', st: 'done', total: 90.5, created: '05/05/2026', updated: '18/08/2026', creator: 'Nguyễn Văn Minh', docs: [['BM-01', '18/08/2026']] },
+    { code: 'HS-2026-0038', kdt: 'KĐT-2026-0038', kind: 'CT', scope: 'CT', flow: 'MS13', branch: '2GD', stage: 'KYCT', st: 'processing', task: 64, total: 32.0, created: '20/07/2026', updated: '30/09/2026', creator: 'Lương Thị Hạnh' },
+    { code: 'HS-2026-0037', kdt: 'KĐT-2026-0037', kind: 'CT', scope: 'CT_KDT', flow: 'MS13', branch: 'BM00', stage: 'GOP', st: 'processing', task: 21, total: 9.5, created: '15/09/2026', updated: '01/10/2026', creator: 'Nguyễn Văn Minh', ui: { secret: true } },
+    { code: 'HS-2026-0036', kdt: 'KĐT-2026-0036', kind: 'CT', scope: 'CT', flow: 'MS13', branch: '2GD', stage: 'KYCT', st: 'processing', task: 47, late: true, total: 48.0, created: '10/06/2026', updated: '21/09/2026', creator: 'Lương Thị Hạnh' },
+    { code: 'HS-2026-0035', kdt: 'KĐT-2026-0035', kind: 'CT', scope: 'CT', flow: 'MS13', branch: '2GD', stage: 'TDCT', st: 'processing', task: 32, total: 66.0, created: '28/06/2026', updated: '30/09/2026', creator: 'Đặng Thu Trang', pre: { meet: { CT: 1 } } },
+    { code: 'HS-2026-0034', kdt: 'KĐT-2026-0034', kind: 'CT', scope: 'CT', flow: 'MS13', branch: '2GD', stage: 'TDCT', st: 'processing', task: 29, total: 72.0, created: '02/07/2026', updated: '27/09/2026', creator: 'Nguyễn Văn Minh' },
     { code: 'HS-2026-0031', kdt: 'KĐT-2026-0031', kind: 'CT', scope: 'CT_KDT', flow: 'MS13', branch: 'BM00', stage: 'GOP', st: 'processing', task: 19, total: 12.4, created: '21/09/2026', updated: '25/09/2026', creator: 'Nguyễn Văn Minh' },
     { code: 'HS-2026-0030', kdt: 'KĐT-2026-0030', kind: 'CT', scope: 'CT', flow: null, stage: 'LAP', st: 'processing', task: 8, created: '18/09/2026', updated: '24/09/2026', creator: 'Bùi Minh Quang' },
     { code: 'HS-2026-0029', kdt: 'KĐT-2026-0029', kind: 'CT', scope: 'CT', flow: null, stage: 'PL', st: 'processing', task: 11, tasks: [11, 12], total: 23.5, created: '10/09/2026', updated: '23/09/2026', creator: 'Lương Thị Hạnh' },
@@ -1046,6 +1118,27 @@
     { who: 'tgd', code: 'HS-2026-0103', task: 60, created: '16/09/2026', due: '19/09/2026', done: '18/09/2026' },
     { who: 'tgd', code: 'HS-2026-0077', task: 60, created: '10/08/2026', due: '13/08/2026', done: '13/08/2026' },
     { who: 'tgd', code: 'HS-2026-0072', task: 60, created: '04/08/2026', due: '07/08/2026', done: '06/08/2026' },
+    /* T58: việc đã xử lý trên hồ sơ ĐXMS mẫu mới — đủ các vai (Kho, Thầu, CQCM, Trưởng ban, Phó TGĐ, người thứ hai của vai). */
+    { who: 'minh', code: 'HS-2026-0128', task: 16, created: '15/09/2026', due: '17/09/2026', done: '16/09/2026' },
+    { who: 'hai', code: 'HS-2026-0128', task: 13, created: '12/09/2026', due: '14/09/2026', done: '13/09/2026' },
+    { who: 'lan', code: 'HS-2026-0128', task: 17, created: '17/09/2026', due: '19/09/2026', done: '18/09/2026' },
+    { who: 'qlts', code: 'HS-2026-0128', task: 7, created: '03/09/2026', due: '05/09/2026', done: '04/09/2026' },
+    { who: 'thau', code: 'HS-2026-0128', task: 8, created: '05/09/2026', due: '07/09/2026', done: '06/09/2026' },
+    { who: 'thau', code: 'HS-2026-0128', task: 10, created: '08/09/2026', due: '11/09/2026', done: '10/09/2026' },
+    { who: 'quang', code: 'HS-2026-0129', task: 19, created: '05/09/2026', due: '10/09/2026', done: '09/09/2026' },
+    { who: 'thu', code: 'HS-2026-0129', task: 19, created: '05/09/2026', due: '10/09/2026', done: '10/09/2026' },
+    { who: 'tung', code: 'HS-2026-0129', task: 20, created: '11/09/2026', due: '13/09/2026', done: '12/09/2026' },
+    { who: 'lan', code: 'HS-2026-0130', task: 38, created: '28/09/2026', due: '30/09/2026', done: '29/09/2026' },
+    { who: 'binh', code: 'HS-2026-0131', task: 39, created: '24/09/2026', due: '26/09/2026', done: '25/09/2026' },
+    { who: 'lan', code: 'HS-2026-0131', task: 38, created: '24/09/2026', due: '26/09/2026', done: '24/09/2026' },
+    { who: 'ngoc', code: 'HS-2026-0134', task: 4, created: '06/09/2026', due: '08/09/2026', done: '07/09/2026' },
+    { who: 'qlts', code: 'HS-2026-0134', task: 7, created: '09/09/2026', due: '11/09/2026', done: '11/09/2026' },
+    { who: 'son', code: 'HS-2026-0136', task: 13, created: '01/10/2026', due: '03/10/2026', done: '02/10/2026' },
+    { who: 'lan', code: 'HS-2026-0137', task: 48, created: '02/09/2026', due: '04/09/2026', done: '03/09/2026' },
+    { who: 'tgd', code: 'HS-2026-0137', task: 51, created: '08/09/2026', due: '10/09/2026', done: '09/09/2026' },
+    { who: 'hoa', code: 'HS-2026-0138', task: 19, created: '22/09/2026', due: '27/09/2026', done: '26/09/2026' },
+    { who: 'tgd', code: 'HS-2026-0139', task: 60, created: '26/09/2026', due: '28/09/2026', done: '28/09/2026' },
+    { who: 'mai', code: 'HS-2026-0132', task: 17, created: '25/08/2026', due: '27/08/2026', done: '26/08/2026' },
     /* Hồ sơ Điều chỉnh mẫu (T21 B3): HS-2026-0126 (MS02.01, đang ở 19), HS-2026-0112 (MS02.03, Hoàn thành) — tên việc theo BPMN_FLOWS.MS02. */
     { who: 'minh', code: 'HS-2026-0126', task: 16, created: '19/09/2026', due: '22/09/2026', done: '22/09/2026' },
     { who: 'minh', code: 'HS-2026-0126', task: 4, created: '15/09/2026', due: '17/09/2026', done: '16/09/2026' },
@@ -1071,6 +1164,15 @@
     { who: 'hoa', code: 'HS-2026-0027', task: 29, created: '14/09/2026', due: '18/09/2026', done: '17/09/2026' },
     { who: 'tgd', code: 'HS-2026-0012-2', task: 60, created: '13/07/2026', due: '16/07/2026', done: '15/07/2026' },
     { who: 'tgd', code: 'HS-2026-0015', task: 62, created: '28/07/2026', due: '31/07/2026', done: '30/07/2026' },
+    /* T58: việc đã xử lý trên hồ sơ KĐT mẫu mới. */
+    { who: 'minh', code: 'HS-2026-0034', task: 17, created: '10/09/2026', due: '12/09/2026', done: '11/09/2026' },
+    { who: 'thu', code: 'HS-2026-0034', task: 11, created: '20/08/2026', due: '22/08/2026', done: '21/08/2026' },
+    { who: 'lan', code: 'HS-2026-0034', task: 12, created: '20/08/2026', due: '22/08/2026', done: '22/08/2026' },
+    { who: 'hoa', code: 'HS-2026-0035', task: 29, created: '12/09/2026', due: '16/09/2026', done: '15/09/2026' },
+    { who: 'hai', code: 'HS-2026-0037', task: 21, created: '25/09/2026', due: '27/09/2026', done: '26/09/2026' },
+    { who: 'tgd', code: 'HS-2026-0039', task: 48, created: '15/08/2026', due: '18/08/2026', done: '18/08/2026' },
+    { who: 'lan', code: 'HS-2026-0039-2', task: 55, created: '22/09/2026', due: '25/09/2026', done: '24/09/2026' },
+    { who: 'hai', code: 'HS-2026-0039-2', task: 56, created: '25/09/2026', due: '28/09/2026', done: '27/09/2026' },
   ];
 
   /* ---------- Điểm chưa chốt §6 ---------- */
@@ -1348,21 +1450,28 @@
       // [T34 ẩn SCR-108] { label: 'Điều chỉnh đề xuất mua sắm', path: 'dieu-chinh-dxms', scr: 'SCR-108' },
       // [T34 bỏ Tách] { label: 'Hồ sơ đề xuất mua sắm', path: 'ho-so-dxms', scr: 'SCR-02' },
       /* T29 B12 (RV-PROTO-0511 bản 2 #19, D-78): Quản lý hồ sơ = danh sách biểu mẫu / văn bản đã sinh của mọi luồng (SCR-107). Người dùng 10/11 (D-105): đổi tên menu thành Quản lý tài liệu ĐXMS, route giữ. */
-      { label: 'Quản lý tài liệu ĐXMS', path: 'quan-ly-ho-so', scr: 'SCR-107' },
-      { label: 'Yêu cầu báo giá ĐXMS', path: 'ycbg', scr: 'SCR-73' }] },
+      { label: 'Quản lý tài liệu ĐXMS', path: 'quan-ly-ho-so', scr: 'SCR-107' }] },
+      /* Người dùng 12/11: bỏ mục Yêu cầu báo giá ĐXMS — gộp vào menu cấp 1 Yêu cầu báo giá (dưới Quản lý khoản đầu tư). */
     { label: 'Quản lý khoản đầu tư', icon: 'view_flow', bl: 'Quản lý khoản đầu tư', due: 'B2 (08/10)', children: [
       { label: 'Khoản đầu tư', path: 'kdt', scr: 'SCR-54' },
       /* T45 (D-103): tách theo loại hồ sơ — chủ trương / phê duyệt KĐT (màn danh sách chung SCR-75, lọc theo kind). */
-      { label: 'Hồ sơ chủ trương KĐT', path: 'ho-so-ct-kdt', scr: 'SCR-75' },
-      { label: 'Hồ sơ phê duyệt KĐT', path: 'ho-so-pd-kdt', scr: 'SCR-75' },
-      { label: 'Yêu cầu báo giá KĐT', path: 'ycbg-kdt', scr: 'SCR-76' }] },
+      /* T56 Q2 (review Phong BA 12/11 #30): Chủ trương KĐT · Tài liệu chủ trương KĐT · Phê duyệt KĐT · Tài liệu phê duyệt KĐT (giữ Khoản đầu tư đầu tiên). */
+      { label: 'Chủ trương KĐT', path: 'ho-so-ct-kdt', scr: 'SCR-75' },
+      { label: 'Tài liệu chủ trương KĐT', path: 'tai-lieu-ct-kdt', scr: 'SCR-107' },
+      { label: 'Phê duyệt KĐT', path: 'ho-so-pd-kdt', scr: 'SCR-75' },
+      { label: 'Tài liệu phê duyệt KĐT', path: 'tai-lieu-pd-kdt', scr: 'SCR-107' }] },
+    /* Người dùng 12/11 (D-109): gộp Yêu cầu báo giá ĐXMS (SCR-73) + KĐT (SCR-76) thành một mục; lọc theo Loại đối tượng.
+       T56 Q1 (review Nhi #10, Phong BA #32, #33): mục này chuyển vào nhóm Quản lý thầu (bên dưới). */
+    // [T56 dời vào Quản lý thầu] { label: 'Yêu cầu báo giá', icon: 'view_list', path: 'ycbg', scr: 'SCR-73' },
     /* D-76 (RV-PROTO-0511 #17): Quản lý thầu / hợp đồng ẩn khỏi sidebar ở bản demo ĐXMS bằng cờ D.show.menuThau; route và bộ demo MS22–MS24 giữ nguyên. */
-    { label: 'Quản lý thầu', icon: 'doi_tac', bl: 'Quản lý thầu', due: 'B2 (08/10)', show: 'menuThau', children: [
-      { label: 'Kế hoạch lựa chọn nhà thầu', path: 'khlcnt', scr: 'SCR-78' },
-      { label: 'Gói thầu', path: 'goi-thau', scr: 'SCR-81' },
-      { label: 'Nhà thầu & kiểm soát rủi ro', path: 'nha-thau', scr: 'SCR-83' },
-      { label: 'Công khai & tích hợp đấu thầu', path: 'cong-khai-thau', scr: 'SCR-94' },
-      { label: 'Giám sát hoạt động thầu', path: 'ph/giam-sat-thau' }] },
+    /* T56 Q1: nhóm Quản lý thầu hiện, chỉ mục Yêu cầu báo giá; các mục thầu khác vẫn ẩn theo D-76 (cờ show từng mục con). */
+    { label: 'Quản lý thầu', icon: 'doi_tac', bl: 'Quản lý thầu', due: 'B2 (08/10)', children: [
+      { label: 'Yêu cầu báo giá', path: 'ycbg', scr: 'SCR-73' },
+      { label: 'Kế hoạch lựa chọn nhà thầu', path: 'khlcnt', scr: 'SCR-78', show: 'menuThau' },
+      { label: 'Gói thầu', path: 'goi-thau', scr: 'SCR-81', show: 'menuThau' },
+      { label: 'Nhà thầu & kiểm soát rủi ro', path: 'nha-thau', scr: 'SCR-83', show: 'menuThau' },
+      { label: 'Công khai & tích hợp đấu thầu', path: 'cong-khai-thau', scr: 'SCR-94', show: 'menuThau' },
+      { label: 'Giám sát hoạt động thầu', path: 'ph/giam-sat-thau', show: 'menuThau' }] },
     { label: 'Quản lý hợp đồng', icon: 'chuc_danh_khoa_hoc', show: 'menuThau', children: [
       { label: 'Hợp đồng', path: 'hop-dong', scr: 'SCR-84' },
       { label: 'Thỏa thuận khung & đơn hàng', path: 'thoa-thuan-khung', scr: 'SCR-87' }] },
@@ -1605,15 +1714,36 @@
   };
   D.duToanDel = (code, id) => { const ls = D.duToanOf(code); ls.splice(ls.findIndex((x) => x.id === id), 1); };
   D.duToanReset = () => { Object.keys(DUTOAN).forEach((k) => delete DUTOAN[k]); };
-  /* Chỉ số một dòng (YC-DXMS-PROTO §3.3, BG-0411 mục 4). uses = các đợt ĐXMS dùng dòng: { st (trạng thái ĐXMS), qty, value }.
-     Đã đăng ký = ĐXMS đã phê duyệt (OK); đang giữ = ĐXMS đang phê duyệt / điều chỉnh; còn lại = dự toán − đã đăng ký − đang giữ.
-     Giá trị thực hiện = hợp đồng đã ký của phần đã phê duyệt (GIẢ LẬP: 94 %, thật lấy từ phân hệ Hợp đồng / SAP); tiết kiệm = đã phê duyệt − thực hiện. */
-  D.duToanExecRate = 0.94;
+  /* SRS-DADT V1.4 BR-DADT-02-05 — ba mốc giá trị của phần khoản mục đã vào gói thầu: [Giá trị chọn thầu, Giá trị chọn HĐ, Giá trị sau khi tất toán HĐ]
+     (tỷ đồng, null = chưa có). Khóa "<mã dòng dự toán>:<mã ĐXMS / KĐT>". Thật: tính từ Lựa chọn nhà thầu, Hợp đồng (giá trúng thầu, giá trị ký,
+     giá trị sau tất toán × tỉ lệ của hạng mục trong gói), không nhập trên ĐTMS. GIẢ LẬP: số mẫu, chưa nối gói thầu / hợp đồng của prototype. */
+  D.duToanMoc = {
+    'NV-KHCN-2026-006-1:ĐXMS-2026-0072': [176.8, 174.5, 173.95],
+    'NV-KHCN-2026-006-2:ĐXMS-2026-0072': [22.1, 22.1, null],
+    'NV-KHCN-2025-031-1:ĐXMS-2026-0103': [104.2, null, null],
+  };
+  /* Mốc của một dòng con: { bid, hd, tt, latest } — latest = mốc muộn nhất đã có (tất toán, chưa có thì chọn HĐ, chưa có thì chọn thầu). */
+  D.duToanMocOf = (lineId, code) => {
+    const m = D.duToanMoc[`${lineId}:${code}`];
+    if (!m || m.every((v) => v == null)) return null;
+    const [bid, hd, tt] = m;
+    return { bid, hd, tt, latest: tt != null ? tt : hd != null ? hd : bid };
+  };
+  /* Chỉ số một dòng (SRS-DADT V1.4 BR-DADT-C-07, 02-05). uses = các đợt ĐXMS / KĐT dùng dòng: { x: { code }, st (trạng thái), qty, value }.
+     Đã đăng ký = ĐXMS / KĐT đã phê duyệt (OK); đang giữ = đang phê duyệt / điều chỉnh; còn lại = dự toán − đã đăng ký − đang giữ.
+     Ba mốc = tổng mốc của các dòng con có mốc; Giá trị tiết kiệm = tổng (giá trị dự toán của dòng con − mốc muộn nhất). Không dòng con nào có mốc → null ("-"). */
   D.duToanStats = (l, uses) => {
     const sum = (f) => uses.filter(f).reduce((s, u) => s + (u.value || 0), 0);
     const live = (u) => u.st === 'OK' || u.st === 'PD' || u.st === 'DC';
-    const ok = r2(sum((u) => u.st === 'OK')), held = r2(sum((u) => u.st === 'PD' || u.st === 'DC')), exec = r2(ok * D.duToanExecRate);
-    return { ok, held, qty: uses.filter(live).reduce((s, u) => s + (u.qty || 0), 0), exec, saving: r2(ok - exec), remain: r2(l.value - ok - held) };
+    const ok = r2(sum((u) => u.st === 'OK')), held = r2(sum((u) => u.st === 'PD' || u.st === 'DC'));
+    const out = { ok, held, qty: uses.filter(live).reduce((s, u) => s + (u.qty || 0), 0), remain: r2(l.value - ok - held), bid: null, hd: null, tt: null, saving: null };
+    uses.forEach((u) => {
+      const m = D.duToanMocOf(l.id, u.x ? u.x.code : u.code);
+      if (!m) return;
+      ['bid', 'hd', 'tt'].forEach((k) => { if (m[k] != null) out[k] = r2((out[k] || 0) + m[k]); });
+      out.saving = r2((out.saving || 0) + (u.value || 0) - m.latest);
+    });
+    return out;
   };
   /* T29 F1 — Khối đơn vị (GIẢ LẬP P-190). */
   D.blocks = ['Khối 1', 'Khối 2', 'Khối 3', 'Khối cơ quan'];

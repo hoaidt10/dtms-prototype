@@ -88,7 +88,10 @@
       const sla = Math.max(1, Math.ceil((F[c.task] || {}).nlv * 2 || 1));
       const since = c.live ? Flow.dateOf(Math.min(...Flow.state.tokens.map((t) => t.since))) : c.updated || r.updated;
       const hs = c.kdt ? HS_KDT[c.kind === 'KDT' ? 'KDT' : 'CT'] : fam === 'MS02' ? 'Hồ sơ điều chỉnh ĐXMS' : 'Hồ sơ phê duyệt ĐXMS';
-      return { kind: c.kdt ? 'KDT' : 'DXMS', code: r.code, obj: objCode, href: r.href, title: c.title || (obj || {}).title || '', hs, step: r.step || '-', proc: r.proc, unit: (obj || {}).unit || '-',
+      /* T59 #52 #53: bước đang quá hạn (số + tên bước) cho khối Top 5 điểm nghẽn — hồ sơ chạy luồng lấy công việc quá hạn đầu tiên. */
+      const tk = c.live ? (Flow.state.tokens.find((t) => S.dueOf(t.task, t.since) < Flow.state.clock) || Flow.state.tokens[0] || {}).task : c.task;
+      const stepName = (tk != null && ((F[tk] || {}).name || (c.live ? Flow.taskName(tk) : ''))) || String(r.step || '-').replace(/ \(\+\d+\)$/, '');
+      return { kind: c.kdt ? 'KDT' : 'DXMS', code: r.code, fam, task: tk != null ? tk : null, stepName, obj: objCode, href: r.href, title: c.title || (obj || {}).title || '', hs, step: r.step || '-', proc: r.proc, unit: (obj || {}).unit || '-',
         field: row.field, fund: row.fund, date: since,
         who: c.live ? [...new Set(Flow.state.tokens.map((t) => window.UI.persona(t.who).name))].join(', ') : c.creator || '-', since, days: Math.max(1, wd(since, HD().TODAY) - sla) };
     });
@@ -120,7 +123,7 @@
     const max = Math.max(1, ...items.map((x) => x.value));
     const body = items.length ? items.map((x) => `<div class="bc-hr ${x.drill ? 'click' : ''}" ${x.drill ? `data-drill="${esc(x.drill)}"` : ''}>
         <span class="bc-hl" title="${esc(x.label)}">${esc(x.label)}</span>
-        <span class="bc-ht"><span class="bc-hb" style="width:${x.value / max * 100}%;background:${x.color || C[0]}" data-tip="${esc(x.label)}: ${fmtN(x.value, o && o.money)}${o && o.unit ? ' ' + o.unit : ''}"></span></span>
+        <span class="bc-ht"><span class="bc-hb" style="width:${x.value / max * 100}%;background:${x.color || C[0]}" data-tip="${esc(x.tip || `${x.label}: ${fmtN(x.value, o && o.money)}${o && o.unit ? ' ' + o.unit : ''}`)}"></span></span>
         <span class="bc-hv num">${fmtN(x.value, o && o.money)}${x.sub ? `<span class="bc-sub">${esc(x.sub)}</span>` : ''}</span></div>`).join('') : '<div class="empty-t">Không có dữ liệu</div>';
     return `<section class="bc-card"><h3 class="bc-t">${esc(title)}</h3><div class="bc-h">${body}</div>${o && o.unit ? `<div class="bc-unit">ĐVT: ${esc(o.unit)}</div>` : ''}</section>`;
   }
@@ -171,9 +174,8 @@
     const units = [...new Set(fx.all.map((x) => x.unit).filter(Boolean))].sort();
     const kinds = o.kinds || [];
     return `<section class="rp-filter" data-rp="${id}">
-      ${sel('year', 'Năm', ['2026', '2025'].map((y) => ({ value: y, label: 'Năm ' + y })), { searchable: false, placeholder: 'Tất cả các năm' })}
-      <div class="vfield rp-f sm"><div class="lr"><label>Từ ngày</label></div><input class="vctl" data-rpf="${id}:from" placeholder="DD/MM/YYYY" value="${esc(d.from)}"></div>
-      <div class="vfield rp-f sm"><div class="lr"><label>Đến ngày</label></div><input class="vctl" data-rpf="${id}:to" placeholder="DD/MM/YYYY" value="${esc(d.to)}"></div>
+      ${sel('year', 'Năm', ['2026', '2025'].map((y) => ({ value: y, label: y })), { searchable: false, placeholder: 'Tất cả các năm' })}
+      ${window.UI.vDateRange({ label: 'Từ ngày - Đến ngày', cls: 'rp-f rp-range', from: [`data-rpf="${id}:from"`, d.from], to: [`data-rpf="${id}:to"`, d.to] })}
       ${sel('unit', 'Đơn vị', units.map((u) => ({ value: u, label: u })))}
       ${sel('field', 'Lĩnh vực', K().catOpts('linh-vuc'), { searchable: false })}
       ${o.fund ? sel('fund', 'Nguồn kinh phí', K().catOpts('nguon-von'), { searchable: false }) : ''}
@@ -311,14 +313,17 @@
         metrics: (rs) => [['Tổng số ĐXMS', rs.length, ty(sumV(rs), 2) + ' tỷ đồng — bản hiệu lực', () => true], ['Đã phê duyệt', rs.filter((x) => x.approved).length, 'gồm đang / đã được điều chỉnh', (r) => r.approved],
           ['Đang xử lý', rs.filter((x) => x.grp === 'run').length, '', (r) => r.grp === 'run'],
           ['Phát sinh điều chỉnh', new Set(rs.filter((x) => x.adjChain).map((x) => x.chain)).size, `ĐXMS gốc — ${rs.filter((x) => x.adj).length} lần điều chỉnh`, (r) => r.adjChain]],
-        groups: [['Theo trạng thái', 'st'], ['Theo đơn vị đề xuất', 'unit'], ['Theo lĩnh vực', 'field', (k) => K().cat('linh-vuc', k)], ['Theo khoảng giá trị', (r) => (r.value < 20 ? '< 20 tỷ' : r.value < 100 ? '20 – 100 tỷ' : '≥ 100 tỷ'), null, ['< 20 tỷ', '20 – 100 tỷ', '≥ 100 tỷ']]], count: true,
+        /* T56 (review ChauNNM1 12/11 #34): bỏ khối Theo trạng thái — [T56 bỏ] ['Theo trạng thái', 'st'], */
+        /* T59 #52: Top 5 điểm nghẽn quy trình ĐXMS (MS01 / MS02) đặt đầu tiên. */
+        groups: [['Top 5 điểm nghẽn quy trình ĐXMS', null, null, null, 'neck', { fams: ['MS01', 'MS02'], top: 5 }], ['Theo đơn vị đề xuất', 'unit'], ['Theo lĩnh vực', 'field', (k) => K().cat('linh-vuc', k)], ['Theo khoảng giá trị', (r) => (r.value < 20 ? '< 20 tỷ' : r.value < 100 ? '20 – 100 tỷ' : '≥ 100 tỷ'), null, ['< 20 tỷ', '20 – 100 tỷ', '≥ 100 tỷ']]], count: true,
         cols: ['code', 'title', 'unit', 'field', 'st', 'value', col('Điều chỉnh từ', 160, '', (r) => (r.adjFrom ? `<a class="link" data-go="dxms/${encodeURIComponent(r.adjFrom)}">${esc(r.adjFrom)}</a>` : K().dash), (r) => r.adjFrom || '', (r) => r.adjFrom || ''), 'date'] },
     ] },
     kdt: { title: 'Báo cáo khoản đầu tư', bl: 'Báo cáo Khoản đầu tư (STT 537–545)', list: [
       { key: 'kdt', title: 'Báo cáo tình hình khoản đầu tư', kinds: ['KDT'], fund: true, rows: (fx) => fx.kd,
         metrics: (rs) => [['Tổng số khoản đầu tư', rs.length, '', () => true], ['Tổng mức vốn', ty(sumV(rs), 2), 'tỷ đồng', () => true], ['Đã phê duyệt chủ trương', rs.filter((x) => x.stage === 'CT_OK').length, 'chờ hồ sơ phê duyệt KĐT', (r) => r.stage === 'CT_OK'],
           ['Đã phê duyệt', rs.filter((x) => x.approved).length, '', (r) => r.approved]],
-        groups: [['Theo trạng thái', 'st'], ['Theo loại hồ sơ đang chạy', 'hsKind', (k) => HS_KDT[k], Object.keys(HS_KDT)], ['Theo đơn vị', 'unit'], ['Theo lĩnh vực', 'field', (k) => K().cat('linh-vuc', k)], ['Theo loại khoản đầu tư', 'type', (k) => K().cat('loai-kdt', k)],
+        /* T59 #53: bỏ khối Theo trạng thái — [T59 #53] ['Theo trạng thái', 'st'], — thay bằng Top 5 điểm nghẽn quy trình KĐT (MS13 / MS14) đặt đầu tiên. */
+        groups: [['Top 5 điểm nghẽn quy trình KĐT', null, null, null, 'neck', { fams: ['MS13', 'MS14'], top: 5 }], ['Theo loại hồ sơ đang chạy', 'hsKind', (k) => HS_KDT[k], Object.keys(HS_KDT)], ['Theo đơn vị', 'unit'], ['Theo lĩnh vực', 'field', (k) => K().cat('linh-vuc', k)], ['Theo loại khoản đầu tư', 'type', (k) => K().cat('loai-kdt', k)],
           ['Theo tính chất khoản đầu tư', 'nature', (k) => K().cat('tinh-chat-tai-san', k)], ['Theo nhóm phân loại', 'group']], count: true,
         cols: ['code', 'title', 'unit', 'field', col('Loại KĐT', 160, '', (r) => esc(K().cat('loai-kdt', r.type)), (r) => r.type, (r) => K().cat('loai-kdt', r.type)), col('Nhóm', 120, '', (r) => esc(r.group), (r) => r.group), col('Loại hồ sơ đang chạy', 220, '', (r) => esc(HS_KDT[r.hsKind]), (r) => r.hsKind, (r) => HS_KDT[r.hsKind]), 'fund', 'st', 'value', 'date'] },
     ] },
@@ -393,7 +398,8 @@
     'tien-do': { title: 'Báo cáo tiến độ & tồn đọng', bl: 'Báo cáo tiến độ & tồn đọng (STT 604–616) + KPI xử lý theo bước (ngoài WBS-0211, comment Figma #11, #16, #20)', list: [
       { key: 'qua-han', title: 'Báo cáo hồ sơ quá hạn', noStatus: true, rows: (fx) => overdueAll(fx),
         metrics: (rs) => [['Hồ sơ quá hạn', rs.length, '', () => true], ['Số ngày quá hạn lớn nhất', rs.length ? Math.max(...rs.map((x) => x.days)) : 0, 'ngày làm việc', () => true], ['Hợp đồng chậm mốc', rs.filter((x) => x.kind === 'HD').length, 'mốc thực hiện quá hạn', (r) => r.kind === 'HD']],
-        groups: [['Theo nghiệp vụ', 'kind', (k) => KIND[k]], ['Theo đơn vị', 'unit'], ['Theo bước xử lý', 'step']], count: true,
+        /* T56 (review ChauNNM1 12/11 #21): thêm Theo người xử lý — ai đang có hồ sơ quá hạn (nguồn: người được giao task Camunda đang quá hạn; mốc hợp đồng: người phụ trách). */
+        groups: [['Theo nghiệp vụ', 'kind', (k) => KIND[k]], ['Theo đơn vị', 'unit'], ['Theo người xử lý', (r) => (r.who && r.who !== '-' ? r.who : 'Chưa giao')], ['Theo bước xử lý', 'step']], count: true,
         cols: ['code', 'kind', col('Loại hồ sơ', 220, '', (r) => esc(r.hs), (r) => r.hs), 'title', col('Bước / mốc đang chậm', 280, '', (r) => cl(r.step), (r) => r.step), col('Người / đơn vị đang xử lý', 240, '', (r) => cl(r.who), (r) => r.who), 'unit', col('Ngày nhận', 120, '', (r) => esc(r.since), (r) => dk(r.since), (r) => r.since), col('Số ngày quá hạn', 130, 'r', (r) => r.days, (r) => r.days)] },
       /* T49 R13: thời gian xử lý = ngày nhận → ngày giải quyết (sự kiện ghi ngày giải quyết ở phần tử thứ 5); đang giải quyết thì → ngày dữ liệu. Thêm chiều khoảng thời gian (STT 614). */
       { key: 'kien-nghi', title: 'Báo cáo kiến nghị / khiếu nại', noStatus: true, rows: (fx) => fx.gt.flatMap((g) => g.knEv.map((e, i) => {
@@ -460,6 +466,20 @@
         GI.push({ title, items, fn: null, unit: 'tỷ đồng' });
         return vbars(title, items, { money: true, unit: 'tỷ đồng', legend: 'Đã thanh toán' });
       }
+      /* T59 #52 #53 (D-114 Q6) — GIẢ LẬP: điểm nghẽn = bước của quy trình có nhiều hồ sơ đang quá hạn nhất (cùng nguồn Báo cáo hồ sơ quá hạn),
+         bằng nhau thì theo tổng số ngày quá hạn; lấy opt.top bước đầu. Bấm thanh lọc bảng chi tiết theo đối tượng có hồ sơ quá hạn tại bước. */
+      if (val === 'neck') {
+        const codes = new Set(rows.map((r) => r.code)), m = new Map();
+        (fx.od || []).filter((x) => opt.fams.includes(x.fam) && codes.has(x.obj)).forEach((x) => {
+          const k2 = x.task != null ? String(x.task) : x.stepName;
+          const g2 = m.get(k2) || { key: k2, label: x.task != null ? `Bước ${x.task} — ${x.stepName}` : x.stepName, n: 0, days: 0, objs: new Set() };
+          g2.n += 1; g2.days += x.days; g2.objs.add(x.obj); m.set(k2, g2);
+        });
+        items = [...m.values()].sort((a, b) => b.n - a.n || b.days - a.days).slice(0, opt.top || 5)
+          .map((g2) => ({ key: g2.key, label: g2.label, value: g2.n, objs: g2.objs, tip: `${g2.label}: ${g2.n} hồ sơ quá hạn — trung bình ${ty(r2(g2.days / g2.n), 1)} ngày quá hạn` }));
+        GI.push({ title, items, fn: (x) => (r) => x.objs.has(r.code), unit: 'hồ sơ quá hạn' });
+        return hbars(title, items.map((x, xi) => Object.assign(x, { drill: `${id}|${gi}|${xi}` })), { unit: 'hồ sơ quá hạn' });
+      }
       const kf = typeof key === 'function' ? key : (r) => r[key];
       if (val) {
         const m = new Map(), n = new Map();
@@ -482,6 +502,7 @@
         '<b>Drill-down</b>: bấm ô chỉ tiêu hoặc thanh biểu đồ để lọc bảng chi tiết; bấm mã để mở đối tượng nghiệp vụ (ĐXMS / KĐT / KHLCNT / gói thầu / hợp đồng).',
         'Mỗi báo cáo = một cấu hình (chỉ tiêu, chiều nhóm, cột chi tiết) trên cùng khuôn; BE cung cấp API báo cáo theo bộ lọc. Số liệu tính từ cùng dữ liệu với các danh sách và màn Tổng quan.',
         group === 'dxms' || cfg.key === 'dtms' ? '<b>ĐXMS</b> (T34): Đã phê duyệt gồm ĐXMS Đang điều chỉnh / Đã được điều chỉnh; giá trị mỗi chuỗi điều chỉnh chỉ cộng bản còn hiệu lực (giá trị không cộng có dấu *). Phát sinh điều chỉnh = số ĐXMS gốc có ĐXMS điều chỉnh; drill hiện cả chuỗi. ĐXMS Chưa khởi tạo chỉ hiện khi lọc Trạng thái = Chưa khởi tạo.' : '',
+        group === 'dxms' || group === 'kdt' ? `<b>T59 (D-114)</b> — Top 5 điểm nghẽn quy trình ${group === 'dxms' ? 'ĐXMS (MS01 / MS02)' : 'KĐT (MS13 / MS14)'}: GIẢ LẬP — điểm nghẽn = bước (công việc người dùng) của quy trình; xếp theo số hồ sơ đang quá hạn tại bước, bằng nhau thì theo tổng số ngày quá hạn; lấy 5 bước đầu. Nhãn "Bước {số} — {tên bước}"; tooltip: số hồ sơ quá hạn, số ngày quá hạn trung bình. Nguồn = công việc Camunda đang mở quá hạn (cùng nguồn Báo cáo hồ sơ quá hạn), theo bộ lọc đang áp. Bấm thanh lọc bảng chi tiết.${group === 'kdt' ? ' Bỏ khối Theo trạng thái (review #53).' : ''} <b>Câu hỏi BA:</b> có tính cả bước đang chờ nhưng chưa quá hạn / thời gian xử lý trung bình của bước không?` : '',
         group === 'kdt' || cfg.key === 'dtms' || cfg.key === 'chuoi' ? '<b>Khoản đầu tư</b> (D-103, D-104): tách theo loại hồ sơ đang chạy (chủ trương / KĐT); lĩnh vực theo KĐT; nguồn kinh phí theo đề tài / dự án — các đề tài khác nguồn thì giá trị chia theo dòng bóc tách.' : '',
         cfg.key === 'kpi-buoc' ? 'KPI xử lý theo bước — <b>ngoài WBS-0211</b> (comment Figma #11, #16, #20): thời gian xử lý, số vòng trả lại, số ý kiến lấy từ lịch sử task Camunda; KPI = SLA bước; số lần ký cứng lấy từ kết quả trình ký. GIẢ LẬP: số liệu 10 bước là mẫu cố định.' : '',
         cfg.key === 'qua-han' || cfg.key === 'chuoi' ? 'Quá hạn: hồ sơ quy trình lấy trạng thái điều phối từ Camunda (Giám sát tiến trình), hạn bước theo quy trình của hồ sơ (MS01 / MS02 / MS13 / MS14); hợp đồng theo mốc thực hiện quá hạn. Số ngày quá hạn = ngày làm việc. GIẢ LẬP: hạn bước = số ngày làm việc chuẩn × 2; ngày dữ liệu ' + HD().TODAY + '.' : '',

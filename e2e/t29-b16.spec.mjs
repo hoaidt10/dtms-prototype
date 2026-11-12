@@ -31,11 +31,11 @@ test('Bước duyệt mới: tác nhân, card chỉ xem, hộp thoại Duyệt c
   await expect(f).toHaveCount(0);
   await expect.poll(() => page.evaluate(() => Flow.state.tokens.map((t) => [String(t.task), t.who]))).toContainEqual(['7', 'qlts']);
 
-  // 7.1 Chỉ huy Kho: card kết quả rà soát chỉ xem (không có nút Cập nhật).
+  // 7.1 Chỉ huy Kho: T59 Q4 — kết quả rà soát chỉ xem ở tab Rà soát tồn kho (mở sẵn), không có ô nhập.
   const k71 = await jump(page, '7.1');
   expect(k71.who).toBe('khoch');
-  await expect(page.locator('[data-rsk-card]')).toBeVisible();
-  await expect(page.locator('[data-rsk-card] [data-rsk-open]')).toHaveCount(0);
+  await expect(page.locator('[data-rsk-view]')).toBeVisible();
+  await expect(page.locator('[data-rsk-ed]')).toHaveCount(0);
 
   // 8, 10 Thầu TTMS; 10.1 Chỉ huy Thầu (review nhi 06/11 #2, #7: card báo giá tạm ẩn; Đồng ý / Từ chối).
   expect((await jump(page, 8)).who).toBe('thau');

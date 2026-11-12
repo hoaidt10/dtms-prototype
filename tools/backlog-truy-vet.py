@@ -77,7 +77,7 @@ RULES = [
     ("Quản lý đề xuất mua sắm", r"Hồ sơ Đề xuất", r"Tìm kiếm", "#/ho-so-dxms (SCR-02)", C, "", ""),
     ("Quản lý đề xuất mua sắm", r"Hồ sơ Đề xuất", r"Chi tiết", "#/ho-so-dxms/<mã> (SCR-20)", C, "", ""),
     ("Quản lý đề xuất mua sắm", r"Hồ sơ Đề xuất", r"", "#/ho-so-dxms (SCR-02)", C, "", ""),
-    ("Quản lý đề xuất mua sắm", r"Yêu cầu báo giá", r"", "#/ycbg (SCR-73), #/ycbg/<mã> (SCR-74)", C, "B1", "Danh sách + tìm kiếm nâng cao + chi tiết + xuất file; YCBG sinh ở task 08/09 của hồ sơ"),
+    ("Quản lý đề xuất mua sắm", r"Yêu cầu báo giá", r"", "#/ycbg (SCR-73, menu gộp cấp 1 Yêu cầu báo giá), #/ycbg/<mã> (SCR-74)", C, "B1", "Danh sách + tìm kiếm nâng cao + chi tiết + xuất file; YCBG sinh ở task 08/09 của hồ sơ; 12/11 gộp với YCBG KĐT, lọc Loại đối tượng"),
     ("Quản lý đề xuất mua sắm", r"", r"Thông tin Đề xuất.*Tìm kiếm", "#/dxms (SCR-27)", C, "B1", "Panel nâng cao: Mã, Tên, Nhiệm vụ / Đề tài, Đơn vị, Trạng thái, Mức ưu tiên, Ngày tạo"),
     ("Quản lý đề xuất mua sắm", r"", r"Thông tin Đề xuất.*Thêm mới", "#/dxms/create (SCR-28)", C, "", "B0.5: bắt buộc chọn Nhiệm vụ / Đề tài (P-69)"),
     ("Quản lý đề xuất mua sắm", r"", r"Thông tin Đề xuất.*Chỉnh sửa", "#/dxms/<mã>/edit (SCR-28)", C, "", ""),
@@ -104,7 +104,7 @@ RULES = [
     # ---- Quản lý KĐT
     ("Quản lý khoản đầu tư", r"Hồ sơ KĐT", r"Chi tiết", "#/ho-so-kdt/<mã>", C, "", ""),
     ("Quản lý khoản đầu tư", r"Hồ sơ KĐT", r"", "#/ho-so-kdt (SCR-75)", C, "B2", "Danh sách hồ sơ KĐT (profile-list) + tìm kiếm nâng cao: mã, KĐT, tên, đơn vị, nhóm, nhánh, trạng thái"),
-    ("Quản lý khoản đầu tư", r"Yêu cầu báo giá", r"", "#/ycbg-kdt (SCR-76), #/ycbg-kdt/<mã> (SCR-77)", C, "B2", "Cùng khuôn / cơ chế YCBG ĐXMS (bước 8–10 MS13); Xuất excel, Xuất file"),
+    ("Quản lý khoản đầu tư", r"Yêu cầu báo giá", r"", "#/ycbg lọc Loại đối tượng = KĐT (SCR-73 gộp, thay SCR-76), #/ycbg-kdt/<mã> (SCR-77)", C, "B2", "Cùng khuôn / cơ chế YCBG ĐXMS (bước 8–10 MS13); 12/11 gộp vào menu cấp 1 Yêu cầu báo giá; Xuất excel, Xuất file"),
     ("Quản lý khoản đầu tư", r"", r"Thông tin khoản đầu tư.*Tạo", "#/kdt/create (SCR-55)", C, "", ""),
     ("Quản lý khoản đầu tư", r"", r"Thông tin khoản đầu tư.*Chỉnh sửa", "#/kdt/<mã>/edit (SCR-55)", C, "", ""),
     ("Quản lý khoản đầu tư", r"", r"Thông tin khoản đầu tư.*chi tiết", "#/kdt/<mã> (SCR-56)", C, "", ""),

@@ -20,9 +20,9 @@ test('D-15: menu theo 12 module Backlog; Quản lý quy trình có 3 mục (D-2)
   await fresh(page, '#/viec-cua-toi');
   const tops = await page.locator('.sb-nav > .nav:not(.child) .l').allInnerTexts();
   // Vận hành trước, cấu hình sau; Tích hợp và Trợ lý AI ẩn (2026-10-07); Quản lý thầu / hợp đồng ẩn ở bản demo ĐXMS (D-76, cờ D.show.menuThau).
-  expect(tops).toEqual(['Tổng quan', 'Việc của tôi', 'Trình ký', 'Đề tài / dự án', 'Quản lý đề xuất mua sắm', 'Quản lý khoản đầu tư', 'Báo cáo', 'Quản lý quy trình', 'Thông báo']);
+  expect(tops).toEqual(['Tổng quan', 'Việc của tôi', 'Trình ký', 'Đề tài / dự án', 'Quản lý đề xuất mua sắm', 'Quản lý khoản đầu tư', 'Yêu cầu báo giá', 'Báo cáo', 'Quản lý quy trình', 'Thông báo']);
   await page.evaluate(() => { D.show.menuThau = true; App.render(); });
-  expect(await page.locator('.sb-nav > .nav:not(.child) .l').allInnerTexts()).toEqual(['Tổng quan', 'Việc của tôi', 'Trình ký', 'Đề tài / dự án', 'Quản lý đề xuất mua sắm', 'Quản lý khoản đầu tư', 'Quản lý thầu',
+  expect(await page.locator('.sb-nav > .nav:not(.child) .l').allInnerTexts()).toEqual(['Tổng quan', 'Việc của tôi', 'Trình ký', 'Đề tài / dự án', 'Quản lý đề xuất mua sắm', 'Quản lý khoản đầu tư', 'Yêu cầu báo giá', 'Quản lý thầu',
     'Quản lý hợp đồng', 'Báo cáo', 'Quản lý quy trình', 'Thông báo']);
   // Mục con của một nhóm = các nút .child liền sau nút nhóm.
   const kids = (label) => page.evaluate((l) => {
@@ -34,9 +34,9 @@ test('D-15: menu theo 12 module Backlog; Quản lý quy trình có 3 mục (D-2)
   await page.locator('.sb-nav [data-toggle="Quản lý quy trình"]').click();
   expect(await kids('Quản lý quy trình')).toEqual(['Quản lý quy trình', 'Ma trận hành động', 'Giám sát tiến trình']);
   // T29 D-63 → T34 (người dùng 09/11): Đề tài / dự án thành menu cấp 1, ngay trên Quản lý đề xuất mua sắm.
-  expect(await kids('Quản lý đề xuất mua sắm')).toEqual(['Luồng mua sắm', 'Điều chỉnh đề xuất mua sắm', 'Quản lý tài liệu ĐXMS', 'Yêu cầu báo giá ĐXMS']);
+  expect(await kids('Quản lý đề xuất mua sắm')).toEqual(['Đề xuất mua sắm', 'Quản lý tài liệu ĐXMS']);
   await page.locator('.sb-nav [data-toggle="Quản lý khoản đầu tư"]').click();
-  expect(await kids('Quản lý khoản đầu tư')).toEqual(['Khoản đầu tư', 'Hồ sơ chủ trương KĐT', 'Hồ sơ phê duyệt KĐT', 'Yêu cầu báo giá KĐT']);
+  expect(await kids('Quản lý khoản đầu tư')).toEqual(['Khoản đầu tư', 'Hồ sơ chủ trương KĐT', 'Hồ sơ phê duyệt KĐT']);
   await page.locator('.sb-nav [data-toggle="Quản lý thầu"]').click();
   expect(await kids('Quản lý thầu')).toEqual(['Kế hoạch lựa chọn nhà thầu', 'Gói thầu', 'Nhà thầu & kiểm soát rủi ro', 'Công khai & tích hợp đấu thầu', 'Giám sát hoạt động thầu']);
   // Mục để sau (Giám sát hoạt động thầu — T16 B2): trang Đang phát triển.
@@ -85,7 +85,11 @@ test('D-3: chỉ Mã hồ sơ là liên kết, bấm dòng không mở gì; liê
   await expect(page.locator('.vtable tbody a, .vtable tbody button, .vtable tbody [data-go]')).toHaveCount(10);
   await expect(page.locator('.vtable tbody td:nth-child(4) a.link')).toHaveCount(10);
   await expect(page.locator('.vtable tbody tr.click')).toHaveCount(0);
-  await page.locator('.vpager [data-pg="2"]').first().click();
+  // T58: thêm hồ sơ mẫu → HS-2026-0101 không còn ở trang 2; lật trang tới khi thấy.
+  for (let pg = 2; pg < 10; pg++) {
+    await page.locator(`.vpager [data-pg="${pg}"]`).first().click();
+    if (await rows(page).filter({ hasText: 'HS-2026-0101' }).count()) break;
+  }
   const r = rows(page).filter({ hasText: 'HS-2026-0101' });
   await expect(r.locator('.vbadge')).toHaveText('Quá hạn');
   await expect(r.locator('.proc-cell .n')).toHaveText('Phê duyệt đề xuất mua sắm');
@@ -112,7 +116,7 @@ test('D-3: chỉ Mã hồ sơ là liên kết, bấm dòng không mở gì; liê
 
 test('SCR-48: tìm nhanh theo mã hồ sơ / mã Camunda; nâng cao — Mã Camunda chỉ nhập số, lọc trạng thái', async ({ page }) => {
   await as(page, 'lan', '#/giam-sat-tien-trinh');
-  await page.locator('#gs-kw').fill('0106');
+  await page.locator('#gs-kw').fill('HS-2026-0106'); // T58: mã Camunda của HS-2026-0138 cũng chứa 0106
   await page.locator('#gs-kw').press('Enter');
   await expect(rows(page)).toHaveCount(1);
   const key = await rows(page).locator('td').nth(2).innerText();
@@ -156,7 +160,7 @@ test('SCR-48: hồ sơ đang chạy luồng hiện ở đầu danh sách, Đang 
   await fresh(page, '#/viec-cua-toi');
   await page.evaluate(() => { Flow.jumpTo(13, 'hai'); Flow.setPersona('qt'); });
   await page.goto(page.url().replace(/#.*$/, '#/giam-sat-tien-trinh'));
-  await expect(page.locator('.vpager')).toContainText('Tổng số bản ghi: 30');
+  await expect(page.locator('.vpager')).toContainText('Tổng số bản ghi: 53'); // T58: + 15 hồ sơ ĐXMS, 7 hồ sơ KĐT mẫu
   const code = await page.evaluate(() => Flow.ci().code);
   const r = rows(page).filter({ hasText: code });
   await expect(r.locator('.vbadge')).toHaveText(/Đang chạy|Quá hạn/);

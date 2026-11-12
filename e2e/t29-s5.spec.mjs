@@ -120,12 +120,12 @@ test('F1, F2, F4: Danh sách luồng (Gộp) — Tìm kiếm nâng cao theo SRS 
   await expect(page.locator('#luong-kw')).toHaveCount(0);
   await pick(page, 'lgf-secret', 'Có');
   await page.locator('.adv button[type="submit"]').click({ force: true });
-  expect(await rowCodes(page)).toEqual(['ĐXMS-2026-0089']);
+  expect(await rowCodes(page)).toEqual(['ĐXMS-2026-0133', 'ĐXMS-2026-0089']); // T58: 0133 Mật
   await page.locator('[data-lg="reset"]').click();
   await pick(page, 'lgf-block', 'Khối 2');
   await page.locator('.adv button[type="submit"]').click({ force: true });
   const codes = await rowCodes(page);
-  expect(codes.sort()).toEqual(['ĐXMS-2026-0084', 'ĐXMS-2026-0106', 'ĐXMS-2026-0112', 'ĐXMS-2026-0121']);
+  expect(codes.sort()).toEqual(['ĐXMS-2026-0084', 'ĐXMS-2026-0106', 'ĐXMS-2026-0112', 'ĐXMS-2026-0121', 'ĐXMS-2026-0130'] /* T58: 0130 TT Thiết kế vi mạch */);
   expect(page.errors).toEqual([]);
 });
 
@@ -135,11 +135,11 @@ test('SCR-96 cách 1 + T29 B12: Loại biểu mẫu / Cấp phê duyệt trống
   await page.evaluate(() => localStorage.setItem('dtms-proto-menu', 'gop'));
   await page.goto(page.url().replace(/#.*$/, '') + '#/luong/create');
   await page.locator('#lf-title').fill('Luồng mua sắm cho dự án A');
-  await expect(page.locator('#lf-d-form')).toHaveValue('');
+  await expect(page.locator('#lf-d-form')).toHaveCount(0); // T56 #15: ẩn Loại biểu mẫu ở form Lập (hệ thống vẫn suy, hiện ở Chi tiết)
   await expect(page.locator('#lf-d-level')).toHaveValue('');
   await page.locator('#lf-est').fill('45.500.000.000');
   await page.locator('#lf-est').blur();
-  await expect(page.locator('#lf-d-form')).toHaveValue('ĐXMS có giá trị dưới nhóm B');
+  // [T56 ẩn Loại biểu mẫu] #lf-d-form = 'ĐXMS có giá trị dưới nhóm B'
   await expect(page.locator('#lf-d-level')).toHaveValue('Tổng công ty');
   await expect(page.locator('[data-vsel="lf-sign"] .vsel-label')).toHaveText('VOffice');
   await pick(page, 'lf-sec', 'Có');
@@ -158,7 +158,7 @@ test('SCR-96 cách 1 + T29 B12: Loại biểu mẫu / Cấp phê duyệt trống
   // T29 B1 (D-54): không chọn Quy trình — Loại biểu mẫu / Cấp phê duyệt theo Giá trị dự kiến và Căn cứ đã được phê duyệt.
   await page.locator('#lf-est').fill('182900000000');
   await page.locator('#lf-est').blur();
-  await expect(page.locator('#lf-d-form')).toHaveValue('ĐXMS có giá trị nhóm B trở lên');
+  // [T56 ẩn Loại biểu mẫu] #lf-d-form = 'ĐXMS có giá trị nhóm B trở lên'
   await expect(page.locator('#lf-d-level')).toHaveValue('Tập đoàn');
   await pick(page, 'lf-ctype', 'PL2');
   await pick(page, 'lf-cline', 'NV-KHCN-2026-014-1');

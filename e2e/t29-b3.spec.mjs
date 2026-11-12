@@ -5,28 +5,24 @@ import { fresh, openForm, lastToast, aiApply } from './helpers.mjs';
 
 const ed = (page) => page.locator('[data-rsk-ed]');
 const cell = (page, n, k) => ed(page).locator(`[data-rsk-in="${n}:${k}"]`);
-const upload = (page) => page.locator('#rsk-file').setInputFiles({ name: 'Bien-ban-kiem-dem.pdf', mimeType: 'application/pdf', buffer: Buffer.alloc(16) });
+// T59 Q8: biên bản kiểm đếm có ký là ô riêng (#rsk-sign); Tệp kết quả Excel ở #rsk-file.
+const upload = (page) => page.locator('#rsk-sign').setInputFiles({ name: 'Bien-ban-kiem-dem.pdf', mimeType: 'application/pdf', buffer: Buffer.alloc(16) });
 const asPersona = (page, pid, hash) => page.evaluate(([p, h]) => { Flow.setPersona(p); location.hash = h; }, [pid, hash]);
 
-test('Kho (review nhi 06/11 #21, #31–33): nút trên việc bước 7 mở SCR-105; nhập trên màn theo cột BM-RSTK, SL xuất kho ≤ tồn khả dụng; Gửi Chỉ huy Kho là hoàn thành bước 7; biên bản rà soát', async ({ page }) => {
+// T59 (D-114 Q4, Q8, Q9): không còn màn riêng SCR-105 — Kho nhập trên tab Rà soát tồn kho của màn việc bước 7; Gửi Chỉ huy Kho là nút đóng việc
+// trên thanh trạng thái; hai ô tệp (Tệp kết quả Excel, Biên bản kiểm đếm có ký); không sinh biên bản …/BBRS-MS.
+test('Kho (T59 Q4): việc bước 7 mở tab Rà soát tồn kho chế độ nhập theo cột BM-RSTK, SL xuất kho ≤ tồn khả dụng; Gửi Chỉ huy Kho là hoàn thành bước 7', async ({ page }) => {
   await fresh(page, '#/viec-cua-toi');
   await page.locator('#demo').click();
   await page.locator('[data-scene="1b"]').click();
-  // Bước 7: màn xử lý có card Kết quả rà soát, một nút Cập nhật kết quả rà soát (không còn nút Hoàn thành riêng).
   await expect(page).toHaveURL(/#\/task\//);
-  await expect(page.locator('[data-rsk-card]')).toBeVisible();
   expect(await page.evaluate(() => Flow.state.persona)).toBe('qlts');
-  await expect(page.locator('.task-acts [data-act]')).toHaveText(['Cập nhật kết quả rà soát']);
-  await expect(page.locator('[data-rsk-card] [data-go="ra-soat-kho"]')).toHaveCount(0);
+  await expect(page.locator('.task-acts [data-act]')).toHaveText(['Gửi Chỉ huy Kho']);
+  await expect(page.locator('[data-rsk-card]')).toHaveCount(0);
   // Việc của tôi (vai Kho) có việc bước 7 (token BPMN, không còn dòng ngoài sơ đồ); chuông đếm 1.
   expect(await page.evaluate(() => Flow.pendingCount('qlts'))).toBe(1);
   expect(await page.evaluate(() => RaSoatKho.taskRows('qlts', {}).length)).toBe(0);
-
-  await page.locator('.task-acts [data-act]').click();
-  await expect(page).toHaveURL(/#\/ra-soat-kho$/);
   await expect(page.locator('.vmodal')).toHaveCount(0);
-  await expect(page.locator('.pg-title')).toHaveText('Rà soát tồn kho');
-  await expect(page.locator('.ginfo').first()).toContainText('Chờ kết quả rà soát');
   await expect(page.locator('[data-rsk] tbody tr')).toHaveCount(5);
   // Cột theo BM-RSTK (#21, #24): nhóm Yêu cầu / Kết quả rà soát / Hợp đồng đầu vào / Ghi chú.
   const th = await page.locator('[data-rsk] thead th').allInnerTexts();
@@ -41,9 +37,10 @@ test('Kho (review nhi 06/11 #21, #31–33): nút trên việc bước 7 mở SCR
   await cell(page, 4, 'stock').fill('8');
   await cell(page, 4, 'out').fill('7');
   for (const n of [1, 2, 3]) { await cell(page, n, 'stock').fill('0'); await cell(page, n, 'out').fill('0'); }
-  await page.locator('[data-rsk-save]').click();
-  // Khả dụng dòng 4 = 8 − 2 (đang giữ cho ĐXMS-2026-0098) → xuất 7 bị chặn; thiếu tệp.
-  await expect(ed(page).locator('.msg')).toHaveText(['Vui lòng tải lên Tệp kết quả.', 'SL xuất kho không được lớn hơn tồn khả dụng (6).']);
+  const send = () => page.locator('.task-acts [data-act]', { hasText: 'Gửi Chỉ huy Kho' }).click();
+  await send();
+  // Khả dụng dòng 4 = 8 − 2 (đang giữ cho ĐXMS-2026-0098) → xuất 7 bị chặn; thiếu hai tệp.
+  await expect(ed(page).locator('.msg')).toHaveText(['Vui lòng tải lên Tệp kết quả.', 'Vui lòng tải lên Biên bản kiểm đếm có ký.', 'SL xuất kho không được lớn hơn tồn khả dụng (6).']);
   expect(await page.evaluate(() => Flow.state.tokens.map((t) => String(t.task)))).toEqual(['7']);
   await cell(page, 4, 'out').fill('6');
   await cell(page, 4, 'out').blur();
@@ -52,28 +49,34 @@ test('Kho (review nhi 06/11 #21, #31–33): nút trên việc bước 7 mở SCR
   await cell(page, 4, 'bin').fill('Thùng 31');
   await upload(page);
   await expect(cell(page, 4, 'contract')).toHaveValue('HĐ-2025-0314');
-  // Lưu nháp: giữ số đã nhập, chưa chuyển bước.
+  // Lưu nháp (trong tab): giữ số đã nhập, chưa chuyển bước.
   await page.locator('[data-rsk-draft]').click();
   expect(await lastToast(page)).toContain('Đã lưu nháp');
   expect(await page.evaluate(() => Flow.state.tokens.map((t) => String(t.task)))).toEqual(['7']);
-  await page.locator('[data-rsk-save]').click();
+  await page.locator('#rsk-file').setInputFiles({ name: 'Ket-qua.csv', mimeType: 'text/csv', buffer: Buffer.alloc(8) });
+  // Tệp Excel → hệ thống đọc và điền lại bảng (GIẢ LẬP số mẫu) — nhập lại các ô vừa sửa.
+  await cell(page, 4, 'out').fill('6');
+  await cell(page, 4, 'contract').fill('HĐ-2025-0314');
+  await cell(page, 4, 'bin').fill('Thùng 31');
+  await send();
   await expect(page).toHaveURL(/#\/viec-cua-toi$/);
-  expect(await lastToast(page)).toContain('sinh biên bản rà soát');
+  expect(await lastToast(page)).toContain('trình Chỉ huy Kho duyệt');
   await expect.poll(() => page.evaluate(() => Flow.state.tokens.map((t) => String(t.task)))).toContain('7.1');
   expect(await page.evaluate(() => Flow.state.tokens.find((t) => String(t.task) === '7.1').who)).toBe('khoch');
   expect(await page.evaluate(() => Flow.pendingCount('qlts'))).toBe(0);
-  // Đã chốt: Kho không còn nút cập nhật; màn chỉ xem có kết quả và biên bản (C1): số …/BBRS-MS, câu giữ hàng 30 ngày, chân ký GIẢ LẬP.
+  // Đã chốt: #/ra-soat-kho chuyển về Chi tiết ĐXMS tab Rà soát tồn kho; màn việc 7.1 chỉ xem kết quả, không có biên bản sinh (Q9).
   await asPersona(page, 'qlts', '#/ra-soat-kho');
-  await expect(page.locator('[data-rsk-save]')).toHaveCount(0);
-  await expect(page.locator('.ginfo').first()).toContainText('Đã chốt ở bước 7');
-  const r4 = page.locator('[data-rsk] tbody tr').nth(3);
+  await expect(page).toHaveURL(/#\/luong\/.+\/ton-kho$/);
+  await expect(page.locator('[data-rsk-save], [data-rsk-ed]')).toHaveCount(0);
+  const k71 = await page.evaluate(() => Flow.state.tokens[0].id);
+  await asPersona(page, 'khoch', '#/task/' + k71);
+  await expect(page.locator('[data-rsk-view] .ginfo')).toContainText('Đã chốt ở bước 7');
+  const r4 = page.locator('[data-rsk-view] tbody tr').nth(3);
   await expect(r4).toContainText('2 — ĐXMS-2026-0098');
   await expect(r4).toContainText('HĐ-2025-0314');
   await expect(r4).toContainText('Thùng 31');
-  const bb = page.locator('[data-rsk-bb]');
-  await expect(bb).toContainText('/BBRS-MS');
-  await expect(bb).toContainText('30 ngày');
-  await expect(bb).toContainText('Chỉ huy bộ phận QLTS');
+  await expect(page.locator('[data-rsk-bb]')).toHaveCount(0);
+  await expect(page.locator('main')).not.toContainText('/BBRS-MS');
   expect(page.errors).toEqual([]);
 });
 
@@ -191,12 +194,11 @@ test('Căn cứ: căn cứ bổ sung; khối chỉ xem có Đã dùng / Đang gi
   expect(page.errors).toEqual([]);
 });
 
-test('Cập nhật kết quả rà soát: Hợp đồng đầu vào là nhóm con của Kết quả rà soát; Tệp kết quả trên bảng, chỉ đính kèm (T37 — không đọc Excel); Gửi chuyển 7.1', async ({ page }) => {
+test('Rà soát tồn kho: Hợp đồng đầu vào là nhóm con của Kết quả rà soát; hai ô tệp trên bảng; Tệp kết quả Excel được đọc điền bảng (T59 Q8 — mở lại T37 #5); Gửi chuyển 7.1', async ({ page }) => {
   await fresh(page, '#/viec-cua-toi');
   await page.locator('#demo').click();
   await page.locator('[data-scene="1b"]').click();
   await expect(page).toHaveURL(/#\/task\//);
-  await page.locator('.task-acts [data-act]').click();
   const box = ed(page);
   await expect(box).toBeVisible();
   // Tiêu đề ba tầng: hàng 1 Kết quả rà soát (11 cột), hàng 2 có Hợp đồng đầu vào (5 cột) cạnh các cột lá của kết quả.
@@ -206,17 +208,16 @@ test('Cập nhật kết quả rà soát: Hợp đồng đầu vào là nhóm co
   await expect(rowsH.nth(0)).not.toContainText('Hợp đồng đầu vào');
   await expect(rowsH.nth(1).locator('th', { hasText: 'Hợp đồng đầu vào' })).toHaveAttribute('colspan', '5');
   await expect(rowsH.nth(2).locator('th')).toHaveText(['Nguyên giá (VNĐ)', 'Thuế GTGT', 'Số hợp đồng', 'Nguồn gốc Đề tài / Dự án', 'Đơn giá nhận (VNĐ)']);
-  // Tệp kết quả nằm trên bảng.
-  const yUp = (await box.locator('.rsk-up').boundingBox()).y, yTb = (await box.locator('table').boundingBox()).y;
+  // Hai ô tệp nằm trên bảng.
+  await expect(box.locator('.rsk-up')).toHaveCount(2);
+  const yUp = (await box.locator('.rsk-ups').boundingBox()).y, yTb = (await box.locator('table').boundingBox()).y;
   expect(yUp).toBeLessThan(yTb);
-  // T37 (RV-PROTO-0911 #5): tệp Excel chỉ đính kèm — bảng không tự điền; người nhập gõ số (test điền số mẫu) rồi gửi.
   await page.locator('#rsk-file').setInputFiles({ name: 'Ket-qua-ra-soat.xlsx', mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', buffer: Buffer.alloc(16) });
   await expect(box.locator('.rsk-file')).toHaveText('Ket-qua-ra-soat.xlsx');
-  await expect(box.locator('[data-rsk-imported]')).toHaveCount(0);
-  await expect(cell(page, 4, 'out')).toHaveValue('');
-  await page.evaluate(() => D.rstkSample(D.items, Flow.state.clock).kq.rows.forEach((r) => Object.keys(r).forEach((k) => {
-    const el = document.querySelector(`[data-rsk-in="${r.n}:${k}"]`); if (el) el.value = r[k] == null ? '' : String(r[k]); })));
-  await page.locator('[data-rsk-save]').click();
+  await expect(box.locator('[data-rsk-imported]')).toBeVisible();
+  await expect(cell(page, 4, 'out')).toHaveValue('6');
+  await upload(page);
+  await page.locator('.task-acts [data-act]', { hasText: 'Gửi Chỉ huy Kho' }).click();
   await expect(page).toHaveURL(/#\/viec-cua-toi$/);
   expect(await page.evaluate(() => RaSoatKho.done())).toBe(true);
 });
