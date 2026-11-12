@@ -2,16 +2,16 @@
 import { test, expect } from '@playwright/test';
 import { fresh } from './helpers.mjs';
 
-test('A #1–#8: lọc báo cáo — ô Năm chỉ số năm; Từ ngày - Đến ngày là hai ô lịch có icon và dấu "-"; chọn ngày ghi DD/MM/YYYY', async ({ page }) => {
+test('A #1–#8: lọc báo cáo — ô Năm chỉ số năm; Từ ngày, Đến ngày là hai ô lịch có icon (T65 #74: hai trường có nhãn riêng); chọn ngày ghi DD/MM/YYYY', async ({ page }) => {
   await fresh(page, '#/tong-quan');
   const f = page.locator('.rp-filter').first();
-  const rg = f.locator('.vrange');
-  await expect(rg).toHaveCount(1);
-  await expect(rg.locator('.vdate')).toHaveCount(2);
-  await expect(rg.locator('.vdate-ic')).toHaveCount(2);
-  await expect(rg.locator('.vrange-sep')).toHaveText('-');
+  await expect(f.locator('.vrange-a label')).toHaveText('Từ ngày');
+  await expect(f.locator('.vrange-b label')).toHaveText('Đến ngày');
+  await expect(f.locator('.vrange-a .vdate, .vrange-b .vdate')).toHaveCount(2);
+  await expect(f.locator('.vrange-a .vdate-ic, .vrange-b .vdate-ic')).toHaveCount(2);
+  await expect(f.locator('.vrange-sep')).toHaveCount(0);
   // Gõ số tự chèn "/".
-  const from = rg.locator('input[data-vdate]').first();
+  const from = f.locator('.vrange-a input[data-vdate]');
   await from.fill('01102026');
   await expect(from).toHaveValue('01/10/2026');
   // Ô Năm: nhãn lựa chọn là "2026", không "Năm 2026".

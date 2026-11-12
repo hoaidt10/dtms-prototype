@@ -1377,6 +1377,7 @@
     'P-226': { q: 'ĐXMS Dừng xử lý muốn làm lại: tạo ĐXMS mới từ đầu hay có chức năng Sao chép; ĐXMS mới có giữ liên kết tới ĐXMS cũ không, căn cứ đang giữ của ĐXMS cũ trả lúc nào', src: 'T34 (người dùng 09/11, mô hình 1 ĐXMS – 1 hồ sơ)', def: 'GIẢ LẬP — nút Sao chép thành ĐXMS mới: chép thông tin chung, Sao chép từ = ĐXMS cũ, chưa có hồ sơ; căn cứ của ĐXMS cũ trả khi dừng', scr: 'SCR-29' },
     'P-227': { q: 'HR Tool có phải nguồn đề tài / dự án của ĐTMS không, cho Loại nào; trạng thái, Mật, dự toán chi tiết của đề tài từ HR Tool lấy từ đâu (HR Tool chỉ có trạng thái phân bổ chi phí nhân công, không có cờ Mật, chỉ có Tổng dự toán)', src: 'T36 (người dùng 09/11, D-96); be/hrtool mission; YC-DXMS-PROTO §2.1; DTMS_Q_0438, 0439, 0441, 0442', def: 'GIẢ LẬP — HR Tool cấp Loại SXKD, Dự án đầu tư (phân loại SXKD, DTPT); nhiệm vụ KHCN bỏ qua, ghi Cảnh báo; Trạng thái Đang thực hiện, Mật = Không, chỉ Tổng dự toán', scr: 'SCR-103' },
     'P-228': { q: 'Đội HR Tool có làm API cho ĐTMS: danh sách nhiệm vụ thay đổi từ mốc (gồm bản ghi đã xóa), chi tiết theo mã, tải tệp tờ trình, tài khoản dịch vụ', src: 'T36 B0 §3; MissionController chỉ có POST /search, GET /{id}; DTMS_Q_0443', def: 'GIẢ LẬP — lần chạy thủ công trả kết quả mẫu; chưa có API thì mọi lần HR Tool chạy phạm vi Toàn bộ qua POST /search', scr: 'SCR-109' },
+    'P-229': { q: 'Màn Thêm mới hồ sơ chủ trương / phê duyệt KĐT: AI bước 3 (thông tin cơ bản), bước 2 (loại căn cứ), bước 49 (BM-03) gợi ý những mục nào, nguồn trích ghi thế nào', src: 'T63 (D-117); DG-MS13 bước 3, 49; LNV MS13.01; SRS 25 tác vụ dtms-ms13-buoc-3; SRS 27 BR-KPD-02-01', def: 'GIẢ LẬP — gợi ý theo nút ✦ Gợi ý từ AI như Lập ĐXMS (P-216): sáu mục bước 3 từ đề tài / dự án và bóc tách của KĐT; loại căn cứ theo tên tệp; mục BM-03 kế thừa BM-01 đã duyệt', scr: 'SCR-25' },
     'P-220': { q: 'Bộ trường nhập của Tờ trình BM-01 / BM-09 và phiếu BM-03 trên eForm (review nhi 06/11 #8, #15): các ô của mẫu Word chưa có nguồn dữ liệu (Quan điểm thực hiện, Nguồn ngân sách, Đánh giá hiệu quả, số / trích yếu công văn BM-03) do người soạn nhập trên form hay để điền tiếp trên Word', src: 'BM-10.2.1 (BM-01, BM-09, BM-03); review nhi 06/11', def: 'GIẢ LẬP — mọi mục của mẫu có ô nhập trên eForm (không bắt buộc trừ mục bắt buộc của mẫu); ô bỏ trống in "…" trên văn bản', scr: 'SCR-08' },
     'P-206': { q: 'Hình thành gói thầu (bảng bóc tách chi phí ở Thêm mới luồng) là dropdown — danh sách giá trị gồm những gì', src: 'RV-PROTO-0511 #14; HT-DXMS-NOTE màn 8 (cột Hình thành gói thầu); QC-12869 Điều 39', def: 'GIẢ LẬP — Hình thành gói thầu / Không hình thành gói thầu (các trường hợp Điều 39 QC-12869)', scr: 'SCR-96' },
     'P-207': { q: 'Lý do khi chọn Mức ưu tiên Khẩn / Thượng khẩn nhập ở đâu — review ghi ở dòng "Luồng mua sắm / Tìm kiếm"', src: 'RV-PROTO-0511 #1', def: 'GIẢ LẬP — nhập ở Thêm mới luồng (trường Lý do ưu tiên, bắt buộc khi Khẩn / Thượng khẩn), hiện ở Chi tiết luồng; tìm kiếm chỉ lọc theo Mức ưu tiên', scr: 'SCR-96' },
@@ -1952,6 +1953,49 @@
     { id: 'kd4', no: '0712/TB-VHT', date: '24/07/2026', title: 'Kết luận giao ban Ban TGĐ về năng lực đo kiểm dùng chung', type: 'cd', value: 0, remain: 0 },
     { id: 'kd5', no: '0633/QĐ-VHT', date: '09/09/2026', title: 'Phê duyệt Kế hoạch trang bị nội bộ năm 2027 của Trung tâm Vô tuyến', type: 'kh', value: 38.0, remain: 24.6 },
   ];
+  /* T63 (D-117) — GIẢ LẬP P-229: kết quả AI của màn Thêm mới hồ sơ KĐT (khuôn Lập ĐXMS, P-216). Thật: tác vụ dtms-ms13-buoc-2 / buoc-3 (hồ sơ chủ trương)
+     và bước 49 (hồ sơ phê duyệt) đọc tệp, dòng căn cứ, BM-01 đã duyệt; mỗi mục kèm nguồn; không đủ dữ liệu thì không gợi ý mục đó. */
+  const kTy = (n) => (n == null || Number.isNaN(n) ? '' : String(Math.round(n * 100) / 100).replace('.', ','));
+  const kNv = (x) => (x.nvs || []).map((c) => D.nvOf(c)).filter(Boolean);
+  const kDoc = (n) => D.basisDocs.find((d) => d.id === n.basis) || null;
+  D.kdtAiFetch = (x, at) => {
+    const ns = kNv(x), lines = ns.flatMap((n) => D.duToanOf(n.code).filter((l) => l.buy));
+    return { at, parts: [`Đề tài / dự án: ${ns.map((n) => n.code).join(', ') || '-'}`, `Dự toán: ${lines.length} dòng Chi mua sắm`,
+      `Văn bản phê duyệt: ${ns.map((n) => (kDoc(n) || {}).no).filter(Boolean).join(', ') || '-'}`, `Bóc tách của KĐT: ${(x.cost || []).length} khoản mục`] };
+  };
+  /* Bước 3 — sáu mục thông tin cơ bản (SRS 25 tác vụ dtms-ms13-buoc-3). key theo D.aiBasic (purposeText, scope, value, fund, period) + bienPhap. */
+  D.kdtAiBasic = (x) => {
+    const ns = kNv(x), n0 = ns[0] || {}, d0 = kDoc(n0) || {}, src = ns.map((n) => `${n.code}${kDoc(n) ? ' — ' + kDoc(n).no : ''}`).join('; ') || 'căn cứ';
+    const cost = (x.cost || []).reduce((a, r) => a + (Number(r.value) || 0), 0), est = cost || x.est || null;
+    const scopeItems = ((x.cost || []).length ? x.cost.map((r) => r.item) : ns.flatMap((n) => D.duToanOf(n.code).filter((l) => l.buy).map((l) => l.item))).filter(Boolean);
+    const rows = [
+      { key: 'purposeText', label: 'Mục tiêu', value: `Đầu tư ${((t) => t.charAt(0).toLowerCase() + t.slice(1))(String(x.title || '').replace(/^Trang bị |^Đầu tư /, ''))} phục vụ ${ns.map((n) => n.name).join('; ') || 'nhiệm vụ của đơn vị'}.`, from: `${d0.no || src}, mục 2 (mục tiêu)` },
+      { key: 'scope', label: 'Phạm vi, quy mô', value: scopeItems.length ? `${scopeItems.length} khoản mục: ${scopeItems.slice(0, 4).join('; ')}${scopeItems.length > 4 ? '; …' : ''}.` : '', from: (x.cost || []).length ? `Bóc tách của KĐT theo dự toán ${src}` : `Dòng Chi mua sắm của dự toán ${src}` },
+      { key: 'value', label: 'Tổng mức vốn dự kiến (tỷ đồng)', value: est ? kTy(est) : '', from: cost ? `Tổng giá trị dự tính của ${x.cost.length} khoản mục bóc tách` : 'Tổng mức vốn dự kiến của KĐT' },
+      { key: 'fund', label: 'Nguồn vốn', value: n0.fund === 'KHCN' ? 'Vốn KHCN' : n0.fund ? 'Vốn đầu tư phát triển' : '', code: n0.fund || null, from: `${n0.code || src} (nguồn vốn của đề tài / dự án)` },
+      { key: 'period', label: 'Thời gian thực hiện', value: x.period || '01/2027 – 12/2027', from: x.period ? 'Thời gian thực hiện của KĐT' : `Tiến độ ${n0.code || 'đề tài / dự án'}` },
+      { key: 'bienPhap', label: 'Biện pháp, kế hoạch thực hiện', value: 'Lựa chọn nhà thầu theo Quy chế lựa chọn nhà thầu của Tập đoàn; lập hồ sơ chủ trương: tháng 1; thẩm định, phê duyệt: tháng 2–3; lựa chọn nhà thầu, ký hợp đồng: tháng 4–6.', from: `BM-01 mục 6; tiến độ ${n0.code || 'đề tài / dự án'}` }];
+    return rows.filter((r) => r.value);
+  };
+  /* Bước 49 — gợi ý từng mục BM-03 + Phụ lục thuyết minh từ BM-01 đã duyệt của hồ sơ chủ trương (SRS 27 BR-KPD-02-01). ct = { code, no }. */
+  D.kdtAiBm03 = (x, ct) => {
+    const ns = kNv(x), names = ns.map((n) => n.name).join('; ') || x.title, bm = `BM-01 ${ct && ct.no ? ct.no : ''}`.trim();
+    const T = {
+      hienTrang: [`Năng lực hiện có của ${x.unit || 'đơn vị'} chưa đáp ứng nhu cầu của ${names}; một phần công việc phải thuê ngoài.`, '4.1'],
+      phanTichNhuCau: [`Nhu cầu theo ${(x.cost || []).length ? `bóc tách của KĐT: ${x.cost.length} khoản mục` : 'hạng mục kế thừa từ hồ sơ chủ trương'}, Tổng mức vốn KĐT ${kTy(x.est)} tỷ đồng.`, '4.2'],
+      ketLuanCanThiet: [`Đầu tư "${x.title}" là cần thiết để bảo đảm tiến độ ${names}.`, '4.2'],
+      quanDiem: ['Đầu tư đồng bộ, dùng chung cho các nhiệm vụ của đơn vị; ưu tiên thiết bị có khả năng nâng cấp.', '4.3'],
+      phuongAnTk: ['Theo chỉ tiêu kỹ thuật đã thống nhất ở hồ sơ chủ trương và báo giá đạt.', '4.3'],
+      diaDiem: [x.unit ? `Tại ${x.unit}` : '', '1'],
+      giaiPhap: ['Lắp đặt theo đợt giao hàng; nhà cung cấp tích hợp, hiệu chuẩn ban đầu và đào tạo vận hành.', '4.3'],
+      ruiRo: ['Chậm giao hàng do nhập khẩu; biện pháp: điều khoản tiến độ và phạt chậm trong hợp đồng.', '4.4'],
+      phuongPhapTinh: ['Khối lượng theo bóc tách sau khi trừ tồn kho khả dụng; đơn giá thấp nhất trong các báo giá hợp lệ.', '5'],
+      danhGiaHieuQua: [`Chủ động năng lực cho ${names}, giảm chi phí thuê ngoài.`, '5'],
+      toChucTh: [`${x.unit || 'Đơn vị đề xuất'} lập hồ sơ KĐT; đơn vị chủ trì tổ chức lựa chọn nhà thầu, ký hợp đồng; đơn vị đề xuất tiếp nhận, vận hành.`, 'II'],
+      cacMoc: ['Phê duyệt KĐT: tháng 3; lựa chọn nhà thầu: tháng 4–5; ký hợp đồng: tháng 6; bàn giao, nghiệm thu: tháng 9–12.', '6'],
+    };
+    return Object.entries(T).filter(([, [v]]) => v).map(([key, [value, muc]]) => ({ key, value, from: `Kế thừa từ ${bm} mục ${muc}` }));
+  };
   D.basisTypesFor = (process) => (D.familyOf(process) === 'MS13' ? D.kdtBasisTypes : D.basisTypes);
   D.basisDocsFor = (process) => (D.familyOf(process) === 'MS13' ? D.kdtBasisDocs : D.basisDocs);
   /* KĐT của kịch bản chính — tạo ở SCR-55 (cảnh 1); nhảy cảnh thì hệ thống tạo sẵn. */

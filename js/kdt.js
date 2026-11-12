@@ -645,7 +645,7 @@
   function fillLap(code) {
     resetForm('edit', code);
     XF.mode = 'case';
-    C.h = { pl: {}, files: [], rows: [], docs: [], seq: 0, t: {} };
+    C.h = { pl: {}, files: [], rows: [], docs: [], seq: 0, t: {}, ai: {}, aiF: {} };
   }
   /* Bản lưu của màn (Lưu nháp / Gửi) — Flow.ui[SNAP_KEY] của hồ sơ. */
   const snapLap = () => deepC({ name: C.name, v: XF.v, cost: XF.cost, rseq: XF.rseq, h: C.h });
@@ -661,9 +661,8 @@
     resetCase(s.kdt, null);
     Object.assign(C, { kind: k, name: sv.name, parent: s.ctParent || null, est: s.est != null ? tyIn(s.est) : '', err: {}, edit: { tok: tok.id, code: s.code } });
     XF.v = deepC(sv.v); XF.cost = deepC(sv.cost); XF.rseq = sv.rseq || XF.cost.length; XF.err = {};
-    C.h = deepC(sv.h);
-    /* Nội dung BM-03 còn trống → mặc định của eForm bước 50 (kế thừa chủ trương). */
-    if (k === 'KDT') { const ev = window.EVars.of(tok); BM03_KEYS.forEach((key) => { if (!C.h.t[key] && ev[key]) C.h.t[key] = ev[key]; }); }
+    C.h = Object.assign({ ai: {}, aiF: {} }, deepC(sv.h));
+    /* T63 Q4 (D-117): không điền sẵn BM-03 từ eForm bước 50 nữa — gợi ý bước 49 xem ở ✦ Gợi ý từ AI của card Nội dung tờ trình KĐT. */
   }
   function lapScreen(tok) {
     if (!C.edit || C.edit.tok !== tok.id) loadLap(tok);
@@ -682,11 +681,12 @@
   const cardH = (title, right, attrs) => `<section class="vcard" ${attrs || ''}><div class="vcard-h"><h3>${title}</h3>${right ? `<div class="row">${right}</div>` : ''}</div>`;
   function basisCardK() {
     const h = C.h;
-    return `${cardH('Căn cứ pháp lý', `<button type="button" class="vbtn red" data-kcb-up>${icon('upload')} Tải file lên</button><input type="file" id="kc-bfile" multiple hidden>`, 'data-kc-basis')}
+    const aiB = C.kind === 'CT' && (XF.v.nvs || []).length ? aiBtnK('legal', !!C.h.aiF.legal || h.files.some((f) => f.ai)) : '';
+    return `${cardH('Căn cứ pháp lý', `${aiB}<button type="button" class="vbtn red" data-kcb-up>${icon('upload')} Tải file lên</button><input type="file" id="kc-bfile" multiple hidden>`, 'data-kc-basis')}
       ${table([['Thao tác', 80, 'c'], ['Tên tài liệu', 280], ['Loại căn cứ', 320], ['Ngày tạo', 120]], h.files, (f) => `<td class="c">${iconBtn('del', 'Xóa tài liệu', `data-kcb-del="${f.id}"`)}</td>
         <td><span class="clamp">${esc(f.name)}</span></td><td>${vSelect({ id: 'kc-bt-' + f.id, value: f.type, placeholder: 'Chọn loại căn cứ', options: D.kdtBasisTypes.map((b) => ({ value: b.id, label: b.name })),
-          onChange: (val) => { f.type = val; rerender(); } })}</td><td class="num">${esc(f.at)}</td>`, 'Chưa có tài liệu căn cứ')}
-      <div class="lf-legal">${field('Nội dung căn cứ pháp lý', `<textarea class="vctl ta" data-kx="legal" id="kc-legal" maxlength="4000" placeholder="Nhập căn cứ pháp lý (số, ngày, trích yếu văn bản)">${esc(XF.v.legal || '')}</textarea>`)}</div></section>`;
+          onChange: (val) => { f.type = val; f.ai = false; rerender(); } })}${f.ai ? aiTag : ''}</td><td class="num">${esc(f.at)}</td>`, 'Chưa có tài liệu căn cứ')}
+      <div class="lf-legal">${field('Nội dung căn cứ pháp lý' + tagIf('legal'), `<textarea class="vctl ta" data-kx="legal" id="kc-legal" maxlength="4000" placeholder="Nhập căn cứ pháp lý (số, ngày, trích yếu văn bản)">${esc(XF.v.legal || '')}</textarea>`)}</div></section>`;
   }
   function plCardK(kind) {
     const radio = window.UI.vRadio, h = C.h, pe = C.err.pl || {};
@@ -717,12 +717,108 @@
       ${table([['Thao tác', 80, 'c'], ['Tên tài liệu', 420], ['Ngày tạo', 150]], C.h.docs, (f) => `<td class="c">${iconBtn('del', 'Xóa tài liệu', `data-kcd-del="${f.id}"`)}</td>
         <td><span class="clamp">${esc(f.name)}</span></td><td class="num">${esc(f.at)}</td>`, 'Chưa có tài liệu')}</section>`;
   }
+  /* ---------- T63 (D-117): ✦ Gợi ý từ AI theo khuôn Lập ĐXMS (P-216, BR-LDX-C-04; GIẢ LẬP P-229) ----------
+     Hồ sơ chủ trương: Thông tin chung (bước 3, sáu mục — ba mục có ô trên màn, ba mục lưu làm gợi ý cho bước 15) và Căn cứ pháp lý (bước 2).
+     Không có AI bóc tách: MS13 bước 5 là bước người làm. Hồ sơ phê duyệt: Nội dung tờ trình KĐT (bước 49, kế thừa BM-01).
+     Gợi ý + quyết định (Chấp nhận / Sửa / Bỏ) lưu ở C.h.ai, Gửi ghi vào biến aiGoiY của eForm bước 4 (SRS 25: aiCoBan). */
+  const aiTag = window.UI.aiTag;
+  const aiBtnK = (sec, again) => `<button type="button" class="vbtn secondary lf-ai-btn" data-kc-ai="${sec}">✦ ${again ? 'Gợi ý lại' : 'Gợi ý từ AI'}</button>`;
+  const tagIf = (k) => (C.h && C.h.aiF && C.h.aiF[k] ? ' ' + aiTag : '');
+  const sameNvs = (a, b) => (a || []).join('|') === (b || []).join('|');
+  function kdtView() {
+    const x = Flow.findKdt(C.kdt) || {}, v = XF.v, e = estNum(v.est);
+    return { title: C.name || x.title, unit: x.unit, nvs: v.nvs || [], est: C.kind === 'KDT' ? estNum(C.est) : e != null && !Number.isNaN(e) ? e : x.est, period: v.period,
+      cost: XF.cost.map((r) => ({ item: (costLine(r.line) || {}).item, value: estNum(r.value) })) };
+  }
+  function syncLap() {
+    const t = document.getElementById('kc-name'), ei = document.getElementById('kc-est');
+    if (t) C.name = t.value;
+    if (ei && !ei.disabled) C.est = ei.value;
+  }
+  const pop = (title, body, apply) => window.UI.aiPop(title, body, apply, rerender);
+  const strip = () => (C.h.ai && C.h.ai.fetch ? window.UI.aiFetchStrip(C.h.ai.fetch, null) : '');
+  /* Thông tin chung — bước 3. ON_SCREEN: mục có ô trên màn (XF.v); mục còn lại chỉ lưu quyết định (dùng ở bước 15). */
+  const ON_SCREEN = { purposeText: 'purpose', value: 'est', period: 'period' };
+  function popChungK() {
+    const kv = kdtView(), old = C.h.ai.chung, stale = !!(old && !sameNvs(old.nvs, kv.nvs));
+    const fetch = D.kdtAiFetch(kv, today());
+    const rows = D.kdtAiBasic(kv).map((a) => {
+      const o = old && old.rows.find((r) => r.key === a.key), sua = o && o.quyetDinh === 'Sửa';
+      return { key: a.key, muc: a.label, goiY: a.value, nguon: a.from, code: a.code || null, draft: sua ? o.noiDungSua : a.value, on: !o || o.quyetDinh !== 'Bỏ', stale: sua && stale };
+    });
+    const cur = (r) => { const f = ON_SCREEN[r.key]; return f ? (XF.v[f] ? esc(XF.v[f]) : '<span class="faint">Chưa nhập</span>') : '<span class="faint">Không có ô trên màn — dùng ở bước 15</span>'; };
+    const body = rows.map((r) => `<tr data-kc-pop-row="${esc(r.key)}"><td class="c">${window.UI.aiCb(`data-kc-pop-on="${esc(r.key)}"`, r.on)}</td><td><b>${esc(r.muc)}</b>${r.stale ? '<div class="t-warn">Bạn đã sửa — đề tài / dự án đổi, xem lại</div>' : ''}</td>
+      <td>${cur(r)}</td><td><textarea class="vctl ta" rows="2" maxlength="2000" data-kc-pop-txt="${esc(r.key)}">${esc(r.draft)}</textarea><div class="cap">Nguồn: ${esc(r.nguon)}</div></td></tr>`).join('')
+      || '<tr><td colspan="4" class="faint">Chưa có kết quả gợi ý của AI.</td></tr>';
+    pop('Thông tin chung', `${window.UI.aiFetchStrip(fetch, null)}<h4 class="lf-pop-h">Bước 3 · Gợi ý thông tin cơ bản KĐT</h4>
+      ${window.UI.aiTbl([['Áp dụng', 70, 'c'], ['Mục', 190], ['Hiện tại', 220], ['Gợi ý (sửa được)', 460]], body)}`, (q) => {
+      const out = rows.map((r) => {
+        const on = q(`[data-kc-pop-on="${r.key}"]`).checked, txt = q(`[data-kc-pop-txt="${r.key}"]`).value.trim();
+        const d = !on ? 'Bỏ' : txt !== r.goiY ? 'Sửa' : 'Chấp nhận';
+        const f = ON_SCREEN[r.key];
+        if (f && on) { XF.v[f] = txt; C.h.aiF[f] = true; delete C.err[f === 'est' ? 'xest' : f]; }
+        return { key: r.key, muc: r.muc, goiY: r.goiY, nguon: r.nguon, code: r.code, quyetDinh: d, noiDungSua: d === 'Sửa' ? txt : '' };
+      });
+      C.h.ai.chung = { nvs: kv.nvs.slice(), rows: out };
+      C.h.ai.fetch = fetch;
+      return `Đã áp dụng gợi ý AI vào Thông tin chung: ${out.filter((r) => r.quyetDinh !== 'Bỏ').length} / ${out.length} mục`;
+    });
+  }
+  /* Căn cứ pháp lý — bước 2: loại căn cứ của tệp đã tải (theo tên tệp), Nội dung căn cứ pháp lý (văn bản phê duyệt của đề tài / dự án). */
+  const KTYPE_HINT = [[/hop.?dong|h[đd][-_ ]|thoa.?thuan|ttht/i, 'hd'], [/chi.?dao|ket.?luan|giao.?ban|tb[-_ ]/i, 'cd'], [/q[dđ]|quyet.?dinh|ke.?hoach|kh[-_ ]|pakd|de.?tai/i, 'kh']];
+  function popLegalK() {
+    const kv = kdtView(), tName = (c) => ((D.kdtBasisTypes.find((t) => t.id === c) || {}).name || '-');
+    const guess = (name) => (KTYPE_HINT.find(([re]) => re.test(name)) || [null, 'kh'])[1];
+    const docs = kv.nvs.map((c) => D.nvOf(c)).filter(Boolean).map((n) => ({ n, d: D.basisDocs.find((y) => y.id === n.basis) })).filter((o) => o.d);
+    /* Đề tài / dự án chưa có văn bản phê duyệt trên hệ thống: AI ghi tên, mã đề tài / dự án (văn bản xem ở tệp căn cứ đính kèm). */
+    const noDoc = kv.nvs.map((c) => D.nvOf(c)).filter((n) => n && !docs.some((o) => o.n === n));
+    const lines = docs.filter(({ d }) => !String(XF.v.legal || '').includes(d.no)).map(({ d }) => `- Quyết định số ${d.no} ngày ${d.date} — ${d.title}.`)
+      .concat(noDoc.filter((n) => !String(XF.v.legal || '').includes(n.code)).map((n) => `- ${n.kind} "${n.name}" (${n.code}) — văn bản phê duyệt theo tài liệu căn cứ đính kèm.`));
+    const legal = lines.length ? `${XF.v.legal ? `${XF.v.legal}\n` : ''}${lines.join('\n')}` : XF.v.legal || '';
+    const files = C.h.files.map((f) => ({ f, c: guess(f.name) }));
+    const body = (files.map(({ f, c }) => `<tr data-kc-pop-row="file-${f.id}"><td class="c">${window.UI.aiCb(`data-kc-pop-fon="${f.id}"`, c !== f.type)}</td><td><span class="clamp">${esc(f.name)}</span></td>
+      <td>${f.type ? esc(tName(f.type)) : '<span class="faint">Chưa chọn</span>'}</td><td>${esc(tName(c))}<div class="cap">Nguồn: tên tệp</div></td></tr>`).join('')
+      || '<tr><td colspan="4" class="faint">Chưa có tài liệu — tải file lên để AI gợi ý loại căn cứ</td></tr>') +
+      `<tr data-kc-pop-row="legal"><td class="c">${window.UI.aiCb('data-kc-pop-on="legal"', legal !== (XF.v.legal || ''))}</td><td><b>Nội dung căn cứ pháp lý</b></td>
+      <td colspan="2"><textarea class="vctl ta" rows="4" maxlength="4000" data-kc-pop-txt="legal">${esc(legal)}</textarea><div class="cap">Nguồn: ${docs.length ? `văn bản phê duyệt ${esc(docs.map(({ d }) => d.no).join(', '))} của ${esc(docs.map(({ n }) => n.code).join(', '))}` : ''}${docs.length && noDoc.length ? '; ' : ''}${noDoc.length ? `thông tin đề tài / dự án ${esc(noDoc.map((n) => n.code).join(', '))}` : ''}</div></td></tr>`;
+    pop('Căn cứ pháp lý', window.UI.aiTbl([['Áp dụng', 70, 'c'], ['Tên tài liệu', 260], ['Loại hiện tại', 260], ['Gợi ý loại căn cứ', 300]], body), (q) => {
+      let n = 0;
+      files.forEach(({ f, c }) => { if (q(`[data-kc-pop-fon="${f.id}"]`).checked) { f.type = c; f.ai = true; n += 1; } });
+      const on = q('[data-kc-pop-on="legal"]').checked;
+      if (on) { XF.v.legal = q('[data-kc-pop-txt="legal"]').value; C.h.aiF.legal = true; }
+      if (!C.h.ai.fetch) C.h.ai.fetch = D.kdtAiFetch(kv, today());
+      return `Đã áp dụng gợi ý AI vào Căn cứ pháp lý: ${n} tài liệu${on ? ', nội dung căn cứ pháp lý' : ''}`;
+    });
+  }
+  /* Nội dung tờ trình KĐT — bước 49: từng mục BM-03 + Phụ lục thuyết minh, kế thừa BM-01 đã duyệt của hồ sơ chủ trương đã chọn. */
+  function popBm03K() {
+    const kv = kdtView(), x = Flow.findKdt(C.kdt), c = C.parent && Flow.kdtCases().find((y) => y.code === C.parent);
+    const tt = c && ttOf(c, x && x.unit), sug = D.kdtAiBm03(kv, { code: C.parent, no: tt ? tt.no : '' });
+    const label = Object.fromEntries(BM03.flatMap(([, fs]) => fs.map(([k, l]) => [k, l])));
+    const old = C.h.ai.bm03, stale = !!(old && old.ct !== C.parent);
+    const body = sug.map((r) => { const cur = C.h.t[r.key];
+      return `<tr data-kc-pop-row="${esc(r.key)}"><td class="c">${window.UI.aiCb(`data-kc-pop-on="${esc(r.key)}"`, !cur)}</td><td><b>${esc(label[r.key] || r.key)}</b>${cur && stale ? '<div class="t-warn">Hồ sơ chủ trương đổi — xem lại</div>' : ''}</td>
+      <td>${cur ? `<span class="clamp">${esc(cur)}</span>` : '<span class="faint">Chưa nhập</span>'}</td><td><textarea class="vctl ta" rows="2" maxlength="4000" data-kc-pop-txt="${esc(r.key)}">${esc(r.value)}</textarea><div class="cap">Nguồn: ${esc(r.from)}</div></td></tr>`; }).join('');
+    pop('Nội dung tờ trình KĐT', `<h4 class="lf-pop-h">Bước 49 · Gợi ý hồ sơ KĐT từ chủ trương ${esc(C.parent || '')}</h4>
+      ${window.UI.aiTbl([['Áp dụng', 70, 'c'], ['Mục', 220], ['Hiện tại', 260], ['Gợi ý (sửa được)', 420]], body)}`, (q) => {
+      let n = 0;
+      const rows = sug.map((r) => {
+        const on = q(`[data-kc-pop-on="${r.key}"]`).checked, txt = q(`[data-kc-pop-txt="${r.key}"]`).value.trim();
+        if (on) { C.h.t[r.key] = txt; C.h.aiF['t.' + r.key] = true; n += 1; }
+        return { key: r.key, goiY: r.value, nguon: r.from, quyetDinh: !on ? 'Bỏ' : txt !== r.value ? 'Sửa' : 'Chấp nhận', noiDungSua: on && txt !== r.value ? txt : '' };
+      });
+      C.h.ai.bm03 = { ct: C.parent, rows };
+      return `Đã áp dụng gợi ý AI vào Nội dung tờ trình KĐT: ${n} / ${sug.length} mục`;
+    });
+  }
   function bm03Card() {
     const t = C.h.t;
     const ctl = ([k, label, kind]) => (kind === 'tf'
-      ? field(label, `<input class="vctl" data-kt="${k}" id="kc-t-${k}" maxlength="500" placeholder="Nhập ${label.toLowerCase()}" value="${esc(t[k] || '')}">`)
-      : field(label, `<textarea class="vctl ta" rows="2" data-kt="${k}" id="kc-t-${k}" maxlength="4000" placeholder="Nhập ${label.toLowerCase()}">${esc(t[k] || '')}</textarea>`, { cls: 'span3' }));
-    return `${cardH('Nội dung tờ trình KĐT', '', 'data-kc-bm03')}
+      ? field(label + tagIf('t.' + k), `<input class="vctl" data-kt="${k}" id="kc-t-${k}" maxlength="500" placeholder="Nhập ${label.toLowerCase()}" value="${esc(t[k] || '')}">`)
+      : field(label + tagIf('t.' + k), `<textarea class="vctl ta" rows="2" data-kt="${k}" id="kc-t-${k}" maxlength="4000" placeholder="Nhập ${label.toLowerCase()}">${esc(t[k] || '')}</textarea>`, { cls: 'span3' }));
+    const ai = C.h.ai.bm03, old = !!(ai && ai.ct !== C.parent);
+    return `${cardH('Nội dung tờ trình KĐT', C.parent ? aiBtnK('bm03', !!ai) : '', 'data-kc-bm03')}
+      ${old ? `<p class="t-warn" data-kc-ai-old>Hồ sơ chủ trương đã đổi — gợi ý đã áp dụng theo ${esc(ai.ct)}. Bấm ✦ Gợi ý lại.</p>` : ''}
       ${BM03.map(([g, fs]) => `<div class="lf-sub"><div class="lf-sub-h"><h4>${esc(g)}</h4></div><div class="grid3">${fs.map(ctl).join('')}</div></div>`).join('')}</section>`;
   }
   /* Số / ngày tờ trình chủ trương đã phê duyệt (văn bản BM-01 của hồ sơ chủ trương). */
@@ -745,9 +841,11 @@
           : 'Luật Loại hồ sơ, Khoản đầu tư như trước (blockOf): KĐT chỉ có một hồ sơ đang xử lý; hồ sơ chủ trương khi chưa có chủ trương được duyệt (hồ sơ dừng / đã chuyển luồng không tính). Quy trình không chọn tay (D-7).',
         '<b>Dữ liệu ghi về đâu</b>: như ĐXMS — màn Lập ĐXMS ghi luôn vào bản ghi ĐXMS (đối tượng cha). Ở đây trường KĐT (đề tài / dự án, bóc tách, Lĩnh vực, Loại, Tính chất, Tổng mức vốn dự kiến, Thời gian, Mật, Mục tiêu, Nội dung căn cứ pháp lý) <b>cập nhật vào KĐT</b> khi Lưu nháp / Gửi (bước 01 / 05 đọc <code>duToanChon</code> từ KĐT; 3 yếu tố phân luồng của hồ sơ lấy theo KĐT). Tên hồ sơ, tệp căn cứ, phụ lục, nhân sự, nội dung tờ trình lưu ở hồ sơ.',
         `<b>GIẢ LẬP</b>: danh mục phụ lục kèm theo Tờ trình ${kd ? 'BM-03' : 'BM-01'} — BM-8.6.5 không liệt kê phụ lục của tờ trình, dùng cơ chế Có / Không + tệp của ĐXMS (F7) với ${PL_LIST[kd ? 'KDT' : 'CT'].length} loại phụ lục KĐT; mẫu tài liệu (Chọn mẫu tài liệu) theo danh mục biểu mẫu BM-8.6.5. Tệp tải lên và tệp phụ lục vào Danh sách tài liệu của hồ sơ. Nhân sự thực hiện: vai trò = vai trò có bước người dùng trong MS13 (như D-75 của ĐXMS).`,
+        kd ? '<b>T63 (D-117)</b>: card <b>Nội dung tờ trình KĐT</b> có nút <b>✦ Gợi ý từ AI</b> (bước 49) như màn Lập ĐXMS: popup gợi ý từng mục BM-03 / Phụ lục thuyết minh kế thừa BM-01 của hồ sơ chủ trương đã chọn, bỏ chọn / sửa → Áp dụng; trường đã áp dụng có nhãn ✦ AI. Không còn điền sẵn BM-03 (Q4). Đổi hồ sơ chủ trương → cảnh báo, Gợi ý lại. GIẢ LẬP P-229.'
+          : '<b>T63 (D-117)</b>: nút <b>✦ Gợi ý từ AI</b> như màn Lập ĐXMS (P-216) ở <b>Thông tin chung</b> (bước 3: Mục tiêu, Tổng mức vốn dự kiến, Thời gian điền vào màn; Phạm vi quy mô, Nguồn vốn, Biện pháp kế hoạch không có ô trên màn — lưu quyết định cho bước 15, Gửi ghi biến <code>aiGoiY</code> của eForm bước 4) và <b>Căn cứ pháp lý</b> (bước 2: loại căn cứ theo tên tệp, nội dung căn cứ pháp lý). Không có AI bóc tách (MS13 bước 5 do người làm). Chưa bấm AI vẫn Gửi được. GIẢ LẬP P-229.',
         'D-103 (hai hồ sơ: chủ trương / phê duyệt KĐT), D-104 (KĐT nhiều đề tài / dự án; bóc tách theo dòng dự toán của từng đề tài, cột Mã đề tài / dự án; Lĩnh vực các đề tài khác nhau không chặn — GIẢ LẬP).',
       ].concat(ed ? ['Mở lại từ Việc của tôi (việc ' + (kd ? '50' : '01 / 04 / 05') + ' của hồ sơ tạo từ màn này): Khoản đầu tư, Loại hồ sơ' + (kd ? ', Hồ sơ chủ trương, Tổng mức vốn KĐT' : '') + ' khoá.'] : []),
-      q: ['P-59', 'P-193'], src: 'task-management/components/task-create (mode create) + profile-management/profile-form (mode create / create/:taskId) · /khcn-profile-management/create',
+      q: ['P-59', 'P-193', 'P-229'], src: 'task-management/components/task-create (mode create) + profile-management/profile-form (mode create / create/:taskId) · /khcn-profile-management/create',
     };
   }
   function lapForm(code) {
@@ -772,7 +870,8 @@
     const right = `<button type="button" class="vbtn secondary grey" data-go="${back}">Huỷ</button><button type="button" class="vbtn secondary" id="kc-draft" ${ms15 ? 'disabled' : ''}>Lưu nháp</button><button type="submit" class="vbtn primary" id="kc-save" ${ms15 ? 'disabled' : ''}>Gửi</button>`;
     return `<form class="pg" data-kdt-case-form>
       ${head({ title: LAP_TITLE[C.kind][ed ? 1 : 0], back, lg: true, info: lapInfo(kd, ed), right })}
-      <section class="vcard" data-kc-chung><h3>Thông tin chung</h3>
+      <section class="vcard" data-kc-chung><div class="vcard-h"><h3>Thông tin chung</h3>${!kd && v.nvs.length ? `<div class="row">${aiBtnK('chung', !!C.h.ai.chung)}</div>` : ''}</div>
+        ${!kd && C.h.ai.chung && !sameNvs(C.h.ai.chung.nvs, v.nvs) ? `<p class="t-warn" data-kc-ai-old>Đề tài / dự án đã đổi — gợi ý đã áp dụng theo ${esc(C.h.ai.chung.nvs.join(', '))}. Bấm ✦ Gợi ý lại; mục bạn đã sửa được giữ lại để xem lại.</p>` : ''}
         ${kd && !ed ? `<div data-kc-lech-box>${lechHtml(s)}</div>` : ''}
         <div class="grid3">
           ${field('Mã hồ sơ', `<input class="vctl" placeholder="Hệ thống tự sinh" value="${esc(ed ? ed.code : '')}" disabled>`)}
@@ -790,12 +889,12 @@
           ${field('Người tạo', ro('kc-creator', ed ? Flow.state.creator : persona(Flow.state.persona).name))}
           ${field('Ngày tạo', ro('kc-created', today()))}
           ${cat('field', 'Lĩnh vực đầu tư', !kd)}${cat('type', 'Loại KĐT', !kd)}${cat('nature', 'Tính chất tài sản')}
-          ${kd ? '' : field('Tổng mức vốn dự kiến (tỷ đồng)', `<input class="vctl" data-kx="est" id="kc-xest" maxlength="15" placeholder="Nhập tổng mức vốn dự kiến" value="${esc(v.est)}" ${err.xest ? 'aria-invalid="true"' : ''}>`, { req: true, err: err.xest })}
-          ${field('Thời gian thực hiện', `<input class="vctl" data-kx="period" id="kc-period" maxlength="255" placeholder="Ví dụ: 01/2027 – 12/2027" value="${esc(v.period)}">`)}
+          ${kd ? '' : field('Tổng mức vốn dự kiến (tỷ đồng)' + tagIf('est'), `<input class="vctl" data-kx="est" id="kc-xest" maxlength="15" placeholder="Nhập tổng mức vốn dự kiến" value="${esc(v.est)}" ${err.xest ? 'aria-invalid="true"' : ''}>`, { req: true, err: err.xest })}
+          ${field('Thời gian thực hiện' + tagIf('period'), `<input class="vctl" data-kx="period" id="kc-period" maxlength="255" placeholder="Ví dụ: 01/2027 – 12/2027" value="${esc(v.period)}">`)}
           ${field('Mật', vSelect({ id: 'kc-sec', value: v.secret, disabled: kd && v.secret === 'Có', options: ['Không', 'Có'].map((p) => ({ value: p, label: p })), onChange: upd('secret') }))}
-          ${field('Mục tiêu', `<textarea class="vctl ta" data-kx="purpose" id="kc-purpose" maxlength="2000" placeholder="Nhập mục tiêu đầu tư">${esc(v.purpose)}</textarea>`, { cls: 'span3' })}
+          ${field('Mục tiêu' + tagIf('purpose'), `<textarea class="vctl ta" data-kx="purpose" id="kc-purpose" maxlength="2000" placeholder="Nhập mục tiêu đầu tư">${esc(v.purpose)}</textarea>`, { cls: 'span3' })}
         </div></section>
-      ${costCard(false, { title: 'Căn cứ và nội dung KĐT — Thông tin đề tài / dự án', top: nvTop, msg: err.cost0 })}
+      ${costCard(false, { title: 'Căn cứ và nội dung KĐT — Thông tin đề tài / dự án', top: nvTop + (kd ? '' : strip()), msg: err.cost0 })}
       ${kd ? bm03Card() : ''}${basisCardK()}${plCardK(C.kind)}${membersCardK()}${docsCardK()}</form>`;
   }
 
@@ -811,7 +910,12 @@
         const opt = (ev.basisDocOptions || []).find((o) => o.type === bt);
         Flow.setUiMany({ basisType: bt, basisDoc: bt === ev.basisType ? ev.basisDoc : opt ? opt.value : ev.basisDoc });
       }
-      if (k === '4') Flow.setUiMany({ secret: XF.v.secret === 'Có', tenDeXuat: C.name.trim() });
+      if (k === '4') {
+        /* T63: gợi ý + quyết định của popup Thông tin chung → biến aiGoiY của eForm bước 4 (SRS 25: aiCoBan); Nguồn vốn Chấp nhận / Sửa → fund. */
+        const ai = C.h.ai && C.h.ai.chung, f = ai && ai.rows.find((r) => r.key === 'fund' && r.quyetDinh !== 'Bỏ' && r.code);
+        Flow.setUiMany(Object.assign({ secret: XF.v.secret === 'Có', tenDeXuat: C.name.trim() },
+          ai ? { aiGoiY: ai.rows.map((r) => ({ key: r.key, muc: r.muc, goiY: r.goiY, nguon: r.nguon, quyetDinh: r.quyetDinh, noiDungSua: r.noiDungSua })) } : {}, f ? { fund: f.code } : {}));
+      }
       if (k === '5') { const ev = H.of(t); Flow.setUiMany(window.EForms.MS13({ task: 5 }, H.h).write({ bocTach: ev.bocTach, hangMucThem: [] })); }
       if (k === '50') {
         const vals = BM03_KEYS.reduce((o, key) => { const val = String(C.h.t[key] || '').trim(); if (val) o[key] = val; return o; }, {});
@@ -925,6 +1029,8 @@
     if (!t.closest || !t.closest('[data-kdt-case-form]') || !C.h) return;
     const h = C.h;
     if (t.closest('#kc-draft')) { e.preventDefault(); saveLap('draft'); return; }
+    const ai = t.closest('[data-kc-ai]');
+    if (ai) { e.preventDefault(); syncLap(); if (!h.ai) h.ai = {}; if (!h.aiF) h.aiF = {}; ({ chung: popChungK, legal: popLegalK, bm03: popBm03K })[ai.dataset.kcAi](); return; }
     const pl = t.closest('[data-kcp-pl]');
     if (pl) { const [k, val] = pl.dataset.kcpPl.split('|'); h.pl[k] = Object.assign({}, h.pl[k], { on: val }); if (C.err.pl) delete C.err.pl[k]; rerender(); return; }
     const pu = t.closest('[data-kcp-up]');

@@ -162,7 +162,8 @@
   /* Task 04 (BPMN MS01 v1.1): mục đích; phạm vi / quy mô; giá trị, nguồn vốn, thời gian; biện pháp / kế hoạch thực hiện — theo thứ tự mục 1–6
      của Tờ trình BM-01 / BM-09 (BM-10.2.1). Biện pháp, Kế hoạch tổ chức thực hiện (mục 6) chỉ có ở ĐXMS; KĐT giữ bộ mục của MS13. */
   function basicRows() {
-    if (kdt()) return D.aiBasic;
+    /* T63 (D-117): KĐT — cùng nguồn gợi ý với popup Thông tin chung của màn Thêm mới hồ sơ chủ trương (D.kdtAiBasic, GIẢ LẬP P-229). */
+    if (kdt()) { const k = Flow.findKdt(Flow.state.kdt); const r = k ? D.kdtAiBasic(k) : []; return r.length ? r : D.aiBasic; }
     const d = R().doc || {}, src = (basisDoc() || {}).no || 'căn cứ';
     return D.aiBasic.concat([
       { key: 'bienPhap', label: 'Biện pháp thực hiện', value: vv(d.measures) || '', from: `${src}; BM-01 mục 6 (Luật Đấu thầu / Quy chế LCNT của Tập đoàn)` },

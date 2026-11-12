@@ -88,6 +88,27 @@
       <div class="vmodal-b">${o.body}${o.actions ? `<div class="vmodal-acts">${o.actions}</div>` : ''}</div>`, { v: o.size || 'sm' });
   }
 
+  /* ---------- ✦ Gợi ý từ AI dùng chung (BR-LDX-C-04; T63 / D-117: Lập ĐXMS và Thêm mới hồ sơ chủ trương / phê duyệt KĐT) ----------
+     Popup gợi ý kèm nguồn: bỏ chọn / sửa → [Áp dụng vào màn] (apply(q) trả câu toast, false = giữ popup); [Hủy] giữ nguyên màn. done(): vẽ lại màn. */
+  function aiPop(title, body, apply, done) {
+    const m = vModal({ title: `✦ Gợi ý từ AI — ${title}`, size: 'xl',
+      body: `<div data-lf-ai-pop>${body}<p class="cap">Bỏ chọn mục không dùng, sửa nội dung nếu cần, rồi bấm Áp dụng để điền vào màn.</p></div>`,
+      actions: '<button type="button" class="vbtn secondary" data-close>Hủy</button><button type="button" class="vbtn primary" data-lf-ai-apply>Áp dụng vào màn</button>' });
+    m.el.querySelector('[data-lf-ai-apply]').addEventListener('click', () => {
+      const msg = apply((sel) => m.el.querySelector(sel));
+      if (msg === false) return;
+      m.close();
+      toast(`${msg} — vẫn sửa được trên màn.`, 'success');
+      if (done) done();
+    });
+    return m;
+  }
+  const aiTag = '<span class="lf-ai-tag" title="AI gợi ý — người dùng xác nhận">✦ AI</span>';
+  const aiTbl = (head, body) => `<div class="vtable-vp"><table class="vtable"><thead><tr>${head.map(([t, w, c]) => `<th style="width:${w}px" class="${c || ''}">${t}</th>`).join('')}</tr></thead><tbody>${body}</tbody></table></div>`;
+  const aiCb = (attr, on) => `<input type="checkbox" ${attr} ${on ? 'checked' : ''} aria-label="Áp dụng">`;
+  /* Dải "AI đã lấy dữ liệu căn cứ" (bước 2): f = { at, parts[] }, ent = { code, name }. */
+  const aiFetchStrip = (f, ent) => `<div class="lf-ai2" data-lf-ai2><b>✦ Bước 2 · AI đã lấy dữ liệu căn cứ</b> <span class="cap">${ent ? `${esc(ent.code)} — ${esc(ent.name || '')} · ` : ''}lúc ${esc(f.at)}</span><div>${f.parts.map(esc).join(' · ')}</div></div>`;
+
   /* Nút Toàn màn hình cạnh nút đóng (T29 B18, B19): thêm vào hộp thoại vModal đã mở. vht-modal thật: cờ maximizable / class full-screen.
      key: khoá localStorage nhớ lựa chọn theo người xem (chỉ là tiện ích hiển thị); attr: thuộc tính data-* của nút. */
   const MAX_ON = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M16 21h3a2 2 0 0 0 2-2v-3"/></svg>';
@@ -486,7 +507,7 @@
   function vDate(attrs, value, o) {
     o = o || {};
     return `<div class="vdate"><input class="vctl" data-vdate ${attrs || ''} maxlength="10" inputmode="numeric" placeholder="${o.ph || 'DD/MM/YYYY'}" value="${esc(value || '')}"${o.disabled ? ' disabled' : ''}${o.invalid ? ' aria-invalid="true"' : ''}>
-      <button type="button" class="vdate-ic" data-vdate-pick tabindex="-1" aria-label="Chọn ngày"${o.disabled ? ' disabled' : ''}>${CAL}</button><input type="date" class="vdate-native" tabindex="-1" aria-hidden="true"></div>`;
+      <button type="button" class="vdate-ic" data-vdate-pick tabindex="-1" aria-label="Chọn ngày"${o.disabled ? ' disabled' : ''}>${CAL}</button></div>`;
   }
   const DMY = /\d{1,2}\/\d{1,2}\/\d{4}/g;
   function vDateRange(o) {
@@ -496,6 +517,11 @@
       a = vDate('data-vrange="a"', m[0] || ''); b = vDate('data-vrange="b"', m[1] || '');
       hid = `<input type="hidden" data-vrange-val ${o.combined[0]} value="${esc(o.combined[1] || '')}">`;
     } else { a = vDate(o.from[0], o.from[1]); b = vDate(o.to[0], o.to[1]); }
+    /* T65 #74: split: [nhãn từ, nhãn đến] — hai trường riêng, mỗi trường một nhãn (Từ ngày | Đến ngày), không có dấu "-". */
+    if (o.split) {
+      return `<div class="vfield vrange-a ${o.cls || ''}"><div class="lr"><label>${o.split[0]}</label></div>${a}</div>`
+        + `<div class="vfield vrange-b ${o.cls || ''} ${o.err ? 'invalid' : ''}"><div class="lr"><label>${o.split[1]}</label></div>${b}${o.err ? `<p class="msg">${esc(o.err)}</p>` : ''}</div>`;
+    }
     return `<div class="vfield vrange ${o.cls || ''} ${o.err ? 'invalid' : ''}"><div class="lr"><label>${o.label}</label></div>
       <div class="vrange-row">${a}<span class="vrange-sep">-</span>${b}${hid}</div>${o.err ? `<p class="msg">${esc(o.err)}</p>` : ''}</div>`;
   }
@@ -515,23 +541,106 @@
       }
     }
   }, true);
-  document.addEventListener('click', (e) => {
-    const b = e.target.closest && e.target.closest('[data-vdate-pick]');
-    if (!b) return;
-    const box = b.closest('.vdate'), inp = box.querySelector('input[data-vdate]'), nat = box.querySelector('.vdate-native');
-    const m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(inp.value.trim());
-    nat.value = m ? `${m[3]}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}` : '';
-    try { nat.showPicker(); } catch (er) { nat.focus(); }
-  });
-  document.addEventListener('change', (e) => {
-    const nat = e.target;
-    if (!nat.matches || !nat.matches('.vdate-native') || !nat.closest('.vdate') || !nat.value) return;
-    const inp = nat.closest('.vdate').querySelector('input[data-vdate]');
-    if (!inp) return;
-    const [y, mo, d] = nat.value.split('-');
-    inp.value = `${d}/${mo}/${y}`;
+  /* ---------- Popover chọn ngày theo design system (T65 — kho comment #72, #73) ----------
+     Theo: fe/repo-khcn-core-fe/projects/ui/src/custom/base/primeng/datepicker (cmm-datepicker = PrimeNG p-datepicker, dateFormat DD/MM/YYYY,
+     showButtonBar) + theme datepicker (ô ngày tròn 2.25rem, chọn = màu chủ đạo) + locale vi (firstDayOfWeek 1, tên tháng, Hôm nay / Xóa).
+     Thay lịch mặc định của trình duyệt (input type=date / showPicker). Tiêu đề bấm được: tháng → lưới 12 tháng, năm → lưới 12 năm. */
+  const DP_MONTHS = ['Tháng Một', 'Tháng Hai', 'Tháng Ba', 'Tháng Tư', 'Tháng Năm', 'Tháng Sáu', 'Tháng Bảy', 'Tháng Tám', 'Tháng Chín', 'Tháng Mười', 'Tháng Mười Một', 'Tháng Mười Hai'];
+  const DP_SHORT = ['Th1', 'Th2', 'Th3', 'Th4', 'Th5', 'Th6', 'Th7', 'Th8', 'Th9', 'Th10', 'Th11', 'Th12'];
+  const DP_WD = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
+  const DP_PREV = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>';
+  const DP_NEXT = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>';
+  let DP = null;
+  const dp2 = (n) => String(n).padStart(2, '0');
+  const dpFmt = (d) => `${dp2(d.getDate())}/${dp2(d.getMonth() + 1)}/${d.getFullYear()}`;
+  function dpParse(s) {
+    const m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(String(s || '').trim());
+    if (!m) return null;
+    const d = new Date(+m[3], +m[2] - 1, +m[1]);
+    return d.getMonth() === +m[2] - 1 ? d : null;
+  }
+  /* Hôm nay theo đồng hồ của prototype (dữ liệu mẫu), không có thì ngày máy. */
+  function dpToday() {
+    try { const s = window.Flow && window.Flow.state && window.Flow.dateOf(window.Flow.state.clock); const d = dpParse(s); if (d) return d; } catch (e) { /* bỏ qua */ }
+    const n = new Date(); return new Date(n.getFullYear(), n.getMonth(), n.getDate());
+  }
+  function dpClose() { if (DP) { DP.el.remove(); DP = null; } }
+  function dpBody() {
+    const { y, m, mode } = DP, sel = dpParse(DP.inp.value), tdy = dpToday();
+    const same = (a, b) => a && b && a.getTime() === b.getTime();
+    if (mode === 'month') {
+      return `<div class="vdp-mg">${DP_SHORT.map((t, i) => `<button type="button" class="vdp-c ${sel && sel.getFullYear() === y && sel.getMonth() === i ? 'on' : ''}" data-vdp-month="${i}">${t}</button>`).join('')}</div>`;
+    }
+    if (mode === 'year') {
+      const y0 = Math.floor(y / 10) * 10 - 1;
+      return `<div class="vdp-mg">${Array.from({ length: 12 }, (_, i) => y0 + i).map((v) => `<button type="button" class="vdp-c ${sel && sel.getFullYear() === v ? 'on' : ''}" data-vdp-year="${v}">${v}</button>`).join('')}</div>`;
+    }
+    const first = new Date(y, m, 1), lead = (first.getDay() + 6) % 7, start = new Date(y, m, 1 - lead);
+    const cells = Array.from({ length: 42 }, (_, i) => new Date(start.getFullYear(), start.getMonth(), start.getDate() + i));
+    const rows = [0, 1, 2, 3, 4, 5].map((r) => `<tr>${cells.slice(r * 7, r * 7 + 7).map((d) => `<td><button type="button" class="vdp-d ${d.getMonth() !== m ? 'oth' : ''} ${same(d, sel) ? 'on' : ''} ${same(d, tdy) ? 'tdy' : ''}" data-vdp-day="${dpFmt(d)}" aria-label="${dpFmt(d)}"${same(d, sel) ? ' aria-selected="true"' : ''}>${d.getDate()}</button></td>`).join('')}</tr>`).join('');
+    return `<table class="vdp-g"><thead><tr>${DP_WD.map((w) => `<th>${w}</th>`).join('')}</tr></thead><tbody>${rows}</tbody></table>`;
+  }
+  function dpRender() {
+    const { y, m, mode } = DP;
+    const title = mode === 'year' ? `<span class="vdp-tt">${Math.floor(y / 10) * 10} – ${Math.floor(y / 10) * 10 + 9}</span>`
+      : `${mode === 'day' ? `<button type="button" class="vdp-tt" data-vdp-mode="month">${DP_MONTHS[m]}</button>` : ''}<button type="button" class="vdp-tt" data-vdp-mode="year">${y}</button>`;
+    DP.el.innerHTML = `<div class="vdp-h"><button type="button" class="vdp-nav" data-vdp-nav="-1" aria-label="${mode === 'day' ? 'Tháng trước' : mode === 'month' ? 'Năm trước' : 'Thập kỷ trước'}">${DP_PREV}</button>
+      <div class="vdp-title">${title}</div><button type="button" class="vdp-nav" data-vdp-nav="1" aria-label="${mode === 'day' ? 'Tháng sau' : mode === 'month' ? 'Năm sau' : 'Thập kỷ sau'}">${DP_NEXT}</button></div>
+      ${dpBody()}
+      <div class="vdp-bar"><button type="button" class="vbtn secondary sm" data-vdp-today>Hôm nay</button><button type="button" class="vbtn secondary sm" data-vdp-clear>Xóa</button></div>`;
+  }
+  function dpPlace() {
+    const r = DP.box.getBoundingClientRect(), h = DP.el.offsetHeight, w = DP.el.offsetWidth;
+    const below = r.bottom + 4 + h <= window.innerHeight || r.top - 4 - h < 0;
+    DP.el.style.top = `${below ? r.bottom + 4 : r.top - 4 - h}px`;
+    DP.el.style.left = `${Math.max(8, Math.min(r.left, window.innerWidth - w - 8))}px`;
+  }
+  function dpOpen(box) {
+    const inp = box.querySelector('input[data-vdate]');
+    if (!inp || inp.disabled) return;
+    if (DP && DP.inp === inp) { dpClose(); return; }
+    dpClose();
+    const base = dpParse(inp.value) || dpToday();
+    const el = document.createElement('div');
+    el.className = 'vdp'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-label', 'Chọn ngày');
+    document.body.appendChild(el);
+    DP = { el, box, inp, y: base.getFullYear(), m: base.getMonth(), mode: 'day' };
+    dpRender(); dpPlace();
+  }
+  function dpSet(v) {
+    const inp = DP.inp;
+    inp.value = v;
+    dpClose();
     fire(inp, 'input'); fire(inp, 'change');
+  }
+  document.addEventListener('click', (e) => {
+    const t = e.target;
+    const b = t.closest && t.closest('[data-vdate-pick]');
+    if (b) { e.preventDefault(); dpOpen(b.closest('.vdate')); return; }
+    if (!DP) return;
+    if (!DP.el.contains(t)) { if (!DP.box.contains(t)) dpClose(); return; }
+    const nav = t.closest('[data-vdp-nav]');
+    if (nav) {
+      const k = +nav.dataset.vdpNav;
+      if (DP.mode === 'day') { const d = new Date(DP.y, DP.m + k, 1); DP.y = d.getFullYear(); DP.m = d.getMonth(); } else DP.y += DP.mode === 'month' ? k : k * 10;
+      dpRender(); return;
+    }
+    const md = t.closest('[data-vdp-mode]');
+    if (md) { DP.mode = md.dataset.vdpMode; dpRender(); dpPlace(); return; }
+    const mo = t.closest('[data-vdp-month]');
+    if (mo) { DP.m = +mo.dataset.vdpMonth; DP.mode = 'day'; dpRender(); dpPlace(); return; }
+    const yr = t.closest('[data-vdp-year]');
+    if (yr) { DP.y = +yr.dataset.vdpYear; DP.mode = 'month'; dpRender(); dpPlace(); return; }
+    const day = t.closest('[data-vdp-day]');
+    if (day) { dpSet(day.dataset.vdpDay); return; }
+    if (t.closest('[data-vdp-today]')) { dpSet(dpFmt(dpToday())); return; }
+    if (t.closest('[data-vdp-clear]')) dpSet('');
   });
+  document.addEventListener('keydown', (e) => { if (DP && e.key === 'Escape') { e.stopPropagation(); dpClose(); } }, true);
+  window.addEventListener('resize', () => dpClose());
+  document.addEventListener('scroll', (e) => { if (DP && !DP.el.contains(e.target)) dpClose(); }, true);
+  /* Màn vẽ lại (rerender) thì ô gốc rời DOM — đóng popover. */
+  new MutationObserver(() => { if (DP && !document.body.contains(DP.box)) dpClose(); }).observe(document.body, { childList: true, subtree: true });
 
-  window.UI = { esc, icon, persona, avatar, initials, ty, pad2, cqcmUnit, qChip, qStrip, modal, vModal, vMaximize, vRadio, vSteps, toast, askReason, signDialog, qDialog, infoBtn, vSelect, badge, pager, norm, vTreeTable, vAccordion, inWords, vDate, vDateRange };
+  window.UI = { aiPop, aiTag, aiTbl, aiCb, aiFetchStrip, esc, icon, persona, avatar, initials, ty, pad2, cqcmUnit, qChip, qStrip, modal, vModal, vMaximize, vRadio, vSteps, toast, askReason, signDialog, qDialog, infoBtn, vSelect, badge, pager, norm, vTreeTable, vAccordion, inWords, vDate, vDateRange };
 })();

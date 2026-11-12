@@ -441,21 +441,12 @@
      GIẢ LẬP: kết quả AI là dữ liệu mẫu (P-216…P-218). */
   const aiBtn = (sec, again) => `<button type="button" class="vbtn secondary lf-ai-btn" data-lf-ai-sec="${sec}">✦ ${again ? 'Gợi ý lại' : 'Gợi ý từ AI'}</button>`;
   const aiBocOld = () => !!(LF.aiBoc && LF.aiBoc.nv !== LF.v.nv);
-  const fetchStrip = (f, ent) => `<div class="lf-ai2" data-lf-ai2><b>✦ Bước 2 · AI đã lấy dữ liệu căn cứ</b> <span class="cap">${ent ? `${esc(ent.code)} — ${esc(ent.name || '')} · ` : ''}lúc ${esc(f.at)}</span><div>${f.parts.map(esc).join(' · ')}</div></div>`;
-  const popTbl = (head, body) => `<div class="vtable-vp"><table class="vtable"><thead><tr>${head.map(([t, w, c]) => `<th style="width:${w}px" class="${c || ''}">${t}</th>`).join('')}</tr></thead><tbody>${body}</tbody></table></div>`;
-  const popCb = (attr, on) => `<input type="checkbox" ${attr} ${on ? 'checked' : ''} aria-label="Áp dụng">`;
+  /* T63 (D-117): popup, bảng, ô chọn, dải bước 2 dùng chung ở UI (ui.js aiPop …) — màn Thêm mới hồ sơ KĐT dùng cùng khuôn. */
+  const fetchStrip = (f, ent) => window.UI.aiFetchStrip(f, ent);
+  const popTbl = (head, body) => window.UI.aiTbl(head, body);
+  const popCb = (attr, on) => window.UI.aiCb(attr, on);
   function aiModal(title, body, apply) {
-    const m = window.UI.vModal({ title: `✦ Gợi ý từ AI — ${title}`, size: 'xl',
-      body: `<div data-lf-ai-pop>${body}<p class="cap">Bỏ chọn mục không dùng, sửa nội dung nếu cần, rồi bấm Áp dụng để điền vào màn.</p></div>`,
-      actions: '<button type="button" class="vbtn secondary" data-close>Hủy</button><button type="button" class="vbtn primary" data-lf-ai-apply>Áp dụng vào màn</button>' });
-    m.el.querySelector('[data-lf-ai-apply]').addEventListener('click', () => {
-      readInputs();
-      const msg = apply((sel) => m.el.querySelector(sel));
-      if (msg === false) return;
-      m.close();
-      toast(`${msg} — vẫn sửa được trên màn.`, 'success');
-      rerender();
-    });
+    window.UI.aiPop(title, body, (q) => { readInputs(); return apply(q); }, rerender);
   }
   /* Khối Căn cứ và nội dung mua sắm → Bóc tách và đối chiếu. */
   /* Góp ý 06/11: kết quả bóc tách AI điền luôn vào bảng Loại chi phí / Khoản mục chi phí của khối Căn cứ. AI ghép từng hàng hoá vào khoản mục dự toán
@@ -604,7 +595,7 @@
       return `Đã áp dụng gợi ý AI vào Căn cứ pháp lý: ${n} tài liệu${q('[data-lf-pop-on="legal"]').checked ? ', nội dung căn cứ pháp lý' : ''}`;
     });
   }
-  const aiTag = '<span class="lf-ai-tag" title="AI gợi ý — người dùng xác nhận">✦ AI</span>';
+  const aiTag = window.UI.aiTag;
   /* Người dùng 09/11 (T34 v0.2): bỏ nhãn "Bước n" và dòng giải thích BPMN trên màn — giữ trong (i). */
   const stepTag = () => '';
   const aiOld = () => !!(LF.ai && LF.ai.nv !== LF.v.nv);
