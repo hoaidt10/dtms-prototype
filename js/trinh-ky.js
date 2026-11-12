@@ -327,7 +327,9 @@
     if (r.st === 'SIGNED') { a.push('dl'); if (r.method === 'VOFFICE' && !r.fetched && rel) a.push('fetch'); }
     if (r.st === 'OFFLINE_PENDING' && mine) a.push('result');
     /* D-112 (T58): Từ chối không Gửi lại — quy trình đã đi nhánh không đồng ý (BR-TKV-02-03, BR-TKV-04-03). */
-    if (['FAILED', 'CANCELLED_SIGN', 'RECALLED'].includes(r.st) && mine) a.push('resend');
+    /* [T60 #68] Đã hủy / Đã thu hồi bỏ Gửi lại trên danh sách và khối Trình ký — trình lại từ công việc của bước (hộp thoại Trình ký, lần trình mới).
+       Lỗi gửi giữ Gửi lại: lần trình lỗi chưa kết thúc (BR-TKV-C-06) nên không trình mới được. Bản cũ: ['FAILED', 'CANCELLED_SIGN', 'RECALLED'] */
+    if (r.st === 'FAILED' && mine) a.push('resend');
     return a;
   }
   const ACT = { view: ['file', 'Xem'], sync: ['reload', 'Cập nhật trạng thái từ VOffice'], recall: ['back', 'Thu hồi'], dl: ['download', 'Tải bản ký'],
@@ -502,10 +504,11 @@
       notes: [
         '<b>T54</b> (người dùng 11/11): màn theo SRS 32 Trình ký VOffice (<code>docs/SRS/32-srs-trinh-ky-voffice</code>). Mỗi dòng là <b>một lần trình</b>.',
         '<b>T56</b> (review Nhi 12/11): <b>bỏ tab</b> Tôi trình / Tôi ký (#26) — một danh sách, lọc <b>Người trình ký</b>, <b>Người ký</b>; người không trình / không ký vẫn xem được lần trình của ĐXMS / KĐT mình có quyền xem (GIẢ LẬP: mọi vai demo xem được mọi lần trình mẫu). Lệch SRS 32 DTMS_CN_0274. <b>Trạng thái</b> (#31, Q4) chỉ còn 5 giá trị VOffice trả về (<code>be/vops-office</code> <code>VOfficeStatusEnum.fromVOfficeState</code> 0–4): Chưa trình ký, Đang xử lý, Bị từ chối, Đã ký duyệt, Đã ban hành (Đã ký duyệt + có Số văn bản). Đã hủy / Đã thu hồi / Đã hủy ban hành / Lỗi gửi hiện là Chưa trình ký, chi tiết ở <b>Lịch sử cập nhật</b> của hộp thoại (đổi tên từ Nhật ký, #22; thời điểm hh:mm:ss - dd/mm/yyyy, mới nhất trước, #23, #24; tải tệp, #25).',
-        'Thao tác theo trạng thái (BR-TKV-04-03): Chờ ký — Cập nhật trạng thái, Thu hồi (người trình); Đã ký — Tải bản ký, Lấy bản đã ký khi Chưa lấy; Từ chối — chỉ Xem (quy trình đã đi nhánh không đồng ý); Đã hủy / Đã thu hồi / Lỗi gửi — Gửi lại; Chờ nhập kết quả — Nhập kết quả ký. Chọn nhiều dòng để Lấy bản đã ký / Cập nhật trạng thái, nhập mật khẩu VOffice một lần.',
-        'GIẢ LẬP: mật khẩu VOffice mọi chuỗi khác rỗng là đúng (gõ <code>sai</code> để thấy lỗi); VOffice trả kết quả ngay (mã 3 — Đã ký, Bản ký Chưa lấy); Gửi lại khi Đã hủy / Đã thu hồi tạo lần trình mới ngay trên màn này (thật: mở công việc Xử lý trình ký). Thật: cổng VOffice, bảng <code>sign_request</code> (SRS 32 mục 5).',
+        'Thao tác theo trạng thái (BR-TKV-04-03): Chờ ký — Cập nhật trạng thái, Thu hồi (người trình); Đã ký — Tải bản ký, Lấy bản đã ký khi Chưa lấy; Từ chối — chỉ Xem (quy trình đã đi nhánh không đồng ý); Lỗi gửi — Gửi lại (Đã hủy / Đã thu hồi: trình lại từ công việc, T60); Chờ nhập kết quả — Nhập kết quả ký. Chọn nhiều dòng để Lấy bản đã ký / Cập nhật trạng thái, nhập mật khẩu VOffice một lần.',
+        'GIẢ LẬP: mật khẩu VOffice mọi chuỗi khác rỗng là đúng (gõ <code>sai</code> để thấy lỗi); VOffice trả kết quả ngay (mã 3 — Đã ký, Bản ký Chưa lấy). Thật: cổng VOffice, bảng <code>sign_request</code> (SRS 32 mục 5).',
         'Không thu hồi được trên VOffice (VOffice không có lời gọi hủy — người dùng chốt 11/11): thu hồi chỉ có hiệu lực trên ĐTMS.',
         '<b>T58 / D-112</b> (12/11): Từ chối không Gửi lại — đi nhánh không đồng ý.',
+        '<b>T60</b> (review Nhi 12/11 #68): Đã hủy / Đã thu hồi <b>bỏ Gửi lại</b> trên danh sách — trình lại từ công việc của bước (bấm nút trình ký, hộp thoại mở lần trình mới). Chỉ Lỗi gửi còn Gửi lại (gửi lại chính lần trình lỗi). Lệch SRS 32 BR-TKV-04-03. Hộp thoại Trình ký VOffice là popup của nền tảng (#67), không phải eForm của bước: eForm (nếu nút có) xác nhận trước, hệ thống sinh văn bản rồi mới mở popup (BR-TKV-01-01).',
       ],
       src: 'SRS 32 · fe/repo-khcn-hr-tools-fe features/signing · profile-management/profile-list (khuôn)',
     };

@@ -19,30 +19,17 @@ const pick = async (page, id, text) => {
 };
 const bar = (page, card, label) => page.locator('.bc-card', { hasText: card }).locator('.bc-hr', { has: page.locator('.bc-hl', { hasText: new RegExp('^' + label + '$') }) }).locator('.bc-hv');
 
-test('Tổng quan (T48): ĐXMS không đếm nháp, giá trị không đếm đôi chuỗi điều chỉnh; KĐT tách chủ trương; phễu theo lọc', async ({ page }) => {
+// [T61] Tổng quan 4 tab (D-116): bỏ phễu vòng đời, ô Loại nghiệp vụ, lọc trạng thái chi tiết; giữ quy tắc đếm T48 (không đếm nháp, giá trị bản hiệu lực).
+test('Tổng quan (T48 → T61): ĐXMS không đếm nháp, giá trị không đếm đôi chuỗi điều chỉnh; lọc Đơn vị đổi số', async ({ page }) => {
   await as(page, 'minh', '#/tong-quan');
   // 30 ĐXMS mẫu (T58 thêm 15), 3 Chưa khởi tạo (0124, 0119, 0098) → 27
   await expect(tileN(page, 'Tổng số ĐXMS')).toHaveText('27');
   // Giá trị: chuỗi 0084 → 0112 chỉ cộng 0112; 0077 (Đang điều chỉnh) → 0126 (đang chạy) chỉ cộng 0077
   const v = await page.evaluate(() => UI.ty(1963.6, 2)); // T58: + 1122,4 (chuỗi 0141 → 0142 → 0140 chỉ cộng 0142)
-  await expect(tileN(page, 'Giá trị ĐXMS')).toHaveText(v);
-  await expect(tileD(page, 'Tổng số khoản đầu tư')).toHaveText('7 đã duyệt chủ trương, 2 đã duyệt KĐT');
-  await page.locator('[data-tqtab="td"]').click();
-  const fun = page.locator('.bc-card', { hasText: 'Từ nhu cầu đến hợp đồng' });
-  await expect(fun.locator('.bc-hr')).toHaveCount(10);
-  await expect(bar(page, 'Từ nhu cầu đến hợp đồng', 'ĐXMS')).toHaveText('27');
-  await expect(bar(page, 'Từ nhu cầu đến hợp đồng', 'KĐT đã duyệt chủ trương')).toHaveText('7');
-  // Lọc Đơn vị → phễu đổi theo tập đã lọc (trước T48 phễu bỏ qua bộ lọc)
+  await expect(tileN(page, 'Tổng giá trị ĐXMS')).toContainText(v);
   await pick(page, 'rp-tq-unit', 'Phòng Chất lượng');
   await page.locator('[data-rpa="tq:go"]').click();
-  await expect(bar(page, 'Từ nhu cầu đến hợp đồng', 'ĐXMS')).not.toHaveText('27');
-  // Lọc Trạng thái = Chưa khởi tạo (một loại ĐXMS) → ĐXMS nháp hiện
-  await page.locator('[data-rpa="tq:reset"]').click();
-  await pick(page, 'rp-tq-kind', 'ĐXMS');
-  await pick(page, 'rp-tq-st', 'Chưa khởi tạo');
-  await page.locator('[data-rpa="tq:go"]').click();
-  await page.locator('[data-tqtab="kpi"]').click();
-  await expect(tileN(page, 'Tổng số ĐXMS')).toHaveText('3');
+  await expect(tileN(page, 'Tổng số ĐXMS')).not.toHaveText('27');
   expect(page.errors).toEqual([]);
 });
 

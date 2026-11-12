@@ -180,13 +180,167 @@
       ${sel('field', 'Lĩnh vực', K().catOpts('linh-vuc'), { searchable: false })}
       ${o.fund ? sel('fund', 'Nguồn kinh phí', K().catOpts('nguon-von'), { searchable: false }) : ''}
       ${o.kindSel ? sel('kind', 'Loại nghiệp vụ', Object.entries(KIND).map(([value, label]) => ({ value, label })), { multi: true, searchable: false }) : ''}
-      ${o.noStatus ? '' : sel('st', 'Trạng thái', statusOpts(o.kindSel ? d.kind : kinds, fx), { multi: true, searchable: false })}
+      ${o.noStatus ? '' : sel('st', 'Trạng thái', o.stOpts || statusOpts(o.kindSel ? d.kind : kinds, fx), { multi: true, searchable: false })}
       <div class="rp-acts"><button type="button" class="vbtn secondary" data-rpa="${id}:reset">Làm mới</button><button type="button" class="vbtn primary" data-rpa="${id}:go">Tìm kiếm</button></div></section>`;
   }
 
-  /* ---------- SCR-92 Tổng quan ---------- */
-  const TQ = { tab: 'kpi' };
+  /* ---------- SCR-92 Tổng quan — T61 (D-116): 4 tab theo đối tượng, chỉ số core cho điều hành (ý tưởng BA owner phân hệ Tổng quan, 12/11/2026).
+     Mỗi tab: Chỉ số điều hành (bấm mở ngăn chi tiết) · Tiến độ nghiệp vụ (4 thẻ nhóm trạng thái) · Hồ sơ cần chú ý (quá hạn / còn dưới 3 ngày đến hạn).
+     GIẢ LẬP: ánh xạ 4 nhóm trạng thái (Q3), hạn bước và "sắp đến hạn" (Q4) — ghi ở (i). Bản 7 tab cũ: tongQuanOld (không gọi). ---------- */
+  const TQ4 = { tab: 'dxms' };
+  const TQD = {};
+  /* Hồ sơ chạy luồng đang ở bước phê duyệt cuối (MS01 / MS02 bước 60 Thủ trưởng đơn vị VHT phê duyệt) → ĐXMS Chờ phê duyệt. */
+  function dxWaiting() {
+    const set = new Set();
+    S.allCases().forEach((c) => {
+      if (c.st !== 'processing' || !c.dxms) return;
+      const at60 = c.live ? (Flow.state.tokens || []).some((t) => String(t.task) === '60') : String(c.task) === '60' || /Xem xét, phê duyệt/.test(c.step || '');
+      if (at60) set.add(c.dxms);
+    });
+    return set;
+  }
+  const KDT_WAIT = ['KYCT', 'KYQD', 'KYGOP', 'TD', 'TDTD'];
+  function addWd(s, n) {
+    const [d, m, y] = String(s).split('/').map(Number); const x = new Date(y, m - 1, d); let k = 0;
+    while (k < n) { x.setDate(x.getDate() + 1); if (x.getDay() % 6) k += 1; }
+    return `${String(x.getDate()).padStart(2, '0')}/${String(x.getMonth() + 1).padStart(2, '0')}/${x.getFullYear()}`;
+  }
+  /* Hồ sơ ĐXMS / KĐT còn ≤ 2 ngày làm việc đến hạn bước (chưa quá hạn). Hồ sơ chạy luồng: hạn công việc thật (như Việc của tôi); hồ sơ mẫu: GIẢ LẬP
+     số ngày còn lại suy từ mã hồ sơ (0–6), vì hồ sơ mẫu chỉ ghi Quá hạn / không. */
+  function nearDue() {
+    const cases = S.allCases().concat(Flow.kdtCases()), out = [];
+    const hash = (s) => [...String(s)].reduce((a, ch) => (a * 31 + ch.charCodeAt(0)) % 997, 7);
+    window.QuyTrinh.monitorRows().filter((r) => r.status === 'Đang chạy').forEach((r) => {
+      const c = cases.find((x) => x.code === r.code);
+      if (!c || (c.task == null && !c.live)) return;
+      let left, due;
+      if (c.live) {
+        const ts = (Flow.state.tokens || []).map((t) => ({ t, d: S.dueOf(t.task, t.since) })).sort((a, b) => a.d - b.d)[0];
+        if (!ts) return;
+        left = ts.d - Flow.state.clock; due = Flow.dateOf(ts.d);
+      } else {
+        left = hash(c.code) % 7; due = addWd(HD().TODAY, left);
+      }
+      if (left < 0 || left > 2) return;
+      out.push({ kind: c.kdt ? 'KDT' : 'DXMS', obj: c.kdt || c.dxms, hs: c.code, step: r.step || '-', due, left });
+    });
+    return out;
+  }
+  const TQ_TABS = {
+    dxms: { label: 'Đề xuất mua sắm', kind: 'DXMS', obj: 'ĐXMS',
+      groups: [['run', 'Đang xử lý', '#2a78d6'], ['wait', 'Chờ phê duyệt', '#b25e09'], ['done', 'Đã phê duyệt', '#12805c'], ['late', 'Quá hạn', '#d92d20']] },
+    kdt: { label: 'Khoản đầu tư', kind: 'KDT', obj: 'KĐT',
+      groups: [['run', 'Đang lập / thẩm định', '#2a78d6'], ['wait', 'Chờ phê duyệt', '#b25e09'], ['done', 'Đã phê duyệt', '#12805c'], ['late', 'Quá hạn', '#d92d20']] },
+    goi: { label: 'Gói thầu', kind: 'GOI', obj: 'gói thầu',
+      groups: [['run', 'Đang LCNT', '#2a78d6'], ['wait', 'Chờ phê duyệt kết quả', '#b25e09'], ['done', 'Đã có kết quả', '#12805c'], ['late', 'Chậm tiến độ', '#d92d20']] },
+    hd: { label: 'Hợp đồng', kind: 'HD', obj: 'hợp đồng',
+      groups: [['run', 'Đang thực hiện', '#2a78d6'], ['wait', 'Chờ hoàn tất', '#b25e09'], ['done', 'Đã hoàn thành', '#12805c'], ['late', 'Chậm tiến độ', '#d92d20']] },
+  };
+  /* Q3 GIẢ LẬP: nhóm trạng thái (run / wait / done; null = Dừng, Hủy, Nháp, Chờ phê duyệt KHLCNT — không vào thẻ) và cờ quá hạn / chậm (đếm chéo). */
+  function grp4(x, ctx) {
+    if (x.kind === 'DXMS') return x.state === 'PD' ? (ctx.wait.has(x.code) ? 'wait' : 'run') : ['OK', 'DC', 'SUP'].includes(x.state) ? 'done' : null;
+    if (x.kind === 'KDT') return x.stage === 'STOP' ? null : KDT_WAIT.includes(x.stage) ? 'wait' : ['OK', 'CT_OK'].includes(x.stage) ? 'done' : 'run';
+    if (x.kind === 'GOI') return ['HS', 'MOI', 'DG', 'TH'].includes(x.stx) ? 'run' : x.stx === 'KQ_CHO' ? 'wait' : x.stx === 'KQ' ? 'done' : null;
+    return ['TT', 'KY', 'TH'].includes(x.stc) ? 'run' : x.stc === 'TL' ? 'wait' : x.stc === 'DONG' ? 'done' : null;
+  }
+  const gtIsLate = (g) => g.grp === 'run' && g.stx !== 'KH' && /Quý III\/2026|Quý II\/2026/.test(g.start || '');
+  function isLate(x, ctx) {
+    if (x.kind === 'DXMS' || x.kind === 'KDT') return ctx.odObj.has(x.code);
+    if (x.kind === 'GOI') return gtIsLate(x);
+    return x.late.length > 0;
+  }
   function tongQuan() {
+    // Theo: fe/repo-khcn-hr-tools-fe/src/app/features/reporting/report-dashboard (khối lọc) + app-tabs; ô chỉ số theo ecat common-catalog/overview; ngăn chi tiết = vht-modal dạng drawer
+    const fx = facts(), L = fst('tq'), f = L.f, T = TQ_TABS[TQ4.tab], cat = K().cat;
+    const od = overdue(fx), near = nearDue();
+    const ctx = { wait: dxWaiting(), odObj: new Set(od.map((o) => o.obj)) };
+    /* Q2: lọc chung Năm, Từ – Đến, Đơn vị, Lĩnh vực; Trạng thái = 4 nhóm của tab. */
+    const base = applyF(fx.all, Object.assign({}, f, { st: [], kind: [T.kind], fund: null }));
+    base.forEach((x) => { x.g4 = grp4(x, ctx); x.late4 = isLate(x, ctx); });
+    const rows = f.st.length ? base.filter((x) => f.st.some((s) => (s === 'late' ? x.late4 : x.g4 === s))) : base;
+    const G = (k) => (k === 'late' ? rows.filter((x) => x.late4) : rows.filter((x) => x.g4 === k));
+    const money = (v) => ty(r2(v), 2);
+    const M = {
+      dxms: [['Tổng số ĐXMS', 'Số ĐXMS thuộc phạm vi lọc', rows], ['Tổng giá trị ĐXMS', 'Tỷ đồng · giá trị bản đang có hiệu lực', rows.filter((x) => x.inV !== false), 'value'],
+        ['ĐXMS chờ phê duyệt', 'Hồ sơ đang ở bước Thủ trưởng đơn vị phê duyệt', G('wait'), 'count', 'warn'], ['ĐXMS quá hạn xử lý', 'Chưa hoàn tất, vượt hạn bước (Giám sát tiến trình)', G('late'), 'count', 'bad']],
+      kdt: [['Tổng số khoản đầu tư', 'Số KĐT thuộc phạm vi lọc', rows], ['Tổng mức vốn KĐT', 'Tỷ đồng · tổng mức vốn đang có hiệu lực', rows, 'value'],
+        ['KĐT chờ phê duyệt', 'Chờ ký chủ trương / quyết định, đang trình Tập đoàn', G('wait'), 'count', 'warn'], ['KĐT quá hạn xử lý', 'Chưa hoàn tất, vượt hạn bước (Giám sát tiến trình)', G('late'), 'count', 'bad']],
+      goi: [['Tổng số gói thầu', 'Số gói thầu thuộc phạm vi lọc', rows], ['Tổng giá gói thầu đã duyệt', 'Tỷ đồng · gói thuộc KHLCNT đã phê duyệt', rows.filter((g) => g.stx !== 'KH'), 'value'],
+        ['Gói thầu đang LCNT', 'Đang lập hồ sơ mời, mời thầu, đánh giá, xử lý tình huống', G('run'), 'count'], ['Gói thầu chậm tiến độ', 'Chưa có KQLCNT, quá thời gian bắt đầu LCNT kế hoạch', G('late'), 'count', 'bad']],
+      hd: [['Tổng số hợp đồng', 'Số hợp đồng thuộc phạm vi lọc', rows], ['Tổng giá trị hợp đồng', 'Tỷ đồng · giá trị hợp đồng', rows, 'value'],
+        ['Hợp đồng đang thực hiện', 'Đang thương thảo, trình ký, thực hiện', G('run'), 'count'], ['Hợp đồng chậm tiến độ', 'Có mốc thực hiện quá hạn', G('late'), 'count', 'bad'],
+        ['Giá trị đã thanh toán', 'Tỷ đồng · theo MS24 / SAP', rows.filter((h) => h.paid > 0), 'paid'], ['Giá trị còn phải thanh toán', 'Tỷ đồng · giá trị hợp đồng trừ đã thanh toán', rows.filter((h) => h.remain > 0), 'remain']],
+    }[TQ4.tab];
+    const valOf = (m) => (m[3] === 'value' ? money(sumV(m[2])) : m[3] === 'paid' ? money(m[2].reduce((s, h) => s + h.paid, 0)) : m[3] === 'remain' ? money(m[2].reduce((s, h) => s + h.remain, 0)) : String(m[2].length));
+    M.forEach((m, i) => { TQD['m' + i] = { title: m[0], desc: m[1], rows: m[2] }; });
+    T.groups.forEach(([k, l]) => { TQD['g' + k] = { title: `${T.label} — ${l}`, desc: k === 'late' ? 'Đếm chéo: hồ sơ quá hạn / chậm vẫn thuộc nhóm trạng thái của nó.' : '', rows: G(k) }; });
+    const metric = (m, i) => `<button type="button" class="ov-tile rp-tile tq-m" data-tqd="m${i}"><span class="ov-tx"><span class="t">${esc(m[0])}</span><span class="d">${esc(m[1])}</span></span>
+      <span class="ov-n"><span class="n num ${m[4] || ''}">${valOf(m)}${m[3] && m[3] !== 'count' ? ' <small>tỷ</small>' : ''}</span></span></button>`;
+    const card4 = ([k, l, c]) => `<button type="button" class="tq-st" data-tqd="g${k}" aria-label="${esc(l)}: ${G(k).length} hồ sơ"><span class="tq-st-l">${esc(l)}</span><span class="tq-st-n num" style="color:${c}">${G(k).length}</span></button>`;
+    /* Hồ sơ cần chú ý (Q4): quá hạn + còn dưới 3 ngày đến hạn, chưa hoàn tất; gấp nhất lên đầu. */
+    const byCode = new Map(rows.map((x) => [x.code, x]));
+    let att = [];
+    if (T.kind === 'DXMS' || T.kind === 'KDT') {
+      od.filter((o) => o.kind === T.kind && byCode.has(o.obj)).forEach((o) => att.push({ x: byCode.get(o.obj), step: o.stepName || o.step, due: addWd(o.since, Math.max(0, wd(o.since, HD().TODAY) - o.days)), left: -o.days }));
+      near.filter((n) => n.kind === T.kind && byCode.has(n.obj) && !ctx.odObj.has(n.obj)).forEach((n) => att.push({ x: byCode.get(n.obj), step: n.step, due: n.due, left: n.left }));
+    } else if (T.kind === 'GOI') {
+      rows.filter((g) => g.late4).forEach((g) => att.push({ x: g, step: g.st, due: g.start, left: null }));
+    } else {
+      rows.filter((h) => h.g4 && h.g4 !== 'done').forEach((h) => {
+        const ms = (h.h.ms || []).filter((m) => !m[2]).map((m) => ({ m, left: -HD().days(m[1], HD().TODAY) })).filter((v) => v.left <= 2).sort((a, b) => a.left - b.left)[0];
+        if (ms) att.push({ x: h, step: ms.m[0], due: ms.m[1], left: ms.left });
+      });
+    }
+    const seen = new Set();
+    att = att.filter((a) => !seen.has(a.x.code) && seen.add(a.x.code)).sort((a, b) => (a.left == null ? -1e9 : a.left) - (b.left == null ? -1e9 : b.left));
+    const tag = (a) => (a.left == null ? badge('Chậm tiến độ', 'error') : a.left < 0 ? badge(`Quá hạn ${-a.left} ngày`, 'error') : a.left === 0 ? badge('Đến hạn hôm nay', 'warning') : badge(`Còn ${a.left} ngày`, 'warning'));
+    const isHd = T.kind === 'HD';
+    const attCols = [[`Mã ${T.obj}`, 160], ['Tên', 280], ['Đơn vị', 180], ['Lĩnh vực', 140], ['Trạng thái', 170], [T.kind === 'GOI' ? 'Trạng thái gói' : isHd ? 'Mốc thực hiện' : 'Bước đang xử lý', 240],
+      [T.kind === 'GOI' ? 'Bắt đầu LCNT (kế hoạch)' : 'Hạn xử lý', 150], ['Giá trị (tỷ đồng)', 130, 'r'], ['Thời hạn', 150, 'c']].concat(isHd ? [['Đã thanh toán (tỷ đồng)', 150, 'r']] : []);
+    const attTbl = att.length ? K().table(attCols, att, (a) => `<td><a class="link" data-go="${a.x.href}">${esc(a.x.code)}</a></td><td>${K().clamp(a.x.title)}</td><td>${K().clamp(a.x.unit)}</td>
+        <td>${esc(cat('linh-vuc', a.x.field) || '')}</td><td>${esc(a.x.st)}</td><td>${K().clamp(a.step)}</td><td>${esc(a.due || '-')}</td><td class="r num">${money(vOf(a.x))}</td><td class="c">${tag(a)}</td>${isHd ? `<td class="r num">${money(a.x.paid)}</td>` : ''}`)
+      : '<div class="empty-t">Không có hồ sơ quá hạn hoặc còn dưới 3 ngày đến hạn theo bộ lọc</div>';
+    const info = {
+      scr: 'SCR-92', name: 'Tổng quan', uc: 'WBS-0211 › Tổng quan · T61 (D-116) ý tưởng BA owner phân hệ Tổng quan 12/11/2026',
+      notes: [
+        '<b>T61 (D-116)</b>: làm gọn — chỉ hiện chỉ số core ảnh hưởng quyết định điều hành. 4 tab theo đối tượng (ĐXMS, Khoản đầu tư, Gói thầu, Hợp đồng), mỗi tab 3 khối: Chỉ số điều hành, Tiến độ nghiệp vụ, Hồ sơ cần chú ý. Thay 7 tab cũ (Chỉ số tổng quan … Cảnh báo); biểu đồ phân tích, Top 5 điểm nghẽn xem ở các màn Báo cáo.',
+        'Bộ lọc chung: Năm, Từ ngày – Đến ngày, Đơn vị, Lĩnh vực (danh mục thật); <b>Trạng thái</b> = 4 nhóm của tab đang xem. Đổi tab thì bỏ lọc Trạng thái.',
+        'Bấm ô chỉ số hoặc thẻ trạng thái → ngăn chi tiết bên phải: danh sách hồ sơ cấu thành con số, mã mở màn chi tiết, Xuất excel.',
+        '<b>GIẢ LẬP — nhóm trạng thái</b> (cần nghiệp vụ chốt): ĐXMS Đang xử lý = Đang phê duyệt chưa tới bước 60; Chờ phê duyệt = hồ sơ đang ở bước 60 (Thủ trưởng đơn vị VHT phê duyệt); Đã phê duyệt = Đã phê duyệt / Đang điều chỉnh / Đã được điều chỉnh. KĐT Chờ phê duyệt = Chờ ký chủ trương / quyết định / hồ sơ gộp, Đang trình Tập đoàn, Tập đoàn thẩm định; Đã phê duyệt gồm Đã phê duyệt chủ trương. Gói thầu Đang LCNT = Đang lập hồ sơ mời / mời thầu / đánh giá / xử lý tình huống. Hợp đồng Chờ hoàn tất = Đang thanh lý. Dừng, Hủy, Nháp, Chờ phê duyệt KHLCNT không vào thẻ.',
+        '<b>Quá hạn / Chậm tiến độ là thẻ đếm chéo</b> — quá hạn là thuộc tính; hồ sơ quá hạn vẫn nằm trong nhóm trạng thái của nó (bản ý tưởng coi là trạng thái riêng).',
+        '<b>Hồ sơ cần chú ý</b>: chưa hoàn tất, quá hạn hoặc còn dưới 3 ngày đến hạn, gấp nhất lên đầu. ĐXMS / KĐT: quá hạn theo Giám sát tiến trình; sắp đến hạn = còn ≤ 2 ngày làm việc tới hạn bước (hồ sơ chạy luồng: hạn công việc thật; <b>hồ sơ mẫu GIẢ LẬP</b> số ngày còn lại). Gói thầu: chỉ gói chậm tiến độ (kế hoạch LCNT theo quý, chưa có hạn theo ngày). Hợp đồng: mốc thực hiện quá hạn hoặc đến hạn trong 2 ngày.',
+        'GIẢ LẬP: hạn bước = số ngày làm việc chuẩn × 2; ngày dữ liệu cố định ' + HD().TODAY + '. Thật: API tổng hợp của BE trên dữ liệu nghiệp vụ và Camunda; "Làm mới dữ liệu" gọi lại API.',
+      ],
+      src: 'hr-tools reporting/report-dashboard · /reporting',
+    };
+    return `<div class="pg">${head({ title: 'Tổng quan', info, right: `<span class="rp-at">Cập nhật lúc ${esc(L.at)}</span><button type="button" class="vbtn secondary" data-rp-refresh="tq">${icon('reload')} Làm mới dữ liệu</button>` })}
+      ${filterBar('tq', fx, { stOpts: T.groups.map(([value, label]) => ({ value, label })) })}
+      <nav class="tabs dx-tabs" role="tablist">${Object.entries(TQ_TABS).map(([k, t]) => `<button type="button" class="tab ${TQ4.tab === k ? 'on' : ''}" role="tab" aria-selected="${TQ4.tab === k}" data-tq4="${k}">${t.label}</button>`).join('')}</nav>
+      <section class="tq-blk"><h2 class="rp-h2">Chỉ số điều hành</h2><p class="cap">Bấm vào chỉ số để xem danh sách liên quan</p>
+      <div class="rp-tiles tq-metrics">${M.map(metric).join('')}</div></section>
+      <section class="tq-blk"><h2 class="rp-h2">Tiến độ nghiệp vụ</h2><p class="cap">Số lượng ${esc(T.obj)} theo nhóm trạng thái · Quá hạn / Chậm tiến độ đếm chéo</p>
+      <div class="tq-sts">${T.groups.map(card4).join('')}</div></section>
+      ${K().card('Hồ sơ cần chú ý', attTbl, `${att.length} hồ sơ quá hạn hoặc còn dưới 3 ngày đến hạn`)}</div>`;
+  }
+  function tqDrawer(key) {
+    const x = TQD[key]; if (!x) return;
+    const isHd = TQ4.tab === 'hd';
+    const cols = [['Mã', 160], ['Tên', 260], ['Đơn vị', 170], ['Trạng thái', 160], ['Giá trị (tỷ đồng)', 120, 'r']].concat(isHd ? [['Đã thanh toán (tỷ đồng)', 140, 'r']] : []);
+    const tbl = x.rows.length ? K().table(cols, x.rows, (r) => `<td><a class="link" data-go="${r.href}" data-close>${esc(r.code)}</a></td><td>${K().clamp(r.title)}</td><td>${K().clamp(r.unit)}</td><td>${esc(r.st)}</td><td class="r num">${ty(vOf(r), 2)}</td>${isHd ? `<td class="r num">${ty(r.paid, 2)}</td>` : ''}`)
+      : '<div class="empty-t">Không có dữ liệu phù hợp</div>';
+    const m = window.UI.vModal({ title: x.title, size: 'drawer', body: `<div class="stack">${x.desc ? `<p class="cap">${esc(x.desc)}</p>` : ''}<div class="tq-dr-n"><b>${x.rows.length}</b> hồ sơ</div>${tbl}</div>`,
+      actions: `<button type="button" class="vbtn secondary" data-close>Đóng</button><button type="button" class="vbtn primary" data-tq-export="${key}">${icon('download')} Xuất excel</button>` });
+    m.el.dataset.tqDrawer = key;
+    m.el.querySelector('[data-tq-export]').onclick = () => {
+      const lines = [['STT', 'Mã', 'Tên', 'Đơn vị', 'Trạng thái', 'Giá trị (tỷ đồng)'].concat(isHd ? ['Đã thanh toán (tỷ đồng)'] : [])]
+        .concat(x.rows.map((r, i) => [i + 1, r.code, r.title, r.unit, r.st, vOf(r)].concat(isHd ? [r.paid] : [])));
+      toast(`<b>Thành công</b><br>Xuất excel thành công (${x.rows.length} dòng) — ${esc(download('Tong quan - ' + x.title, lines))}`);
+    };
+  }
+
+  /* ---------- SCR-92 Tổng quan 7 tab — [T61] bản cũ, không còn gọi (bật lại: đổi tongQuanOld thành tongQuan) ---------- */
+  const TQ = { tab: 'kpi' };
+  function tongQuanOld() {
     // Theo: fe/repo-khcn-hr-tools-fe/src/app/features/reporting/report-dashboard/report-dashboard.component.html (khối lọc + biểu đồ) + app-tabs; ô chỉ số theo ecat common-catalog/overview
     const fx = facts(), L = fst('tq'), f = L.f;
     const A = applyF(fx.all, f);
@@ -558,6 +712,11 @@
     const t = e.target;
     const tq = t.closest('[data-tqtab]');
     if (tq) { TQ.tab = tq.dataset.tqtab; rerender(); return; }
+    /* T61: đổi tab bỏ lọc Trạng thái (4 nhóm khác nhau theo tab); ô chỉ số / thẻ trạng thái mở ngăn chi tiết. */
+    const t4 = t.closest('[data-tq4]');
+    if (t4) { TQ4.tab = t4.dataset.tq4; const L = fst('tq'); L.d.st = []; L.f.st = []; rerender(); return; }
+    const qd = t.closest('[data-tqd]');
+    if (qd) { tqDrawer(qd.dataset.tqd); return; }
     const rt = t.closest('[data-rptab]');
     if (rt) { const [g, k2] = rt.dataset.rptab.split(':'); rst(g).tab = k2; rst(g).drill = null; rst(g).sort = null; rerender(); return; }
     const a = t.closest('[data-rpa]');

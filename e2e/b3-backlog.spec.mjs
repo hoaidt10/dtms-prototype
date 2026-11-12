@@ -173,17 +173,15 @@ test('D-44: bỏ Trigger thông báo — menu Thông báo còn 2 mục, route c�
   expect(page.errors).toEqual([]);
 });
 
-test('Tổng quan: 7 tab không lỗi; ô chỉ số khớp dữ liệu; lọc loại nghiệp vụ; làm mới dữ liệu', async ({ page }) => {
+// [T61] Tổng quan làm gọn còn 4 tab theo đối tượng (D-116) — bản 7 tab (kpi … cb) không còn; kiểm tra chi tiết ở t61-tong-quan.spec.mjs.
+test('Tổng quan: 4 tab không lỗi; ô chỉ số khớp dữ liệu; hợp đồng chậm tiến độ; làm mới dữ liệu', async ({ page }) => {
   await as(page, 'minh', '#/tong-quan');
-  await expect(page.locator('.rp-tile', { hasText: 'Tổng số hợp đồng' }).locator('.n')).toHaveText('5');
-  for (const t of ['kpi', 'td', 'gt', 'dt', 'hd', 'tt', 'cb']) {
-    await page.locator(`[data-tqtab="${t}"]`).click();
+  for (const t of ['dxms', 'kdt', 'goi', 'hd']) {
+    await page.locator(`[data-tq4="${t}"]`).click();
     expect(await mainText(page)).not.toMatch(BA);
   }
-  await expect(card(page, 'Hợp đồng chậm tiến độ').locator('tbody tr')).toHaveCount(1);
-  await expect(card(page, 'Hồ sơ có kiến nghị / khiếu nại đang xử lý').locator('tbody tr')).toHaveCount(1);
-  await page.locator('[data-tqtab="td"]').click();
-  await expect(page.locator('.bc-card', { hasText: 'Từ nhu cầu đến hợp đồng' }).locator('.bc-hr')).toHaveCount(10);
+  await expect(page.locator('.rp-tile', { hasText: 'Tổng số hợp đồng' }).locator('.n')).toHaveText('5');
+  await expect(page.locator('.rp-tile', { hasText: 'Hợp đồng chậm tiến độ' }).locator('.n')).toHaveText('1');
   await page.locator('[data-rp-refresh="tq"]').click();
   expect(await lastToast(page)).toContain('Đã cập nhật số liệu Dashboard');
   expect(page.errors).toEqual([]);

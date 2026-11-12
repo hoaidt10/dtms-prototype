@@ -141,7 +141,7 @@
   /* Trạng thái hiển thị / lọc (Q7): GOT tính là WAIT; danh sách lựa chọn không có GOT. */
   const stShow = (st) => (st === 'GOT' ? 'WAIT' : st);
   const stOpts = () => Object.entries(YST).filter(([value]) => value !== 'GOT').map(([value, [label]]) => ({ value, label }));
-  const emptyF = () => ({ code: '', dxms: '', hs: '', unit: null, st: [], ncc: null, from: '', to: '', nv: null, creator: null, obj: null });
+  const emptyF = () => ({ code: '', dxms: '', hs: '', block: null, unit: null, st: [], ncc: null, from: '', to: '', nv: null, creator: null, obj: null });
   const newL = () => ({ kw: '', adv: false, f: emptyF(), d: emptyF(), page: 1, size: 10, psOpen: false });
   const LS = { dxms: newL(), kdt: newL(), all: newL() };
   /* Nhãn theo đối tượng cha: ĐXMS (#/ycbg) hoặc KĐT (#/ycbg-kdt). */
@@ -158,7 +158,7 @@
     /* T29 B3b (DTMS_CN_0150): từ khoá và bộ lọc nâng cao áp đồng thời; RV-PROTO-0511 #9 lọc theo Dự án / Đề tài. */
     return allYcbg(k).filter((y) => (!L.kw || n(`${y.code} ${y.dxms} ${y.title} ${y.nvText || ''}`).includes(n(L.kw)))
       && (!L.adv || ((!f.code || n(y.code).includes(n(f.code))) && (!f.dxms || n(y.dxms).includes(n(f.dxms))) && (!f.hs || n(y.hs).includes(n(f.hs)))
-        && (!f.unit || y.unit === f.unit) && (!f.st.length || f.st.includes(stShow(y.status))) && (!f.ncc || y.ncc.some((c) => c.code === f.ncc))
+        && (!f.block || D.blockOf(y.unit) === f.block) && (!f.unit || y.unit === f.unit) && (!f.st.length || f.st.includes(stShow(y.status))) && (!f.ncc || y.ncc.some((c) => c.code === f.ncc))
         && (!f.obj || (f.obj === 'kdt') === !!y.kdt) && (!f.nv || (y.nv || []).includes(f.nv)) && (!f.creator || y.creator === f.creator)
         && (!f.from || dkey(y.sent) >= dkey(f.from)) && (!f.to || dkey(y.sent) <= dkey(f.to)))))
       .sort((a, b) => dkey(b.sent).localeCompare(dkey(a.sent)) || b.code.localeCompare(a.code));
@@ -168,10 +168,13 @@
     const txt = (key, label, ph) => `<div class="vfield"><div class="lr"><label>${label}</label></div><input class="vctl" data-yf="${key}" maxlength="255" placeholder="${ph}" value="${esc(d[key])}"></div>`;
     const sel = (key, label, opt) => `<div class="vfield"><div class="lr"><label>${label}</label></div>${vSelect(Object.assign({ id: 'yf-' + key, value: d[key], clear: true, searchable: true,
       onChange: (v) => { d[key] = v; rerender(); } }, opt))}</div>`;
-    const units = [...new Set(all.map((y) => y.unit))];
+    /* [T60 #58] Khối đơn vị (GIẢ LẬP P-190, như KĐT / ĐXMS): Đơn vị đề xuất chỉ hiện đơn vị thuộc khối đã chọn. */
+    const units = [...new Set(all.map((y) => y.unit))].filter((u) => !d.block || D.blockOf(u) === d.block);
     const nccs = [...new Map(all.flatMap((y) => y.ncc).map((c) => [c.code, c])).values()];
     return `<form class="adv" data-yadv><div class="grid3">
         ${k === 'all' ? sel('obj', 'Loại đối tượng', { searchable: false, placeholder: 'Tất cả', options: [{ value: 'dxms', label: 'ĐXMS' }, { value: 'kdt', label: 'KĐT' }] }) : ''}${txt('code', 'Mã yêu cầu báo giá', 'Nhập mã yêu cầu báo giá')}${txt('dxms', 'Mã ' + o.obj, 'Nhập mã ' + o.obj)}${''/* [T59 #55] bỏ ô tìm Mã hồ sơ: txt('hs', 'Mã hồ sơ', 'Nhập mã hồ sơ') */}
+        ${sel('block', 'Khối đơn vị', { searchable: false, placeholder: 'Chọn khối đơn vị', options: D.blocks.map((b) => ({ value: b, label: b })),
+          onChange: (v) => { d.block = v; if (d.unit && D.blockOf(d.unit) !== v) d.unit = null; rerender(); } })}
         ${sel('unit', 'Đơn vị đề xuất', { placeholder: 'Chọn đơn vị đề xuất', options: units.map((u) => ({ value: u, label: u })) })}
         ${sel('st', 'Trạng thái', { multi: true, searchable: false, placeholder: 'Tất cả trạng thái', options: stOpts() })}
         ${sel('ncc', 'Nhà cung cấp', { placeholder: 'Chọn nhà cung cấp', options: nccs.map((c) => ({ value: c.code, label: `${c.code} - ${c.name}` })) })}
@@ -183,6 +186,7 @@
   const T59_NOTE = '<b>T59 (D-114)</b>: bỏ cột Mã hồ sơ ở danh sách, tệp Xuất excel và ô tìm Mã hồ sơ ở Tìm kiếm nâng cao (review #55); Chi tiết YCBG vẫn hiện Mã hồ sơ. '
     + 'Trạng thái (review #56, Q7): "Đã nhận báo giá" (Thầu đã tải báo giá ở bước 10, chờ Chỉ huy duyệt 10.1) gộp vào <b>Đang chờ báo giá</b> — số báo giá đã nhận xem ở cột riêng; '
     + 'người xem còn các trạng thái Nháp (chỉ YCBG ngoài quy trình), Đang chờ báo giá, Báo giá đạt, Báo giá không đạt, Đã huỷ (ĐXMS / KĐT Dừng xử lý khi YCBG còn chờ, BR-YBG-C-09). BE có thể giữ trạng thái nội bộ "đã nhận" để tính cơ sở giá.';
+  const T60_NOTE = '<b>T60</b> (review Nhi 12/11 #58): Tìm kiếm nâng cao thêm <b>Khối đơn vị</b>; Đơn vị đề xuất chỉ hiện đơn vị thuộc khối đã chọn, đổi khối thì bỏ đơn vị không thuộc khối. GIẢ LẬP danh mục khối P-190 (dùng chung ĐXMS / KĐT).';
   const yHref = (y) => (y.kdt ? 'ycbg-kdt/' : 'ycbg/') + encodeURIComponent(y.code);
   const LIST_INFO = {
     scr: 'SCR-73', name: 'Danh sách yêu cầu báo giá ĐXMS', uc: 'UC-07-03 · UR-PRE-21/22',
@@ -191,6 +195,7 @@
       'Mỗi lần hồ sơ chạy task 08 "Khởi tạo yêu cầu báo giá" sinh một YCBG (mã YCBG-&lt;số ĐXMS&gt;-&lt;lần&gt;); service task 09 gửi email thay TTMS cho các NCC đã chọn; task 10 ghi nhận báo giá và kết quả kiểm tra. Danh sách là tra cứu — không tạo YCBG ở đây (tạo trong luồng, S2).',
       'Trạng thái: Đang chờ báo giá (đã gửi, đến khi có kết quả task 10) → Báo giá đạt / Báo giá không đạt (kết quả task 10; Không đạt thì hồ sơ quay về task 08, sinh YCBG lần sau). Hồ sơ dừng / chuyển quy trình khi YCBG còn chờ → Đã huỷ.',
       T59_NOTE,
+      T60_NOTE,
       'Cần dev: bảng YCBG (ĐXMS, hồ sơ, lần, NCC nhận, hạn) do BE ghi ở task 08/09; báo giá của NCC = tài liệu "Báo giá — (NCC)" ở task 10 (B0.5 #5). Xuất excel tải danh sách đang lọc.',
       'Dữ liệu mẫu suy từ hồ sơ của các ĐXMS: hồ sơ chưa qua task 08 không có YCBG.',
     ],
@@ -215,6 +220,7 @@
       'ĐXMS: task 08 MS01 sinh YCBG (mã YCBG-&lt;số ĐXMS&gt;-&lt;lần&gt;), service task 09 gửi email NCC, task 10 ghi nhận báo giá. KĐT: bước 8 / 9 / 10 MS13 (mã YCBG-&lt;mã KĐT&gt;-&lt;lần&gt;); YCBG đạt cho tổng mức vốn thực tế để phân luồng MS13 / MS14 / MS15.',
       'Trạng thái: Đang chờ báo giá → Báo giá đạt / Báo giá không đạt; hồ sơ dừng khi YCBG còn chờ → Đã huỷ; Nháp chỉ có ở YCBG tạo trực tiếp. Thêm mới = YCBG tạo trực tiếp (P-205, chỉ loại ĐXMS).',
       T59_NOTE,
+      T60_NOTE,
       'Cần dev: một API danh sách YCBG có tham số loại đối tượng (cùng bảng YCBG, khoá ngoại tới ĐXMS hoặc KĐT); quyền xem theo quyền trên đối tượng cha. Xuất excel tải danh sách đang lọc.',
     ],
     q: ['P-72', 'P-74'], src: 'profile-management/profile-list · /khcn-profile-management',
@@ -286,6 +292,7 @@
         'Hạng mục yêu cầu = phần còn phải mua sau rà soát tồn kho (task 07). Nhà cung cấp nhận yêu cầu chọn ở task 08 (lọc theo ngành hàng; B0.5 #3 thêm NCC mới). Báo giá = tài liệu "Báo giá — (NCC)" tải lên ở task 10.',
         'Card So sánh báo giá (cơ sở giá = đơn giá thấp nhất trong báo giá còn hiệu lực) <b>tạm ẩn</b> ở mọi màn (10/11/2026) — Thầu so sánh, đánh giá báo giá ngoài hệ thống (P-219). Kết quả Đạt / Không đạt là quyết định ở task 10.',
         'Mã ĐXMS, mã hồ sơ mở màn chi tiết tương ứng.',
+        '<b>T60</b> (review Nhi 12/11): Lịch sử xử lý mới nhất lên đầu (#64). Bỏ <b>Kênh gửi</b> (#66 — giá trị cố định, không có nguồn dữ liệu). Thêm <b>Giá trị báo giá cuối cùng (tỷ đồng)</b> khi Báo giá đạt (#65) = Tổng giá trị theo cơ sở giá ở bảng Đánh giá báo giá bước 10 (BR-DXMS-04-10); hồ sơ mẫu tính lại từ báo giá còn hiệu lực. <b>Hiệu lực đến</b> giữ (#63): Thầu nhập cho từng nhà cung cấp ở bảng Đánh giá báo giá bước 10 (BR-DXMS-04-09), dùng để loại báo giá hết hiệu lực khỏi cơ sở giá; trước bước 10 để trống.',
         '<b>T59 (D-114)</b>: Danh sách YCBG bỏ cột Mã hồ sơ (review #55) nhưng Chi tiết YCBG vẫn giữ trường Mã hồ sơ — GIẢ ĐỊNH: người xem cần biết YCBG sinh từ hồ sơ nào (KĐT: hồ sơ chủ trương / KĐT; ĐXMS: hồ sơ phê duyệt). Trạng thái "Đã nhận báo giá" hiển thị là Đang chờ báo giá (Q7); trạng thái từng NCC (Chưa phản hồi / Đã nhận báo giá / Hết hiệu lực) giữ ở bảng NCC.',
       ],
       q: ['P-06', 'P-26', 'P-72'], src: 'profile-management/profile-detail · /khcn-profile-management/:id/view',
@@ -299,14 +306,20 @@
     const qFile = (n) => `Bao-gia-${String(n.short || n.code).replace(/^NCC /, '')}${y.lan > 1 ? '-lan-' + y.lan : ''}.pdf`;
     const hist = [{ at: y.sent, who: y.creator, act: 'Khởi tạo yêu cầu báo giá' }, { at: y.sent, who: y.creator, act: `Lưu yêu cầu báo giá — ${y.ncc.length} nhà cung cấp nhận (T37: chưa gửi email)` }]
       .concat(y.ncc.filter((n) => n.got).map((n) => ({ at: n.date, who: y.creator, act: `Ghi nhận báo giá của ${n.name}` })))
-      .concat(y.status === 'OK' || y.status === 'FAIL' ? [{ at: addDays(y.sent, 6), who: y.creator, act: YST[y.status][0] }] : y.status === 'CANCEL' ? [{ at: addDays(y.sent, 3), who: 'Hệ thống ĐTMS', act: 'Huỷ do hồ sơ kết thúc' }] : []);
+      .concat(y.status === 'OK' || y.status === 'FAIL' ? [{ at: addDays(y.sent, 6), who: y.creator, act: YST[y.status][0] }] : y.status === 'CANCEL' ? [{ at: addDays(y.sent, 3), who: 'Hệ thống ĐTMS', act: 'Huỷ do hồ sơ kết thúc' }] : [])
+      /* [T60 #64] mới nhất lên đầu (ngày giảm dần; cùng ngày giữ thứ tự phát sinh ngược). */
+      .map((h, i) => Object.assign({ i }, h)).sort((a, b) => dkey(b.at).localeCompare(dkey(a.at)) || b.i - a.i);
+    /* [T60 #65] Giá trị báo giá cuối cùng (YCBG Báo giá đạt) = Tổng giá trị theo cơ sở giá kết quả task 10: hồ sơ đang chạy lấy bảng Đánh giá báo giá (BaoGia), hồ sơ mẫu tính lại từ báo giá còn hiệu lực. */
+    const finalVal = y.status !== 'OK' ? null : (window.BaoGia && !y.kdt && y.dxms === Flow.state.dxms && (window.Ycbg.ycbgOf(y.dxms).slice(-1)[0] || {}).code === y.code
+      ? window.BaoGia.total() : Math.round(basisOf(y).reduce((s, b) => s + (b.amount || 0), 0) * 100) / 100);
     return `<div class="pg">
       ${S.head({ title: 'Xem chi tiết yêu cầu báo giá', back, lg: true, info, right: `<button class="vbtn secondary" data-y-export="${esc(y.code)}">${icon('download')} Xuất file</button>${y.user && window.YcbgForm.canEdit(y.code) ? `<button class="vbtn primary" data-go="ycbg/${encodeURIComponent(y.code)}/edit">${icon('edit')} Cập nhật</button>` : ''}` })}
       <section class="vcard pad24 gen"><h3>Thông tin chung</h3><div class="ginfo c3">
         ${kv('Mã yêu cầu báo giá', esc(y.code))}${kv('Lần gửi', String(y.lan))}${kv('Trạng thái', badge(...YST[y.status]))}
         ${kv('Mã ' + o.obj, y.dxms ? `<a class="link-red" href="#/${o.objHref(y.dxms)}">${esc(y.dxms)}</a>` : '')}${kv(y.user ? 'Tên yêu cầu báo giá' : 'Tên ' + o.obj, esc(y.title), 'span2')}
         ${kv('Mã hồ sơ', y.hs ? `<a class="link-red" href="#/${y.hsHref}">${esc(y.hs)}</a>` : '')}${kv('Đơn vị đề xuất', esc(y.unit))}${kv('Người tạo', esc(y.creator))}
-        ${kv('Ngày gửi', esc(y.sent))}${kv('Hạn báo giá', esc(y.due))}${kv('Kênh gửi', y.status === 'DRAFT' ? '' : 'Công văn TTMS gửi (hệ thống chưa gửi email)')}
+        ${kv('Ngày gửi', esc(y.sent))}${kv('Hạn báo giá', esc(y.due))}${''/* [T60 #66] bỏ Kênh gửi (không có nguồn dữ liệu): kv('Kênh gửi', y.status === 'DRAFT' ? '' : 'Công văn TTMS gửi (hệ thống chưa gửi email)') */}
+        ${y.status === 'OK' ? kv('Giá trị báo giá cuối cùng (tỷ đồng)', finalVal != null ? esc(ty(finalVal, 2)) : '') : ''}
         ${y.kdt ? '' : kv('Dự án / Đề tài', esc(y.nvText), 'span3')}</div></section>
       ${y.terms ? `<section class="vcard pad24"><h3>Điều khoản trên phiếu yêu cầu báo giá</h3><div class="ginfo c3">${kv('Điều kiện thanh toán', esc(y.terms.payment), 'span3')}${kv('Địa điểm giao hàng', esc(y.terms.place))}${kv('Bảo hành tối thiểu', y.terms.warranty != null && y.terms.warranty !== '' ? esc(y.terms.warranty + ' tháng') : dash)}${kv('Năm sản xuất từ', y.terms.year ? esc(y.terms.year) : dash)}${kv('Đầu mối tiếp nhận báo giá', esc(y.terms.contact), 'span3')}${kv('Các yêu cầu khác', esc(y.terms.other), 'span3')}</div></section>` : ''}
       <section class="vcard pad24"><h3>Hạng mục yêu cầu báo giá</h3>
