@@ -310,9 +310,9 @@ test('D-29 (3): thay người đã ký — văn bản đã ký giữ nguyên; ta
   const code = await newLuong(page);
   expect(await runTo(page, 48)).toBe(true);
   await openTab(page, code, 'tai-lieu');
-  // P-225: bước 18 hệ thống trình Chỉ huy ĐVĐX (người duyệt 16.1) ký BM-03 — TTMS không còn là người ký BM-03.
+  // T54 (SRS 21 V0.4): Chỉ huy ĐVĐX trình ký BM-03 ở bước 16.1 — TTMS không là người ký BM-03.
   const bm03 = page.locator('[data-dx-docs] tbody tr', { hasText: 'BM-03' }).first();
-  const signer = await page.evaluate(() => D.personas.find((p) => p.id === Flow.state.history.find((h) => h.signDoc === 'BM-03').signer).name);
+  const signer = await page.evaluate(() => D.personas.find((p) => p.id === Flow.state.history.find((h) => String(h.task) === '16.1' && h.who).who).name);
   await expect(bm03).toContainText(signer);
   await expect(bm03).not.toContainText('Đinh Thị Mai');
   await expect(bm03).toContainText('Đã ký');

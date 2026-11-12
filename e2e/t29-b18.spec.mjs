@@ -131,7 +131,7 @@ test('B18: SCR-106 lưu ý bảo mật, bảng dự án / đối tác / đầu m
   // Dự án → bảng có Nguồn vốn.
   await main.locator('[data-yc-in="title"]').fill('Khảo sát giá máy đo phổ');
   await pickV(page, 'yc-nv', 'NV-KHCN-2026-014');
-  await expect(main.locator('[data-yc-nvt] tbody tr')).toContainText(['Quỹ phát triển KHCN']);
+  await expect(main.locator('[data-yc-nvt] tbody tr')).toContainText(['Quỹ phát triển khoa học công nghệ']);
   // Đối tác → bảng có Email; đối tác thiếu email thì chặn Gửi.
   const [ok, noMail] = await page.evaluate(() => { const r = Catalog.rows('nha-cung-cap').filter((x) => x.active && !x.ban); return [r.find((x) => x.email).code, (r.find((x) => !x.email) || {}).code || null]; });
   await pickV(page, 'yc-ncc', ok);

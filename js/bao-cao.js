@@ -405,11 +405,11 @@
         cols: [col('Gói thầu', 150, '', lk, (r) => r.code, (r) => r.code), 'title', col('Ngày nhận', 120, '', (r) => esc(r.date), (r) => dk(r.date), (r) => r.date), col('Nội dung', 380, '', (r) => cl(r.content), (r) => r.content),
           col('Trạng thái xử lý', 220, '', (r) => cl(r.stt), (r) => r.stt), col('Ngày giải quyết', 130, '', (r) => esc(r.done || '-'), (r) => dk(r.done), (r) => r.done || ''), col('Thời gian xử lý (ngày)', 160, 'r', (r) => r.days, (r) => r.days)] },
       { key: 'kpi-buoc', title: 'Báo cáo KPI xử lý theo bước', noStatus: true, rows: () => kpiSteps(),
-        metrics: (rs) => [['Số bước theo dõi', rs.length, 'quy trình MS01', () => true], ['Bước vượt KPI', rs.filter((x) => x.avg > x.kpi).length, '', (r) => r.avg > r.kpi], ['Số lần ký cứng', rs.reduce((s, x) => s + x.hard, 0), 'có lý do bắt buộc', (r) => r.hard > 0]],
+        metrics: (rs) => [['Số bước theo dõi', rs.length, 'quy trình MS01', () => true], ['Bước vượt KPI', rs.filter((x) => x.avg > x.kpi).length, '', (r) => r.avg > r.kpi], ['Số lần ký ngoài hệ thống', rs.reduce((s, x) => s + x.hard, 0), 'có lý do bắt buộc', (r) => r.hard > 0]],
         groups: [['Thời gian xử lý trung bình theo bước (ngày làm việc)', 'title', null, null, 'avg']],
         cols: [col('Bước', 80, 'c', (r) => esc(r.code), (r) => Number(r.code)), 'title', col('Số hồ sơ', 100, 'r', (r) => r.n, (r) => r.n), col('Thời gian TB (ngày LV)', 170, 'r', (r) => ty(r.avg, 1), (r) => r.avg),
           col('KPI (ngày LV)', 130, 'r', (r) => r.kpi, (r) => r.kpi), col('Đạt KPI', 110, 'c', (r) => (r.avg <= r.kpi ? badge('Đạt', 'success') : badge('Vượt', 'error')), (r) => (r.avg <= r.kpi ? 1 : 0), (r) => (r.avg <= r.kpi ? 'Đạt' : 'Vượt')),
-          col('Số vòng trả lại', 130, 'r', (r) => r.rounds, (r) => r.rounds), col('Số ý kiến', 100, 'r', (r) => r.cmt, (r) => r.cmt), col('Số lần ký cứng', 130, 'r', (r) => r.hard, (r) => r.hard)] },
+          col('Số vòng trả lại', 130, 'r', (r) => r.rounds, (r) => r.rounds), col('Số ý kiến', 100, 'r', (r) => r.cmt, (r) => r.cmt), col('Số lần ký ngoài hệ thống', 130, 'r', (r) => r.hard, (r) => r.hard)] },
     ] },
   };
   /* KPI theo bước: thống kê lịch sử task Camunda của hồ sơ MS01.01 (thời gian, số vòng trả lại, số ý kiến) + số lần ký cứng ghi ở bước trình ký (vars.hardSigns). */

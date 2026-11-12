@@ -17,20 +17,20 @@ const asAdmin = async (page, hash) => {
 };
 const row = (page, code) => page.locator('.vtable tbody tr', { hasText: code });
 
-test('D-42: Danh mục dùng chung là phân hệ riêng — menu ĐTMS không có; sidebar riêng: Tổng quan, E-form, danh mục chung, nhóm Đầu tư mua sắm (18 danh mục); mục sáng theo route; không có nút quay lại', async ({ page }) => {
+test('D-42: Danh mục dùng chung là phân hệ riêng — menu ĐTMS không có; sidebar riêng: Tổng quan, E-form, danh mục chung, nhóm Đầu tư mua sắm (21 danh mục — thêm SCR-110…112 khi rà tìm kiếm Đề tài / dự án 11/11/2026); mục sáng theo route; không có nút quay lại', async ({ page }) => {
   await asAdmin(page, '#/viec-cua-toi');
   const tops = await page.locator('.sb-nav > .nav:not(.child) .l').allInnerTexts();
   expect(tops).not.toContain('Danh mục dùng chung');
   await expect(page.locator('.sb-nav [data-go="eform"]')).toHaveCount(0);
   await page.evaluate(() => { location.hash = '#/dmdc/nguon-von'; });
   await expect(page.locator('.sb-head .t')).toHaveText('Danh mục dùng chung');
-  await expect(page.locator('.sb-nav [data-go^="dmdc/"]')).toHaveCount(18);
+  await expect(page.locator('.sb-nav [data-go^="dmdc/"]')).toHaveCount(21);
   await expect(page.locator('.sb-nav [data-go="dmdc"] .l')).toHaveText('Tổng quan');
   await expect(page.locator('.sb-nav [data-go="dmdc"] + .nav')).toHaveAttribute('data-go', 'eform');
   await page.locator('.sb-nav [data-go="dmdc"]').click();
   await expect(page).toHaveURL(/#\/dmdc$/);
   await expect(page.locator('.ov-title')).toHaveText('Các module trong phân hệ');
-  await expect(page.locator('.ov-tile')).toHaveCount(18);
+  await expect(page.locator('.ov-tile')).toHaveCount(21);
   await expect(page.locator('.ov-tile').nth(5)).toContainText('Danh mục Nguồn vốn');
   await expect(page.locator('.ov-tile').nth(5).locator('.n')).toHaveText('6');
   await page.locator('.ov-tile', { hasText: 'Nguồn vốn' }).click();

@@ -314,7 +314,7 @@ test('KĐT nhiều đề tài / dự án: SCR-55 chọn nhiều + bóc tách the
   // SCR-104 Chi tiết đề tài: KĐT liên quan gồm KĐT có đề tài trong danh sách đề tài / dự án.
   await go(page, '#/de-tai/' + enc(B));
   await page.evaluate(() => { Object.assign(D.show, { dtKdt: true }); App.render(); });
-  await page.locator('[data-dt-tab="dxms"]').click();
+  await page.locator('[data-dt-tab="kdt"]').click();
   const rel = page.locator('[data-dt-kdt]');
   await expect(rel).toContainText('KĐT-2026-0030');
   await expect(rel).toContainText(x.code);

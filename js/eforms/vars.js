@@ -88,7 +88,7 @@
   function signOf(task) {
     const h = Flow.state.history, ky = Flow.state.vars.ky;
     /* Hồ sơ KĐT: bước ký đang đi qua khối ký chung 75–78 (D-34) — chưa có kết quả. */
-    if (kdt() && ky && String(ky.task) === String(task)) return { st: ky.mode === 'hard' ? 'Đang ký bản cứng' : 'Đang trình VOffice', at: null };
+    if (kdt() && ky && String(ky.task) === String(task)) return { st: ky.mode === 'hard' ? 'Đang ký ngoài hệ thống' : 'Đang trình VOffice', at: null };
     let from = 0;
     if (!kdt()) h.forEach((x, i) => { if ((x.task === 11 || x.task === 27) && x.who) from = i + 1; });
     const done = h.slice(from).filter((x) => String(x.task) === String(task) && x.who).pop();
@@ -819,10 +819,10 @@ ${v.danhMucHang.map((r) => `- ${r.hang} — ${r.sl} ${r.dvt}`).join('\n')}`,
     /* 76–78 — khối ký chung (D-34): lần ký đang đi qua khối (vars.ky) */
     const ky = Flow.state.vars.ky;
     if (ky) {
-      v.kyChung = `**Văn bản:** ${ky.doc} (phiên bản v${kdtVer()}) · **Bước ký:** ${ky.task}. ${Flow.taskName(ky.task)}\n**Người ký:** ${pname(ky.signer)} · **Hình thức ký:** ${ky.mode === 'hard' ? 'Bản cứng' : 'VOffice'}${ky.mat ? ' — hồ sơ Mật, bắt buộc bản cứng' : ''}`;
+      v.kyChung = `**Văn bản:** ${ky.doc} (phiên bản v${kdtVer()}) · **Bước ký:** ${ky.task}. ${Flow.taskName(ky.task)}\n**Người ký:** ${pname(ky.signer)} · **Hình thức ký:** ${ky.mode === 'hard' ? 'Ký ngoài hệ thống' : 'VOffice'}${ky.mat ? ' — hồ sơ Mật, bắt buộc ký tay' : ''}`;
       v.trangThaiKy = u.trangThaiKy || 'Đã ký';
     }
-    v.kyLichSu = (Flow.state.vars.kyLog || []).map((x) => ({ buoc: `${x.task}. ${Flow.taskName(x.task)}`, vanBan: x.doc, hinhThuc: x.mode === 'hard' ? 'Bản cứng' : 'VOffice', luc: Flow.dateOf(x.t) }));
+    v.kyLichSu = (Flow.state.vars.kyLog || []).map((x) => ({ buoc: `${x.task}. ${Flow.taskName(x.task)}`, vanBan: x.doc, hinhThuc: x.mode === 'hard' ? 'Ký ngoài hệ thống' : 'VOffice', luc: Flow.dateOf(x.t) }));
     /* 24 — Chỉ huy ĐVĐX ký phiếu yêu cầu thẩm định (mở vòng hồ sơ gộp) */
     const s24 = signOf(24);
     v.kyPhieu = [signRowV('hai', 'Chỉ huy đơn vị đề xuất', s24.st, s24.at)];
@@ -938,7 +938,7 @@ ${v.danhMucHang.map((r) => `- ${r.hang} — ${r.sl} ${r.dvt}`).join('\n')}`,
     v.kyTd = [{ nguoiKy: 'Ban Đầu tư – Xây dựng Tập đoàn', tuCach: K.code === 'BM-01' ? 'Hoàn thiện hồ sơ, chân ký các Ban (bước 71)' : 'Ký báo cáo thẩm định BM-14 (bước 72)',
       trangThai: at(prep) ? 'Đã ký' : 'Chưa ký', thoiDiem: at(prep) || '-' },
       { nguoiKy: 'Tổng Giám đốc Tập đoàn', tuCach: K.code === 'BM-01' ? 'Ký trực tiếp Tờ trình BM-01' : 'Ký ban hành Quyết định BM-18', trangThai: s73.st, thoiDiem: s73.at || '-' }];
-    v.tdTraVe = `**Văn bản Tập đoàn ký:** ${K.code === 'BM-01' ? 'BM-01 có chân ký các Ban' : `BM-14 + BM-18${K.code === 'BM-00' ? ' (kèm BM-00)' : ''}`} · **Kết quả nhận ở bước 74:** VOffice → PDF tự động; bản cứng → bản scan.`;
+    v.tdTraVe = `**Văn bản Tập đoàn ký:** ${K.code === 'BM-01' ? 'BM-01 có chân ký các Ban' : `BM-14 + BM-18${K.code === 'BM-00' ? ' (kèm BM-00)' : ''}`} · **Kết quả nhận ở bước 74:** VOffice → PDF tự động; ký ngoài hệ thống → bản scan.`;
     return v;
   }
 

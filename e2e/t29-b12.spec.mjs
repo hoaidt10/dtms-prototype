@@ -223,7 +223,7 @@ test('#26: bước 8 theo màn Thêm mới YCBG của hệ thống cũ — Thôn
   const da = f.locator('.ef-table', { hasText: 'Thông tin dự án / đề tài' });
   await expect(da.locator('thead th')).toHaveText(['Mã dự án / đề tài', 'Tên dự án / đề tài', 'Loại', 'Nguồn vốn']);
   await expect(da.locator('tbody tr').first()).toContainText('NV-KHCN-2026-014');
-  await expect(da.locator('tbody tr').first()).toContainText('Quỹ phát triển KHCN');
+  await expect(da.locator('tbody tr').first()).toContainText('Quỹ phát triển khoa học công nghệ');
   await expect(f.locator('[data-ef="ngayYcbg"]')).not.toHaveValue('');
   await f.locator('[data-ef="ycbgHang::0::model"]').fill('N9042B');
   await f.locator('[data-ef="ycbgHang::0::spec"]').fill('Dải tần 2 Hz – 44 GHz');

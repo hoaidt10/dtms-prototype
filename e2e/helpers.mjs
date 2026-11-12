@@ -74,12 +74,24 @@ export async function primary(page, label) {
     if (await ta.count()) await ta.first().fill('Nội dung thử');
     const no = overlay.locator('#ef-no');
     if (reject && (await no.count())) await no.click();
-    else await overlay.locator('#ok, #go').first().click();
+    else {
+      // T54: hộp thoại Trình ký VOffice cần mật khẩu VOffice (GIẢ LẬP: chuỗi bất kỳ khác rỗng).
+      const pw = overlay.locator('#tk-pw');
+      if (await pw.count()) await pw.fill('Vht@2026');
+      await overlay.locator('#ok, #go').first().click();
+    }
   }
   return true;
 }
 
 // Review nhi 06/11 #34: bấm ✦ Gợi ý từ AI ở form Soạn thảo tờ trình (nếu có), chờ AI điền xong.
+// T54: bấm Trình ký ở hộp thoại Trình ký VOffice — điền mật khẩu VOffice (GIẢ LẬP) khi hình thức VOffice.
+export async function signGo(dlg) {
+  const pw = dlg.locator('#tk-pw');
+  if (await pw.count()) await pw.fill('Vht@2026');
+  await dlg.locator('#go').click();
+}
+
 export async function aiFill(page) {
   const b = page.locator('.vmodal.ef [data-ef-aifill]');
   if (!(await b.count())) return;

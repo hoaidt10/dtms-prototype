@@ -353,7 +353,7 @@
     return {
       form: m && m.group ? GROUP[m.group] : 'Chưa xác định — hệ thống xác định sau bước 12',
       level: r ? `Chủ trương: ${LEVEL[r.ct]} · KĐT: ${LEVEL[r.kdt]} — dự kiến, chốt ở bước 13` : 'Theo tổng mức vốn sau báo giá — chốt ở bước 13',
-      sign: v.secret === 'Có' ? 'Bản cứng (hồ sơ Mật)' : 'VOffice — đổi được khi trình ký',
+      sign: v.secret === 'Có' ? 'Ký ngoài hệ thống — Ký tay (hồ sơ Mật)' : 'VOffice — đổi được khi trình ký',
     };
   }
   /* SCR-56: bảng chỉ xem các dòng đã bóc tách. */
@@ -400,7 +400,7 @@
         '<b>Đề tài / dự án</b> bắt buộc (D-45, team BA 30/10/2026: KĐT xuất phát từ một nhiệm vụ hoặc đề tài, dự án của Kế hoạch năm) — cùng danh mục Đề tài / dự án với ĐXMS (D-66; nhiệm vụ KHCN là Loại KHCN); ô chọn ghi Loại, ô <b>Loại</b> chỉ đọc theo đề tài đã chọn; chọn xong thì Lĩnh vực mặc định theo đề tài (sửa được khi chưa có hồ sơ).',
         '<b>T31 B2</b> (D-69, mở rộng D-66 sang KĐT): nhãn "Nhiệm vụ / Đề tài, dự án" đổi thành "Đề tài / dự án" ở Danh sách KĐT, Thêm mới / Chỉnh sửa, Chi tiết KĐT và Danh sách hồ sơ KĐT; mã đề tài mở Chi tiết đề tài / dự án (SCR-104), ở đó tab ĐXMS / KĐT liên quan liệt kê KĐT này.',
         '<b>T31 B3 — Thông tin đề tài / dự án</b> (IA-DXMS dòng 13, D-68 mở rộng D-60 sang KĐT): cùng card với Thêm mới luồng mua sắm (SCR-96) — Loại chi phí → Khoản mục chi phí → <b>+ Thêm vào KĐT</b>, nhập Số lượng đề xuất, Giá trị dự tính, Hình thành gói thầu. Chỉ khoản mục TTMS đã tích <b>Chi mua sắm</b> và còn khả dụng; <b>khả dụng tính chung ĐXMS + KĐT</b> (dự toán − đã phê duyệt − đang giữ của mọi ĐXMS và KĐT dùng dòng; KĐT đã Lưu là đang giữ kể cả khi chưa có hồ sơ, dừng theo chỉ đạo thì trả lại). Vượt phần còn lại: cảnh báo đỏ, không chặn (BR-KDT-02-04); vượt giá trị dự toán của dòng: chặn Lưu; chặn vượt căn cứ khi chốt báo giá là P1 (BR-KDT-04-11, làm ở T29 B4). Đề tài Loại KHCN: dòng là hạng mục căn cứ, BE ghi bảng giữ chỗ khi Lưu và biến <code>duToanChon</code> cho bước 01, 05 (chỉ xem); loại khác chỉ tham khảo, căn cứ là tệp (D-30). KĐT đã có hồ sơ: card chỉ xem, sửa trong hồ sơ. Đổi Đề tài / dự án thì bỏ các dòng đã chọn. <b>Cần dev riêng</b>: bảng giữ chỗ dùng chung ĐXMS / KĐT (GIẢ LẬP P-193).',
-        '<b>Trường chỉ đọc</b> (IA dòng 13, D-7 không chọn quy trình): <b>Loại biểu mẫu</b> = Nhóm KĐT, "Chưa xác định" tới khi TTMS xác nhận 04 yếu tố ở bước 12; <b>Cấp phê duyệt</b> dự kiến theo phân cấp thẩm quyền (D-33, GIẢ LẬP P-90) với Loại KĐT và Tổng mức vốn dự kiến, chốt ở bước 13; <b>Hình thức trình ký</b> theo Mật (Mật → bản cứng, khối ký chung D-34). <b>Nội dung căn cứ pháp lý</b> nhập text; tệp căn cứ chọn ở bước 01 (Văn bản căn cứ đã phê duyệt) và Tài liệu đính kèm. Không có Danh sách người thẩm định dự kiến (D-71 — MS13 có bước chọn CQCM 22 / 41 / 52).',
+        '<b>Trường chỉ đọc</b> (IA dòng 13, D-7 không chọn quy trình): <b>Loại biểu mẫu</b> = Nhóm KĐT, "Chưa xác định" tới khi TTMS xác nhận 04 yếu tố ở bước 12; <b>Cấp phê duyệt</b> dự kiến theo phân cấp thẩm quyền (D-33, GIẢ LẬP P-90) với Loại KĐT và Tổng mức vốn dự kiến, chốt ở bước 13; <b>Hình thức trình ký</b> theo Mật (Mật → ký ngoài hệ thống, Ký tay; khối ký chung D-34). <b>Nội dung căn cứ pháp lý</b> nhập text; tệp căn cứ chọn ở bước 01 (Văn bản căn cứ đã phê duyệt) và Tài liệu đính kèm. Không có Danh sách người thẩm định dự kiến (D-71 — MS13 có bước chọn CQCM 22 / 41 / 52).',
         '<b>T45 — nhiều đề tài / dự án</b> (D-104): ô Đề tài / dự án <b>chọn nhiều</b> (vht-multi-select); ĐXMS vẫn một đề tài. Card Thông tin đề tài / dự án liệt kê dòng dự toán của <b>mọi đề tài đã chọn</b> (khoản mục ghi mã đề tài khi chọn từ 2 đề tài; bảng có cột Mã đề tài / dự án); mỗi dòng bóc tách lưu mã đề tài của dòng (<code>cost[].nv</code>). Bỏ một đề tài thì bỏ các dòng của đề tài đó. <b>Lĩnh vực</b> giữ một giá trị (mặc định theo đề tài đầu tiên); các đề tài khác lĩnh vực vẫn cho chọn, không chặn (<b>GIẢ LẬP</b> — chờ khách xác nhận luật lĩnh vực của KĐT nhiều đề tài).',
       ].concat(edit ? ['Khi KĐT đã có hồ sơ, 3 yếu tố phân luồng bị khoá (hồ sơ giữ giá trị lúc TTMS xác nhận). Card <b>Danh sách hồ sơ</b> có nút <b>Tạo hồ sơ</b> như source (chỉ ở mode edit).'] : []),
       q: ['P-51', 'P-59', 'P-113', 'P-193', 'P-90'], src: 'task-management/components/task-create · /task-management/' + (edit ? 'edit/:id' : 'create'),
@@ -516,7 +516,7 @@
         ${kv('Tổng mức vốn dự kiến', x.est != null ? ty(x.est) + ' tỷ đồng' : null)}${kv('Thời gian thực hiện', esc(x.period))}${kv('Mật', x.secret ? 'Có' : 'Không')}
         ${kv('Ngày cập nhật', esc(x.updated))}
         ${kv('Mục tiêu', esc(x.purpose), 'span3')}${x.legal ? kv('Nội dung căn cứ pháp lý', esc(x.legal), 'span3') : ''}</div></section>
-      ${costView(x)}${casesCard(x, false)}${docsCard(x)}`, window.KdtB2.tabOpt)}</div>`;
+      ${costView(x)}${casesCard(x, false)}${docsCard(x)}${window.TrinhKy.block(x.code)}`, window.KdtB2.tabOpt)}</div>`;
   }
 
   /* ---------- Thêm mới hồ sơ KĐT (khuôn SCR-25 / profile-form, ô KĐT khoá như route create/:taskId) ----------

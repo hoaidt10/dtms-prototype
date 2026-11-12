@@ -31,6 +31,8 @@ test('SCR-103: menu, lọc Loại → Loại chi tiết, Khối → Đơn vị l
   await page.locator('#dt-kw').press('Enter');
   await expect.poll(() => listCodes(page)).toEqual(['009-26-VHT-RDP-DS']);
 
+  // Rà 11/11/2026 (SRS DTMS_CN_0240): từ khóa luôn hiện và áp cùng điều kiện nâng cao — xoá từ khóa trước khi lọc theo Loại.
+  await page.locator('#dt-kw').fill('');
   await page.locator('[data-dt="adv"]').click();
   await pick(page, 'dtf-loai', 'KHCN');
   await page.locator('[data-vsel="dtf-loaiCt"]').click();
@@ -64,8 +66,8 @@ test('SCR-103: menu, lọc Loại → Loại chi tiết, Khối → Đơn vị l
 
 test('SCR-104: 5 tab cho mọi Loại (T31 B2); dự toán chỉ xem (góp ý 05/11), ghim cột Loại CP / Khoản mục; accordion đợt; xuất', async ({ page }) => {
   await fresh(page, '#/de-tai/' + encodeURIComponent('DA-2026-002'));
-  // T29 B15 (D-80): bản demo ĐXMS ẩn tab Gói thầu / Hợp đồng và bảng KĐT liên quan (cờ D.show).
-  await expect(page.locator('[data-dt-tab]')).toHaveText(['Thông tin chung', 'Dự toán chi phí', 'ĐXMS liên quan', 'Văn bản pháp lý']);
+  // T29 B15 (D-80): ẩn tab Gói thầu / Hợp đồng (cờ D.show); 11/11/2026 tab KĐT liên quan riêng.
+  await expect(page.locator('[data-dt-tab]')).toHaveText(['Thông tin chung', 'Dự toán chi phí', 'ĐXMS liên quan', 'KĐT liên quan', 'Văn bản pháp lý']);
   await expect(page.locator('main .ginfo').first()).toContainText('Đồng bộ HR Tool');
 
   await go(page, '#/de-tai/' + encodeURIComponent(DT));

@@ -143,7 +143,7 @@ test('SCR-96 cách 1 + T29 B12: Loại biểu mẫu / Cấp phê duyệt trống
   await expect(page.locator('#lf-d-level')).toHaveValue('Tổng công ty');
   await expect(page.locator('[data-vsel="lf-sign"] .vsel-label')).toHaveText('VOffice');
   await pick(page, 'lf-sec', 'Có');
-  await expect(page.locator('[data-vsel="lf-sign"] .vsel-label')).toHaveText('Bản cứng');
+  await expect(page.locator('[data-vsel="lf-sign"] .vsel-label')).toHaveText('Ký ngoài hệ thống');  // T54: SRS 32 Q9 A
   // D-74: hồ sơ Mật vẫn chọn được VOffice.
   await pick(page, 'lf-sign', 'VOffice');
   await expect(page.locator('[data-vsel="lf-sign"] .vsel-label')).toHaveText('VOffice');
@@ -164,7 +164,7 @@ test('SCR-96 cách 1 + T29 B12: Loại biểu mẫu / Cấp phê duyệt trống
   await pick(page, 'lf-cline', 'NV-KHCN-2026-014-1');
   await page.locator('[data-lf-cadd]').click();
   await expect(page.locator('[data-lf-cost] tbody tr')).toHaveCount(1);
-  await expect(page.locator('[data-lf-cost] tbody')).toContainText('Quỹ phát triển KHCN');
+  await expect(page.locator('[data-lf-cost] tbody')).toContainText('Quỹ phát triển khoa học công nghệ');
   await page.locator('[data-lf-cqty]').fill('1');
   await page.locator('[data-lf-cval]').fill('999.000.000.000');
   const pkg = await page.locator('[data-lf-cost] [data-vsel^="lf-cpkg-"]').getAttribute('data-vsel');

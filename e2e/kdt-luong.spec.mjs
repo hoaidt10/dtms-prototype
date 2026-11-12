@@ -1,7 +1,7 @@
 // T11 B2 / T18 B2 (BPMN 12/10, 78 bước) — PH09 Khoản đầu tư, cảnh 1–3 (plan docs/dtms/prototype-KDT-chuan-bi.md §2.4, §8): hồ sơ KĐT chạy luồng MS13 —
 // task 1–10 (body MS01 với nhãn KĐT), SCR-57 Ban Tài chính ‖ SCR-58 TTMS, cổng phân luồng / báo giá / gộp; nhánh chuyển MS14 (SCR-66).
 import { test, expect } from '@playwright/test';
-import { fresh, primary, lastToast, state, openForm, aiDecide, closeForm, uploadReq } from './helpers.mjs';
+import { fresh, primary, lastToast, state, openForm, aiDecide, closeForm, uploadReq, signGo } from './helpers.mjs';
 
 // B0.4 (2): nội dung bước nằm trong eForm (dialog khi bấm nút) và Văn bản đầu ra (xem trước PDF).
 async function formText(page, label) { const f = await openForm(page, label); const t = await f.innerText(); await closeForm(page); return t; }
@@ -574,16 +574,17 @@ test('Khối ký chung: hồ sơ Mật ký bản cứng 47 → 77 → 78 (scan b
   await branch(page, 10);
   await openForm(page);
   await page.locator('.vmodal.ef #ok').click();
-  const dlg = page.locator('.overlay', { hasText: 'Trình ký BM-01' });
-  await expect(dlg.locator('.vradio-opt.dis')).toHaveText('VOffice');
-  await expect(dlg.locator('.vradio-opt.on')).toHaveText('Bản cứng');
-  await expect(dlg).toContainText('Hồ sơ Mật');
+  // T54: hộp thoại Trình ký VOffice (SRS 32) — hồ sơ Mật chỉ Ký ngoài hệ thống, Ký tay.
+  const dlg = page.locator('.overlay', { hasText: 'Trình ký VOffice — BM-01' });
+  await expect(dlg.locator('.vradio-opt.dis').first()).toHaveText('VOffice');
+  await expect(dlg.locator('.vradio-opt.on[data-mode="hard"]')).toHaveText('Ký ngoài hệ thống');
+  await expect(dlg).toContainText('Đối tượng Mật');
   await dlg.locator('#go').click();
-  expect(await lastToast(page)).toContain('ký bản cứng');
+  expect(await lastToast(page)).toContain('ký ngoài hệ thống');  // T54: "Bản cứng" → Ký ngoài hệ thống (SRS 32 Q9 A)
   expect(await toks(page)).toEqual(['77:lan']);
   await openMine(page, 77);
   await expect(page.locator('.tmain .ginfo').first()).toContainText('ký BM-01 — bước 47');
-  expect(await formText(page)).toContain('Hình thức ký: Bản cứng — hồ sơ Mật');
+  expect(await formText(page)).toContain('Hình thức ký: Ký ngoài hệ thống — hồ sơ Mật');
   expect(await mainText(page)).not.toMatch(BA);
   expect(await primary(page)).toBe(true);
   expect(await toks(page)).toEqual(['78:minh']);
@@ -614,10 +615,12 @@ test('Khối ký chung: hồ sơ Mật ký bản cứng 47 → 77 → 78 (scan b
   await openMine(page, 48);
   await openForm(page);
   await page.locator('.vmodal.ef #ok').click();
-  const d48 = page.locator('.overlay', { hasText: 'Trình ký BM-01' });
-  await expect(d48.locator('.vradio-opt.on')).toHaveText('VOffice');
+  const d48 = page.locator('.overlay', { hasText: 'Trình ký VOffice — BM-01' });
+  await expect(d48.locator('[data-mode="soft"]')).toHaveClass(/on/);
   await d48.locator('[data-mode="hard"]').click();
   await expect(d48).toContainText('bước 77');
+  // SRS 32 BR-TKV-01-13: không Mật thì Lý do ký ngoài hệ thống bắt buộc.
+  await d48.locator('#hr').fill('Lãnh đạo yêu cầu ký bản giấy');
   await d48.locator('#go').click();
   expect(await toks(page)).toEqual(['77:tgd']);
   expect(page.errors).toEqual([]);
@@ -638,9 +641,9 @@ test('Tuyến Tập đoàn: công văn 64 → TGĐ VHT ký 65 → các Ban nhậ
   await openMine(page, 65);
   await openForm(page);
   await page.locator('.vmodal.ef #ok').click();
-  const dlg = page.locator('.overlay', { hasText: 'Trình ký Công văn trình Tập đoàn' });
-  await expect(dlg.locator('.vradio-opt.on')).toHaveText('VOffice');
-  await dlg.locator('#go').click();
+  const dlg = page.locator('.overlay', { hasText: 'Trình ký VOffice — Công văn trình Tập đoàn' });
+  await expect(dlg.locator('[data-mode="soft"]')).toHaveClass(/on/);
+  await signGo(dlg);
   expect(await toks(page)).toEqual(['67:td']);
   // Các Ban Tập đoàn (tài khoản giả lập) gửi phiếu nhận xét BM-09 (chủ trương).
   await as(page, 'td');

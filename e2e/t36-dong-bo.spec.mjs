@@ -63,7 +63,7 @@ test('Đồng bộ từ HR Tool: hộp thoại Phạm vi, bắt buộc Mã khi M
   expect(page.errors).toEqual([]);
 });
 
-test('SCR-109: khối trạng thái theo nguồn, tab Lần đồng bộ / Lần nhập, lọc Nguồn, Bỏ qua lỗi bắt buộc Lý do', async ({ page }) => {
+test('SCR-109: khối trạng thái theo nguồn, bảng lần đồng bộ (không có tab Lần nhập), lọc Nguồn, Bỏ qua lỗi bắt buộc Lý do', async ({ page }) => {
   await fresh(page, '#/de-tai');
   await as(page, 'qt');
   await menu(page).click();
@@ -77,7 +77,7 @@ test('SCR-109: khối trạng thái theo nguồn, tab Lần đồng bộ / Lần
   await expect(st.nth(0)).toContainText('Hằng ngày lúc 01:00');
   await expect(st.nth(1)).toContainText('HR Tool');
   await expect(st.nth(1)).toContainText('Hằng ngày lúc 01:30');
-  await expect(page.locator('[data-sy-tab]')).toHaveText(['Lần đồng bộ', 'Lần nhập']);
+  await expect(page.locator('[data-sy-tab]')).toHaveCount(0);
   await expect(page.locator('[data-sy-list] thead th')).toHaveText(['STT', 'Trạng thái', 'Mã lần', 'Nguồn', 'Cách chạy', 'Phạm vi', 'Người chạy', 'Bắt đầu', 'Kết thúc',
     'Lấy về', 'Thêm mới', 'Cập nhật', 'Không đổi', 'Bỏ qua', 'Lỗi']);
   await expect(page.locator('[data-sy-list] tbody tr')).toHaveCount(4);
@@ -104,10 +104,6 @@ test('SCR-109: khối trạng thái theo nguồn, tab Lần đồng bộ / Lần
   await d.locator('[data-close]').last().click();
   await expect(st.nth(0).locator('td').last()).toHaveText('0');
 
-  await page.locator('[data-sy-tab="imp"]').click();
-  await expect(page.locator('[data-sy-imports] tbody tr')).toHaveCount(1);
-  await page.locator('[data-sy-imp="NH-2026-00012"]').click();
-  await expect(page.locator('.vmodal h3')).toHaveText('Chi tiết lần nhập NH-2026-00012');
   expect(page.errors).toEqual([]);
 });
 

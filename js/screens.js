@@ -807,7 +807,7 @@
       title: SEC_WORDS.test(title || '') ? ['Không đạt', 'Tên có từ khoá nhạy cảm — đề nghị dùng tên chung (vd. "Mua sắm thiết bị đo kiểm").'] : ['Đạt', ''],
       purpose: SEC_WORDS.test(purpose || '') ? ['Không đạt', 'Mục đích nêu thông số / địa điểm cụ thể — chuyển sang tài liệu Mật đính kèm.'] : ['Đạt', ''],
       unit: !v.unit ? ['Chưa có kết quả', 'Chưa chọn đơn vị.'] : OK_UNITS.includes(v.unit) ? ['Đạt', ''] : ['Không đạt', 'Đơn vị chưa có trong danh sách được xử lý hồ sơ Mật.'],
-      sign: ['Lưu ý', 'Các bước trình ký mặc định Ký cứng; YCBG gửi NCC theo kênh được duyệt.'],
+      sign: ['Lưu ý', 'Các bước trình ký mặc định Ký ngoài hệ thống (Ký tay); YCBG gửi NCC theo kênh được duyệt.'],
     };
     const tone = { 'Đạt': 'success', 'Không đạt': 'error', 'Lưu ý': 'warning', 'Chưa có kết quả': 'default' };
     return `<section class="vcard ai-box" data-sec-check><div class="vcard-h"><h3>AI kiểm tra quy tắc bảo mật</h3><span class="cap">Kết quả mẫu · chạy lại khi Lưu · không chặn Lưu</span></div>
@@ -1599,7 +1599,7 @@
       ${quotedD ? kv('Tổng giá trị (gồm VAT)', ty(ci.total) + ' tỷ đồng') : `${kv('Tổng giá trị (gồm VAT)', null)}${kv('Giá trị dự kiến', estD != null ? (xD.luong ? Math.round(estD * 1e9).toLocaleString('vi-VN') + ' đồng' : ty(estD) + ' tỷ đồng') : null)}`}${kv('Nguồn vốn', esc(fundD))}${kv('Thời gian thực hiện', esc(ci.period))}
       ${kv('Căn cứ đã được phê duyệt', xD.basisTD == null ? null : xD.basisTD ? 'Đã phê duyệt' : 'Chưa phê duyệt')}${kv('Loại biểu mẫu', lvD.form)}${kv('Cấp phê duyệt', lvD.level)}
       ${kv('Mức ưu tiên', esc(ci.priority))}${xD.priReason ? kv('Lý do ưu tiên', esc(xD.priReason)) : ''}
-      ${kv('Mật', ci.secret ? 'Có' : 'Không')}${kv('Hình thức trình ký', esc(xD.sign || (ci.secret ? 'Bản cứng' : 'VOffice')))}${round ? kv('Vòng giải trình', `${round}/2`) : ''}
+      ${kv('Mật', ci.secret ? 'Có' : 'Không')}${kv('Hình thức trình ký', esc((xD.sign === 'Bản cứng' ? 'Ký ngoài hệ thống' : xD.sign) || (ci.secret ? 'Ký ngoài hệ thống' : 'VOffice')))}${round ? kv('Vòng giải trình', `${round}/2`) : ''}
       ${Flow.state.replaces ? kv('Thay thế cho', esc(Flow.state.replaces)) : ''}
       ${xD.legal ? `<div class="full"><div class="k">Nội dung căn cứ pháp lý</div><div class="v" style="white-space:pre-line">${esc(xD.legal)}</div></div>` : ''}`;
 
@@ -1668,7 +1668,7 @@
         ${window.BaoGia ? window.BaoGia.card(tok) : ''}
         ${window.RaSoatKho ? window.RaSoatKho.taskCard(tok) : ''}
         ${ci.isKdt ? kdtStepsCard(Object.assign({ page: 'MS13' }, ci), processSteps(), 'pad24') : `<section class="vcard pad24"><h3>Quy trình</h3>${UI.vSteps({ id: ci.code, steps: processSteps() })}</section>`}
-        ${filesSec}${outsSec}
+        ${filesSec}${outsSec}${ci.isKdt && Flow.state.kdt ? window.TrinhKy.block(Flow.state.kdt, { pad: true }) : ''}
       </div>${historyCard()}</div></div>`;
   }
 

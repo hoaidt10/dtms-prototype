@@ -21,10 +21,37 @@
     'snapshot: khoá trong "snapshots" — ảnh chụp dữ liệu prototype (localStorage) lúc ghim; nạp lại để thấy đúng màn người review đã thấy (prototype: nút "Mở đúng ngữ cảnh"; hoặc tools/review-merge.mjs --shots).',
   ];
 
+  /* ---------- Kho chung (T52) ----------
+     Có URL kho chung (meta review-api trong index.html, hoặc ?review-api=<url> — nhớ trong localStorage, 'off' để tắt) thì comment đọc / ghi
+     qua Google Apps Script (tools/review-sheet/Code.gs): ai mở prototype cũng thấy toàn bộ. Không có URL thì như T30 — chỉ lưu trên máy. */
+  const API = (() => {
+    let u = '';
+    try {
+      const q = new URLSearchParams(location.search).get('review-api');
+      if (q != null) localStorage.setItem('dtms-review-api', q);
+      u = localStorage.getItem('dtms-review-api') || '';
+    } catch (e) { /* bỏ qua */ }
+    if (u === 'off') return '';
+    if (u) return u.trim();
+    /* Trình duyệt tự động hoá (Playwright: e2e, guide-shots, release-check) không ghi vào kho thật — chỉ dùng khi chỉ định rõ ?review-api=. */
+    if (navigator.webdriver) return '';
+    return ((document.querySelector('meta[name="review-api"]') || {}).content || '').trim();
+  })();
+  const REMOTE = /^https?:\/\//.test(API);
+  const SHARED = 'dtms-review-shared-v1'; // bản sao kho chung trên máy (xem khi mất mạng)
+  const OUTBOX = 'dtms-review-outbox';     // thao tác chưa gửi được lên kho chung
+
   /* ---------- Lưu trữ ---------- */
-  let DB = { comments: [], snapshots: {} };
-  try { const raw = JSON.parse(localStorage.getItem(STORE) || 'null'); if (raw && Array.isArray(raw.comments)) DB = { comments: raw.comments, snapshots: raw.snapshots || {} }; } catch (e) { /* bỏ qua */ }
-  const save = () => { try { localStorage.setItem(STORE, JSON.stringify(DB)); } catch (e) { toast('Không lưu được vào trình duyệt (bộ nhớ đầy?). Hãy Xuất JSON ngay.'); } };
+  const KEY = REMOTE ? SHARED : STORE;
+  const load = (k) => { try { const raw = JSON.parse(localStorage.getItem(k) || 'null'); if (raw && Array.isArray(raw.comments)) return { comments: raw.comments, snapshots: raw.snapshots || {} }; } catch (e) { /* bỏ qua */ } return null; };
+  let DB = load(KEY) || { comments: [], snapshots: {} };
+  /* Comment ghi trước khi có kho chung (khoá T30) — gửi lên bằng menu "Gửi … comment trên máy lên kho chung". */
+  let legacy = REMOTE ? load(STORE) : null;
+  const save = () => { try { localStorage.setItem(KEY, JSON.stringify(DB)); } catch (e) { toast(REMOTE ? 'Bộ nhớ trình duyệt đầy — comment vẫn gửi lên kho chung.' : 'Không lưu được vào trình duyệt (bộ nhớ đầy?). Hãy Xuất JSON ngay.'); } };
+  let outbox = [];
+  try { outbox = REMOTE ? JSON.parse(localStorage.getItem(OUTBOX) || '[]') : []; } catch (e) { outbox = []; }
+  const saveOutbox = () => { try { localStorage.setItem(OUTBOX, JSON.stringify(outbox)); } catch (e) { /* bỏ qua */ } };
+  const sync = { at: '', err: '', busy: false, loaded: false };
   let author = '';
   try { author = localStorage.getItem(AUTHOR) || ''; } catch (e) { /* bỏ qua */ }
 
@@ -170,15 +197,21 @@
     cmt: '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/></svg>',
   };
   const openCount = () => DB.comments.filter((c) => c.status !== 'resolved').length;
+  const syncText = () => 'Kho chung · ' + (sync.err ? `lỗi: ${esc(sync.err)}` : sync.at ? `cập nhật ${fmt(sync.at)}` : 'đang tải…')
+    + (outbox.length ? ` · ${outbox.length} chờ gửi` : '');
   function drawFab() {
     const n = openCount();
     fab.innerHTML = `<button class="rv-btn ${mode ? 'on' : ''}" id="rv-fab" title="Comment review (phím C)" aria-label="Comment review">${SVG.cmt}${n ? `<span class="rv-count">${n}</span>` : ''}</button>
       ${menuOpen ? `<div class="rv-menu" role="menu">
         <div class="rv-mh">Comment review <small>(không thuộc giao diện app)</small></div>
+        ${REMOTE ? `<div class="rv-sync ${sync.err ? 'err' : ''}">${syncText()}</div>` : ''}
         <button data-rv="mode">${mode ? 'Tắt' : 'Bật'} chế độ comment <kbd>C</kbd></button>
         <button data-rv="panel">Danh sách comment (${DB.comments.length})</button>
         <button data-rv="pins">${hidePins ? 'Hiện' : 'Ẩn'} ghim</button>
-        <button data-rv="export">Xuất JSON gửi nhóm dự án</button>
+        ${REMOTE ? `<button data-rv="refresh">Tải lại từ kho chung</button>
+        ${legacy && legacy.comments.length ? `<button data-rv="legacy">Gửi ${legacy.comments.length} comment trên máy lên kho chung</button>` : ''}
+        <button data-rv="export-shared">Tải JSON toàn bộ kho chung</button>`
+        : '<button data-rv="export">Xuất JSON gửi nhóm dự án</button>'}
         <button data-rv="import">Nhập JSON…</button>
         <button data-rv="author">Tên người review: <b>${esc(author || 'chưa đặt')}</b></button>
       </div>` : ''}`;
@@ -250,8 +283,9 @@
       type: pop.querySelector('.rv-type').value, status: 'open', text, replies: [],
       where: n.ctx, target: n.tgt, context: contextOf(n.el), snapshot: snapshot(), build: BUILD,
     };
-    DB.comments.push(c); save(); closePop(); drawFab();
-    toast(`Đã lưu comment #${c.no}.`);
+    commit({ op: 'add', comment: c, snapshot: REMOTE ? { key: c.snapshot, data: DB.snapshots[c.snapshot] } : undefined, base: base() });
+    closePop(); drawFab();
+    toast(REMOTE ? `Đã lưu comment #${c.no} — đang gửi lên kho chung.` : `Đã lưu comment #${c.no}.`);
   }
 
   function thread(c, x, y) {
@@ -276,12 +310,16 @@
   function reply() {
     const c = byId(pop.dataset.id), text = pop.querySelector('.rv-text').value.trim();
     if (!c || !takeAuthor(pop) || !text) return;
-    c.replies.push({ author, at: now(), text }); c.updatedAt = now(); save();
-    const r = pop.getBoundingClientRect(); thread(c, r.left - 14, r.top + 10);
+    commit({ op: 'reply', id: c.id, reply: { author, at: now(), text } });
+    const r = pop.getBoundingClientRect(); thread(byId(c.id), r.left - 14, r.top + 10);
   }
-  /* Nạp ảnh chụp dữ liệu prototype lúc ghim rồi tải lại trang ở đúng route. */
-  function openContext(c) {
-    const snap = DB.snapshots[c.snapshot];
+  /* Nạp ảnh chụp dữ liệu prototype lúc ghim rồi tải lại trang ở đúng route. Kho chung: ảnh chụp tải về khi cần. */
+  async function openContext(c) {
+    let snap = DB.snapshots[c.snapshot];
+    if (!snap && REMOTE && c.snapshot) {
+      try { const r = await call('GET', null, 'op=snap&key=' + encodeURIComponent(c.snapshot)); snap = r && r.data; if (snap) { DB.snapshots[c.snapshot] = snap; save(); } }
+      catch (e) { toast('Không tải được ảnh chụp dữ liệu từ kho chung — mở màn với dữ liệu hiện tại.'); }
+    }
     if (snap && !confirm('Dữ liệu luồng hiện tại trên máy này sẽ được thay bằng dữ liệu lúc comment được ghim (comment không bị ảnh hưởng). Tiếp tục?')) return;
     if (snap) {
       for (let i = localStorage.length - 1; i >= 0; i--) { const k = localStorage.key(i); if (SNAP_RE.test(k)) localStorage.removeItem(k); }
@@ -298,16 +336,18 @@
     const here = '#/' + route();
     const list = DB.comments.filter((c) => panelFilter === 'all' || (panelFilter === 'open' ? c.status !== 'resolved' : c.where.route === here))
       .slice().sort((a, b) => a.no - b.no);
-    const sig = JSON.stringify([panelFilter, here, list.map((c) => [c.id, c.status, c.replies.length, !!c._lost])]);
+    const sig = JSON.stringify([panelFilter, here, REMOTE ? syncText() : '', list.map((c) => [c.id, c.no, c.status, c.replies.length, !!c._lost])]);
     if (panel._sig === sig) return;
     panel._sig = sig;
-    panel.innerHTML = `<div class="rv-ph">Comment review <button class="rv-x" data-rv="panel-close" aria-label="Đóng">×</button></div>
+    panel.innerHTML = `<div class="rv-ph">Comment review${REMOTE ? ' · kho chung' : ''} <button class="rv-x" data-rv="panel-close" aria-label="Đóng">×</button></div>
+      ${REMOTE ? `<div class="rv-sync ${sync.err ? 'err' : ''}">${syncText()}</div>` : ''}
       <div class="rv-filt">${[['screen', 'Màn này'], ['open', 'Chưa xử lý'], ['all', 'Tất cả']].map(([k, l]) => `<button class="${panelFilter === k ? 'on' : ''}" data-filt="${k}">${l}</button>`).join('')}</div>
       <div class="rv-list">${list.length ? list.map((c) => `<button class="rv-item ${c.status}" data-item="${esc(c.id)}">
         <span class="rv-no">${c.no}</span><span class="rv-it"><span class="rv-l1">${esc(c.author)} · ${esc(c.type)}${c._lost ? ' · <i>mất neo</i>' : ''}</span>
         <span class="rv-l2">${esc(clean(c.text, 120))}</span><span class="rv-l3">${esc([c.where.screen.scr, c.where.title, c.target.label].filter(Boolean).join(' · '))}</span></span></button>`).join('')
         : '<div class="rv-empty">Chưa có comment.</div>'}</div>
-      <div class="rv-act"><button class="rv-b2" data-rv="import">Nhập JSON…</button><button class="rv-b1" data-rv="export">Xuất JSON</button></div>`;
+      <div class="rv-act">${REMOTE ? '<button class="rv-b2" data-rv="refresh">Tải lại</button><button class="rv-b1" data-rv="export-shared">Tải JSON</button>'
+        : '<button class="rv-b2" data-rv="import">Nhập JSON…</button><button class="rv-b1" data-rv="export">Xuất JSON</button>'}</div>`;
   }
   function togglePanel(on) {
     if (on && !panel) { panel = document.createElement('aside'); panel.className = 'rv-panel'; layer.appendChild(panel); drawPanel(); }
@@ -326,6 +366,13 @@
   }
 
   /* ---------- Xuất / nhập ---------- */
+  function download(out, name) {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([JSON.stringify(out, null, 1)], { type: 'application/json' }));
+    a.download = name; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  }
+  const stamp = () => new Date().toISOString().slice(0, 16).replace(/[:T]/g, '');
   function exportJson() {
     const used = new Set(DB.comments.map((c) => c.snapshot));
     const snaps = {}; used.forEach((k) => { if (DB.snapshots[k]) snaps[k] = DB.snapshots[k]; });
@@ -336,30 +383,128 @@
       comments: DB.comments.map((c) => { const o = Object.assign({}, c); delete o._lost; return o; }),
       snapshots: snaps,
     };
-    const text = JSON.stringify(out, null, 1);
-    const name = `review-${slug(author)}-${new Date().toISOString().slice(0, 16).replace(/[:T]/g, '')}.json`;
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(new Blob([text], { type: 'application/json' }));
-    a.download = name; document.body.appendChild(a); a.click(); a.remove();
-    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    const name = `review-${slug(author)}-${stamp()}.json`;
+    download(out, name);
     toast(`Đã xuất ${DB.comments.length} comment ra ${name} — gửi tệp này cho nhóm dự án.`);
     return out;
   }
+  /* Kho chung: tải toàn bộ (kèm ảnh chụp dữ liệu) từ máy chủ — cùng định dạng, dùng được cho tools/review-merge.mjs. */
+  async function exportShared() {
+    try {
+      const r = await call('GET', null, 'op=export');
+      if (!r || !r.ok) throw new Error((r && r.error) || 'lỗi kho chung');
+      delete r.ok; r.readme = README;
+      const name = `review-kho-chung-${stamp()}.json`;
+      download(r, name);
+      toast(`Đã tải ${r.comments.length} comment của kho chung ra ${name}.`);
+    } catch (e) { toast('Không tải được từ kho chung: ' + errText(e)); }
+  }
   /* Gộp theo id: comment mới thì thêm (đổi số nếu trùng), comment đã có thì gộp trả lời và lấy trạng thái bản mới hơn. */
-  function importData(data) {
-    if (!data || data.format !== 'dtms-prototype-review' || !Array.isArray(data.comments)) throw new Error('Không phải tệp comment review prototype ĐTMS.');
+  function merge(data) {
     let add = 0, upd = 0;
     Object.assign(DB.snapshots, data.snapshots || {});
     data.comments.forEach((c) => {
       const old = byId(c.id);
-      if (!old) { const n = Object.assign({}, c); if (DB.comments.some((x) => x.no === n.no)) n.no = nextNo(); DB.comments.push(n); add++; return; }
+      if (!old) { const n = JSON.parse(JSON.stringify(c)); n.replies = n.replies || []; if (DB.comments.some((x) => x.no === n.no)) n.no = nextNo(); DB.comments.push(n); add++; return; }
       const seen = new Set(old.replies.map((r) => r.at + '|' + r.text));
       (c.replies || []).forEach((r) => { if (!seen.has(r.at + '|' + r.text)) { old.replies.push(r); upd++; } });
       old.replies.sort((a, b) => (a.at < b.at ? -1 : 1));
       if ((c.updatedAt || '') > (old.updatedAt || '')) { old.status = c.status; old.text = c.text; old.updatedAt = c.updatedAt; }
     });
-    save(); drawFab(); schedule();
     return { add, upd };
+  }
+  function importData(data) {
+    if (!data || data.format !== 'dtms-prototype-review' || !Array.isArray(data.comments)) throw new Error('Không phải tệp comment review prototype ĐTMS.');
+    const comments = data.comments.map((c) => { const o = Object.assign({}, c); delete o._lost; return o; });
+    return commit({ op: 'import', comments, snapshots: data.snapshots || {}, base: base() });
+  }
+
+  /* ---------- Thao tác ghi: áp ngay trên máy, có kho chung thì xếp hàng gửi lên ---------- */
+  const base = () => (/^https?:$/.test(location.protocol) ? location.href.split('#')[0].split('?')[0] : '');
+  /* Áp một thao tác lên DB — lặp lại không sao (dùng lại sau mỗi lần tải kho chung cho thao tác chưa gửi xong). */
+  function apply(op) {
+    if (op.op === 'add') {
+      if (op.snapshot && op.snapshot.data) DB.snapshots[op.snapshot.key] = op.snapshot.data;
+      if (!byId(op.comment.id)) DB.comments.push(JSON.parse(JSON.stringify(op.comment)));
+      return null;
+    }
+    if (op.op === 'import') return merge(op);
+    const c = byId(op.id);
+    if (!c) return null;
+    if (op.op === 'reply') { if (!c.replies.some((r) => r.at === op.reply.at && r.text === op.reply.text)) c.replies.push(op.reply); c.updatedAt = op.reply.at; }
+    else if (op.op === 'status') { c.status = op.status; c.updatedAt = op.at; }
+    else if (op.op === 'delete') DB.comments = DB.comments.filter((x) => x.id !== op.id);
+    return null;
+  }
+  function commit(op) {
+    const r = apply(op) || { add: 0, upd: 0 };
+    save(); drawFab(); schedule();
+    if (REMOTE) { outbox.push(op); saveOutbox(); flush(); }
+    return r;
+  }
+  const errText = (e) => (e && e.name === 'AbortError' ? 'hết thời gian chờ' : e instanceof TypeError ? 'không kết nối được' : (e && e.message) || String(e));
+  async function call(method, body, qs) {
+    const ctl = typeof AbortController === 'function' ? new AbortController() : null;
+    const t = setTimeout(() => ctl && ctl.abort(), 25000);
+    try {
+      const url = method === 'GET' ? `${API}${API.includes('?') ? '&' : '?'}${qs}&t=${Date.now()}` : API;
+      const res = await fetch(url, method === 'GET' ? { signal: ctl && ctl.signal }
+        : { method: 'POST', body: JSON.stringify(body), headers: { 'Content-Type': 'text/plain;charset=utf-8' }, signal: ctl && ctl.signal });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      return await res.json();
+    } finally { clearTimeout(t); }
+  }
+  /* Gửi lần lượt hàng đợi; lỗi mạng thì giữ lại để lần sau gửi tiếp, máy chủ từ chối thì bỏ thao tác đó và báo. Xong thì tải lại kho chung. */
+  async function flush() {
+    if (!REMOTE) return;
+    /* Đang gửi / tải dở: đánh dấu để chạy thêm một lượt ngay sau đó (thao tác mới không phải chờ tới lượt 30 giây sau). */
+    if (sync.busy) { sync.again = true; return; }
+    sync.busy = true;
+    try {
+      let failed = false;
+      do {
+        sync.again = false;
+        while (outbox.length) {
+          const op = outbox[0];
+          let r;
+          try { r = await call('POST', op); } catch (e) { sync.err = errText(e); failed = true; break; }
+          outbox.shift(); saveOutbox();
+          if (!r || !r.ok) toast('Kho chung từ chối: ' + ((r && r.error) || 'lỗi không rõ'));
+        }
+        await pull();
+      } while (sync.again && !failed);
+    } finally { sync.busy = false; drawFab(); }
+  }
+  async function pull() {
+    try {
+      const r = await call('GET', null, 'op=list');
+      if (!r || !r.ok || !Array.isArray(r.comments)) throw new Error((r && r.error) || 'phản hồi không hợp lệ');
+      DB = { comments: r.comments.map((c) => Object.assign({ replies: [] }, c)), snapshots: DB.snapshots };
+      outbox.forEach(apply);
+      save();
+      sync.at = now(); sync.loaded = true;
+      if (!outbox.length) sync.err = '';
+    } catch (e) { sync.err = errText(e); }
+    drawFab(); schedule(); focusLink();
+  }
+  /* Gửi comment ghi trước khi có kho chung; xong thì cất bản cũ sang khoá …-da-gui (không xoá). */
+  function pushLegacy() {
+    if (!legacy || !legacy.comments.length) return;
+    if (!confirm(`Gửi ${legacy.comments.length} comment đang lưu riêng trên máy này lên kho chung? Mọi người sẽ thấy các comment này.`)) return;
+    const r = importData({ format: 'dtms-prototype-review', comments: legacy.comments, snapshots: legacy.snapshots });
+    try { localStorage.setItem(STORE + '-da-gui', localStorage.getItem(STORE)); localStorage.removeItem(STORE); } catch (e) { /* bỏ qua */ }
+    legacy = null;
+    toast(`Đang gửi ${r.add} comment lên kho chung.`);
+  }
+  /* Link ?rv=<id> (cột link trên Sheet): mở đúng comment — có ảnh chụp dữ liệu thì hỏi nạp lại ngữ cảnh. */
+  let linkId = (() => { try { return new URLSearchParams(location.search).get('rv') || ''; } catch (e) { return ''; } })();
+  function focusLink() {
+    if (!linkId) return;
+    const c = byId(linkId);
+    if (!c) { if (!REMOTE || sync.loaded) { toast('Không thấy comment trong link (có thể đã bị xoá).'); linkId = ''; } return; }
+    linkId = '';
+    try { const u = new URL(location.href); u.searchParams.delete('rv'); history.replaceState(null, '', u.pathname + u.search + u.hash); } catch (e) { /* bỏ qua */ }
+    if (c.snapshot) openContext(c); else goTo(c);
   }
   function importFile() {
     const inp = document.createElement('input'); inp.type = 'file'; inp.accept = '.json,application/json'; inp.multiple = true;
@@ -398,6 +543,9 @@
     if (b.dataset.filt) { panelFilter = b.dataset.filt; panel._sig = ''; return drawPanel(); }
     const a = b.dataset.rv;
     if (a !== 'export' && a !== 'import') menuOpen = false;
+    if (a === 'refresh') { drawFab(); return flush(); }
+    if (a === 'legacy') { drawFab(); return pushLegacy(); }
+    if (a === 'export-shared') { drawFab(); return exportShared(); }
     if (a === 'mode') setMode(!mode);
     else if (a === 'panel') { togglePanel(!panel); drawFab(); }
     else if (a === 'panel-close') togglePanel(false);
@@ -408,8 +556,8 @@
     else if (a === 'cancel' || a === 'close') closePop();
     else if (a === 'save') saveNew();
     else if (a === 'reply') reply();
-    else if (a === 'toggle') { const c = byId(pop.dataset.id); c.status = c.status === 'resolved' ? 'open' : 'resolved'; c.updatedAt = now(); save(); drawFab(); const r = pop.getBoundingClientRect(); thread(c, r.left - 14, r.top + 10); }
-    else if (a === 'del') { const c = byId(pop.dataset.id); if (confirm(`Xoá comment #${c.no}?`)) { DB.comments = DB.comments.filter((x) => x !== c); save(); closePop(); drawFab(); } }
+    else if (a === 'toggle') { const c = byId(pop.dataset.id); commit({ op: 'status', id: c.id, status: c.status === 'resolved' ? 'open' : 'resolved', at: now() }); const r = pop.getBoundingClientRect(); thread(byId(c.id), r.left - 14, r.top + 10); }
+    else if (a === 'del') { const c = byId(pop.dataset.id); if (confirm(`Xoá comment #${c.no}?`)) { closePop(); commit({ op: 'delete', id: c.id, author }); } }
     else if (a === 'ctx') openContext(byId(pop.dataset.id));
   });
   fab.addEventListener('click', (e) => { if (e.target.closest('#rv-fab')) { e.stopPropagation(); menuOpen = !menuOpen; drawFab(); } });
@@ -437,5 +585,11 @@
   } catch (e) { /* bỏ qua */ }
 
   drawFab(); schedule();
-  window.Review = { data: () => DB, exportJson, importData, setMode, locate, where };
+  /* Kho chung: tải ngay, rồi 30 giây một lần khi tab đang mở; quay lại tab thì tải luôn. */
+  if (REMOTE) {
+    flush();
+    setInterval(() => { if (!document.hidden) flush(); }, 30000);
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) flush(); });
+  } else focusLink();
+  window.Review = { data: () => DB, exportJson, importData, setMode, locate, where, remote: REMOTE, sync: () => flush(), status: () => ({ ...sync, outbox: outbox.length }) };
 })();

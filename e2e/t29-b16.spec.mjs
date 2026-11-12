@@ -1,6 +1,6 @@
 // T29 B16 — DX-10 (D-83): ba cấp chỉ huy duyệt trên ĐTMS, Kho và Thầu TTMS trên sơ đồ (review Huylx4 #25, #27–31).
 import { test, expect } from '@playwright/test';
-import { fresh, openForm } from './helpers.mjs';
+import { fresh, openForm, signGo } from './helpers.mjs';
 
 async function jump(page, task) {
   return page.evaluate((t) => {
@@ -53,6 +53,8 @@ test('Bước duyệt mới: tác nhân, card chỉ xem, hộp thoại Duyệt c
   const f2 = await openForm(page);
   await expect(f2.locator('.ef-table')).toContainText('Ban Pháp chế');
   await f2.locator('#ok').click();
+  // T54: Phê duyệt 16.1 trình ký BM-03 (hộp thoại Trình ký VOffice).
+  await signGo(page.locator('.overlay', { hasText: 'Trình ký VOffice — BM-03' }));
   await expect.poll(() => page.evaluate(() => Flow.state.tokens.map((t) => String(t.task)))).toContain('17');
   // Xem BPMN ở bước DX-10 (chưa có trên sơ đồ v1.1): mở được, không lỗi.
   const k = await jump(page, '7.1');

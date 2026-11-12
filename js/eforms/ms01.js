@@ -75,7 +75,7 @@
         'Nhóm mục đích theo Khoản 4 Điều 2 Quy chế QC-12868 (BM-01 mục 1 yêu cầu "bám sát theo các mục đích tại Khoản 4 Điều 2 Quy chế"); nội dung mục đích chi tiết ở dòng Mục đích của bảng.',
         'Nguồn vốn chọn từ danh mục Nguồn vốn (BE nạp <code>fundOptions</code>, bỏ nguồn dừng hoạt động — P-33). Mặc định là nguồn vốn AI trích từ căn cứ.',
         'Cảnh báo mềm (không chặn) khi giá trị dự kiến lệch điều kiện quy trình (biến <code>aiEstimateOff</code> do task 03 ghi); kiểm tra chính thức ở cổng sau task 10.',
-        'Mật mặc định theo lựa chọn khi tạo luồng, đổi được ở đây; hồ sơ Mật thì mặc định ký cứng. Mức ưu tiên không thuộc nội dung task 4 — chọn khi tạo luồng (kèm Lý do ưu tiên), hiện ở Thông tin chung. Tên, người phụ trách, quy trình nằm ở Thông tin chung.'] },
+        'Mật mặc định theo lựa chọn khi tạo luồng, đổi được ở đây; hồ sơ Mật thì mặc định ký ngoài hệ thống (Ký tay). Mức ưu tiên không thuộc nội dung task 4 — chọn khi tạo luồng (kèm Lý do ưu tiên), hiện ở Thông tin chung. Tên, người phụ trách, quy trình nằm ở Thông tin chung.'] },
 
     5: { id: 'dtms-ms01-t05-boc-tach', q: ['P-03'],
       schema: () => ({ components: [
@@ -305,7 +305,7 @@
         tbl('Danh sách CQCM do đơn vị đề xuất chọn', 'cqcmChon', [['cqcm', 'CQCM'], ['chucNang', 'Chức năng liên quan'], ['nguoiXuLy', 'Người xử lý']]),
         txt('### AI đối chiếu thành phần CQCM: {{aiCqcm.ketQua}}\n{{aiCqcm.chiTiet}}'),
         txt('**Phiếu yêu cầu thẩm định (BM-03):** hạn góp ý {{bm03.han}} · tệp ký nháy {{bm03.tep}} (Danh sách tài liệu)'),
-        txt('Sau khi Đồng ý, hệ thống trình Đại diện đơn vị đề xuất ký BM-03 và gửi yêu cầu thẩm định tới các CQCM trong danh sách.'),
+        txt('Sau khi Đồng ý, hệ thống gửi yêu cầu thẩm định kèm BM-03 tới các CQCM trong danh sách. BM-03 đã được Đại diện đơn vị đề xuất trình ký khi duyệt phiếu yêu cầu thẩm định.'),
         /* T29 B15 (review Huylx4 #32): kết luận nào cũng phải kèm nhận xét. */
         ta('nhanXetDs', 'Nhận xét', req({ rows: 3, description: 'Bắt buộc khi Đồng ý và khi Từ chối' }))] }),
       outputs: () => ['BM-03'],

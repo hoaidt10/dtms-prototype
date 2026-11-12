@@ -119,7 +119,7 @@ test('Người dùng 09/11: Đề tài / dự án là menu cấp 1 trên Quản 
   await fresh(page, lg('ĐXMS-2026-0103'));
   const tops = (await page.locator('.sb-nav > .nav:not(.child) .l').allInnerTexts()).map((x) => x.trim());
   expect(tops.indexOf('Quản lý đề xuất mua sắm') - tops.indexOf('Đề tài / dự án')).toBe(1);
-  await expect(ginfo(page)).toContainText('Nguồn vốnQuỹ phát triển KHCN');
+  await expect(ginfo(page)).toContainText('Nguồn vốnQuỹ phát triển khoa học công nghệ');
   await expect(ginfo(page)).toContainText('Số / ngày TTr chủ trương2104/TTr-VHT ngày 20/11/2025');
   await expect(ginfo(page)).toContainText('Số / ngày QĐ phê duyệt dự toán2211/QĐ-TĐ ngày 05/12/2025');
   await expect(ginfo(page)).toContainText('Số / ngày QĐ phê duyệt dự án');

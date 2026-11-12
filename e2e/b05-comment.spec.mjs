@@ -198,7 +198,7 @@ test('#18–21 task 46: thời điểm trình ký / ký, lý do từ chối, KPI
   expect(page.errors).toEqual([]);
 });
 
-test('#11: ký cứng bắt buộc lý do, ghi lại để thống kê', async ({ page }) => {
+test('#11: ký ngoài hệ thống bắt buộc lý do, ghi lại để thống kê (T54: SRS 32 BR-TKV-01-13, kết quả nhập ở màn Trình ký)', async ({ page }) => {
   await fresh(page);
   await jump(page, 43); // Bước 17 không còn hộp thoại Trình ký (P-225): dùng bước ký BM-05 của TTMS.
   await page.locator('.task-acts [data-act].primary').click();
@@ -206,9 +206,8 @@ test('#11: ký cứng bắt buộc lý do, ghi lại để thống kê', async (
   if (await ef.count()) await ef.locator('#ok').click();
   await page.locator('.overlay [data-mode="hard"]').click();
   await page.locator('#go').click();
-  expect(await lastToast(page)).toContain('lý do ký cứng');
+  expect(await lastToast(page)).toContain('Lý do ký ngoài hệ thống');
   await page.locator('#hr').fill('VOffice gián đoạn');
-  await page.locator('#up').click();
   await page.locator('#go').click();
   await expect.poll(() => page.evaluate(() => (Flow.state.vars.hardSigns || []).map((x) => x.reason))).toEqual(['VOffice gián đoạn']);
   expect(page.errors).toEqual([]);

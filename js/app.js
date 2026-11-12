@@ -120,6 +120,8 @@
     if (a === 'ra-soat-kho') return window.RaSoatKho.page();
     /* T29 B12 (D-78): SCR-107 Quản lý hồ sơ — biểu mẫu / văn bản đã sinh của mọi luồng. */
     if (a === 'quan-ly-ho-so') return window.QuanLyHoSo.page();
+    /* T54 (SRS 32 DTMS_CN_0274): màn Trình ký. */
+    if (a === 'trinh-ky') return window.TrinhKy.page();
     /* ĐXMS (cha): SCR-27 danh sách, SCR-28 thêm mới / chỉnh sửa, SCR-29 chi tiết — theo task-management. */
     /* T34 (D-90): bỏ phương án Tách — SCR-27 / 28 / 29 comment; route cũ chuyển sang Luồng mua sắm (SCR-95 / 96 / 97). */
     // [T34 bỏ Tách] if (a === 'dxms' && b === 'create') return S.dxmsForm();
@@ -341,7 +343,7 @@
       location.hash = '#/ho-so';
       return;
     }
-    ok(choice && choice.sign ? (kdt && sg && sg.mode === 'hard' ? 'Đã chuyển ký bản cứng (bước 77).' : 'Đã gửi văn bản đi trình ký.') : 'Thực hiện hành động thành công.');
+    ok(choice && choice.sign ? (kdt && sg && sg.mode === 'hard' ? 'Đã chuyển ký ngoài hệ thống (bước 77).' : 'Đã gửi văn bản đi trình ký.') : 'Thực hiện hành động thành công.');
     location.hash = '#/viec-cua-toi';
   }
 

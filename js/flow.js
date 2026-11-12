@@ -550,9 +550,9 @@
   function sysSign(key, doc) {
     const by = S.history.slice().reverse().find((h) => h.who && ['16.1', '13'].includes(String(h.task)));
     const signer = by ? by.who : F()[13].who;
-    const hard = Flow.ci().secret || ((S.dxms && Flow.findDxms(S.dxms)) || {}).sign === 'Bản cứng';
+    const hard = Flow.ci().secret || ['Ký ngoài hệ thống', 'Bản cứng'].includes(((S.dxms && Flow.findDxms(S.dxms)) || {}).sign);
     const name = (D.personas.find((p) => p.id === signer) || {}).name || signer;
-    log(key, { system: true, action: `Trình ký ${hard ? 'bản cứng' : 'VOffice'} ${doc} — người ký: ${name}`, signDoc: doc, signer });
+    log(key, { system: true, action: `Trình ký ${hard ? 'ngoài hệ thống' : 'VOffice'} ${doc} — người ký: ${name}`, signDoc: doc, signer });
     if (hard) S.vars.hardSigns = (S.vars.hardSigns || []).concat([{ task: key, who: signer, doc, reason: 'Theo Hình thức trình ký của hồ sơ', t: S.clock }]);
   }
 
@@ -724,7 +724,7 @@
   const isMat = () => (S.ui && S.ui.secret != null ? !!S.ui.secret : !!(Flow.findKdt(S.kdt) || {}).secret);
   const kyConf = () => D.kyConf[fam()] || null;
   const viaKy = (choice) => !!(kyConf() && choice && choice.sign);
-  const KY_NAME = { soft: 'VOffice', hard: 'Bản cứng', vcontract: 'VContract' };
+  const KY_NAME = { soft: 'VOffice', hard: 'Ký ngoài hệ thống', vcontract: 'VContract' };
   function kySign(tok, choice, mode, ctx) {
     const c = kyConf(), mat = isMat(), m = mat || mode === 'hard' ? 'hard' : mode === 'vcontract' && c.vcontract != null ? 'vcontract' : 'soft';
     S.vars.ky = { task: tok.task, doc: choice.sign, to: choice.to, by: tok.who, signer: tok.who, mode: m, mat };

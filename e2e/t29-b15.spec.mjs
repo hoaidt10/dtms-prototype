@@ -35,13 +35,13 @@ test('#1 bước 19: mục OK vẫn hiện Nội dung nhận xét và bắt bu�
   expect(page.errors).toEqual([]);
 });
 
-test('#32, P-225 bước 17: một nút Xác nhận danh sách CQCM; Đồng ý bắt buộc Nhận xét, không có hộp thoại Trình ký; bước 18 hệ thống trình Chỉ huy ĐVĐX ký BM-03', async ({ page }) => {
+test('#32, P-225 bước 17: một nút Xác nhận danh sách CQCM; Đồng ý bắt buộc Nhận xét, không có hộp thoại Trình ký; bước 18 không tự trình BM-03 (T54: trình ở 16.1)', async ({ page }) => {
   await fresh(page);
   await jump(page, 17);
   await expect(page.locator('.task-acts [data-act]')).toHaveCount(1);
   await page.locator('.task-acts [data-act]', { hasText: 'Xác nhận danh sách CQCM' }).click();
   const f = form(page);
-  await expect(f).toContainText('hệ thống trình Đại diện đơn vị đề xuất ký BM-03');
+  await expect(f).toContainText('BM-03 đã được Đại diện đơn vị đề xuất trình ký khi duyệt phiếu yêu cầu thẩm định');
   await f.locator('#ok').click();
   await expect(f.locator('[data-ef-field="nhanXetDs"]')).toHaveClass(/invalid/);
   await f.locator('[data-ef-field="nhanXetDs"] textarea').fill('Đủ CQCM bắt buộc: Tài chính, Pháp chế, Chất lượng.');
@@ -49,10 +49,8 @@ test('#32, P-225 bước 17: một nút Xác nhận danh sách CQCM; Đồng ý 
   await expect(f).toHaveCount(0);
   await expect(page.locator('.overlay #go')).toHaveCount(0);
   await expect.poll(() => page.evaluate(() => Flow.state.tokens.map((t) => String(t.task)))).toContain('19');
-  const sys = await page.evaluate(() => Flow.state.history.find((h) => h.signDoc === 'BM-03'));
-  expect(sys.system).toBe(true);
-  expect(String(sys.task)).toBe('18');
-  expect(sys.action).toContain('Trần Đức Hải');
+  // T54 (SRS 21 V0.4, SRS 32 K5): bước 18 không còn tự trình ký BM-03.
+  expect(await page.evaluate(() => Flow.state.history.filter((h) => h.signDoc === 'BM-03').length)).toBe(0);
   expect(page.errors).toEqual([]);
 });
 
@@ -85,9 +83,12 @@ test('#5: Chọn mẫu tài liệu chỉ hiện ở bước có biểu mẫu c�
 
 test('#6, D-79, D-80: SCR-104 cột Khối lượng trước ĐVT; Trạng thái suy từ ĐXMS; ẩn KĐT / Gói thầu', async ({ page }) => {
   await fresh(page, '#/de-tai/' + encodeURIComponent(DT));
-  await expect(page.locator('[data-dt-tab]')).toHaveText(['Thông tin chung', 'Dự toán chi phí', 'ĐXMS liên quan', 'Văn bản pháp lý']);
+  // 11/11/2026: tab KĐT liên quan tách riêng, hiện mặc định; Gói thầu / Hợp đồng vẫn ẩn (D-80).
+  await expect(page.locator('[data-dt-tab]')).toHaveText(['Thông tin chung', 'Dự toán chi phí', 'ĐXMS liên quan', 'KĐT liên quan', 'Văn bản pháp lý']);
   await page.locator('[data-dt-tab="dxms"]').click();
   await expect(page.locator('[data-dt-kdt]')).toHaveCount(0);
+  await page.locator('[data-dt-tab="kdt"]').click();
+  await expect(page.locator('[data-dt-kdt]')).toHaveCount(1);
   await page.locator('[data-dt-tab="du-toan"]').click();
   const heads = await page.locator('[data-dt-dutoan] thead th').allTextContents();
   expect(heads.indexOf('Khối lượng cần thực hiện')).toBe(heads.indexOf('ĐVT') - 1);
@@ -102,6 +103,6 @@ test('#6, D-79, D-80: SCR-104 cột Khối lượng trước ĐVT; Trạng thái
   expect(txt).toMatch(/Chưa mua sắm|Đang mua sắm|Đã phê duyệt/);
   // Bật lại cờ (demo KĐT / Thầu): đủ 5 tab.
   await page.evaluate(() => { Object.assign(D.show, { dtKdt: true, dtThau: true }); App.render(); });
-  await expect(page.locator('[data-dt-tab]')).toHaveText(['Thông tin chung', 'Dự toán chi phí', 'ĐXMS / KĐT liên quan', 'Gói thầu / Hợp đồng', 'Văn bản pháp lý']);
+  await expect(page.locator('[data-dt-tab]')).toHaveText(['Thông tin chung', 'Dự toán chi phí', 'ĐXMS liên quan', 'KĐT liên quan', 'Gói thầu / Hợp đồng', 'Văn bản pháp lý']);
   expect(page.errors).toEqual([]);
 });

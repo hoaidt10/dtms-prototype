@@ -233,11 +233,12 @@
     15: { next: 16 },
     16: { who: 'minh', scr: 'SCR-10', next: '16.1', nlv: 0.5, actionLabel: 'Lập phiếu yêu cầu thẩm định' },
     /* DX-10 (g), (h): Chỉ huy ĐVĐX duyệt BM-03 + danh sách CQCM trước khi TTMS kiểm (17). */
-    '16.1': approve('hai', 'SCR-10', 17, 16, 'Phê duyệt phiếu yêu cầu thẩm định'),
+    /* T54 (SRS 21 V0.4, SRS 32 B0 K5): BM-03 trình ký ở 16.1 khi Chỉ huy ĐVĐX phê duyệt (TKV-MS01-16_1-BM03); bước 18 không tự trình nữa. */
+    '16.1': (() => { const a = approve('hai', 'SCR-10', 17, 16, 'Phê duyệt phiếu yêu cầu thẩm định'); a.choices[0].sign = 'BM-03'; return a; })(),
     /* BPMN v1.1: bước 17 TTMS chỉ kết luận danh sách CQCM (Đồng ý → 18, Từ chối → 16); gửi yêu cầu + trình ký BM-03 là service task 18 của hệ thống (P-225). */
     17: approve('lan', 'SCR-22', 18, 16, 'Đồng ý', 'Từ chối'),
     /* DX-12 (D-100, duyệt tạm 09/11, chờ BA): 19–22 chạy riêng từng CQCM (multi-instance), 23 gộp khi đủ BM-04 đã ký. */
-    18: { fork: 'cqcm', to: 19, kpiStart: true, sysSign: 'BM-03' },
+    18: { fork: 'cqcm', to: 19, kpiStart: true },
     19: { who: 'cqcm:doer', scr: 'SCR-11', next: 20, nlv: 1, actionLabel: 'Hoàn thành phiếu, trình chỉ huy' },
     20: { who: 'cqcm:signer', scr: 'SCR-11', nlv: 0.5, choices: [
       { label: 'Đồng ý & trình ký BM-04', to: 22, main: true, sign: 'BM-04' },
@@ -518,8 +519,8 @@
        76 có việc chỉ khi gửi VOffice lỗi (P-94): người trình bấm Gửi lại. 77 người ký của bước ký; 78 người phụ trách hồ sơ (chuyên viên ĐVĐX). */
     76: { vo: true, next: 'g3', who: 'ky:by', scr: 'SCR-21', nlv: 0.25, choices: [
       { label: 'Gửi lại VOffice', to: 76, main: true }] },
-    77: { who: 'ky:signer', scr: 'SCR-21', next: 78, nlv: 1, actionLabel: 'Đã ký bản cứng' },
-    78: { who: 'minh', scr: 'SCR-21', next: 'g3', nlv: 0.5, actionLabel: 'Lưu kết quả ký bản cứng' },
+    77: { who: 'ky:signer', scr: 'SCR-21', next: 78, nlv: 1, actionLabel: 'Đã ký ngoài hệ thống' },
+    78: { who: 'minh', scr: 'SCR-21', next: 'g3', nlv: 0.5, actionLabel: 'Lưu kết quả ký ngoài hệ thống' },
     g3: { gw: true, kyReturn: true },
   };
   /* Bộ đếm của vòng thẩm định hiện tại (chk, meet) — Flow.tdCount đọc cùng cách. */
@@ -1247,7 +1248,7 @@
     'P-187': { q: 'Ai ký Biên bản rà soát vật tư, linh kiện tồn kho (BM-RSTK có Người lập, Thủ kho, GĐ TTMS nhưng Người lập = Thủ kho cùng chữ ký; ghi âm đề xuất Thủ kho → Chỉ huy QLTS → GĐ) và ký ở bước nào', src: 'BM-RSTK; BG-0411; GA-DXMS-0411 [08:56–09:38]; DTMS_Q_0136; DX-07', def: 'GIẢ LẬP — chân ký Thủ kho → Chỉ huy bộ phận QLTS → GĐ TTMS; biên bản sinh khi Kho lưu kết quả, trạng thái "Chờ ký — chờ DX-07"', scr: 'SCR-105' },
     'P-196': { q: 'Số tồn kho lấy từ WMS bằng API hay Bộ phận Kho / QLTS nhập tay', src: 'YC-DXMS-PROTO §4.3; BG-0411; BM-RSTK; INDEX C14; DTMS_Q_0080', def: 'GIẢ LẬP — NV QLTS / Thủ kho nhập ở tab Rà soát tồn kho; nút "Lấy số tồn từ WMS" điền số mẫu, người nhập vẫn sửa được', scr: 'SCR-97' },
     'P-197': { q: 'YC-DXMS-PROTO §6 ghi Đồng ý chuyển sang "BM-05 hoặc BM-09", Yêu cầu sửa trả ĐV "giải trình (BM-02)" — khác BPMN bước 19–26 (BM-04, AI tóm tắt NOK sau khi đủ BM-04)', src: 'YC-DXMS-PROTO §6; BPMN-DTMS MS01 v1.1 bước 19–26; QT-10.2.1 (BM-05 = Báo cáo kết quả thẩm định)', def: 'Theo BPMN: Đồng ý / Yêu cầu sửa là kết luận BM-04 của từng CQCM; hồ sơ về ĐV sau bước 23–25', scr: 'SCR-11' },
-    'P-198': { q: 'Loại dự án (chi tiết) ứng với từng Loại ngoài KHCN; Note có 6 Loại, TPL-DADT-IM chỉ 4; "Hỗ trợ KHCN" thuộc Loại nào', src: 'HT-DXMS-NOTE màn 1, 4; TPL-DADT-IM sheet List', def: 'GIẢ LẬP — KHCN: 7 giá trị theo Note; Hoạt động TX: Thường xuyên; SXKD: Dự án Kinh doanh, Dự án sản xuất, Chương trình nội bộ; Dự án đầu tư: Dự án đầu tư mua sắm tài sản, Dự án đầu tư xây dựng Kinh doanh thử nghiệm; Dự án đầu tư khác, Dự án kinh doanh khác: chưa có, hiện toàn bộ 14 giá trị; Hỗ trợ KHCN chưa xếp vào Loại nào', scr: 'SCR-103' },
+    'P-198': { q: 'Loại dự án (chi tiết) ứng với từng Loại ngoài KHCN; Note có 6 Loại, TPL-DADT-IM chỉ 4; "Hỗ trợ KHCN" thuộc Loại nào', src: 'HT-DXMS-NOTE màn 1, 4; TPL-DADT-IM sheet List', def: 'GIẢ LẬP — KHCN: 7 giá trị theo Note; Hoạt động TX: Thường xuyên; SXKD: Dự án Kinh doanh, Dự án sản xuất, Chương trình nội bộ; Dự án đầu tư: Dự án đầu tư mua sắm tài sản, Dự án đầu tư xây dựng Kinh doanh thử nghiệm; Dự án đầu tư khác, Dự án kinh doanh khác: chưa có Loại chi tiết; Hỗ trợ KHCN chưa xếp vào Loại nào (chỉ hiện khi chưa chọn Loại). Từ 11/11/2026 cấu hình ở danh mục SCR-112 cột Loại cha', scr: 'SCR-103' },
     'P-199': { q: 'Ô Nhập tay của dòng dự toán khi không tick: Thuế GTGT tính thế nào (câu ghi chú bị bỏ dở)', src: 'HT-DXMS-NOTE màn 5', def: 'GIẢ LẬP — không tick: Thuế GTGT = Giá trị trước thuế × %VAT, ô Thuế khoá; tick: người dùng tự nhập Thuế GTGT. Giá trị sau thuế = trước thuế + Thuế GTGT', scr: 'SCR-104' },
     'P-200': { q: 'Lịch sử ý kiến thẩm định ở màn thẩm định CQCM: YC-DXMS-PROTO §5 ghi hiện "toàn bộ cây góp ý của các CQCM khác", BR-DXMS-07-04 và comment #14 ghi CQCM không thấy nội dung BM-04 của cơ quan khác', src: 'YC-DXMS-PROTO §5; DTMS_CN_0159; BR-DXMS-07-04; comment Figma #14', def: 'GIẢ LẬP — cơ quan mình thấy đủ nội dung các lần; cơ quan khác chỉ thấy sự kiện, người, thời điểm và kết luận (Đồng ý / Yêu cầu sửa, số mục Không OK)', scr: 'SCR-11' },
     /* T31 — KĐT theo IA-DXMS (plan prototype-T31-kdt-ia-chuan-bi.md). */
@@ -1333,6 +1334,8 @@
   D.menu = [
     { label: 'Tổng quan', icon: 'tong_quan', path: 'tong-quan', scr: 'SCR-92' },
     { label: 'Việc của tôi', icon: 'view_list', path: 'viec-cua-toi', scr: 'SCR-01', badge: 'tasks' },
+    /* T54 (SRS 32 DTMS_CN_0274): Trình ký — mọi lần trình ký VOffice / ký ngoài hệ thống của người dùng. */
+    { label: 'Trình ký', icon: 'view_list', path: 'trinh-ky', scr: 'SCR-113' },
     /* T29 D-63: Đề tài / dự án (SCR-103) — nguồn căn cứ của ĐXMS / KĐT. Người dùng 09/11 (T34): menu cấp 1, ngay trên Quản lý đề xuất mua sắm. */
     { label: 'Đề tài / dự án', icon: 'menu_square', path: 'de-tai', scr: 'SCR-103' },
     { label: 'Quản lý đề xuất mua sắm', icon: 'phan_he_mua_sam', open: true, bl: 'Quản lý đề xuất mua sắm', due: 'B1 (07/10)', children: [
@@ -1496,9 +1499,9 @@
     /* T29 S6 — 4 dòng mẫu của TPL-DADT-EX sheet1 (danh sách Đề tài / dự án hệ thống cũ). total = Tổng dự toán được duyệt (tỷ đồng):
        dự toán mẫu (D.duToanOf) quy về đúng tổng này. Thuộc tính màn Đề tài / dự án ở de-tai.js (D.deTaiInfo). */
     { code: '009-26-VHT-RDP-DS', name: 'Nghiên cứu, phát triển mạng 5G dành cho đường sắt tốc độ cao', kind: 'Nhiệm vụ KHCN', basis: null, src: 'mbom', field: 'VTCNTT', fund: 'KHCN', total: 108.35, loai: 'KHCN', loaiCt: 'Đề tài KHCN', nguon: 'khcn' },
-    { code: '020-26-VHT-BP-C', name: 'PAKD hệ thống 5G Private Network cho đối tác Công ty JST (Thái Lan)', kind: 'Dự án SXKD', basis: null, src: 'dutoan', field: 'VTCNTT', fund: 'VG', total: 3.95, loai: 'SXKD', loaiCt: 'Dự án Kinh doanh', nguon: 'hrtool' },
+    { code: '020-26-VHT-BP-C', name: 'PAKD hệ thống 5G Private Network cho đối tác Công ty JST (Thái Lan)', kind: 'Dự án SXKD', basis: null, src: 'dutoan', field: 'VTCNTT', fund: 'VCSH', total: 3.95, loai: 'SXKD', loaiCt: 'Dự án Kinh doanh', nguon: 'hrtool' },
     { code: '004-26-VHT-RDP-DS', name: 'Nghiên cứu xây dựng hệ thống quản lý không phận tầm thấp và thử nghiệm giải pháp phục vụ kinh tế tầm thấp', kind: 'Nhiệm vụ KHCN', basis: null, src: 'mbom', field: 'VTCNTT', fund: 'KHCN', total: 147.54, loai: 'KHCN', loaiCt: 'Đề tài KHCN', nguon: 'khcn' },
-    { code: '005-26-VHT-BP-M', name: 'VHT.26.GP.MX.5G.26', kind: 'Dự án SXKD', basis: null, src: 'dutoan', field: 'VTCNTT', fund: 'VG', total: 548.26, loai: 'SXKD', loaiCt: 'Dự án Kinh doanh', nguon: 'hrtool' },
+    { code: '005-26-VHT-BP-M', name: 'VHT.26.GP.MX.5G.26', kind: 'Dự án SXKD', basis: null, src: 'dutoan', field: 'VTCNTT', fund: 'VCSH', total: 548.26, loai: 'SXKD', loaiCt: 'Dự án Kinh doanh', nguon: 'hrtool' },
   ];
   D.nvOf = (code) => D.nhiemVu.find((x) => x.code === code) || null;
   /* Quy tắc bảo mật mẫu cho ĐXMS Mật (comment Figma #12, P-70) — AI kiểm tra khi Lưu, chỉ cảnh báo. */
@@ -1506,7 +1509,7 @@
     { id: 'title', name: 'Tên ĐXMS không chứa số hiệu, tên mã thiết bị / dự án mật' },
     { id: 'purpose', name: 'Mục đích không nêu thông số kỹ thuật, địa điểm triển khai cụ thể' },
     { id: 'unit', name: 'Đơn vị đề xuất được phép xử lý hồ sơ Mật' },
-    { id: 'sign', name: 'Hồ sơ Mật ký cứng (bản giấy), không gửi YCBG qua email hệ thống khi chưa được duyệt' },
+    { id: 'sign', name: 'Hồ sơ Mật ký ngoài hệ thống (ký tay, bản giấy), không gửi YCBG qua email hệ thống khi chưa được duyệt' },
   ];
   D.aiBasic = [
     { key: 'purposeText', label: 'Mục đích', value: 'Trang bị thiết bị đo kiểm RF và OTA phục vụ phát triển, thử nghiệm và hiệu chuẩn trạm gNodeB thế hệ 2 theo nhiệm vụ KHCN 1482/QĐ-VHT.', from: 'QĐ 1482/QĐ-VHT, mục 2' },
@@ -1564,7 +1567,10 @@
      (DTMS_Q_0070) → GIẢ LẬP P-193: mỗi nhiệm vụ / đề tài, dự án có các dòng dự toán theo Loại chi phí PL1–PL6, giá trị gồm VAT (tỷ đồng). */
   D.costTypes = [['PL1', 'PL1 - Chi phí xây dựng'], ['PL2', 'PL2 - Chi phí vật tư thiết bị'], ['PL3', 'PL3 - Chi phí quản lý dự án'],
     ['PL4', 'PL4 - Chi phí tư vấn đầu tư xây dựng'], ['PL5', 'PL5 - Chi phí khác'], ['PL6', 'PL6 - Chi phí dự phòng']];
-  D.fundNames = { KHCN: 'Quỹ phát triển KHCN', SXKD: 'Đầu tư phát triển', CPTX: 'Chi phí sản xuất kinh doanh', VG: 'Vốn góp của chủ sở hữu' };
+  /* Tên Nguồn vốn — dự phòng trước khi catalog.js nạp; catalog.js thay bằng tra danh mục SCR-32. Rà 11/11/2026: mã khớp danh mục
+     (trước: SXKD ghi "Đầu tư phát triển", CPTX ghi "Chi phí SXKD", VG không có trong danh mục). */
+  D.fundNames = { KHCN: 'Quỹ phát triển khoa học công nghệ', DTPT: 'Đầu tư phát triển', SXKD: 'Chi phí sản xuất kinh doanh', VCSH: 'Vốn góp của chủ sở hữu',
+    CPTX: 'Chi phí thường xuyên', VAY: 'Vốn vay' };
   /* T29 S7 (D-65) — bảng dự toán **nhập tại ĐTMS** cho mọi Loại đề tài / dự án (HT-DXMS-NOTE hàng 5, 6; sheet "KHCN Thông tin Dự toán" ghi KHCN
      không cung cấp). Một bảng dùng chung cho SCR-104 tab Dự toán chi phí và card bóc tách chi phí SCR-96. Thật: bảng dự toán trong CSDL ĐTMS + API CRUD.
      Dòng: value = giá trị sau thuế (gồm VAT, tỷ đồng); pre, vat, tax, manual (ô Nhập tay); qty = khối lượng cần thực hiện, uom; buy = Chi mua sắm
@@ -1626,7 +1632,7 @@
   ];
   /* Cờ hiển thị theo bản gửi (T29 B15, D-80; cùng hướng D-76): SCR-104 ẩn bảng KĐT liên quan và tab Gói thầu / Hợp đồng ở bản demo ĐXMS.
      Code và e2e giữ nguyên; bật lại khi demo KĐT / Thầu (Thật: cấu hình tham số hệ thống / quyền theo phân hệ). */
-  D.show = { dtKdt: false, dtThau: false, menuThau: false };
+  D.show = { dtKdt: true, dtThau: false, menuThau: false }; /* dtKdt bật 11/11/2026: tab KĐT liên quan ở Chi tiết đề tài / dự án. */
   D.bm04Sections = ['Căn cứ', 'Sự cần thiết', 'Phạm vi, số lượng', 'Giá trị & cơ sở giá', 'Nguồn vốn', 'Biện pháp thực hiện', 'Phương án kỹ thuật – công nghệ'];
   D.opinions = {
     PC: { 'Căn cứ': { ok: true }, 'Biện pháp thực hiện': { ok: false, text: 'Chưa nêu rõ áp dụng Quy chế LCNT của Tập đoàn hay Luật Đấu thầu.', guide: 'Ghi rõ căn cứ áp dụng tại mục "Biện pháp thực hiện" của BM-01.' } },

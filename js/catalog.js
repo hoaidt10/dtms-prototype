@@ -347,6 +347,43 @@
         ['PTVT', 'Phương tiện vận tải', 'Xe, phương tiện vận chuyển', true, 1, { level: 'THEO_NGUONG' }],
         ['KHAC', 'Khác', '', true, 0, { level: 'THEO_NGUONG' }],
       ] },
+    /* Rà tìm kiếm nâng cao Đề tài / dự án 11/11/2026 (SRS-DADT DTMS_CN_0240 ô 2, 9, 10; mục 2.2): ba danh mục chưa có trong ecat common-catalog
+       bản 10/11/2026 — dựng theo cùng khuôn (mã, tên, mô tả, trạng thái). Giá trị theo HT-DXMS-NOTE màn 1, IA-DXMS dòng 2–3, TPL-DADT-IM List. */
+    { key: 'cap-phe-duyet', scr: 'SCR-110', title: 'Cấp phê duyệt đề tài / dự án', entity: 'cấp phê duyệt', icon: 'view_flow', built: true,
+      use: 'Ô Cấp phê duyệt của đề tài / dự án; lọc Danh sách đề tài / dự án.',
+      fields: [F.code('Mã cấp phê duyệt'), F.name('Tên cấp phê duyệt'), F.desc()],
+      seed: [
+        ['TCT', 'Tổng Công ty', 'Đề tài / dự án do Tổng Công ty phê duyệt', true, 9],
+        ['TD', 'Tập đoàn', 'Đề tài / dự án do Tập đoàn phê duyệt', true, 3],
+      ] },
+    { key: 'loai-dadt', scr: 'SCR-111', title: 'Loại dự án / đề tài', entity: 'loại dự án / đề tài', icon: 'view_flow', built: true, q: ['DTMS_Q_0405'],
+      use: 'Loại của đề tài / dự án; Loại cha của Loại dự án (chi tiết); lọc Danh sách đề tài / dự án. Sáu giá trị theo HT-DXMS-NOTE màn 1 (mẫu nhập chỉ có 4 — DTMS_Q_0405).',
+      fields: [F.code('Mã loại'), F.name('Tên loại'), F.desc()],
+      seed: [
+        ['SXKD', 'SXKD', 'Sản xuất kinh doanh', true, 4],
+        ['DADT', 'Dự án đầu tư', '', true, 1],
+        ['KHCN', 'KHCN', 'Khoa học công nghệ (nhiệm vụ KHCN, đồng bộ từ phân hệ KHCN)', true, 6],
+        ['HDTX', 'Hoạt động TX', 'Hoạt động thường xuyên', true, 1],
+        ['DADT_KHAC', 'Dự án đầu tư khác', '', true, 0],
+        ['DAKD_KHAC', 'Dự án kinh doanh khác', '', true, 0],
+      ] },
+    { key: 'loai-dadt-ct', scr: 'SCR-112', title: 'Loại dự án (chi tiết)', entity: 'loại dự án (chi tiết)', icon: 'view_flow', built: true, q: ['DTMS_Q_0406', 'P-198'],
+      use: 'Loại dự án (chi tiết) theo Loại cha; ô lọc Loại chi tiết hiện theo các Loại đã chọn. KHCN theo HT-DXMS-NOTE màn 4; Loại cha của nhóm khác GIẢ LẬP P-198 (DTMS_Q_0406).',
+      fields: [F.code('Mã loại chi tiết'), F.name('Tên loại chi tiết', 300),
+        { key: 'parent', label: 'Loại dự án / đề tài', type: 'select', searchable: true, width: 200,
+          options: (cur, all) => rows(byKey('loai-dadt')).filter((r) => all || r.active || r.name === cur).map((r) => ({ value: r.name, label: r.name })) }, F.desc()],
+      seed: [
+        ['DT_KHCN', 'Đề tài KHCN', '', true, 3, { parent: 'KHCN' }], ['NC_THAM_DO', 'Nghiên cứu thăm dò', '', true, 0, { parent: 'KHCN' }],
+        ['DA_SXTN', 'Dự án SX thử nghiệm', '', true, 0, { parent: 'KHCN' }], ['HT_KHCN_KHAC', 'Hình thức nghiên cứu KHCN khác', '', true, 0, { parent: 'KHCN' }],
+        ['DA_KHCN', 'Dự án KHCN', '', true, 1, { parent: 'KHCN' }], ['DE_AN_KH', 'Đề án khoa học', '', true, 0, { parent: 'KHCN' }],
+        ['CT_KHCN', 'Chương trình KHCN', '', true, 1, { parent: 'KHCN' }],
+        ['THUONG_XUYEN', 'Thường xuyên', '', true, 1, { parent: 'Hoạt động TX' }],
+        ['DA_KD', 'Dự án Kinh doanh', '', true, 3, { parent: 'SXKD' }], ['DA_SX', 'Dự án sản xuất', '', true, 1, { parent: 'SXKD' }],
+        ['CT_NOI_BO', 'Chương trình nội bộ', '', true, 0, { parent: 'SXKD' }],
+        ['DT_MSTS', 'Dự án đầu tư mua sắm tài sản', '', true, 1, { parent: 'Dự án đầu tư' }],
+        ['DT_XD_KDTN', 'Dự án đầu tư xây dựng Kinh doanh thử nghiệm', '', true, 0, { parent: 'Dự án đầu tư' }],
+        ['HO_TRO_KHCN', 'Hỗ trợ KHCN', 'Chưa xếp Loại cha (DTMS_Q_0406): chỉ hiện ở ô lọc khi chưa chọn Loại', true, 0, { parent: '' }],
+      ] },
     { key: 'tinh-chat-tai-san', scr: 'SCR-35', title: 'Tính chất tài sản hình thành', entity: 'tính chất tài sản', icon: 'phan_he_hang_hoa', built: true,
       use: 'Chọn mẫu biểu và phân luồng; điều kiện của Ngưỡng phân luồng.',
       fields: [F.code('Mã tính chất tài sản'), F.name('Tên tính chất tài sản', 320), F.desc()],
@@ -439,6 +476,8 @@
   /* Phân cấp thẩm quyền KĐT (bước 13, D-33): quy tắc đang hoạt động của SCR-100 thay bảng mặc định. */
   D.kdtAuthRules = () => rows(byKey('phan-cap-tham-quyen')).filter((r) => r.active)
     .map((r) => ({ type: r.type, field: r.field, from: r.from, to: r.to, ct: r.ct, kdt: r.kdt, basis: r.basis }));
+  /* Tên Nguồn vốn theo danh mục SCR-32 (trước: bảng tên viết cứng trong data.js, lệch mã với danh mục — rà 11/11/2026). */
+  D.fundNames = new Proxy({}, { get: (_, k) => (typeof k === 'string' ? (rows(byKey('nguon-von')).find((r) => r.code === k) || {}).name : undefined) });
   const nccDefault = D.nccOf;
   D.nccOf = (code) => rows(byKey('nha-cung-cap')).find((r) => r.code === code) || nccDefault(code);
 

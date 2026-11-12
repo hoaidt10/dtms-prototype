@@ -27,22 +27,19 @@
     toast('<b>Thành công</b><br>Xuất file thành công');
   };
 
-  /* ---------- Danh mục lọc (HT-DXMS-NOTE màn 1) ---------- */
-  const LEVELS = ['Tổng Công ty', 'Tập đoàn'];
-  const FUNDS = ['Đầu tư phát triển', 'Chi phí sản xuất kinh doanh', 'Quỹ phát triển KHCN', 'Vốn góp của chủ sở hữu'];
+  /* ---------- Danh mục lọc (HT-DXMS-NOTE màn 1; SRS-DADT DTMS_CN_0240 ô 2–13, rà 11/11/2026) ----------
+     Giá trị đọc từ Danh mục dùng chung (thật: phân hệ Danh mục dùng chung — Cấp phê duyệt SCR-110, Loại dự án / đề tài SCR-111,
+     Loại dự án (chi tiết) có Loại cha SCR-112, Nguồn vốn SCR-32), mọi bản ghi kể cả ngừng sử dụng (BR-DADT-C-13).
+     Đề tài mẫu lưu tên Cấp phê duyệt, Loại, Loại chi tiết (thật lưu mã); Nguồn vốn lưu mã. Trạng thái: giá trị cố định SRS 2.3.1.1. */
+  const cat = (key) => window.Catalog.rows(key);
+  const catNames = (key) => cat(key).map((r) => r.name);
+  const fundName = (code) => (cat('nguon-von').find((r) => r.code === code) || {}).name || code || '';
   const STATUS = { 'Đang thực hiện': 'info', 'Hoàn thành': 'success', 'Dừng thực hiện': 'default' };
-  const LOAI = ['SXKD', 'Dự án đầu tư', 'KHCN', 'Hoạt động TX', 'Dự án đầu tư khác', 'Dự án kinh doanh khác'];
-  const LOAI_CT_ALL = ['Thường xuyên', 'Chương trình KHCN', 'Đề án khoa học', 'Dự án KHCN', 'Đề tài KHCN', 'Dự án SX thử nghiệm', 'Nghiên cứu thăm dò',
-    'Hình thức nghiên cứu KHCN khác', 'Dự án Kinh doanh', 'Dự án sản xuất', 'Chương trình nội bộ', 'Dự án đầu tư mua sắm tài sản',
-    'Dự án đầu tư xây dựng Kinh doanh thử nghiệm', 'Hỗ trợ KHCN'];
-  /* Ánh xạ Loại → Loại chi tiết (plan S6): KHCN theo Note màn 4; còn lại GIẢ LẬP P-198. Hai Loại "khác" chưa có → toàn bộ 14 giá trị. */
-  const LOAI_CT = {
-    KHCN: ['Đề tài KHCN', 'Nghiên cứu thăm dò', 'Dự án SX thử nghiệm', 'Hình thức nghiên cứu KHCN khác', 'Dự án KHCN', 'Đề án khoa học', 'Chương trình KHCN'],
-    'Hoạt động TX': ['Thường xuyên'], SXKD: ['Dự án Kinh doanh', 'Dự án sản xuất', 'Chương trình nội bộ'],
-    'Dự án đầu tư': ['Dự án đầu tư mua sắm tài sản', 'Dự án đầu tư xây dựng Kinh doanh thử nghiệm'],
-  };
-  const loaiCtOf = (loai) => (loai && LOAI_CT[loai]) || LOAI_CT_ALL;
-  const BLOCKS = ['Khối 1', 'Khối 2', 'Khối 3', 'Khối cơ quan'];
+  /* Loại chi tiết theo các Loại đã chọn (cột Loại cha); chưa chọn Loại thì mọi giá trị. */
+  const loaiCtOf = (loais) => cat('loai-dadt-ct').filter((r) => !(loais || []).length || loais.includes(r.parent)).map((r) => r.name);
+  /* Khối = đơn vị cấp Khối chứa Đơn vị lập (BR-DADT-01-05). Thật: cây đơn vị be/sso /api/v1/units, cấp Khối = tham số (mặc định cấp 4);
+     prototype: D.blocks, D.unitBlock (GIẢ LẬP P-190), đơn vị chưa có trong bảng thì lấy khối ghi ở đề tài mẫu. */
+  const blockOf = (r) => D.unitBlock[r.unit] || r.block || '';
 
   /* ---------- Thuộc tính thông tin chung (HT-DXMS-NOTE màn 3, TPL-DADT-EX sheet1, sheet5) — thật: bảng đề tài / dự án của ĐTMS. ---------- */
   const L = (no, date, signer, content) => ({ no, date, signer, content });
@@ -66,12 +63,15 @@
     /* TPL-DADT-EX sheet1 dòng 1–4, sheet5; tên chủ nhiệm đổi thành tên mẫu. */
     '009-26-VHT-RDP-DS': { sap: 'RD-93103', level: 'Tổng Công ty', group: 'B', unit: 'Trung tâm Giải pháp và tích hợp', block: 'Khối 2', owner: 'Đỗ Hoài Nam', start: '12/08/2026', end: '31/01/2028',
       status: 'Đang thực hiện', legal: [L('16558/QĐ-VHT', '12/08/2026', 'Tổng Giám đốc Tập đoàn', 'QĐ giao nhiệm vụ thực hiện nhiệm vụ KHCN cấp cơ sở "Nghiên cứu, phát triển mạng 5G dành cho đường sắt tốc độ cao"')] },
+    /* Rà 11/11/2026: Hoàn thành mà khoản mục Chi mua sắm chưa đóng — mẫu cho ô lọc Còn khoản mục chưa đóng (BR-DADT-02-09). */
     '020-26-VHT-BP-C': { sap: 'PO-92220', level: 'Tổng Công ty', group: 'C', unit: 'Trung tâm Giải pháp và tích hợp', block: 'Khối 2', owner: 'Ngô Thị Linh', start: '02/07/2026', end: '30/09/2026',
-      status: 'Đang thực hiện', legal: [L('12922/TTr-KD', '02/07/2026', 'Tổng Giám đốc Tổng Công ty', 'PAKD hệ thống 5G Private Network cho đối tác Công ty JST (Thái Lan)')] },
-    '004-26-VHT-RDP-DS': { sap: 'RD-92150', level: 'Tổng Công ty', group: 'C', unit: 'Trung tâm Nghiên cứu công nghệ kinh tế tầm thấp', block: 'Khối 3', owner: 'Vũ Đình Hùng', start: '08/05/2026', end: '30/04/2028',
+      status: 'Hoàn thành', legal: [L('12922/TTr-KD', '02/07/2026', 'Tổng Giám đốc Tổng Công ty', 'PAKD hệ thống 5G Private Network cho đối tác Công ty JST (Thái Lan)')] },
+    /* Rà 11/11/2026: đánh dấu Không còn ở nguồn (BR-DADT-04-02) — GIẢ LẬP, chỉ nhãn ở danh sách / chi tiết. */
+    '004-26-VHT-RDP-DS': { missing: '01/11/2026', sap: 'RD-92150', level: 'Tổng Công ty', group: 'C', unit: 'Trung tâm Nghiên cứu công nghệ kinh tế tầm thấp', block: 'Khối 3', owner: 'Vũ Đình Hùng', start: '08/05/2026', end: '30/04/2028',
       status: 'Đang thực hiện', legal: [L('8952B/QĐ-VHT', '07/05/2026', 'Tổng Giám đốc Tổng Công ty', 'Phê duyệt đề tài KHCN cấp cơ sở "Nghiên cứu xây dựng hệ thống quản lý không phận tầm thấp và thử nghiệm giải pháp phục vụ nền kinh tế tầm thấp"'),
         L('9050/QĐ-VHT', '08/05/2026', 'Tổng Giám đốc Tổng Công ty', 'Giao nhiệm vụ thực hiện đề tài KHCN cấp cơ sở')] },
-    '005-26-VHT-BP-M': { sap: '', level: 'Tổng Công ty', group: 'B', unit: 'Trung tâm Giải pháp và tích hợp', block: 'Khối 2', owner: 'Ngô Thị Linh', start: '01/03/2026', end: '31/12/2026',
+    /* Rà 11/11/2026: Mã cũ (BR-DADT-C-02) — đề tài mã cũ không còn trên ĐTMS nên không có liên kết. */
+    '005-26-VHT-BP-M': { prevCode: '005-25-VHT-BP-M', sap: '', level: 'Tổng Công ty', group: 'B', unit: 'Trung tâm Giải pháp và tích hợp', block: 'Khối 2', owner: 'Ngô Thị Linh', start: '01/03/2026', end: '31/12/2026',
       status: 'Đang thực hiện', dtms: 431.95, legal: [L('25A/TTr-K2-KD', '27/02/2026', 'Tổng Giám đốc Tổng Công ty', 'Phương án kinh doanh VHT.26.GP.MX.5G.26')] },
   };
 
@@ -160,47 +160,80 @@
     const qd = legal[legal.length - 1] || {};
     const end = toDate(i.end), cases = window.Screens.allCases();
     const ok = dxmsOf(nv.code).map((x) => window.Screens.dxmsMeta(x, cases)).filter((m) => m.state === 'OK' || m.state === 'DC');
-    return Object.assign({ code: nv.code, name: nv.name, nv, loai: nv.loai, loaiCt: nv.loaiCt, nguon: nv.nguon, fund: D.fundNames[nv.fund] || '', qdNo: qd.no || '', qdDate: qd.date || '',
+    return Object.assign({ code: nv.code, name: nv.name, nv, loai: nv.loai, loaiCt: nv.loaiCt, nguon: nv.nguon, fundCode: nv.fund, fund: fundName(nv.fund), qdNo: qd.no || '', qdDate: qd.date || '',
       value: r2(D.duToanOf(nv.code).reduce((s, l) => s + l.value, 0)),
       dtms: i.dtms != null ? i.dtms : r2(ok.reduce((s, m) => s + (m.value || 0), 0)),
       days: end ? Math.max(0, Math.ceil((end - today) / 86400000)) : null }, i, { x: Object.assign({ apCt: DEF_AP, apDa: DEF_AP }, EXTRA[nv.code] || {}) });
   }
-  const rows = () => D.nhiemVu.map(rowOf);
+  const withBlock = (r) => Object.assign(r, { block: blockOf(r) });
+  const rows = () => D.nhiemVu.map((nv) => withBlock(rowOf(nv)));
   /* T36 (D-96, Q8): Nguồn dữ liệu tách theo nguồn đồng bộ; 'cu' = chuyển một lần từ hệ thống cũ (BR-DADT-C-01). */
-  const SRC_LABEL = { khcn: 'Đồng bộ KHCN', hrtool: 'Đồng bộ HR Tool', mau: 'Nhập theo mẫu', cu: 'Chuyển từ hệ thống cũ' };
+  /* 11/11/2026: bỏ Nhập theo mẫu (người dùng bỏ chức năng DTMS_CN_0251) — Nguồn dữ liệu theo SRS-DBDA mục 2.3.1.4. */
+  const SRC_LABEL = { khcn: 'Đồng bộ KHCN', hrtool: 'Đồng bộ HR Tool', cu: 'Chuyển từ hệ thống cũ' };
   const srcLabel = (r) => SRC_LABEL[r.nguon] || SRC_LABEL.cu;
   const fieldName = (c) => { const x = (window.Catalog.rows('linh-vuc') || []).find((y) => y.code === c); return x ? x.name : c || ''; };
   const stBadge = (s) => badge(s, STATUS[s] || 'default');
 
   /* ---------- SCR-103 Danh sách đề tài / dự án ---------- */
-  const emptyF = () => ({ level: null, block: null, unit: null, from: '', to: '', fund: null, st: null, loai: null, loaiCt: null, secret: null, src: null });
-  const S = { kw: '', adv: false, f: emptyF(), d: emptyF(), page: 1, size: 10, psOpen: false };
+  /* Ô lọc theo SRS-DADT DTMS_CN_0240 (rà 11/11/2026): ô 7–10, 13 chọn nhiều; ô 12 Còn khoản mục chưa đóng; từ khóa luôn hiện và áp cùng điều kiện nâng cao. */
+  const emptyF = () => ({ level: null, block: null, unit: null, from: '', to: '', fund: [], st: [], loai: [], loaiCt: [], secret: null, open: false, src: [] });
+  const S = { kw: '', kwIn: '', adv: false, f: emptyF(), d: emptyF(), err: {}, page: 1, size: 10, psOpen: false };
+  const inSet = (set, v) => !set.length || set.includes(v);
+  /* Khoản mục chưa đóng của đề tài đã kết thúc (BR-DADT-02-09): khoản mục Chi mua sắm còn hiệu lực, chưa Hoàn thành. */
+  const ENDED = ['Hoàn thành', 'Dừng thực hiện'];
+  const hasOpenItems = (r) => ENDED.includes(r.status) && D.duToanOf(r.code).some((l) => l.buy && l.status !== 'Hoàn thành' && l.active !== false);
+  /* Quyền Xem đề tài / dự án Mật (BR-DADT-C-10) — GIẢ LẬP: TTMS, Quản trị hệ thống, Ban Giám đốc; thật là quyền cấp trong IAM (DTMS_Q_0415). */
+  const canSecret = () => ['R-TTMS', 'R-QTHT', 'R-PTGD', 'R-TGD-VHT'].includes(me().urd);
   function filtered() {
-    const f = S.f;
-    return rows().filter((r) => (!S.adv ? !S.kw || norm(r.code + ' ' + r.name).includes(norm(S.kw))
-      : (!f.level || r.level === f.level) && (!f.block || r.block === f.block) && (!f.unit || r.unit === f.unit)
-        && (!f.from || dk(r.qdDate) >= dk(f.from)) && (!f.to || dk(r.qdDate) <= dk(f.to)) && (!f.fund || r.fund === f.fund) && (!f.st || r.status === f.st)
-        && (!f.loai || r.loai === f.loai) && (!f.loaiCt || r.loaiCt === f.loaiCt) && (!f.secret || (f.secret === 'Mật') === !!r.secret)
-        && (!f.src || srcLabel(r) === f.src)));
+    const f = S.f, kw = norm(S.kw);
+    return rows().filter((r) => (!kw || norm(`${r.code} ${r.prevCode || ''} ${r.name}`).includes(kw))
+      && (!f.level || r.level === f.level) && (!f.block || r.block === f.block) && (!f.unit || r.unit === f.unit)
+      && (!f.from || dk(r.qdDate) >= dk(f.from)) && (!f.to || dk(r.qdDate) <= dk(f.to)) && inSet(f.fund, r.fundCode) && inSet(f.st, r.status)
+      && inSet(f.loai, r.loai) && inSet(f.loaiCt, r.loaiCt) && (!f.secret || !canSecret() || (f.secret === 'Mật') === !!r.secret)
+      && (!f.open || hasOpenItems(r)) && inSet(f.src, srcLabel(r)));
   }
+  /* Số ngày còn thực hiện (BR-DADT-01-02): đề tài đã kết thúc hiện "-"; Đang thực hiện bằng 0 nền đỏ, tới ngưỡng (tham số, mặc định 60 ngày) nền vàng. */
+  const DAYS_WARN = 60;
+  const daysOf = (r) => (ENDED.includes(r.status) || r.days == null ? null : r.days);
+  const daysCell = (r) => { const d = daysOf(r); return d == null ? `<td class="r num">${dash}</td>` : `<td class="r num ${d === 0 ? 'dt-day-red' : d <= DAYS_WARN ? 'dt-day-yellow' : ''}">${d}</td>`; };
+  /* Nguồn dữ liệu kèm nhãn Không còn ở nguồn (BR-DADT-04-02). */
+  const srcCell = (r) => `${esc(srcLabel(r))}${r.missing ? ` ${badge('Không còn ở nguồn', 'warning')}` : ''}`;
+  /* Số điều kiện đã áp — hiện trên nút khi đóng khối (ô 16). */
+  const nCond = (f) => Object.keys(f).filter((k) => (Array.isArray(f[k]) ? f[k].length : !!f[k]) && (k !== 'secret' || canSecret())).length;
   const unitsOf = (block) => [...new Set(rows().filter((r) => !block || r.block === block).map((r) => r.unit))].sort((a, b) => a.localeCompare(b, 'vi'));
+  const DATE_RE = /^(\d{2})\/(\d{2})\/(\d{4})$/;
+  const okDate = (v) => { const m = DATE_RE.exec(v); if (!m) return false; const d = new Date(+m[3], m[2] - 1, +m[1]); return d.getDate() === +m[1] && d.getMonth() === m[2] - 1; };
+  /* Kiểm tra ô ngày (SRS mục 4.5): sai định dạng, Đến < Từ → lỗi tại ô, không tìm. */
+  function checkDates(d) {
+    const e = {};
+    ['from', 'to'].forEach((k) => { if (d[k] && !okDate(d[k])) e[k] = 'Ngày không hợp lệ, nhập theo định dạng DD/MM/YYYY.'; });
+    if (!e.from && !e.to && d.from && d.to && dk(d.to) < dk(d.from)) e.to = 'Đến ngày phải lớn hơn hoặc bằng Từ ngày.';
+    return e;
+  }
+  const CAL = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><rect x="3.5" y="5" width="17" height="15.5" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M3.5 9.5h17M8 3v4M16 3v4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>';
   function advPanel() {
     const d = S.d;
-    const txt = (k, label) => `<div class="vfield"><div class="lr"><label>${label}</label></div><input class="vctl" data-dtf="${k}" maxlength="10" placeholder="DD/MM/YYYY" value="${esc(d[k])}"></div>`;
-    const sel = (k, label, ph, options, o) => `<div class="vfield"><div class="lr"><label>${label}</label></div>${vSelect(Object.assign({ id: 'dtf-' + k, value: d[k], clear: true, searchable: options.length > 6, placeholder: ph,
-      options: options.map((v) => ({ value: v, label: v })), onChange: (v) => { d[k] = v; rerender(); } }, o))}</div>`;
+    /* vht-calendar như Danh mục dùng chung: ô DD/MM/YYYY + icon lịch (bộ chọn ngày của trình duyệt). */
+    const date = (k, label) => `<div class="vfield ${S.err[k] ? 'invalid' : ''}"><div class="lr"><label>${label}</label></div><div class="vdate"><input class="vctl" data-dtf="${k}" maxlength="10" inputmode="numeric" placeholder="DD/MM/YYYY" value="${esc(d[k])}" aria-invalid="${!!S.err[k]}">
+        <button type="button" class="vdate-ic" data-dt-pick="${k}" tabindex="-1" aria-label="Chọn ngày">${CAL}</button><input type="date" class="vdate-native" data-dt-nat="${k}" tabindex="-1" aria-hidden="true"></div>
+        ${S.err[k] ? `<p class="msg">${esc(S.err[k])}</p>` : ''}</div>`;
+    const sel = (k, label, ph, options, o) => { const opts = options.map((v) => (typeof v === 'string' ? { value: v, label: v } : v));
+      return `<div class="vfield"><div class="lr"><label>${label}</label></div>${vSelect(Object.assign({ id: 'dtf-' + k, value: d[k], clear: true, multi: Array.isArray(d[k]), searchable: opts.length > 6, placeholder: ph,
+        options: opts, onChange: (v) => { d[k] = v; rerender(); } }, o))}</div>`; };
+    const funds = cat('nguon-von').map((r) => ({ value: r.code, label: r.active ? r.name : `${r.name} (ngừng sử dụng)` }));
     return `<form class="adv" data-dt-adv><div class="grid3">
-        ${sel('level', 'Cấp phê duyệt', 'Tất cả', LEVELS)}
-        ${sel('block', 'Khối đơn vị', 'Chọn khối đơn vị', BLOCKS, { onChange: (v) => { d.block = v; if (d.unit && !unitsOf(v).includes(d.unit)) d.unit = null; rerender(); } })}
-        ${sel('unit', 'Đơn vị lập ĐT/DA', 'Chọn đơn vị lập', unitsOf(d.block))}
-        ${txt('from', 'Ngày QĐ đầu tư từ')}${txt('to', 'Ngày QĐ đầu tư đến')}
-        ${sel('fund', 'Nguồn vốn', 'Chọn nguồn vốn', FUNDS)}
-        ${sel('st', 'Trạng thái', 'Tất cả trạng thái', Object.keys(STATUS))}
-        ${sel('loai', 'Loại dự án / đề tài', 'Chọn loại dự án / đề tài', LOAI, { onChange: (v) => { d.loai = v; if (d.loaiCt && !loaiCtOf(v).includes(d.loaiCt)) d.loaiCt = null; rerender(); } })}
-        ${sel('loaiCt', 'Loại dự án (chi tiết)', 'Chọn loại dự án (chi tiết)', loaiCtOf(d.loai))}
-        ${sel('secret', 'DA Mật / Không Mật', 'Tất cả', ['Mật', 'Không Mật'])}
-        ${sel('src', 'Nguồn dữ liệu', 'Tất cả nguồn dữ liệu', Object.values(SRC_LABEL))}</div>
-      <div class="acts"><button type="button" class="vbtn secondary" data-dt="reset">Làm mới</button><button type="submit" class="vbtn primary">Tìm kiếm</button></div></form>`;
+        ${sel('level', 'Cấp phê duyệt', 'Tất cả', catNames('cap-phe-duyet'))}
+        ${sel('block', 'Khối đơn vị', 'Chọn khối đơn vị', D.blocks, { onChange: (v) => { d.block = v; if (d.unit && !unitsOf(v).includes(d.unit)) d.unit = null; rerender(); } })}
+        ${sel('unit', 'Đơn vị lập ĐT/DA', 'Chọn đơn vị lập', unitsOf(d.block), { searchable: true })}
+        ${date('from', 'Ngày QĐ đầu tư từ')}${date('to', 'Ngày QĐ đầu tư đến')}
+        ${sel('fund', 'Nguồn vốn', 'Chọn nguồn vốn', funds)}
+        ${sel('st', 'Trạng thái', 'Chọn trạng thái', Object.keys(STATUS))}
+        ${sel('loai', 'Loại dự án / đề tài', 'Chọn loại dự án / đề tài', catNames('loai-dadt'), { onChange: (v) => { d.loai = v; const ok = loaiCtOf(v); d.loaiCt = d.loaiCt.filter((x) => ok.includes(x)); rerender(); } })}
+        ${sel('loaiCt', 'Loại dự án (chi tiết)', 'Chọn loại dự án (chi tiết)', loaiCtOf(d.loai), { searchable: true })}
+        ${canSecret() ? sel('secret', 'DA Mật / Không Mật', 'Tất cả', ['Mật', 'Không Mật']) : ''}
+        ${sel('src', 'Nguồn dữ liệu', 'Chọn nguồn dữ liệu', Object.values(SRC_LABEL))}
+        <div class="vfield"><div class="lr"><label>&nbsp;</label></div><label class="check"><input type="checkbox" data-dt-open ${d.open ? 'checked' : ''}> Còn khoản mục chưa đóng</label></div></div>
+      <div class="acts"><button type="button" class="vbtn secondary" data-dt="reset">Đặt lại</button><button type="submit" class="vbtn primary">Tìm kiếm</button></div></form>`;
   }
   function list() {
     // Theo: fe/repo-khcn-bpmn-fe/src/app/features/task-management/task-management.component.html
@@ -214,25 +247,27 @@
     const body = rs.slice(from, from + S.size).map((r, i) => `<tr class="click" data-go="${href(r.code)}">
         <td class="ord">${from + i + 1}</td><td class="c">${stBadge(r.status)}</td><td>${esc(r.loai)}</td><td><a class="link" data-go="${href(r.code)}">${esc(r.code)}</a></td>
         <td>${clamp(r.name)}</td><td>${clamp(r.unit)}</td><td>${clamp(r.owner)}</td><td>${clamp(r.fund)}</td><td class="r num">${num(r.value)}</td>
-        <td class="num">${esc(r.start)}</td><td class="num">${esc(r.end)}</td><td class="r num">${r.days == null ? dash : r.days}</td><td>${esc(srcLabel(r))}</td></tr>`).join('');
+        <td class="num">${esc(r.start)}</td><td class="num">${esc(r.end)}</td>${daysCell(r)}<td>${srcCell(r)}</td></tr>`).join('');
     const info = {
       scr: 'SCR-103', name: 'Danh sách đề tài / dự án', uc: 'YC-DXMS-PROTO §2.2 · HT-DXMS-NOTE màn 1, 2 · plan T29 S6 (D-60, D-61, D-63, D-66)',
       notes: [
         '<b>Đề tài / dự án là thực thể chung, nhiệm vụ KHCN là Loại KHCN</b> (D-66). Danh mục này cũng là nguồn ô Đề tài / dự án của ĐXMS và KĐT. ĐTMS không khởi tạo đề tài / dự án (YC-DXMS-PROTO §2.1) nên không có Thêm mới, Sửa, Xoá; form Thêm mới / Cập nhật đề tài của hệ thống cũ (Note màn 3) chưa dựng (TODO).',
         'Loại KHCN: thông tin chung đồng bộ từ phân hệ KHCN — GIẢ LẬP tới khi có trả lời <code>DTMS_Q_0070</code> (KHCN FE hiện chỉ có Tổng kinh phí); <b>cần dev riêng</b>: job đồng bộ + API danh sách. Loại khác: "Nhập ở hệ thống cũ" (P-195). Danh sách hiện mọi Loại (D-61).',
-        '<b>T36 (D-96)</b>: nút <b>Đồng bộ đề tài / dự án ▾</b> (khuôn nút Thao tác khác của my-task-detail), chỉ Quản trị hệ thống và TTMS (K2): <b>Đồng bộ từ KHCN</b>, <b>Đồng bộ từ HR Tool</b> mở hộp thoại Phạm vi (Thay đổi từ mốc / Toàn bộ / Một đề tài); <b>Xem lịch sử đồng bộ</b> mở SCR-109. Mỗi nguồn khoá riêng khi đang có lần chạy (Q6). Chạy nền, thông báo bắt đầu và kết quả kèm link Xem chi tiết. Nguồn dữ liệu: Đồng bộ KHCN / Đồng bộ HR Tool / Nhập theo mẫu / Chuyển từ hệ thống cũ, thêm ô lọc (Q8). HR Tool cấp Loại SXKD, Dự án đầu tư (GIẢ LẬP P-227); API HR Tool cần làm thêm (P-228). SRS: <code>docs/SRS/11-srs-dong-bo-dadt</code>.',
-        'Tìm kiếm nâng cao theo Note màn 1: Cấp phê duyệt, Khối đơn vị → Đơn vị lập (theo khối), Ngày QĐ đầu tư, Nguồn vốn, Trạng thái, Loại → Loại chi tiết (theo Loại, ánh xạ P-198), Mật. Cột theo Note màn 2; bỏ cột Hành động vì không có thao tác trên dòng, mở chi tiết bằng mã (như D-43). Thêm cột Nguồn dữ liệu (D-61).',
+        '<b>T36 (D-96)</b>: nút <b>Đồng bộ đề tài / dự án ▾</b> (khuôn nút Thao tác khác của my-task-detail), chỉ Quản trị hệ thống và TTMS (K2): <b>Đồng bộ từ KHCN</b>, <b>Đồng bộ từ HR Tool</b> mở hộp thoại Phạm vi (Thay đổi từ mốc / Toàn bộ / Một đề tài); <b>Xem lịch sử đồng bộ</b> mở SCR-109. Mỗi nguồn khoá riêng khi đang có lần chạy (Q6). Chạy nền, thông báo bắt đầu và kết quả kèm link Xem chi tiết. Nguồn dữ liệu: Đồng bộ KHCN / Đồng bộ HR Tool / Chuyển từ hệ thống cũ (bỏ Nhập theo mẫu 11/11/2026), thêm ô lọc (Q8). HR Tool cấp Loại SXKD, Dự án đầu tư (GIẢ LẬP P-227); API HR Tool cần làm thêm (P-228). SRS: <code>docs/SRS/11-srs-dong-bo-dadt</code>.',
+        'Tìm kiếm theo SRS-DADT DTMS_CN_0240 (rà 11/11/2026, đối chiếu HT-DXMS-NOTE màn 1, IA-DXMS dòng 2–3, ảnh hệ thống cũ): Từ khóa (mã, Mã cũ, tên) luôn hiện và áp cùng điều kiện nâng cao; Cấp phê duyệt, Khối đơn vị → Đơn vị lập, Ngày QĐ đầu tư từ / đến (kiểm tra định dạng, Đến ≥ Từ), Nguồn vốn, Trạng thái, Loại → Loại chi tiết (chọn nhiều), DA Mật / Không Mật (chỉ người có quyền Xem đề tài Mật — GIẢ LẬP TTMS, Quản trị, Ban Giám đốc), Nguồn dữ liệu, Còn khoản mục chưa đóng (BR-DADT-02-09; mẫu 020-26-VHT-BP-C). Đóng khối vẫn giữ điều kiện, nút ghi số điều kiện. Cột theo Note màn 2; bỏ cột Hành động, mở chi tiết bằng mã (như D-43). Thêm cột Nguồn dữ liệu (D-61).',
+        '<b>Nguồn giá trị ô lọc</b>: Cấp phê duyệt SCR-110, Loại dự án / đề tài SCR-111, Loại dự án (chi tiết) SCR-112 (cột Loại cha), Nguồn vốn SCR-32 — Danh mục dùng chung, gồm cả giá trị ngừng sử dụng (BR-DADT-C-13). Ba danh mục đầu <b>chưa có</b> trong ecat common-catalog bản 10/11/2026 — cần dev thêm. Nguồn vốn dùng chung Nguồn kinh phí (ecat funding-sources) hay danh mục riêng: <code>DTMS_Q_0650</code>. Khối đơn vị = đơn vị cấp Khối trên cây đơn vị (be/sso /api/v1/units có cấp, cấp trên; không có thuộc tính Khối) — GIẢ LẬP P-190, cấp nào: <code>DTMS_Q_0422</code>. Trạng thái, Nguồn dữ liệu: giá trị cố định.',
         'Tổng dự toán = tổng giá trị sau thuế của bảng dự toán nhập tại ĐTMS (D-65). Xuất Excel theo TPL-DADT-EX sheet1 (18 cột, có 6 cột danh sách không hiện: Mã SAP, Cấp phê duyệt, Nhóm, Số / Ngày QĐ, Tổng giá trị ĐTMS). Lọc Mật, Khối, Loại chi tiết không có cột tương ứng ở danh sách lẫn mẫu xuất. Note có 6 Loại, TPL-DADT-IM chỉ 4.',
-        'Số ngày còn thực hiện = TG kết thúc − ngày hiện tại, hết hạn thì 0 (dòng mẫu TPL thứ 2 hết hạn vẫn Đang thực hiện).',
+        'Số ngày còn thực hiện = TG kết thúc − ngày hiện tại, hết hạn thì 0; đề tài Hoàn thành / Dừng thực hiện hiện "-". Đang thực hiện: 0 nền đỏ, ≤ 60 ngày (tham số) nền vàng (BR-DADT-01-02, như ảnh hệ thống cũ).',
+        '<b>Rà 11/11/2026</b>: Nguồn dữ liệu kèm nhãn <b>Không còn ở nguồn</b> (mẫu 004-26-VHT-RDP-DS, GIẢ LẬP — chưa chặn bóc tách); Mã cũ (mẫu 005-26-VHT-BP-M, tìm được bằng từ khóa "005-25"; Chi tiết hiện "Mã cũ:" / "Được thay bởi:"). Không có tính năng Nhập từ tệp (người dùng 11/11/2026).',
       ],
-      q: ['P-195', 'P-198', 'P-227', 'P-228'], src: 'task-management/task-management.component · /task-management · nút menu xổ: my-tasks/my-task-detail (Thao tác khác)',
+      q: ['P-190', 'P-195', 'P-198', 'P-227', 'P-228'], src: 'task-management/task-management.component · /task-management · nút menu xổ: my-tasks/my-task-detail (Thao tác khác)',
     };
     return `<div class="pg">
       ${head({ title: 'Danh sách đề tài / dự án', info, right: `${window.DtSync.button()}<button type="button" class="vbtn secondary" data-dt="export">${icon('excel')} Xuất Excel</button>` })}
       <div class="vcard">
         <div class="pg-head"><span></span><div class="r">
-          ${S.adv ? '' : `<label class="vsearch" style="width:264px">${icon('search')}<input id="dt-kw" maxlength="255" placeholder="Tìm kiếm theo mã, tên dự án / đề tài" value="${esc(S.kw)}"></label>`}
-          <button type="button" class="vbtn ${S.adv ? 'active' : 'secondary'}" data-dt="adv">${S.adv ? 'Ẩn tìm kiếm nâng cao' : 'Tìm kiếm nâng cao'}</button></div></div>
+          <label class="vsearch" style="width:264px">${icon('search')}<input id="dt-kw" maxlength="255" placeholder="Tìm kiếm theo mã, tên dự án / đề tài" value="${esc(S.kwIn)}"></label>
+          <button type="button" class="vbtn ${S.adv ? 'active' : 'secondary'}" data-dt="adv">${S.adv ? 'Ẩn tìm kiếm nâng cao' : `Tìm kiếm nâng cao${nCond(S.f) ? ` (${nCond(S.f)})` : ''}`}</button></div></div>
         ${S.adv ? advPanel() : ''}
         <div class="vtable-vp"><table class="vtable" data-dt-list><thead><tr><th class="ord">STT</th>${cols.map(([h, w, a]) => `<th class="${a || ''}" style="width:${w}px;min-width:${w}px">${h}</th>`).join('')}</tr></thead>
           <tbody>${body || `<tr><td class="vtable-empty" colspan="${cols.length + 1}"><img src="assets/empty-table.svg" alt="">Không có dữ liệu</td></tr>`}</tbody></table></div>
@@ -251,9 +286,15 @@
   const typeName = (t) => (D.costTypes.find(([k]) => k === t) || [t, t])[1];
   const dxmsHref = (code) => (window.Luong.isGop() ? 'luong/' : 'dxms/') + encodeURIComponent(code);
   const dxBadge = (s) => badge(window.Screens.DXMS_STATUS[s][0], window.Screens.DXMS_STATUS[s][1]);
+  /* Mã kèm Mã cũ / Được thay bởi (DTMS_CN_0242 ô 4): liên kết khi đề tài đó có trên ĐTMS. */
+  function codeInfo(r) {
+    const all = rows(), link = (c) => (all.some((x) => x.code === c) ? `<a class="link" data-go="${href(c)}">${esc(c)}</a>` : esc(c));
+    const by = all.find((x) => x.prevCode === r.code);
+    return esc(r.code) + (r.prevCode ? `<br>Mã cũ: ${link(r.prevCode)}` : '') + (by ? `<br>Được thay bởi: ${link(by.code)}` : '');
+  }
   function infoTab(r) {
     return `<section class="vcard pad24 gen"><h3>Thông tin chung</h3><div class="ginfo c3">
-      ${kv('Mã dự án / đề tài', esc(r.code))}${kv('Tên dự án / đề tài', esc(r.name), 'span2')}
+      ${kv('Mã dự án / đề tài', codeInfo(r))}${kv('Tên dự án / đề tài', esc(r.name), 'span2')}
       ${kv('Loại dự án / đề tài', esc(r.loai))}${kv('Loại dự án (chi tiết)', esc(r.loaiCt))}${kv('Mã dự án SAP', esc(r.sap))}
       ${kv('Cấp phê duyệt', esc(r.level))}${kv('Nhóm dự án', esc(r.group))}${kv('Nguồn vốn', esc(r.fund))}
       ${kv('Lĩnh vực', esc(fieldName(r.nv.field)))}${kv('Đơn vị chủ trì', esc(r.unit))}${kv('Khối đơn vị', esc(r.block))}
@@ -261,8 +302,8 @@
       ${kv('Loại sản phẩm', esc(r.x.product || ''))}${kv('Mã dự án theo KHĐT năm', esc(r.x.khdt || ''))}${kv('ID dự án trên cổng Đấu thầu QG', esc(r.x.portal || ''))}
       ${kv('Tổng dự toán (gồm VAT)', ty(r.value) + ' tỷ đồng')}${kv('Tổng giá trị đầu tư mua sắm', ty(r.dtms || 0) + ' tỷ đồng')}${kv('Địa điểm đầu tư', esc(r.x.place || ''))}
       ${kv('Thời gian thực hiện', r.start ? `${esc(r.start)} – ${esc(r.end)}` : null)}
-      ${kv('Số ngày còn thực hiện', r.days == null ? null : String(r.days))}${kv('Trạng thái (tình trạng dự án)', stBadge(r.status))}
-      ${kv('Mật', r.secret ? 'Có' : 'Không')}${kv('Ngày nghiệm thu', esc(r.x.accept || ''))}${kv('Nguồn dữ liệu', esc(srcLabel(r)))}
+      ${kv('Số ngày còn thực hiện', daysOf(r) == null ? null : String(daysOf(r)))}${kv('Trạng thái (tình trạng dự án)', stBadge(r.status))}
+      ${kv('Mật', r.secret ? 'Có' : 'Không')}${kv('Ngày nghiệm thu', esc(r.x.accept || ''))}${kv('Nguồn dữ liệu', esc(srcLabel(r)) + (r.missing ? ` ${badge(`Không còn ở nguồn từ ${r.missing}`, 'warning')}` : ''))}
       ${kv('Nội dung, quy mô dự án (thông tin sản phẩm)', esc(r.x.scope || ''), 'span3')}</div></section>
       <section class="vcard pad24 gen" data-dt-approve><h3>Phê duyệt</h3><div class="ginfo c3">
       ${kv('Số / ngày TTr chủ trương', pair(r.x.ttrCt))}${kv('Số / ngày QĐ phê duyệt dự án', pair([r.qdNo, r.qdDate]))}${kv('Số / ngày QĐ phê duyệt dự toán', pair(r.x.qdDt))}
@@ -340,7 +381,7 @@
       ${table([['Trạng thái', 150, 'c'], ['Mã ĐXMS', 170], ['Tên ĐXMS', 340], ['Đợt', 70, 'c'], ['Đơn vị đề xuất', 200], ['Giá trị hiệu lực (tỷ đồng)', 180, 'r'], ['Người tạo', 170], ['Ngày cập nhật', 140]], list0,
     (x) => `<td class="c">${dxBadge(x.m.state)}</td><td><a class="link" data-go="${dxmsHref(x.code)}">${esc(x.code)}</a></td><td>${clamp(x.title)}</td>
         <td class="c">${window.Screens.s5.dotOf(x) || dash}</td><td>${clamp(x.unit)}</td><td class="r num">${x.m.value != null ? ty(x.m.value) : dash}</td><td>${clamp(x.creator)}</td><td class="num">${esc(x.updated)}</td>`, 'Chưa có ĐXMS')}</section>
-    ${D.show.dtKdt ? kdtTab(r) : ''}`;
+`;
   }
   /* T31 B2 (D-69): KĐT chọn đề tài / dự án này (D-45). Trạng thái, tổng mức vốn hiệu lực suy từ hồ sơ như SCR-54. */
   /* T45 (D-104): KĐT liên quan khi đề tài nằm trong nvs (KĐT chọn nhiều đề tài / dự án). */
@@ -396,12 +437,13 @@
     const nv = D.nvOf(code);
     if (!nv) return `<div class="pg">${head({ title: 'Xem chi tiết đề tài / dự án', back: 'de-tai', lg: true })}<section class="vcard pad24"><div class="empty-t">Không tìm thấy đề tài / dự án.</div></section></div>`;
     const r = rowOf(nv);
-    /* T29 B15 (D-80): bản demo ĐXMS ẩn KĐT liên quan và tab Gói thầu / Hợp đồng theo cờ D.show. */
-    const tabs = [['info', 'Thông tin chung'], ['du-toan', 'Dự toán chi phí'], ['dxms', D.show.dtKdt ? 'ĐXMS / KĐT liên quan' : 'ĐXMS liên quan'],
-      ['thau', 'Gói thầu / Hợp đồng'], ['phap-ly', 'Văn bản pháp lý']].filter(([k]) => k !== 'thau' || D.show.dtThau);
+    /* T29 B15 (D-80): tab Gói thầu / Hợp đồng ẩn theo cờ D.show.dtThau. 11/11/2026 (người dùng): tách tab KĐT liên quan riêng,
+       hiện mặc định (KĐT đã trong phạm vi từ T45); cờ D.show.dtKdt vẫn tắt được khi đóng gói bản chỉ ĐXMS. */
+    const tabs = [['info', 'Thông tin chung'], ['du-toan', 'Dự toán chi phí'], ['dxms', 'ĐXMS liên quan'], ['kdt', 'KĐT liên quan'],
+      ['thau', 'Gói thầu / Hợp đồng'], ['phap-ly', 'Văn bản pháp lý']].filter(([k]) => (k !== 'thau' || D.show.dtThau) && (k !== 'kdt' || D.show.dtKdt));
     if (T.code !== code) Object.assign(T, { code, tab: 'info', open: new Set(), seen: false });
     if (!tabs.some(([k]) => k === T.tab)) T.tab = 'info';
-    const body = { info: infoTab, 'du-toan': duToanTab, dxms: dxmsTab, thau: thauTab, 'phap-ly': phapLyTab }[T.tab](r);
+    const body = { info: infoTab, 'du-toan': duToanTab, dxms: dxmsTab, kdt: kdtTab, thau: thauTab, 'phap-ly': phapLyTab }[T.tab](r);
     const info = {
       scr: 'SCR-104', name: 'Chi tiết đề tài / dự án', uc: 'YC-DXMS-PROTO §2.2, §3 · HT-DXMS-NOTE màn 3–6 · TPL-DADT-EX sheet2, 5, 6 · IA-DXMS dòng 4–9 · plan T29 S6, S7 (D-60, D-64, D-65, D-66), plan T31 K3 (D-69)',
       notes: [
@@ -446,8 +488,9 @@
     const a = t.closest('[data-dt]');
     if (!a) return;
     if (a.dataset.dt === 'export') { exportList(); return; }
-    if (a.dataset.dt === 'adv') { S.adv = !S.adv; S.d = JSON.parse(JSON.stringify(S.f)); S.page = 1; }
-    if (a.dataset.dt === 'reset') { S.d = emptyF(); S.f = emptyF(); S.page = 1; }
+    if (a.dataset.dt === 'adv') { S.adv = !S.adv; S.d = JSON.parse(JSON.stringify(S.f)); S.err = {}; }
+    /* Đặt lại (ô 18): xóa từ khóa, điều kiện về giá trị khởi tạo, trang 1. */
+    if (a.dataset.dt === 'reset') { S.kw = ''; S.kwIn = ''; S.d = emptyF(); S.f = emptyF(); S.err = {}; S.page = 1; }
     rerender();
   });
   document.addEventListener('change', (e) => {
@@ -467,13 +510,46 @@
     toast('<b>Thành công</b><br>Cập nhật Chi mua sắm thành công');
     rerender();
   });
-  document.addEventListener('submit', (e) => { if (e.target.matches('[data-dt-adv]')) { e.preventDefault(); S.f = JSON.parse(JSON.stringify(S.d)); S.page = 1; rerender(); } });
-  document.addEventListener('input', (e) => { const f = e.target.closest && e.target.closest('[data-dtf]'); if (f) S.d[f.dataset.dtf] = f.value; });
+  /* [Tìm kiếm] (ô 17): kiểm tra ô ngày, áp đồng thời từ khóa và mọi điều kiện, về trang 1. */
+  function applySearch() {
+    S.kw = S.kwIn.trim();
+    if (S.adv) {
+      S.err = checkDates(S.d);
+      if (Object.keys(S.err).length) { rerender(); return; }
+      S.f = JSON.parse(JSON.stringify(S.d));
+    }
+    S.page = 1;
+    rerender();
+  }
+  document.addEventListener('submit', (e) => { if (e.target.matches('[data-dt-adv]')) { e.preventDefault(); applySearch(); } });
+  document.addEventListener('input', (e) => {
+    /* Từ khóa đang gõ giữ qua các lần vẽ lại (chọn điều kiện nâng cao), chỉ áp khi [Tìm kiếm] / Enter. */
+    if (e.target.id === 'dt-kw') { S.kwIn = e.target.value; return; }
+    const f = e.target.closest && e.target.closest('[data-dtf]');
+    if (!f) return;
+    /* Gõ số thì tự chèn dấu / (như vht-calendar ở Danh mục dùng chung). */
+    const v = f.value.replace(/\D/g, '').slice(0, 8);
+    f.value = [v.slice(0, 2), v.slice(2, 4), v.slice(4)].filter(Boolean).join('/');
+    S.d[f.dataset.dtf] = f.value;
+  });
+  document.addEventListener('change', (e) => {
+    if (!e.target.closest) return;
+    if (e.target.matches('[data-dt-open]')) { S.d.open = e.target.checked; return; }
+    const n = e.target.closest('[data-dt-nat]');
+    if (n && n.value) { const [y, m, d] = n.value.split('-'); S.d[n.dataset.dtNat] = `${d}/${m}/${y}`; rerender(); }
+  });
+  document.addEventListener('click', (e) => {
+    const b = e.target.closest && e.target.closest('[data-dt-pick]');
+    if (!b) return;
+    const k = b.dataset.dtPick, nat = document.querySelector(`[data-dt-nat="${k}"]`), m = DATE_RE.exec(S.d[k] || '');
+    nat.value = m ? `${m[3]}-${m[2]}-${m[1]}` : '';
+    try { nat.showPicker(); } catch (err) { nat.focus(); }
+  });
   /* vht-search-input: tìm khi Enter (như SCR-27). */
   document.addEventListener('keydown', (e) => {
     if (e.key !== 'Enter' || e.target.id !== 'dt-kw') return;
-    S.kw = e.target.value.trim(); S.page = 1;
-    rerender();
+    e.preventDefault();
+    applySearch();
     const k = document.getElementById('dt-kw');
     if (k) { k.focus(); k.setSelectionRange(k.value.length, k.value.length); }
   });

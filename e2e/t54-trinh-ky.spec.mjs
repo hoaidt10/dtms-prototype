@@ -1,0 +1,207 @@
+// T54 — Trình ký VOffice theo SRS 32 (hộp thoại 0271, màn Trình ký 0274, thao tác 0273). Plan docs/dtms/prototype-T54-trinh-ky-voffice.md.
+import { test, expect } from '@playwright/test';
+import { fresh, lastToast, createDxms } from './helpers.mjs';
+
+async function jump(page, task, vars = {}, proc = 'MS01.01') {
+  return page.evaluate(([t, v, p]) => {
+    Flow.jumpTo(t, 'minh', v, p, undefined, null, false);
+    const k = Flow.state.tokens.find((x) => String(x.task) === String(t));
+    Flow.setPersona(k.who);
+    location.hash = '#/task/' + k.id;
+    return k.id;
+  }, [task, vars, proc]);
+}
+/* Bấm nút chính của bước, xác nhận eForm nếu có, chờ hộp thoại Trình ký VOffice. */
+async function openSign(page) {
+  await page.locator('.task-acts [data-act].primary').click();
+  const ef = page.locator('.vmodal.ef');
+  if (await ef.count()) await ef.locator('#ok').click();
+  await expect(page.locator('.tk-dlg')).toBeVisible();
+  return page.locator('.overlay').last();
+}
+
+test('0271: bước 60 BM-08 — gợi ý theo cấu hình, khóa trước khi kết nối, người ký mẫu không trùng, dòng Tổng Giám đốc khóa', async ({ page }) => {
+  await fresh(page);
+  await jump(page, 60);
+  const dlg = await openSign(page);
+  await expect(dlg.locator('.vmodal-h h3')).toContainText('Trình ký VOffice — BM-08');
+  await expect(dlg.locator('[data-tk-info="title"]')).toHaveValue(/Quyết định phê duyệt đề xuất mua sắm/);
+  await expect(dlg.locator('[data-tk-info="symbol"]')).toHaveValue('QĐ');
+  // Người soạn thảo (58) và Người trình duyệt (59) cùng một chuyên viên TTMS → một dòng; dòng Tổng Giám đốc khóa.
+  await expect(dlg.locator('[data-tk-row]')).toHaveCount(2);
+  await expect(dlg.locator('[data-tk-row="1"] [data-tk-pos="1"]')).toHaveValue('TỔNG GIÁM ĐỐC');
+  await expect(dlg.locator('[data-tk-row="1"] [data-tk="del"]')).toHaveCount(0);
+  await expect(dlg.locator('[data-tk-row="0"] [data-tk="del"]')).toHaveCount(1);
+  await expect(dlg.locator('.tk-off').first()).toBeVisible();
+  // Sai mật khẩu → toast lỗi.
+  await dlg.locator('#tk-pw').fill('sai');
+  await dlg.locator('#tk-pw').press('Enter');
+  expect(await lastToast(page)).toContain('Tài khoản hoặc mật khẩu chưa đúng');
+  await dlg.locator('#tk-pw').fill('Vht@2026');
+  await dlg.locator('#tk-pw').press('Enter');
+  expect(await lastToast(page)).toContain('Kết nối với hệ thống VOffice thành công');
+  await expect(dlg.locator('.tk-off')).toHaveCount(0);
+  expect(page.errors).toEqual([]);
+});
+
+test('0271: thêm người ký Giữ nhóm / Chèn nhóm, quá số chân ký thì chặn, gửi tạo lần trình Đã ký', async ({ page }) => {
+  await fresh(page);
+  await jump(page, 60);
+  const dlg = await openSign(page);
+  await dlg.locator('#tk-pw').fill('Vht@2026');
+  await dlg.locator('#tk-pw').press('Enter');
+  await dlg.locator('[data-tk-row="0"] [data-tk="add"]').click();
+  await page.locator('[data-g="keep"]').click();
+  await expect(dlg.locator('[data-tk-row]')).toHaveCount(3);
+  await expect(dlg.locator('[data-tk-row="1"] [data-tk-pos="1"]')).toHaveValue('Người phê duyệt');
+  // Dòng mới chưa có người ký → chặn.
+  await dlg.locator('#go').click();
+  expect(await lastToast(page)).toContain('Vui lòng chọn Tên người ký');
+  await dlg.locator('[data-tk-row="1"] [data-tk="del"]').click();
+  // Bật hiển thị chữ ký ở dòng 1 → 2 chân ký > 1.
+  await dlg.locator('[data-tk-show="0"]').check();
+  await dlg.locator('#go').click();
+  expect(await lastToast(page)).toContain('Văn bản chỉ có 1 vị trí chữ ký');
+  await dlg.locator('[data-tk-show="0"]').uncheck();
+  await dlg.locator('#go').click();
+  await expect(page.locator('.tk-dlg')).toHaveCount(0);
+  const r = await page.evaluate(() => TrinhKy.list().slice(-1)[0]);
+  expect(r.doc).toBe('BM-08');
+  expect(r.st).toBe('SIGNED');
+  expect(r.fetched).toBe(false);
+  expect(r.signers.map((s) => s.g)).toEqual([1, 2]);
+  expect(r.trans).toMatch(/^DTMS-DXMS-.*-60-BM-08-1-[A-Z0-9]{6}$/);
+  expect(page.errors).toEqual([]);
+});
+
+test('0271: ký ngoài hệ thống — bắt buộc lý do, lần trình Chờ nhập kết quả', async ({ page }) => {
+  await fresh(page);
+  await jump(page, 43);
+  const dlg = await openSign(page);
+  await dlg.locator('[data-mode="hard"]').click();
+  await expect(dlg.locator('#tk-pw')).toHaveCount(0);
+  await dlg.locator('#go').click();
+  expect(await lastToast(page)).toContain('Vui lòng nhập Lý do ký ngoài hệ thống');
+  await dlg.locator('#hr').fill('VOffice gián đoạn');
+  await dlg.locator('#go').click();
+  await expect(page.locator('.tk-dlg')).toHaveCount(0);
+  const r = await page.evaluate(() => TrinhKy.list().slice(-1)[0]);
+  expect([r.method, r.st, r.offReason]).toEqual(['OFFLINE', 'OFFLINE_PENDING', 'VOffice gián đoạn']);
+  await expect.poll(() => page.evaluate(() => (Flow.state.vars.hardSigns || []).map((x) => x.reason))).toEqual(['VOffice gián đoạn']);
+  expect(page.errors).toEqual([]);
+});
+
+test('BM-03 trình ở bước 16.1, bước 18 không tự trình', async ({ page }) => {
+  await fresh(page);
+  await jump(page, '16.1');
+  const dlg = await openSign(page);
+  await expect(dlg.locator('.vmodal-h h3')).toContainText('BM-03');
+  await expect(dlg.locator('[data-tk-row="0"] [data-tk-pos="0"]')).toHaveValue('THỦ TRƯỞNG ĐƠN VỊ');
+  await dlg.locator('#tk-pw').fill('Vht@2026');
+  await dlg.locator('#go').click();
+  await expect(page.locator('.tk-dlg')).toHaveCount(0);
+  const sys = await page.evaluate(() => Flow.state.history.filter((h) => h.signDoc === 'BM-03').length);
+  expect(sys).toBe(0);
+  expect(await page.evaluate(() => TrinhKy.list().slice(-1)[0].doc)).toBe('BM-03');
+  expect(page.errors).toEqual([]);
+});
+
+test('0274: màn Trình ký — tab, Thu hồi, Lấy bản đã ký hàng loạt, Chi tiết lần trình', async ({ page }) => {
+  await fresh(page);
+  await page.evaluate(() => Flow.setPersona('tung'));
+  await page.evaluate(() => { location.hash = '#/trinh-ky'; });
+  await expect(page.locator('.pg-title')).toContainText('Trình ký');
+  await expect(page.locator('.sidebar, nav, aside').first()).toBeVisible();
+  // Đỗ Mạnh Tùng: 2 lần trình BM-04 (Đã hủy, Chờ ký).
+  await expect(page.locator('[data-tk-id]')).toHaveCount(2);
+  const pending = page.locator('[data-tk-id]', { hasText: 'Chờ ký' });
+  await pending.locator('[data-tk-act="recall"]').click();
+  await page.locator('#tk-rc-ok').click();
+  expect(await lastToast(page)).toContain('Vui lòng nhập Lý do');
+  await page.locator('#tk-rc').fill('Sai người ký');
+  await page.locator('#tk-rc-ok').click();
+  await expect(page.locator('[data-tk-id]', { hasText: 'Đã thu hồi' })).toHaveCount(1);
+  // Người khác (TGĐ) không thấy nút Thu hồi trên lần trình của Tùng; Tôi trình của TGĐ có lần trình Đã ký đã lấy bản ký.
+  await page.evaluate(() => { Flow.setPersona('lan'); App.render(); });
+  const signedNotFetched = page.locator('[data-tk-id]', { hasText: 'Chưa lấy' });
+  await expect(signedNotFetched).toHaveCount(1);
+  await signedNotFetched.locator('[data-tk-sel]').check();
+  await page.locator('[data-tk-bulk="fetch"]').click();
+  await page.locator('#tk-pw2').fill('Vht@2026');
+  await page.locator('#tk-pw-ok').click();
+  await expect(page.locator('[data-tk-id]', { hasText: 'Chưa lấy' })).toHaveCount(0);
+  await page.locator('[data-tk-id]').first().locator('[data-tk-act="view"]').click();
+  await expect(page.locator('.vmodal-h h3', { hasText: 'Chi tiết lần trình' })).toBeVisible();
+  await expect(page.locator('.vmodal', { hasText: 'Nhật ký' })).toContainText('Mã giao dịch');
+  expect(page.errors).toEqual([]);
+});
+
+test('03-08: khối Trình ký ở tab Tài liệu & văn bản của ĐXMS — lần trình mới nhất, bấm dòng mở Chi tiết lần trình', async ({ page }) => {
+  await fresh(page);
+  await jump(page, 60);
+  const dlg = await openSign(page);
+  await dlg.locator('#tk-pw').fill('Vht@2026');
+  await dlg.locator('#go').click();
+  await expect(page.locator('.tk-dlg')).toHaveCount(0);
+  const code = await page.evaluate(() => Flow.state.dxms);
+  await page.evaluate((c) => { location.hash = '#/luong/' + encodeURIComponent(c); }, code);
+  await page.locator('[data-ltab="tai-lieu"]').click();
+  const blk = page.locator('[data-tkb]');
+  await expect(blk.locator('h3')).toHaveText('Trình ký');
+  const row = blk.locator('[data-tk-id]', { hasText: 'BM-08' });
+  await expect(row).toContainText('Đã ký');
+  await expect(row).toContainText('Chưa lấy');
+  // Lần trình mẫu của ĐXMS khác không lẫn vào đối tượng đang chạy.
+  await expect(blk.locator('[data-tk-id]', { hasText: 'BM-04' })).toHaveCount(0);
+  await row.locator('td').nth(1).click();
+  await expect(page.locator('.vmodal-h h3', { hasText: 'Chi tiết lần trình' })).toBeVisible();
+  expect(page.errors).toEqual([]);
+});
+
+test('Q9 A: Hình thức trình ký ĐXMS là VOffice / Ký ngoài hệ thống; giá trị cũ "Bản cứng" đọc thành Ký ngoài hệ thống', async ({ page }) => {
+  await fresh(page);
+  const code = await createDxms(page);
+  await page.evaluate((c) => { Flow.findDxms(c).sign = 'Bản cứng'; }, code);
+  await page.evaluate((c) => { location.hash = '#/luong/' + encodeURIComponent(c); }, code);
+  await expect(page.locator('.ginfo', { hasText: 'Hình thức trình ký' }).first()).toContainText('Ký ngoài hệ thống');
+  await expect(page.locator('#app')).not.toContainText('Bản cứng');
+  expect(page.errors).toEqual([]);
+});
+
+test('KĐT hồ sơ Mật: bước 47 ký ngoài hệ thống → khối Trình ký Chờ nhập kết quả; bước 78 xong → Đã ký', async ({ page }) => {
+  await fresh(page);
+  // Như test/flow.test.mjs T18 B3: dựng hồ sơ MS13 Mật ở bước 47.
+  await page.evaluate(() => Flow.jumpTo(47, 'lan', null, 'MS13', null, { secret: true }));
+  const ok = await page.evaluate(() => !!Flow.state.kdt && Flow.isMat && Flow.isMat());
+  test.skip(!ok, 'Không dựng được hồ sơ KĐT Mật bằng jumpTo');
+  const id = await page.evaluate(() => { const k = Flow.state.tokens.find((x) => String(x.task) === '47'); Flow.setPersona(k.who); location.hash = '#/task/' + k.id; return k.id; });
+  expect(id).toBeTruthy();
+  const dlg = await openSign(page);
+  await expect(dlg.locator('#tk-pw')).toHaveCount(0);
+  await dlg.locator('#go').click();
+  await expect(page.locator('.tk-dlg')).toHaveCount(0);
+  const kdt = await page.evaluate(() => Flow.state.kdt);
+  expect(await page.evaluate((k) => TrinhKy.latest(k).map((r) => r.st), kdt)).toEqual(['OFFLINE_PENDING']);
+  // 77 → 78 hoàn thành bằng engine.
+  for (const t of ['77', '78']) {
+    await page.evaluate((tt) => { const k = Flow.state.tokens.find((x) => String(x.task) === tt); Flow.complete(k.id, Flow.mainChoice(k.task)); }, t);
+  }
+  expect(await page.evaluate((k) => TrinhKy.latest(k).map((r) => r.st), kdt)).toEqual(['SIGNED']);
+  await page.evaluate((k) => { location.hash = '#/kdt/' + encodeURIComponent(k); }, kdt);
+  await expect(page.locator('[data-tkb] [data-tk-id]').first()).toContainText('Đã ký');
+  expect(page.errors).toEqual([]);
+});
+
+test('0273: Nhập kết quả ký ngoài hệ thống ở màn Trình ký', async ({ page }) => {
+  await fresh(page);
+  await page.evaluate(() => { Flow.setPersona('lan'); location.hash = '#/trinh-ky'; });
+  const row = page.locator('[data-tk-id]', { hasText: 'Chờ nhập kết quả' });
+  await row.locator('[data-tk-act="result"]').click();
+  await page.locator('#kq-go').click();
+  expect(await lastToast(page)).toContain('Vui lòng tải bản đã ký');
+  await page.locator('#kq-up').click();
+  await page.locator('#kq-no').fill('15/TTr-TTMS');
+  await page.locator('#kq-go').click();
+  await expect(page.locator('[data-tk-id]', { hasText: '15/TTr-TTMS' })).toContainText('Đã ký');
+  expect(page.errors).toEqual([]);
+});

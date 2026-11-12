@@ -1,6 +1,7 @@
 // T30 — Gộp các tệp comment review do người review gửi về (xuất từ nút Comment review trên prototype).
 // Chạy (trong prototype/dtms):
 //   node tools/review-merge.mjs <thư-mục-ra> <tệp1.json> [tệp2.json …] [--shots] [--proto <đường dẫn index.html>]
+//   Nguồn có thể là URL Web app của kho comment chung (T52, tools/review-sheet) — tải ?op=export.
 // Ra: <thư-mục-ra>/review-merged.json (nhập lại vào prototype được), review.md (đọc theo màn),
 //     với --shots: shots/<id>.png — Playwright nạp ảnh chụp dữ liệu lúc ghim, mở đúng route, khoanh phần tử + ghim.
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
@@ -16,10 +17,19 @@ if (!outDir || !files.length) { console.error('Dùng: node tools/review-merge.mj
 
 /* ---------- Gộp (cùng luật với nút Nhập JSON trên prototype) ---------- */
 const comments = new Map(), snapshots = {}, sources = [];
+const isUrl = (f) => /^https?:\/\//.test(f);
+async function readSource(f) {
+  if (!isUrl(f)) return JSON.parse(readFileSync(f, 'utf8').replace(/^﻿/, ''));
+  const res = await fetch(f + (f.includes('?') ? '&' : '?') + 'op=export');
+  if (!res.ok) throw new Error(`${f}: HTTP ${res.status}`);
+  return res.json();
+}
+const loaded = [];
 for (const f of files) {
-  const data = JSON.parse(readFileSync(f, 'utf8').replace(/^﻿/, ''));
+  const data = await readSource(f);
+  loaded.push(data);
   if (data.format !== 'dtms-prototype-review' || !Array.isArray(data.comments)) { console.error(`Bỏ qua ${f}: không phải tệp comment review prototype ĐTMS.`); continue; }
-  sources.push({ file: basename(f), reviewer: data.reviewer, exportedAt: data.exportedAt, build: data.prototype && data.prototype.build, n: data.comments.length });
+  sources.push({ file: isUrl(f) ? 'kho-chung' : basename(f), reviewer: data.reviewer, exportedAt: data.exportedAt, build: data.prototype && data.prototype.build, n: data.comments.length });
   Object.assign(snapshots, data.snapshots || {});
   for (const c of data.comments) {
     const old = comments.get(c.id);
@@ -35,7 +45,7 @@ const list = [...comments.values()].sort((a, b) => (a.createdAt < b.createdAt ? 
 list.forEach((c, i) => { c.ref = 'R' + String(i + 1).padStart(2, '0'); });
 
 mkdirSync(outDir, { recursive: true });
-const merged = { format: 'dtms-prototype-review', version: 1, readme: JSON.parse(readFileSync(files[0], 'utf8').replace(/^﻿/, '')).readme,
+const merged = { format: 'dtms-prototype-review', version: 1, readme: (loaded.find((d) => d.readme) || {}).readme,
   prototype: { build: 'merged' }, reviewer: 'merged', exportedAt: new Date().toISOString(), sources, comments: list, snapshots };
 writeFileSync(join(outDir, 'review-merged.json'), JSON.stringify(merged, null, 1));
 

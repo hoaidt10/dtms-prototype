@@ -218,7 +218,7 @@ test('Báo cáo: 6 nhóm, mọi báo cáo dựng không lỗi; drill-down lọc 
   // KPI xử lý theo bước (nhóm C comment Figma)
   await go(page, '#/bao-cao/tien-do');
   await page.locator('[data-rptab="tien-do:kpi-buoc"]').click();
-  await expect(page.locator('.rp-tile', { hasText: 'Số lần ký cứng' })).toBeVisible();
+  await expect(page.locator('.rp-tile', { hasText: 'Số lần ký ngoài hệ thống' })).toBeVisible();
   expect(page.errors).toEqual([]);
 });
 

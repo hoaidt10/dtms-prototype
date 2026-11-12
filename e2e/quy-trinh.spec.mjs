@@ -20,9 +20,9 @@ test('D-15: menu theo 12 module Backlog; Quản lý quy trình có 3 mục (D-2)
   await fresh(page, '#/viec-cua-toi');
   const tops = await page.locator('.sb-nav > .nav:not(.child) .l').allInnerTexts();
   // Vận hành trước, cấu hình sau; Tích hợp và Trợ lý AI ẩn (2026-10-07); Quản lý thầu / hợp đồng ẩn ở bản demo ĐXMS (D-76, cờ D.show.menuThau).
-  expect(tops).toEqual(['Tổng quan', 'Việc của tôi', 'Đề tài / dự án', 'Quản lý đề xuất mua sắm', 'Quản lý khoản đầu tư', 'Báo cáo', 'Quản lý quy trình', 'Thông báo']);
+  expect(tops).toEqual(['Tổng quan', 'Việc của tôi', 'Trình ký', 'Đề tài / dự án', 'Quản lý đề xuất mua sắm', 'Quản lý khoản đầu tư', 'Báo cáo', 'Quản lý quy trình', 'Thông báo']);
   await page.evaluate(() => { D.show.menuThau = true; App.render(); });
-  expect(await page.locator('.sb-nav > .nav:not(.child) .l').allInnerTexts()).toEqual(['Tổng quan', 'Việc của tôi', 'Đề tài / dự án', 'Quản lý đề xuất mua sắm', 'Quản lý khoản đầu tư', 'Quản lý thầu',
+  expect(await page.locator('.sb-nav > .nav:not(.child) .l').allInnerTexts()).toEqual(['Tổng quan', 'Việc của tôi', 'Trình ký', 'Đề tài / dự án', 'Quản lý đề xuất mua sắm', 'Quản lý khoản đầu tư', 'Quản lý thầu',
     'Quản lý hợp đồng', 'Báo cáo', 'Quản lý quy trình', 'Thông báo']);
   // Mục con của một nhóm = các nút .child liền sau nút nhóm.
   const kids = (label) => page.evaluate((l) => {

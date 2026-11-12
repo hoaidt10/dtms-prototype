@@ -32,7 +32,7 @@ test('SCR-55: bóc tách 2 dòng, cảnh báo vượt còn lại, chặn vượt
   await expect(page.locator('#k-form')).toHaveValue(/Chưa xác định/);
   await expect(page.locator('#k-sign')).toHaveValue(/VOffice/);
   await pickT(page, 'k-sec', 'Có');
-  await expect(page.locator('#k-sign')).toHaveValue('Bản cứng (hồ sơ Mật)');
+  await expect(page.locator('#k-sign')).toHaveValue('Ký ngoài hệ thống — Ký tay (hồ sơ Mật)');
   await pickT(page, 'k-sec', 'Không');
 
   await page.locator('#k-title').fill('Đầu tư thiết bị đo kiểm cho trạm gNodeB thế hệ 2');

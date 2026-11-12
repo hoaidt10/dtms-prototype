@@ -23,8 +23,8 @@ test('SCR-54, 56: cột / nhãn "Đề tài / dự án", mã mở Chi tiết đ�
   await expect(page.locator('main .ginfo')).toContainText('Loại');
   await link.click();
   await expect(page).toHaveURL(new RegExp(`#/de-tai/${enc(NV)}$`));
-  await expect(page.locator('[data-dt-tab]')).toHaveText(['Thông tin chung', 'Dự toán chi phí', 'ĐXMS / KĐT liên quan', 'Gói thầu / Hợp đồng', 'Văn bản pháp lý']);
-  await page.locator('[data-dt-tab="dxms"]').click();
+  await expect(page.locator('[data-dt-tab]')).toHaveText(['Thông tin chung', 'Dự toán chi phí', 'ĐXMS liên quan', 'KĐT liên quan', 'Gói thầu / Hợp đồng', 'Văn bản pháp lý']);
+  await page.locator('[data-dt-tab="kdt"]').click();
   const kdt = page.locator('[data-dt-kdt]');
   await expect(kdt).toContainText('KĐT-2026-0012');
   // T45 (D-104): KĐT chọn nhiều đề tài / dự án — đề tài có KĐT khi nằm trong nvs.

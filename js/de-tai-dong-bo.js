@@ -1,6 +1,7 @@
 /* T36 B1 (D-96) — Đồng bộ đề tài / dự án (plan docs/dtms/T36-srs-dong-bo-dadt-ke-hoach.md v0.2, B0 K1…K7; SRS docs/SRS/11-srs-dong-bo-dadt).
    Nút [Đồng bộ đề tài / dự án ▾] ở SCR-103: menu xổ Đồng bộ từ KHCN / Đồng bộ từ HR Tool / Xem lịch sử đồng bộ; hộp thoại Phạm vi;
-   SCR-109 Lịch sử đồng bộ đề tài / dự án #/de-tai/dong-bo (khối trạng thái theo nguồn, tab Lần đồng bộ / Lần nhập, hộp thoại chi tiết, Bỏ qua lỗi).
+   SCR-109 Lịch sử đồng bộ đề tài / dự án #/de-tai/dong-bo (khối trạng thái theo nguồn, bảng lần đồng bộ, hộp thoại chi tiết, Bỏ qua lỗi).
+   11/11/2026: bỏ tab Lần nhập — người dùng bỏ hẳn chức năng Nhập đề tài / dự án theo mẫu (SRS-DADT DTMS_CN_0251).
    GIẢ LẬP: lần chạy kết thúc sau ~2 giây với kết quả mẫu, không đổi dữ liệu đề tài. Thật: job nền gọi API của nguồn (GT-01…03 KHCN, GT-H01…H03 HR Tool),
    bảng project_sync_run / project_sync_issue có cột source. Lịch sử giữ trong bộ nhớ trang (tải lại trang về dữ liệu mẫu). */
 (function () {
@@ -46,11 +47,6 @@
           I('004-26-VHT-RDP-DS', 'Nghiên cứu xây dựng hệ thống quản lý không phận tầm thấp và thử nghiệm giải pháp phục vụ kinh tế tầm thấp', 'Cập nhật', 'Thông tin chung', 'Chủ nhiệm.')] },
       { code: 'DB-2026-00037', src: 'HRTOOL', trig: 'Thủ công', scope: 'all', by: 'Phạm Thị Lan', start: '07/11/2026 15:12:40', end: '07/11/2026 15:28:02', st: 'Thất bại', since: '', retry: 3,
         err0: 'Không lấy được dữ liệu từ HR Tool sau 3 lần thử lại.', n: { fetch: 0, add: 0, upd: 0, same: 0, skip: 0, err: 0 }, items: [] },
-    ],
-    imports: [
-      { code: 'NH-2026-00012', file: 'Mau nhap de tai du an 11-2026.xlsx', by: 'Phạm Thị Lan', start: '06/11/2026 10:05:21', st: 'Có lỗi', n: { rows: 3, ok: 2, err: 1 },
-        items: [I('KHN-2026-TTVT', 'Mua sắm thường xuyên năm 2026 — Trung tâm Vô tuyến', 'Cập nhật'), I('KHN-2026-VHT', 'Mua sắm thường xuyên năm 2026 — các đơn vị VHT', 'Cập nhật'),
-          I('DA-2026-002', 'Sản xuất module RRU 5G giai đoạn 2026–2028', 'Lỗi', 'Dòng 4', 'Đề tài / dự án DA-2026-002 cập nhật bằng đồng bộ, không nhập theo mẫu được.')] },
     ],
   };
   const pad = (n) => String(n).padStart(2, '0');
@@ -171,12 +167,6 @@
       ${tbl('data-sy-list', cols, body, cols.length)}
       ${pager({ id: 'sy', total: rs.length, page: SY.page, size: SY.size, open: SY.psOpen })}</div>`;
   }
-  function importsTab() {
-    const cols = [['Trạng thái', 130, 'c'], ['Mã lần', 150], ['Tệp nhập', 300], ['Người nhập', 170], ['Thời điểm', 170], ['Số dòng', 90, 'r'], ['Ghi được', 100, 'r'], ['Lỗi', 70, 'r']];
-    const body = SY.imports.map((r, i) => `<tr><td class="ord">${i + 1}</td><td class="c">${runBadge(r.st)}</td><td><a class="link" data-sy-imp="${r.code}">${esc(r.code)}</a></td>
-        <td><a class="link" data-dl="${esc(r.file)}">${esc(r.file)}</a></td><td>${clamp(r.by)}</td><td class="num">${esc(r.start)}</td>${nb(r.n.rows)}${nb(r.n.ok)}${nb(r.n.err)}</tr>`).join('');
-    return `<div class="vcard">${tbl('data-sy-imports', cols, body, cols.length)}</div>`;
-  }
   function page() {
     // Theo: fe/repo-khcn-bpmn-fe/src/app/features/task-management/task-management.component.html (vht-table, ô tìm kiếm phải, panel nâng cao như SCR-27)
     //       + app-tabs (@khcn-core/ui); hộp thoại chi tiết vht-modal; nút menu xổ theo "Thao tác khác" của my-tasks/my-task-detail
@@ -185,20 +175,18 @@
       notes: [
         '<b>Không có mục menu trái</b> (D-96): mở từ mục <b>Xem lịch sử đồng bộ</b> của nút Đồng bộ đề tài / dự án ở Danh sách đề tài / dự án và từ link <b>Xem chi tiết</b> trong thông báo kết quả. Thay màn Quản trị > Đồng bộ đề tài / dự án của SRS-DADT V1.1 (chưa từng có màn).',
         'Khối <b>Trạng thái đồng bộ</b>: mỗi nguồn một dòng — lịch đồng bộ, lịch rà soát toàn bộ (tham số, mặc định HR Tool lệch KHCN 30 phút, Q10), lần gần nhất, mốc lấy thay đổi (BR-DADT-04-01), số đề tài còn lỗi chưa đóng (bấm lọc chi tiết).',
-        'Tab <b>Lần đồng bộ</b>: cột Nguồn, lọc Nguồn / Trạng thái / Cách chạy. Lấy về = Thêm mới + Cập nhật + Không đổi + Bỏ qua + Lỗi; <b>Bỏ qua</b> = nhiệm vụ Loại KHCN ở HR Tool (Q2, <code>DTMS_Q_0438</code>), ghi Cảnh báo, không tính lỗi. Tab <b>Lần nhập</b> chuyển từ màn Quản trị (K4); nhập theo mẫu (DTMS_CN_0251) chưa dựng.',
+        'Bảng <b>lần đồng bộ</b> (không còn tab Lần nhập — bỏ nhập theo mẫu 11/11/2026): cột Nguồn, lọc Nguồn / Trạng thái / Cách chạy. Lấy về = Thêm mới + Cập nhật + Không đổi + Bỏ qua + Lỗi; <b>Bỏ qua</b> = nhiệm vụ Loại KHCN ở HR Tool (Q2, <code>DTMS_Q_0438</code>), ghi Cảnh báo, không tính lỗi. Tab <b>Lần nhập</b> chuyển từ màn Quản trị (K4); nhập theo mẫu (DTMS_CN_0251) chưa dựng.',
         '<b>Bỏ qua lỗi</b>: Quản trị hệ thống và TTMS (K2), bắt buộc Lý do. GIẢ LẬP: dữ liệu lần mẫu; lần chạy thủ công kết thúc sau ~2 giây với kết quả mẫu, không đổi dữ liệu đề tài; lịch sử giữ trong bộ nhớ trang. <b>Cần dev riêng</b>: job đồng bộ theo nguồn, bảng <code>project_sync_run</code> / <code>project_sync_issue</code> thêm cột nguồn.',
       ],
       q: ['P-227', 'P-228'], src: 'task-management/task-management.component · /task-management · app-tabs · vht-modal',
     };
-    const tabs = [['run', 'Lần đồng bộ'], ['imp', 'Lần nhập']];
     if (!canSync()) return `<div class="pg">${head({ title: 'Lịch sử đồng bộ đề tài / dự án', back: 'de-tai', info })}<section class="vcard pad24"><div class="empty-t">Bạn không có quyền thực hiện chức năng này.</div></section></div>`;
     return `<div class="pg">
       ${head({ title: 'Lịch sử đồng bộ đề tài / dự án', back: 'de-tai', info, right: button({ noHistory: true }) })}
       ${statusCard()}
-      <nav class="tabs dx-tabs" role="tablist">${tabs.map(([k, l]) => `<button type="button" class="tab ${SY.tab === k ? 'on' : ''}" role="tab" aria-selected="${SY.tab === k}" data-sy-tab="${k}">${l}</button>`).join('')}</nav>
-      ${SY.tab === 'run' ? runsTab() : importsTab()}</div>`;
+      ${runsTab()}</div>`;
   }
-  /* Hộp thoại Chi tiết lần đồng bộ / lần nhập. Lọc Kết quả mặc định Lỗi, Cảnh báo khi có. */
+  /* Hộp thoại Chi tiết lần đồng bộ. Lọc Kết quả mặc định Lỗi, Cảnh báo khi có. */
   function detailDlg(r, kind, onlyErr) {
     const isRun = kind === 'run';
     const RES_ORDER = ['Lỗi', 'Cảnh báo', 'Bỏ qua', 'Thêm mới', 'Cập nhật'];
@@ -209,14 +197,12 @@
     const grid = () => tbl('data-sy-items', [['Mã dự án / đề tài', 170], ['Tên', 260], ['Kết quả', 110, 'c'], ['Phần', 150], ['Nội dung', 320], ['Đã đóng', 90, 'c'], ['Thao tác', 90, 'c']],
       items().map((i, n) => `<tr><td class="ord">${n + 1}</td><td>${codeCell(i)}</td><td>${clamp(i.name)}</td><td class="c">${badge(i.res, RES_ST[i.res] || 'default')}</td><td>${esc(i.part)}</td>
         <td>${clamp(i.msg)}</td><td class="c">${i.res === 'Lỗi' ? (i.closed ? 'Có' : 'Không') : dash}</td><td class="c">${act(i)}</td></tr>`).join(''), 7);
-    const head0 = isRun
-      ? `${kv('Nguồn', esc(SRC[r.src].label))}${kv('Cách chạy', esc(r.trig))}${kv('Phạm vi', esc(scopeText(r)))}${kv('Người chạy', esc(r.by))}${kv('Bắt đầu', esc(r.start))}${kv('Kết thúc', r.end ? esc(r.end) : null)}
+    const head0 = `${kv('Nguồn', esc(SRC[r.src].label))}${kv('Cách chạy', esc(r.trig))}${kv('Phạm vi', esc(scopeText(r)))}${kv('Người chạy', esc(r.by))}${kv('Bắt đầu', esc(r.start))}${kv('Kết thúc', r.end ? esc(r.end) : null)}
         ${kv('Trạng thái', runBadge(r.st))}${kv('Mốc đã dùng', r.scope === 'since' ? esc(r.since || 'Toàn bộ') : null)}${kv('Số lần thử lại', String(r.retry || 0))}
         ${kv('Lấy về / Thêm mới / Cập nhật / Không đổi / Bỏ qua / Lỗi', [r.n.fetch, r.n.add, r.n.upd, r.n.same, r.n.skip, r.n.err].join(' / '), 'span2')}${r.err0 ? kv('Lỗi chung', esc(r.err0), 'span3') : ''}`
-      : `${kv('Tệp nhập', esc(r.file), 'span2')}${kv('Người nhập', esc(r.by))}${kv('Thời điểm', esc(r.start))}${kv('Trạng thái', runBadge(r.st))}${kv('Số dòng / Ghi được / Lỗi', [r.n.rows, r.n.ok, r.n.err].join(' / '))}`;
     const filtSel = () => `<div class="vfield"><div class="lr"><label>Kết quả</label></div><div class="vradio h" data-sy-filt>
         ${[['all', 'Tất cả'], ['err', 'Lỗi'], ['warn', 'Lỗi, Cảnh báo']].map(([k, l]) => vRadio(l, (k === 'all' && !filt) || (k === 'err' && filt && filt.length === 1) || (k === 'warn' && filt && filt.length === 2), `data-sy-f="${k}"`)).join('')}</div></div>`;
-    const m = vModal({ title: `${isRun ? 'Chi tiết lần đồng bộ' : 'Chi tiết lần nhập'} ${r.code}`, size: 'xl',
+    const m = vModal({ title: `Chi tiết lần đồng bộ ${r.code}`, size: 'xl',
       body: `<div class="ginfo c3">${head0}</div><div data-sy-dbody>${filtSel()}${grid()}</div>`, actions: '<button type="button" class="vbtn secondary" data-close>Đóng</button>' });
     const box = m.el.querySelector('[data-sy-dbody]');
     const redraw = () => { box.innerHTML = filtSel() + grid(); };
@@ -257,13 +243,9 @@
     if (SY.menu && !t.closest('[data-sy-pop]')) { SY.menu = false; rerender(); }
     const run = t.closest('[data-sy-run]');
     if (run) { const r = SY.runs.find((x) => x.code === run.dataset.syRun); if (r) setTimeout(() => detailDlg(r, 'run', false), run.closest('.toast') ? 50 : 0); return; }
-    const imp = t.closest('[data-sy-imp]');
-    if (imp) { const r = SY.imports.find((x) => x.code === imp.dataset.syImp); if (r) detailDlg(r, 'imp', false); return; }
     const es = t.closest('[data-sy-errsrc]');
     if (es) { openErrsOf(es.dataset.syErrsrc); return; }
     if (!onPage()) return;
-    const tb = t.closest('[data-sy-tab]');
-    if (tb) { SY.tab = tb.dataset.syTab; rerender(); return; }
     const pg = t.closest('[data-pager="sy"]');
     if (pg) {
       const b = t.closest('[data-pg]'), z = t.closest('[data-ps]');

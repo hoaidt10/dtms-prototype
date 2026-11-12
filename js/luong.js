@@ -198,9 +198,12 @@
     const e = dongIn(v.est), known = e != null && !Number.isNaN(e), big = known && e >= TH(), ok = v.basisTD === 'Đã phê duyệt';
     return { form: !known ? '' : big ? 'ĐXMS có giá trị nhóm B trở lên' : 'ĐXMS có giá trị dưới nhóm B', level: !known ? '' : big && !ok ? 'Tập đoàn' : 'Tổng công ty' };
   }
-  /* D-74 (RV-PROTO-0511 #5): Hình thức trình ký chọn được; mặc định Bản cứng khi Mật — lệch BR-DXMS-C-25. */
-  const defSign = (secret) => (secret === 'Có' ? 'Bản cứng' : 'VOffice');
-  const SIGNS = ['VOffice', 'Bản cứng'];
+  /* D-74 (RV-PROTO-0511 #5): Hình thức trình ký chọn được; mặc định Ký ngoài hệ thống khi Mật — lệch BR-DXMS-C-25.
+     T54 (SRS 32 Q9 A): "Bản cứng" đổi thành "Ký ngoài hệ thống"; giá trị cũ đã lưu đọc thành giá trị mới (sgn). */
+  const OFF = 'Ký ngoài hệ thống';
+  const sgn = (v) => (v === 'Bản cứng' ? OFF : v);
+  const defSign = (secret) => (secret === 'Có' ? OFF : 'VOffice');
+  const SIGNS = ['VOffice', OFF];
   /* Hình thành gói thầu (RV-PROTO-0511 #14): dropdown — GIẢ LẬP P-206. */
   const PKGS = ['Hình thành gói thầu', 'Không hình thành gói thầu'];
   const costLine = (id) => (LF.v.nv ? D.duToanOf(LF.v.nv) : []).find((l) => l.id === id) || null;
@@ -669,7 +672,7 @@
   /* T34: điền màn từ một ĐXMS có sẵn — ĐXMS chưa có hồ sơ (mode 'own') hoặc ĐXMS cần điều chỉnh (mode 'adj', D-89: chép cả căn cứ, chi phí, nhân sự). */
   function prefillFrom(x) {
     Object.assign(LF.v, { title: x.title || '', nv: x.nv || null, unit: x.unit || LF.v.unit, priority: x.priority || 'Thường', priReason: x.priReason || '',
-      est: x.est != null ? dong(x.est) : '', period: x.period || '', secret: x.secret ? 'Có' : 'Không', sign: x.sign || defSign(x.secret ? 'Có' : 'Không'),
+      est: x.est != null ? dong(x.est) : '', period: x.period || '', secret: x.secret ? 'Có' : 'Không', sign: sgn(x.sign) || defSign(x.secret ? 'Có' : 'Không'),
       basisTD: x.basisTD ? 'Đã phê duyệt' : 'Chưa phê duyệt', dot: x.dot != null ? String(x.dot) : '', legal: x.legal || LF.v.legal });
     if (x.fund) LF.v.fund = x.fund;
     if (x.purposeCode) LF.v.purposeCode = x.purposeCode;
@@ -710,7 +713,7 @@
     if (sv) { Object.assign(LF, JSON.parse(JSON.stringify(sv))); if (!LF.aiBoc && LF.ai) LF.aiBoc = { nv: LF.ai.nv, fetch: LF.ai.fetch }; }
     else {
       Object.assign(LF.v, { title: x.title || Flow.state.name || '', nv: x.nv || null, unit: x.unit || LF.v.unit, priority: x.priority || 'Thường', priReason: x.priReason || '',
-        est: x.est != null ? dong(x.est) : '', period: x.period || '', secret: x.secret ? 'Có' : 'Không', sign: x.sign || defSign(x.secret ? 'Có' : 'Không'),
+        est: x.est != null ? dong(x.est) : '', period: x.period || '', secret: x.secret ? 'Có' : 'Không', sign: sgn(x.sign) || defSign(x.secret ? 'Có' : 'Không'),
         basisTD: x.basisTD ? 'Đã phê duyệt' : 'Chưa phê duyệt', dot: x.dot != null ? String(x.dot) : '', legal: x.legal || LF.v.legal });
       LF.cost = (x.cost || []).map((r, i) => ({ id: 'c' + (i + 1), line: r.line, qty: r.qty == null ? '' : String(r.qty), value: dong(r.value), pkg: r.pkg || '' }));
       LF.rseq = LF.cost.length;
@@ -1065,7 +1068,7 @@
       ${kv('Người tạo', esc(x.creator))}${kv('Mức ưu tiên', esc(x.priority))}
       ${x.priReason ? kv('Lý do ưu tiên', esc(x.priReason), 'span3') : ''}
       ${kv('Giá trị hiệu lực (gồm VAT)', m.value != null ? ty(m.value) + ' tỷ đồng' : null)}${kv('Giá trị dự kiến', x.est != null ? (x.luong ? dong(x.est) + ' đồng' : ty(x.est) + ' tỷ đồng') : null)}${kv('Thời gian thực hiện', esc(x.period))}
-      ${kv('Trạng thái', badge(window.Screens.DXMS_STATUS[m.state][0] + (m.state === 'OK' && m.adjN ? ` (điều chỉnh lần ${m.adjN})` : ''), window.Screens.DXMS_STATUS[m.state][1]))}${kv('Mật', x.secret ? 'Có' : 'Không')}${kv('Hình thức trình ký', esc(x.sign || (x.secret ? 'Bản cứng' : 'VOffice')))}
+      ${kv('Trạng thái', badge(window.Screens.DXMS_STATUS[m.state][0] + (m.state === 'OK' && m.adjN ? ` (điều chỉnh lần ${m.adjN})` : ''), window.Screens.DXMS_STATUS[m.state][1]))}${kv('Mật', x.secret ? 'Có' : 'Không')}${kv('Hình thức trình ký', esc(sgn(x.sign) || (x.secret ? OFF : 'VOffice')))}
       ${kv('Ngày cập nhật', esc(x.updated))}${adjKv(x, m, kv)}</div></section>`;
   }
   /* T37 (RV-PROTO-0911 #2): ĐXMS mẫu chưa lưu bảng bóc tách thì lấy dòng mẫu (DeTai.costOf) ghép thông tin dòng dự toán. */
@@ -1118,11 +1121,14 @@
       if (!r) { r = { code: k.code, name: k.doc[0], at: k.c.updated, st: 'Hoàn thành', signs: [] }; rows.push(r); }
       r.res = k;
     });
+    /* T54: trạng thái ký theo lần trình mới nhất (Chờ ký, Đã ký, Từ chối, Đã thu hồi, Chờ nhập kết quả…). */
+    rows.forEach((r) => { r.tk = window.TrinhKy.docStatus(x.code, r.code); });
     const rank = (r) => (r.res && r.res.cur ? 0 : 1);
     return rows.map((r, n) => Object.assign(r, { n })).sort((a, b) => rank(a) - rank(b) || a.n - b.n);
   }
   function docState(r) {
     if (r.res) return r.res.cur ? badge('Đang hiệu lực', 'success') : badge('Đã thay thế', 'default');
+    if (r.tk && r.tk.st !== 'SIGNED') return badge(r.tk.label, r.tk.tone);
     if (r.signs.some((sg) => sg.st === 'PENDING')) return badge('Đang trình ký', 'warning');
     if (r.signs.length) { const n = r.signs.length; return badge(n > 1 ? `Đã ký ${n}/${n}` : 'Đã ký', 'success'); }
     return badge(r.st, OUT_TONE[r.st] || 'default');
@@ -1175,7 +1181,8 @@
       'ton-kho': () => Y('ton-kho'),
       ycbg: () => Y('ycbg'),
       /* D-95: 2 khối — màn xử lý việc: Danh sách tài liệu (tải lên) trước; chế độ xem: Văn bản đầu ra trước. */
-      'tai-lieu': () => (t ? t.files + tabDocs(x, t.outList) : p ? tabDocs(x, p.outList, p.vm.code) + p.files : none('Văn bản đầu ra')),
+      /* T54 (SRS 32 BR-TKV-03-08): khối Trình ký — mỗi văn bản một dòng theo lần trình mới nhất. */
+      'tai-lieu': () => (t ? t.files + tabDocs(x, t.outList) : p ? tabDocs(x, p.outList, p.vm.code) + p.files : none('Văn bản đầu ra')) + window.TrinhKy.block(code, { pad: !!t }),
       'nhan-su': () => tabMembers(x) + tabLog(x),
     };
     return `<nav class="tabs dx-tabs" role="tablist">${TABS.map(([k, l]) => `<button type="button" class="tab ${DT.tab === k ? 'on' : ''}" role="tab" aria-selected="${DT.tab === k}" data-ltab="${k}">${l}</button>`).join('')}</nav>
@@ -1200,6 +1207,7 @@
         '<b>Phương án Gộp (T17)</b>: một màn cho cả ĐXMS và các hồ sơ của nó. Khuôn task-create (mode detail) + app-tabs như Chi tiết ĐXMS (SCR-29).',
         '<b>Nhân sự thực hiện</b>: mọi bước người dùng của quy trình, nhân sự chỉ định hoặc "theo vai trò" như quy trình, trạng thái bước. <b>Bước đã xong thì khoá</b> (D-28, P-89); bấm Cập nhật nhân sự (SCR-98): chọn <b>Vai trò thực hiện</b> (D-75), Thay / Bổ sung áp cho mọi bước chưa xong của vai trò; nút ở dòng bước mở sẵn vai trò của bước đó.',
         '<b>Văn bản & ký duyệt</b>: văn bản đã ký (giữ nguyên khi thay người — D-29 (3)) và văn bản đang trình ký. Thật: gom văn bản đầu ra của các hồ sơ + trạng thái VOffice — cần dev (tab ở đối tượng cha, S3). Thu hồi / trình ký lại: bước B3 (DX-04).',
+        '<b>T54 — khối Trình ký</b> (SRS 32 BR-TKV-03-08) cuối tab Tài liệu & văn bản: mỗi văn bản một dòng theo lần trình mới nhất (Lần trình, Hình thức, Trạng thái, Bản ký, Số văn bản, Ngày ký, Lý do), thao tác theo trạng thái như màn Trình ký, bấm dòng mở Chi tiết lần trình. Trạng thái ở Văn bản đầu ra theo lần trình khi chưa Đã ký (Chờ ký, Từ chối, Đã thu hồi, Chờ nhập kết quả). GIẢ LẬP: khối chỉ có lần trình bấm trong lần chạy demo này — văn bản đã ký ở các bước tua nhanh (Công cụ demo) không có lần trình; ĐXMS không chạy luồng hiện lần trình mẫu.',
         '<b>Lịch sử thay đổi nhân sự</b>: mỗi lần Bổ sung / Thay người một dòng — thời điểm, người thực hiện, bước, nhân sự trước / sau, văn bản căn cứ, lý do, task đã chuyển (plan §4).',
         'Prototype chạy một hồ sơ tại một thời điểm: Văn bản, Lịch sử và nút Cập nhật nhân sự chỉ có ở luồng đang chạy hồ sơ.',
         '<b>T29</b> (HT-DXMS-NOTE màn 7, 8; "TTr" = ĐXMS): Thông tin chung thêm Đợt mua sắm (P-192), Khối đơn vị (P-190), Người được xem; nút <b>Cập nhật người xem</b> như hành động cùng tên của hệ thống cũ — GIẢ LẬP P-189. SRS-DXMS chưa có (D-59).',

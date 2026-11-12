@@ -28,7 +28,7 @@
 
   /* Khối ký chung 75–78 (D-34): ghi chú chung của các bước ký (P-91) và form của 76 (gửi lại), 77, 78. */
   const KY_NOTE = 'Nút ký mở hộp thoại Trình ký = bước 75 "Chọn hình thức ký" của khối ký chung (D-34; Camunda: call activity <code>DTMS_KY_CHUNG</code>, biến <code>hinhThucKy</code>, <code>mat</code>). '
-    + 'Hồ sơ Mật → bắt buộc Bản cứng (bước 77 → 78); không Mật chọn VOffice (bước 76: gửi, callback trả trạng thái + PDF) hoặc Bản cứng. Có kết quả ký mới đi tiếp nhánh Đồng ý của bước này. '
+    + 'Hồ sơ Mật → bắt buộc Ký ngoài hệ thống, Ký tay (bước 77 → 78); không Mật chọn VOffice (bước 76: gửi, callback trả trạng thái + PDF) hoặc Ký ngoài hệ thống (T54, SRS 32 Q9 A: thay "Bản cứng"). Có kết quả ký mới đi tiếp nhánh Đồng ý của bước này. '
     + 'Prototype gộp 75 vào hộp thoại của người bấm ký (điểm tự quyết B3-1).';
   const KY_HIST = tbl('Các lần ký đã qua khối ký chung', 'kyLichSu', [['buoc', 'Bước ký'], ['vanBan', 'Văn bản'], ['hinhThuc', 'Hình thức'], ['luc', 'Ngày']], '=count(kyLichSu) = 0');
 
@@ -38,12 +38,12 @@
       notes: () => ['Bước 76 là service task (API gửi hồ sơ và luồng ký sang VOffice; webhook trả trạng thái + PDF đã ký, ĐTMS lưu tự động, không xác nhận thủ công). Bình thường không thành việc của ai.',
         'GIẢ LẬP P-94: gửi lỗi → việc "Gửi lại VOffice" cho người trình (thật: incident của job worker, retry). Từ chối ký trên VOffice = nhánh Không đồng ý của bước ký chính.'] },
     77: { id: 'dtms-ms13-b77-ky-ban-cung', q: ['P-60'],
-      schema: () => ({ components: [txt('### Văn bản trình ký bản cứng\n{{kyChung}}'), ta('yKienXuLy', 'Ý kiến xử lý', { rows: 3 }), KY_HIST] }),
-      notes: () => ['Bước 77: in và trình bản cứng theo đúng người ký, thứ tự ký của bước ký chính; hồ sơ Mật bắt buộc nhánh này (G1 "Hồ sơ Mật?"), không gửi qua VOffice.',
+      schema: () => ({ components: [txt('### Văn bản trình ký ngoài hệ thống\n{{kyChung}}'), ta('yKienXuLy', 'Ý kiến xử lý', { rows: 3 }), KY_HIST] }),
+      notes: () => ['Bước 77: in và trình bản giấy (Ký tay) hoặc tự trình trên VOffice theo đúng người ký, thứ tự ký của bước ký chính; hồ sơ Mật bắt buộc nhánh này (G1 "Hồ sơ Mật?"), không gửi qua VOffice.',
         'Đã xử lý ký → người phụ trách hồ sơ cập nhật kết quả, đính kèm bản scan (bước 78).'],
       write: (v) => pick(v, ['yKienXuLy']) },
     78: { id: 'dtms-ms13-b78-cap-nhat-ket-qua-ky', q: ['P-60'],
-      schema: () => ({ components: [txt('### Kết quả ký bản cứng\n{{kyChung}}'),
+      schema: () => ({ components: [txt('### Kết quả ký ngoài hệ thống\n{{kyChung}}'),
         rad('trangThaiKy', 'Trạng thái', req({ values: opts(['Đã ký']), layout: { columns: 8 } })), ta('yKienXuLy', 'Ý kiến xử lý', { rows: 2 }),
         txt('Bản scan văn bản đã ký: tải lên ở **Danh sách tài liệu** (bắt buộc).'), KY_HIST] }),
       notes: () => ['Bước 78: người phụ trách hồ sơ cập nhật trạng thái, đính kèm bản scan, ý kiến xử lý. Hồ sơ Mật: lưu tài liệu trong phạm vi được phép theo quy định bảo mật.',
@@ -67,7 +67,7 @@
         rad('secret', 'Mật', req({ values: [{ label: 'Không', value: false }, { label: 'Có', value: true }], layout: { columns: 8 }, description: 'Mặc định theo khoản đầu tư.' })),
         B.aiTable('aiGoiY', 'Gợi ý AI từ căn cứ — Mục tiêu, sự cần thiết; Phạm vi, quy mô; Thời gian lấy theo quyết định ở đây')] }),
       notes: () => ['Lĩnh vực, Loại KĐT, Tính chất tài sản lấy từ khoản đầu tư — hiện ở Thông tin chung (khoá), là 3 trong 04 yếu tố phân luồng; yếu tố thứ tư là tổng mức vốn thực tế chốt sau báo giá (task 10).',
-        'Không có Mức ưu tiên (từ điển dữ liệu KĐT §4.1). Hồ sơ Mật (biến <code>mat</code>): các bước ký bắt buộc bản cứng qua khối ký chung 75–78 (D-34).', 'Gợi ý AI (G2): như task 04 của MS01 — bảng quyết định Chấp nhận / Sửa / Bỏ theo từng mục.'],
+        'Không có Mức ưu tiên (từ điển dữ liệu KĐT §4.1). Hồ sơ Mật (biến <code>mat</code>): các bước ký bắt buộc ký ngoài hệ thống, Ký tay, qua khối ký chung 75–78 (D-34).', 'Gợi ý AI (G2): như task 04 của MS01 — bảng quyết định Chấp nhận / Sửa / Bỏ theo từng mục.'],
       write: (v) => pick(v, ['secret']) },
 
     10: { id: 'dtms-ms13-b10-bao-gia', q: ['P-06'],
@@ -295,7 +295,7 @@
       schema: () => ({ components: [txt('{{tdHoSo}}'), txt('**Trích yếu:** {{trichYeuCv}}'), tbl('Khối chữ ký công văn', 'kyCv', SIGN_COLS),
         txt('**Công văn trình Tập đoàn** (bản trình ký) và dự thảo hồ sơ xem ở **Văn bản đầu ra**.')] }),
       outputs: (h) => ['CV-TD', h.tdk().code],
-      notes: () => ['TGĐ VHT ký công văn kèm dự thảo hồ sơ đề nghị Tập đoàn xử lý theo thẩm quyền. Đồng ý → hệ thống chuyển hồ sơ đã ký lên Tập đoàn (bước 66, service): VOffice gửi qua tích hợp; bản cứng ghi nhận chuyển bộ hồ sơ giấy, bản scan cập nhật ở bước 78 (P-99).',
+      notes: () => ['TGĐ VHT ký công văn kèm dự thảo hồ sơ đề nghị Tập đoàn xử lý theo thẩm quyền. Đồng ý → hệ thống chuyển hồ sơ đã ký lên Tập đoàn (bước 66, service): VOffice gửi qua tích hợp; ký ngoài hệ thống ghi nhận chuyển bộ hồ sơ giấy, bản scan cập nhật ở bước 78 (P-99).',
         'Không đồng ý → dialog nhận xét, ĐVĐX hoàn thiện công văn (bước 64).', KY_NOTE] },
     67: { id: 'dtms-ms13-b67-tap-doan-nhan-xet', q: ['P-96'],
       schema: (h) => ({ components: [txt('{{tdHoSo}}'),
