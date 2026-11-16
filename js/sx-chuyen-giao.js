@@ -102,7 +102,7 @@
     };
     const ST = ['Đang lập', 'Yêu cầu bổ sung', 'Đang thẩm định', 'Đang lập biên bản', 'Đã duyệt'];
     return k.listPage({
-      id: 'sxcg', title: 'Danh sách gói chuyển giao', ph: 'Tìm kiếm theo mã gói, sản phẩm', info,
+      id: 'sxcg', exp: 'Danh sach goi chuyen giao', title: 'Danh sách gói chuyển giao', ph: 'Tìm kiếm theo mã gói, sản phẩm', info,
       right: canCreate() ? `<button class="vbtn primary" data-sx-cg-new>${icon('add')} Thêm mới</button>` : '',
       rows: () => visible().map((g) => { const x = byCode(g.code), [a, b] = docCount(x); return Object.assign(x, { st: stOf(x), du: a, tong: b, used: projectsOf(x).map((p) => p.code).join(', ') }); }),
       kwText: (g) => `${g.code} ${g.product} ${g.version}`,
@@ -164,7 +164,7 @@
         '<b>Thẩm định</b>: Quản lý sản xuất và Đảm bảo chất lượng song song; một bên Yêu cầu bổ sung (chọn hồ sơ cần sửa) thì huỷ bên còn lại, gói về R&D (GIẢ LẬP P-247). Đạt cả hai → Quản lý sản xuất lập biên bản thống nhất → hệ thống ghi Kho sản phẩm sẵn sàng sản xuất.',
         '12 tên hồ sơ Khối 2 GIẢ LẬP (P-239).',
       ],
-      q: ['P-238', 'P-239', 'P-247'], src: 'task-management/components/task-create (mode detail) · @khcn-core/ui app-tabs · profile-detail (Danh sách tài liệu)',
+      q: ['P-238', 'P-239', 'P-247', 'P-258'], src: 'task-management/components/task-create (mode detail) · @khcn-core/ui app-tabs · profile-detail (Danh sách tài liệu)',
     };
     const alert = edit && lacking(g).length ? `<div class="hd-alerts"><div class="hd-alert warning">${icon('info')}<span>Còn ${lacking(g).length} hồ sơ bắt buộc chưa tải lên hoặc cần bổ sung.</span></div></div>` : '';
     const tInfo = () => k.card('Thông tin chung', `<div class="ginfo c3">
@@ -206,7 +206,7 @@
       q: ['P-243'], src: 'ecat catalog-list (chỉ xem)',
     };
     return k.listPage({
-      id: 'sxsp', title: 'Sản phẩm sẵn sàng sản xuất', ph: 'Tìm kiếm theo mã, tên sản phẩm', info,
+      id: 'sxsp', exp: 'San pham san sang san xuat', title: 'Sản phẩm sẵn sàng sản xuất', ph: 'Tìm kiếm theo mã, tên sản phẩm', info,
       rows: () => D.sxProducts.filter((p) => ready(p.code)).map((p) => Object.assign({}, p, { r: relOf(p.code) })),
       kwText: (p) => `${p.code} ${p.name}`,
       empty: () => ({ code: '', name: '', khoi: null }),

@@ -12,8 +12,8 @@ test('Vào phân hệ từ Danh sách Phân hệ: topbar QLSX, sidebar đủ m�
   await expect(page).toHaveURL(/#\/sx\/tong-quan$/);
   await expect(page.locator('.topbar .brand-text')).toContainText('QLSX');
   await expect(page.locator('.sb-head .t')).toHaveText('Quản lý sản xuất');
-  await expect(page.locator('.sb-nav .nav .l')).toHaveText(['Việc của tôi', 'Tổng quan', 'Dự án sản xuất', 'Chuyển giao từ nghiên cứu', 'Hồ sơ chuyển giao',
-    'Sản phẩm sẵn sàng sản xuất', 'Đề xuất mua sắm', 'Bất thường sản xuất', 'Thay đổi kỹ thuật', 'Nghiệm thu sản phẩm', 'Báo cáo']);
+  await expect(page.locator('.sb-nav .nav .l')).toHaveText(['Việc của tôi', 'Công việc', 'Việc cá nhân', 'Nhiệm vụ đơn vị', 'Tổng quan', 'Dự án sản xuất', 'Chuyển giao từ nghiên cứu', 'Hồ sơ chuyển giao',
+    'Sản phẩm sẵn sàng sản xuất', 'Cung ứng vật tư', 'Nhu cầu vật tư', 'Đề xuất mua sắm', 'Gói thầu, hợp đồng', 'Bất thường sản xuất', 'Thay đổi kỹ thuật', 'Nghiệm thu sản phẩm', 'Hồ sơ, tài liệu', 'Báo cáo']);
   await expect(page.locator('.sb-nav [data-go="sx/tong-quan"]')).toHaveClass(/active/);
   await expect(page.locator('main')).toContainText('Tính năng đang được phát triển');
   await expect(page.locator('main .foot')).toContainText('Hệ thống Quản lý sản xuất');
@@ -52,8 +52,8 @@ test('Danh mục SX-13 trong Danh mục dùng chung: nhóm Quản lý sản xu�
   await page.evaluate(() => Flow.setPersona('qt'));
   await page.evaluate(() => App.render());
   await expect(page.locator('.sb-nav .nav', { hasText: 'Quản lý sản xuất' })).toHaveCount(1);
-  const keys = ['sx-bat-thuong', 'sx-ho-so-chuyen-giao', 'sx-cap-duyet', 'sx-don-vi', 'sx-mo-hinh'];
-  const counts = { 'sx-bat-thuong': 3, 'sx-ho-so-chuyen-giao': 47, 'sx-cap-duyet': 4, 'sx-don-vi': 5, 'sx-mo-hinh': 3 };
+  const keys = ['sx-bat-thuong', 'sx-ho-so-chuyen-giao', 'sx-cap-duyet', 'sx-don-vi', 'sx-mo-hinh', 'sx-bieu-mau']; // T71 S11: + Biểu mẫu tài liệu
+  const counts = { 'sx-bat-thuong': 3, 'sx-ho-so-chuyen-giao': 47, 'sx-cap-duyet': 4, 'sx-don-vi': 5, 'sx-mo-hinh': 3, 'sx-bieu-mau': 9 };
   for (const k of keys) {
     await page.evaluate((h) => { location.hash = h; }, '#/dmdc/' + k);
     await expect(page.locator(`.sb-nav [data-go="dmdc/${k}"]`)).toHaveClass(/active/);
@@ -72,7 +72,7 @@ test('Danh mục SX-13 trong Danh mục dùng chung: nhóm Quản lý sản xu�
 test('Luồng nháp và dự án mẫu khai báo đủ cho các lát sau', async ({ page }) => {
   await fresh(page, '#/sx/tong-quan');
   const f = await page.evaluate(() => Object.fromEntries(Object.entries(D.sxFlows).map(([k, v]) => [k, v.steps.length])));
-  expect(f).toEqual({ 'SX-KH': 5, 'SX-BG': 6, 'SX-BT': 7, 'SX-TD': 9, 'SX-NT': 6 });
+  expect(f).toEqual({ 'SX-KH': 5, 'SX-BG': 6, 'SX-BT': 7, 'SX-TD': 9, 'SX-NT': 6, 'SX-MS': 2 });
   const p = await page.evaluate(() => D.sxProjects.map((x) => [x.khoi, x.model]));
   expect(p).toEqual([['K1', 'VMC_TONG_THAU'], ['K1', 'VHT_TU_SX'], ['K2', 'GIA_CONG'], ['K2', 'VMC_TONG_THAU']]);
   for (const id of ['P-237', 'P-238', 'P-239', 'P-240', 'P-241', 'P-242', 'P-243']) expect(await page.evaluate((i) => !!D.openPoints[i], id)).toBe(true);

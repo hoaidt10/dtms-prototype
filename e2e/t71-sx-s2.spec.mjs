@@ -123,7 +123,7 @@ test('SX-KH từ đầu đến cuối: khởi tạo, phương án, kế hoạch,
   await ef(page, 'koNgay').fill('18/11/2026');
   await page.locator('.vmodal #ok').click();
   await expect(page).toHaveURL(/#\/sx\/viec-cua-toi$/);
-  await expect(page.locator('[data-sx-tasks] tbody')).toContainText('Bạn không có công việc nào cần xử lý.');
+  await expect(page.locator('[data-sx-tasks] tbody')).not.toContainText('DA-SX-2026-005'); // hết việc của luồng này (còn việc mẫu khác của PM)
 
   // Kết quả trên dự án.
   await as(page, 'sxpm', '#/sx/du-an/DA-SX-2026-005');
@@ -139,15 +139,18 @@ test('SX-KH từ đầu đến cuối: khởi tạo, phương án, kế hoạch,
   await page.locator('[data-ttab="docs"]').click();
   await expect(page.locator('[data-sx-docs] tbody tr').first()).toContainText('Kế hoạch sản xuất 205/KH-TTSX (đã phê duyệt).pdf');
   await page.locator('[data-ttab="hist"]').click();
-  await expect(page.locator('main .vtable tbody tr').first()).toContainText('Chốt kế hoạch gốc');
+  // T71 S9: sau dòng chốt kế hoạch gốc là dòng kick-off giao nhiệm vụ đơn vị (sx-cong-viec.js).
+  const top2 = await page.locator('main .vtable tbody tr').evaluateAll((l) => l.slice(0, 2).map((r) => r.innerText).join(' | '));
+  expect(top2).toContain('Chốt kế hoạch gốc');
+  expect(top2).toContain('Giao nhiệm vụ theo kế hoạch gốc');
   await expect(page.locator('main .vtable tbody')).toContainText('Phê duyệt kế hoạch sản xuất');
   await expect(page.locator('[data-sx-kh-start]')).toHaveCount(0);
 
   // Việc đã xử lý mở chế độ Xem.
   await as(page, 'sxld', '#/sx/viec-cua-toi');
   await page.locator('[data-sxv-tab="done"]').click();
-  await expect(page.locator('[data-sx-tasks] tbody tr')).toHaveCount(3); // DA-005: xem xét 2 lần, phê duyệt 1 lần
-  await page.locator('[data-sx-tasks] tbody tr').first().click();
+  await expect(page.locator('[data-sx-tasks] tbody tr', { hasText: 'DA-SX-2026-005' })).toHaveCount(3); // DA-005: xem xét 2 lần, phê duyệt 1 lần
+  await page.locator('[data-sx-tasks] tbody tr', { hasText: 'DA-SX-2026-005' }).first().click();
   await expect(page.locator('[data-sbar="view"]')).toContainText('Bạn đã xử lý xong');
   expect(await page.locator('main').innerText()).not.toMatch(BA);
   expect(page.errors).toEqual([]);

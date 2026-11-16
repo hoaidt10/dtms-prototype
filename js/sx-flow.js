@@ -35,7 +35,7 @@
   const late = (c, t) => dueOf(c, t) < D.sxToday;
   const pName = (id) => { const p = D.personas.find((x) => x.id === id); return p ? p.name : ''; };
   /* Đối tượng cha của luồng (D.sxFlows[*].obj): dự án sản xuất (sx-du-an.js) hoặc gói chuyển giao (sx-chuyen-giao.js). Mỗi loại: byCode, detail(code, opt). */
-  const OBJ = { project: () => window.SxDuAn, package: () => window.SxCg };
+  const OBJ = { project: () => window.SxDuAn, package: () => window.SxCg, issue: () => window.SxBt, change: () => window.SxTd, lot: () => window.SxNt, proposal: () => window.SxMs };
   const objOf = (c) => OBJ[FL(c.flow).obj || 'project']();
   const objRec = (c) => objOf(c).byCode(c.obj);
 
@@ -49,7 +49,7 @@
     'kh.baseline': (c) => {
       const v = c.vars;
       P().patch(c.obj, { baseline: D.sxToday, status: 'PREPARING', keyMs: v.khMoc || [], subPm: v.koSubPm || null, planNo: v.khSo || '' }, 'Chốt kế hoạch gốc', `Kick-off ngày ${v.koNgay || ''}`);
-      P().addDoc(c.obj, [`Kế hoạch sản xuất ${v.khSo || ''} (đã phê duyệt).pdf`, 'KH', 'v1.0', pid(), D.sxToday]);
+      P().addDoc(c.obj, [`Kế hoạch sản xuất ${v.khSo || ''} (đã phê duyệt).pdf`, 'KH', 'v1.0', pid(), D.sxToday].concat((v.kySo || []).length ? ['SIGN'] : []));
     },
   };
   const run = (name, c, ch, x) => { if (name && ACT[name]) ACT[name](c, ch, x || {}); };
@@ -61,7 +61,7 @@
     if (to === 'end') {
       c.status = 'done'; c.tokens = []; c.ended = nowStamp();
       run(FL(c.flow).onEnd, c);
-      c.hist.push({ step: null, who: null, act: FL(c.flow).endText || 'Kết thúc', at: nowStamp() });
+      c.hist.push({ step: null, who: null, act: (typeof FL(c.flow).endText === 'function' ? FL(c.flow).endText(c) : FL(c.flow).endText) || 'Kết thúc', at: nowStamp() });
       return;
     }
     /* Nhánh song song: next là mảng → mở mọi nhánh cùng lúc (parallel gateway). */
@@ -85,8 +85,9 @@
     persist();
     return c;
   }
-  /* Hoàn thành việc: ghi biến của form (output mapping), ghi lịch sử, chạy bộ xử lý của bước, sang bước theo nút. */
-  function complete(code, tokId, ci, values) {
+  /* Hoàn thành việc: ghi biến của form (output mapping), ghi lịch sử, chạy bộ xử lý của bước, sang bước theo nút.
+     sign = kết quả ký số MySign của bước có cấu hình sign (T71 S12): ghi vào biến kySo của hồ sơ và dòng lịch sử. */
+  function complete(code, tokId, ci, values, sign) {
     const c = caseOf(code), t = c && c.tokens.find((x) => x.id === tokId);
     if (!t) return null;
     const st = stepOf(c.flow, t.step), o = st[3] || {}, ch = o.choices ? o.choices[ci] : null, f = formOf(c.flow, o.form);
@@ -94,7 +95,8 @@
     (f ? f.write : []).forEach((k) => { if (values && values[k] !== undefined) v[k] = values[k]; });
     Object.assign(c.vars, v);
     if (c.drafts) delete c.drafts[tokId];
-    c.hist.push({ step: st[0], who: pid(), act: ch ? ch[0] : o.label || 'Hoàn thành', note: f && f.note ? f.note(c.vars) : '', since: t.since, at: nowStamp(), values: v });
+    if (sign) c.vars.kySo = (c.vars.kySo || []).concat([Object.assign({ step: st[0] }, sign)]);
+    c.hist.push(Object.assign({ step: st[0], who: pid(), act: ch ? ch[0] : o.label || 'Hoàn thành', note: f && f.note ? f.note(c.vars) : '', since: t.since, at: nowStamp(), values: v }, sign ? { sign } : {}));
     run(o.action, c, ch, { step: st[0], values: v });
     const to = ch ? ch[1] : o.next, rest = c.tokens.filter((x) => x.id !== tokId);
     const join = to !== 'end' && !Array.isArray(to) && (stepOf(c.flow, to)[3] || {}).join;
@@ -121,7 +123,7 @@
       .map(({ h, i }) => ({ c, st: ['Hoàn thành', 'success'], step: stepOf(c.flow, h.step)[1], date: dmy(h.at), sort: h.at, go: `sx/viec/${encodeURIComponent(c.code)}/xem/${i}` })));
     return (M.tab === 'pending' ? todo : done).filter((r) => {
       const p = objRec(r.c) || {};
-      return !M.kw || n(`${p.code} ${p.name} ${r.step}`).includes(n(M.kw));
+      return !M.kw || n(`${p.code} ${p.name || p.title || ''} ${r.step}`).includes(n(M.kw));
     }).sort((a, b) => (a.sort < b.sort ? 1 : -1));
   }
   function tasks() {
@@ -140,10 +142,11 @@
     const body = list.map((r, i) => {
       const p = objRec(r.c) || {};
       return `<tr class="click" data-go="${r.go}"><td class="ord">${i + 1}</td><td class="c">${badge(...r.st)}</td><td><a class="link" data-go="${r.go}">${esc(p.code || r.c.obj)}</a></td>
-        <td>${k.clamp(p.name || '')}</td><td>${k.clamp(FL(r.c.flow).name)}</td><td>${k.clamp(r.step)}</td><td class="num${r.over ? ' due-over' : ''}">${esc(r.date)}</td></tr>`;
+        <td>${k.clamp(p.name || p.title || '')}</td><td>${k.clamp(FL(r.c.flow).name)}</td><td>${k.clamp(r.step)}</td><td class="num${r.over ? ' due-over' : ''}">${esc(r.date)}</td></tr>`;
     }).join('');
     return `<div class="pg" data-sx-tasks>
       ${head({ title: 'Việc của tôi', lg: true, info })}
+      ${window.SxCv ? window.SxCv.remindBar() : ''}
       <div class="vcard pad24">
         <div class="pg-head"><h2 class="blk-t sm">Danh sách việc của tôi</h2><div class="r">
           <label class="vsearch" style="width:320px">${window.UI.icon('search')}<input id="sxv-kw" maxlength="255" placeholder="Tìm kiếm theo mã, tên dự án, gói chuyển giao..." value="${esc(M.kw)}"></label></div></div>
@@ -178,13 +181,16 @@
   }
   /* Biến ngữ cảnh của eForm: dự án (đối tượng cha) + biến hồ sơ; mốc chính gợi ý theo khung kế hoạch khi chưa nhập. */
   function ctxOf(c) {
-    if (FL(c.flow).obj === 'package') return Object.assign(window.SxCg.ctx(c.obj), c.vars);
+    /* Đối tượng có ctx riêng (gói chuyển giao, phiếu bất thường); dự án dùng ngữ cảnh dưới. */
+    if (objOf(c).ctx) return Object.assign(objOf(c).ctx(c.obj), c.vars);
     const p = P().byCode(c.obj), cat = (key, v) => { const r = window.Catalog.rows(key).find((x) => x.code === v); return r ? r.name : v; };
     const plan = P().planOf(p);
     const ms = plan.map((g) => ({ ten: `Hoàn thành giai đoạn ${g.name.toLowerCase()}`, han: dmy(isoOf(g.e)) }));
     return Object.assign({ duAn: { code: p.code, name: p.name, product: p.product, version: p.version, qtyText: `${Number(p.qty).toLocaleString('vi-VN')} ${p.unitName}`, modelText: cat('sx-mo-hinh', p.model) },
       subPms: p.khoi === 'K1' ? [['sxsub', pName('sxsub')]] : [[p.pm, pName(p.pm)]], khMoc: ms, khNhanSu: [{ hoTen: pName(p.pm), donVi: (D.personas.find((x) => x.id === p.pm) || {}).unit || '', vaiTro: 'Giám đốc dự án' }] }, c.vars);
   }
+  /* Điền {{biến}} / {{a.b}} của tên tài liệu ký theo ngữ cảnh hồ sơ. */
+  const fill = (tpl, v) => String(tpl).replace(/\{\{([\w.]+)\}\}/g, (_, k) => { const x = k.split('.').reduce((o, p) => (o == null ? o : o[p]), v); return x == null ? '' : String(x); }).trim();
   async function act(code, tokId, ci) {
     const c = caseOf(code), t = c.tokens.find((x) => x.id === tokId), st = stepOf(c.flow, t.step), o = st[3] || {}, ch = o.choices ? o.choices[ci] : null, f = formOf(c.flow, o.form);
     let values = {};
@@ -202,7 +208,15 @@
       if (!r || !r.submit) return;
       values = r.values;
     }
-    complete(code, tokId, ch ? ci : -1, values);
+    /* T71 S12 (D-124): bước có cấu hình sign (tài liệu Lãnh đạo ký) — ký số MySign trước khi hoàn thành; nút từ chối / trả lại không ký. GIẢ LẬP P-258. */
+    let sign = null;
+    if (o.sign && !(ch && ch[2] === 'no')) {
+      const doc = fill(o.sign, Object.assign(ctxOf(c), values));
+      const r = await window.SxChung.mySign({ doc, reason: ch ? ch[0] : o.label || 'Hoàn thành' });
+      if (!r) return;
+      sign = Object.assign({ doc }, r);
+    }
+    complete(code, tokId, ch ? ci : -1, values, sign);
     toast('<b>Thành công</b><br>Xử lý công việc thành công!');
     location.hash = '#/sx/viec-cua-toi';
     rerender();
@@ -222,14 +236,15 @@
       const state = tok ? (late(c, tok) ? ['Quá hạn', 'error'] : ['Đang xử lý', 'info']) : h ? ['Đã xử lý', 'success'] : ['Chưa tới', 'default'];
       const who = s[2] === 'svc' ? null : tok ? tok.who : h ? h.who : D.sxAssign(s[2], o);
       return `<td>${k.clamp(`${s[0]}. ${s[1]}`)}</td><td>${s[2] === 'svc' ? 'Hệ thống' : k.clamp(pName(who))}</td><td class="c">${badge(...state)}</td>
-        <td class="num">${tok ? esc(dmy(dueOf(c, tok))) : h ? esc(dmy(h.at)) : k.dash}</td><td>${h && !tok ? k.clamp(h.act) : k.dash}</td>`;
+        <td class="num">${tok ? esc(dmy(dueOf(c, tok))) : h ? esc(dmy(h.at)) : k.dash}</td><td>${h && !tok ? k.clamp(h.act) + (h.sign ? ' ' + window.SxChung.signedBadge(h.sign) : '') : k.dash}</td>`;
     };
     const top = `<div class="ginfo c3">${k.kv('Mã hồ sơ', esc(c.code))}${k.kv('Quy trình', esc(F.name))}${k.kv('Trạng thái', c.status === 'done' ? badge('Hoàn thành', 'success') : badge('Đang xử lý', 'info'))}
-      ${k.kv('Ngày khởi tạo', esc(dmy(c.started)))}${k.kv('Ngày kết thúc', c.ended ? esc(dmy(c.ended)) : null)}${more || ''}</div>`;
+      ${k.kv('Ngày khởi tạo', esc(dmy(c.started)))}${k.kv('Ngày kết thúc', c.ended ? esc(dmy(c.ended)) : null)}${more || ''}
+      ${(c.vars.kySo || []).length ? k.kv('Tài liệu đã ký số', c.vars.kySo.map((s) => `${esc(s.doc)} ${window.SxChung.signedBadge(s)}`).join('<br>'), 'span3') : ''}</div>`;
     const steps = k.table([['Tên bước', 400], ['Người xử lý', 200], ['Trạng thái', 130, 'c'], ['Hạn / ngày xử lý', 150], ['Kết quả', 180]], F.steps, stRow);
     const hist = k.table([['Thời gian', 160], ['Người thực hiện', 200], ['Bước', 300], ['Hành động', 200], ['Nội dung', 360]], c.hist.slice().reverse(),
       (h) => `<td class="num">${esc(dmy(h.at))}</td><td>${h.who ? k.clamp(pName(h.who)) : 'Hệ thống'}</td><td>${h.step != null ? k.clamp(`${h.step}. ${stepOf(c.flow, h.step)[1]}`) : k.dash}</td>
-        <td>${k.clamp(h.act)}</td><td>${h.note ? k.clamp(h.note) : k.dash}</td>`);
+        <td>${k.clamp(h.act)}</td><td>${h.sign ? k.clamp(`Ký số MySign: ${h.sign.doc}${h.note ? ' · ' + h.note : ''}`) : h.note ? k.clamp(h.note) : k.dash}</td>`);
     return { top, steps, hist };
   }
   /* ---------- Tab Phê duyệt kế hoạch của Chi tiết dự án (hồ sơ SX-KH: tiến trình, nội dung kế hoạch, lịch sử xử lý) ---------- */

@@ -15,6 +15,7 @@
   const CH = { EMAIL: 'Email', IN_APP: 'In-app', SMS: 'SMS' };
   const CH_CLS = { EMAIL: 'em', IN_APP: 'ia', SMS: 'sm' };
   const VARS = '{{maHoSo}}, {{tenHoSo}}, {{loaiHoSo}}, {{tenQuyTrinh}}, {{tenBuoc}}, {{hanXuLy}}, {{nguoiXuLy}}, {{lyDo}}, {{thoiGianQuaHan}}, {{maDoiTuong}}, {{tenDoiTuong}}, {{maHopDong}}, {{tenNhaThau}}, {{ngayHetHan}}, {{giaTri}}, {{duongDan}}';
+  /* T71 S12 (D-124): mẫu của phân hệ Quản lý sản xuất — mã tiền tố SX_ (app SX), chỉ hiện ở #/sx/mau-thong-bao; ĐTMS không thấy mẫu SX (BE: cột app / tenant của notification_template). */
   const T0 = [
     ['TASK_ASSIGNED_IN_APP', 'Giao việc xử lý hồ sơ', 'IN_APP', 'Bạn có việc mới: {{tenBuoc}} - {{maHoSo}}', 'Hồ sơ {{maHoSo}} - {{tenHoSo}} đang chờ bạn xử lý bước {{tenBuoc}}. Hạn xử lý: {{hanXuLy}}.', '12/08/2026'],
     ['TASK_ASSIGNED_EMAIL', 'Giao việc xử lý hồ sơ qua email', 'EMAIL', '[ĐTMS] Hồ sơ {{maHoSo}} chờ bạn xử lý', 'Kính gửi {{nguoiXuLy}},\nHồ sơ {{maHoSo}} - {{tenHoSo}} ({{tenQuyTrinh}}) đang chờ Anh/Chị xử lý bước {{tenBuoc}}.\nHạn xử lý: {{hanXuLy}}.\nTruy cập hệ thống: {{duongDan}}', '12/08/2026'],
@@ -29,6 +30,14 @@
     ['CONTRACT_EXPIRING_EMAIL', 'Hợp đồng sắp hết hạn', 'EMAIL', '[ĐTMS] Hợp đồng {{maHopDong}} sắp hết hạn', 'Hợp đồng {{maHopDong}} với {{tenNhaThau}} hết hạn ngày {{ngayHetHan}}. Đề nghị rà soát nghĩa vụ còn lại, lập phụ lục gia hạn hoặc chuẩn bị thanh lý.', '18/09/2026'],
     ['PAYMENT_REQUEST_SIGNED_IN_APP', 'Đề nghị thanh toán đã được ký', 'IN_APP', 'Đề nghị thanh toán {{maDoiTuong}} đã ký', 'Đề nghị thanh toán {{maDoiTuong}} của hợp đồng {{maHopDong}} ({{giaTri}}) đã được ký, chuyển bộ phận tài chính thanh toán.', '25/09/2026'],
     ['FRAMEWORK_EXPIRING_EMAIL', 'Thỏa thuận khung sắp hết hạn', 'EMAIL', '[ĐTMS] Thỏa thuận khung {{maDoiTuong}} sắp hết hạn', 'Thỏa thuận khung {{maDoiTuong}} - {{tenDoiTuong}} hết hạn ngày {{ngayHetHan}}. Giá trị còn lại: {{giaTri}}.', '25/09/2026', 'INACTIVE'],
+    ['SX_TASK_ASSIGNED_IN_APP', 'Giao việc xử lý hồ sơ sản xuất', 'IN_APP', 'Bạn có việc mới: {{tenBuoc}} - {{maHoSo}}', 'Hồ sơ {{maHoSo}} ({{tenQuyTrinh}}) của dự án {{maDoiTuong}} đang chờ bạn xử lý bước {{tenBuoc}}. Hạn xử lý: {{hanXuLy}}.', '16/11/2026'],
+    ['SX_WORK_DUE_SOON_IN_APP', 'Nhắc công việc sắp đến hạn', 'IN_APP', 'Sắp đến hạn: {{tenDoiTuong}}', 'Công việc {{maDoiTuong}} - {{tenDoiTuong}} đến hạn hoàn thành vào {{ngayHetHan}}.', '16/11/2026'],
+    ['SX_WORK_OVERDUE_EMAIL', 'Cảnh báo công việc quá hạn', 'EMAIL', '[QLSX] Công việc {{maDoiTuong}} quá hạn', 'Kính gửi {{nguoiXuLy}},\nCông việc {{maDoiTuong}} - {{tenDoiTuong}} đã quá hạn {{thoiGianQuaHan}}. Đề nghị Anh/Chị cập nhật tiến độ.\nTruy cập: {{duongDan}}', '16/11/2026'],
+    ['SX_ISSUE_SLA_OVERDUE_EMAIL', 'Phiếu bất thường quá hạn xử lý', 'EMAIL', '[QLSX] Phiếu bất thường {{maHoSo}} quá hạn', 'Phiếu bất thường {{maHoSo}} - {{tenHoSo}} của dự án {{maDoiTuong}} đã quá thời hạn xử lý {{thoiGianQuaHan}} (bước {{tenBuoc}}, người xử lý {{nguoiXuLy}}).', '16/11/2026'],
+    ['SX_PLAN_LATE_IN_APP', 'Hạng mục kế hoạch chậm tiến độ', 'IN_APP', 'Dự án {{maDoiTuong}} chậm tiến độ', 'Hạng mục {{tenBuoc}} của dự án {{maDoiTuong}} - {{tenDoiTuong}} chậm {{thoiGianQuaHan}} so với kế hoạch gốc.', '16/11/2026'],
+    ['SX_MATERIAL_ORDER_DUE_IN_APP', 'Vật tư đến hạn đặt hàng', 'IN_APP', 'Vật tư đến hạn đặt hàng - {{maDoiTuong}}', 'Vật tư {{tenDoiTuong}} của dự án {{maDoiTuong}} cần đặt hàng trước {{ngayHetHan}} để kịp ngày cần (còn thiếu {{giaTri}}).', '16/11/2026'],
+    ['SX_ECN_ISSUED_EMAIL', 'Ban hành thông báo thay đổi kỹ thuật', 'EMAIL', '[QLSX] Ban hành {{maHoSo}} cho dự án {{maDoiTuong}}', 'Kính gửi Nhà máy, Trung tâm Đảm bảo chất lượng,\nThông báo thay đổi kỹ thuật {{maHoSo}} ({{tenHoSo}}) đã ban hành, áp dụng cho dự án {{maDoiTuong}}. Đề nghị cập nhật tài liệu, thu hồi tài liệu cũ.', '16/11/2026'],
+    ['SX_SIGN_REQUEST_IN_APP', 'Yêu cầu ký số tài liệu', 'IN_APP', 'Tài liệu chờ bạn ký số: {{tenHoSo}}', 'Tài liệu {{tenHoSo}} của hồ sơ {{maHoSo}} đang chờ bạn ký số trên ứng dụng MySign.', '16/11/2026'],
   ].map(([code, name, channel, subject, content, created, status], i) => ({ id: String(i + 1), code, name, channel, subject, content, status: status || 'ACTIVE', createdAt: created }));
 
   /* Kênh thông báo: bảng notification_channel_config; cấu hình theo khoá i18n NOTIFICATION_CHANNEL.CONFIG.* của source. */
@@ -59,6 +68,15 @@
     ['CONTRACT_EXPIRING', 'Hợp đồng sắp hết hạn', 'DTMS', 'SCHEDULED', 'BEFORE_DUE', 90, ['Đơn vị quản lý hợp đồng'], ['EMAIL', 'IN_APP'], '/hop-dong/{id}', 'Ngày hết hạn hợp đồng (hợp đồng đang thực hiện)'],
     ['PAYMENT_REQUEST_SIGNED', 'Đề nghị thanh toán đã được ký', 'DTMS', 'EVENT_DRIVEN', null, null, ['Phòng Tài chính', 'Đơn vị quản lý hợp đồng'], ['IN_APP'], '/hop-dong/{id}', 'Ký xong đề nghị chuyển tiền (MS24)'],
     ['FRAMEWORK_EXPIRING', 'Thỏa thuận khung sắp hết hạn', 'DTMS', 'SCHEDULED', 'BEFORE_DUE', 90, ['Đơn vị quản lý hợp đồng'], ['EMAIL'], '/thoa-thuan-khung/{id}', 'Ngày hết hạn thỏa thuận khung', 'INACTIVE'],
+    /* T71 S12: sự kiện của phân hệ Quản lý sản xuất (app SX) — luồng D.sxFlows và job quét hạn công việc / SLA / kế hoạch / hạn đặt hàng. */
+    ['SX_TASK_ASSIGNED', 'Giao việc xử lý bước quy trình sản xuất', 'SX', 'EVENT_DRIVEN', null, null, ['Người xử lý bước'], ['IN_APP'], '/sx/viec/{id}', 'Việc của luồng sản xuất được tạo'],
+    ['SX_WORK_DUE_SOON', 'Nhắc công việc sắp đến hạn', 'SX', 'SCHEDULED', 'BEFORE_DUE', 2, ['Người thực hiện'], ['IN_APP'], '/sx/cong-viec/{id}', 'Hạn hoàn thành − Nhắc trước hạn của công việc'],
+    ['SX_WORK_OVERDUE', 'Cảnh báo công việc quá hạn', 'SX', 'SCHEDULED', 'AFTER_DUE', 0, ['Người thực hiện', 'Người giao'], ['EMAIL'], '/sx/cong-viec/{id}', 'Hạn hoàn thành của công việc'],
+    ['SX_ISSUE_SLA_OVERDUE', 'Phiếu bất thường quá hạn xử lý', 'SX', 'SCHEDULED', 'AFTER_DUE', 0, ['Giám đốc dự án', 'Lãnh đạo Khối'], ['EMAIL'], '/sx/bat-thuong/{id}', 'Hạn xử lý theo danh mục Loại bất thường và SLA'],
+    ['SX_PLAN_LATE', 'Hạng mục kế hoạch chậm tiến độ', 'SX', 'SCHEDULED', 'AFTER_DUE', 1, ['Giám đốc dự án'], ['IN_APP'], '/sx/du-an/{id}', 'Ngày kết thúc kế hoạch gốc của hạng mục (tab Kế hoạch & mốc)'],
+    ['SX_MATERIAL_ORDER_DUE', 'Vật tư đến hạn đặt hàng', 'SX', 'SCHEDULED', 'BEFORE_DUE', 7, ['Giám đốc dự án', 'Sub PM'], ['IN_APP'], '/sx/nhu-cau', 'Hạn đặt hàng của Nhu cầu vật tư (ngày cần − leadtime)'],
+    ['SX_ECN_ISSUED', 'Ban hành thông báo thay đổi kỹ thuật', 'SX', 'EVENT_DRIVEN', null, null, ['Nhà máy', 'Đảm bảo chất lượng'], ['EMAIL'], '/sx/thay-doi/{id}', 'Bước 8 luồng Thay đổi kỹ thuật (cấp mã ECN)'],
+    ['SX_SIGN_REQUEST', 'Yêu cầu ký số tài liệu', 'SX', 'EVENT_DRIVEN', null, null, ['Người ký'], ['IN_APP'], '/sx/viec/{id}', 'Bước có cấu hình ký số MySign của luồng sản xuất'],
   ].map(([code, name, app, trig, timing, offset, roles, channels, cta, src, status]) => ({ code, name, app, trig, timing, offset, roles, channels, cta, src, status: status || 'ACTIVE' }));
 
   const KEY = 'dtms-proto-thong-bao';
@@ -76,32 +94,37 @@
   const chPill = (c) => `<span class="ch-pill ${CH_CLS[c] || ''}">${esc(CH[c] || c)}</span>`;
   const sw = (on, attr, label) => `<button type="button" class="vswitch ${on ? 'on' : ''}" role="switch" aria-checked="${on}" aria-label="${label || 'Trạng thái'}" ${attr}><span></span></button>`;
 
+  /* T71 S12: cùng màn cho phân hệ Quản lý sản xuất ở #/sx/mau-thong-bao — đường dẫn gốc theo phân hệ đang mở; mẫu SX = mã tiền tố SX_ hoặc tạo trong phân hệ SX. */
+  const isSx = () => /^#\/sx\//.test(location.hash);
+  const BASE = () => (isSx() ? 'sx/mau-thong-bao' : 'mau-thong-bao');
+  const sxOf = (t) => t.app === 'SX' || /^SX_/.test(t.code);
   /* ---------- SCR-88 Mẫu thông báo ---------- */
   function tplList() {
     // Theo: fe/repo-khcn-bpmn-fe/src/app/features/notification-template/notification-template.component.html (+ utils/notification-template-columns.utils.ts)
     const k = K();
     return k.listPage({
       id: 'mtb', title: 'Mẫu thông báo', ph: 'Tìm kiếm theo mã, tên mẫu thông báo',
-      right: `<button class="vbtn primary" data-go="mau-thong-bao/create">${icon('add')} Thêm mới</button>`,
-      rows: () => U.t.slice(), kwText: (t) => `${t.code} ${t.name}`,
+      right: `<button class="vbtn primary" data-go="${BASE()}/create">${icon('add')} Thêm mới</button>`,
+      rows: () => U.t.filter((t) => sxOf(t) === isSx()), kwText: (t) => `${t.code} ${t.name}`,
       empty: () => ({ code: '', name: '', channel: null, status: null }),
       match: (t, f) => k.has(f.code, t.code) && k.has(f.name, t.name) && (!f.channel || t.channel === f.channel) && (!f.status || t.status === f.status),
       adv: (txt, sel) => `${txt('code', 'Mã mẫu thông báo')}${txt('name', 'Tên mẫu thông báo')}
         ${sel('channel', 'Kênh thông báo', { searchable: false, placeholder: 'Tất cả', options: Object.entries(CH).map(([value, label]) => ({ value, label })) })}
         ${sel('status', 'Trạng thái', { searchable: false, placeholder: 'Tất cả', options: [{ value: 'ACTIVE', label: 'Đang hoạt động' }, { value: 'INACTIVE', label: 'Dừng hoạt động' }] })}`,
       cols: [['Thao tác', 90, 'c'], ['Trạng thái', 90, 'c'], ['Mã mẫu thông báo', 240], ['Tên mẫu thông báo', 320], ['Kênh thông báo', 140, 'c'], ['Ngày tạo', 140]],
-      href: (t) => 'mau-thong-bao/detail/' + t.id,
+      href: (t) => BASE() + '/detail/' + t.id,
       cell: (t) => `<td class="c"><div class="acts"><button type="button" class="cat-ic" data-tb-edit="${t.id}" aria-label="Chỉnh sửa">${icon('edit')}</button><span class="sep"></span>
           <button type="button" class="cat-ic del" data-tb-del="${t.id}" aria-label="Xóa">${icon('del')}</button></div></td>
         <td class="c">${sw(t.status === 'ACTIVE', `data-tb-tg="${t.id}"`)}</td>
-        <td><a class="link" data-go="mau-thong-bao/detail/${t.id}">${esc(t.code)}</a></td><td>${k.clamp(t.name)}</td><td class="c">${chPill(t.channel)}</td><td class="num">${esc(t.createdAt)}</td>`,
+        <td><a class="link" data-go="${BASE()}/detail/${t.id}">${esc(t.code)}</a></td><td>${k.clamp(t.name)}</td><td class="c">${chPill(t.channel)}</td><td class="num">${esc(t.createdAt)}</td>`,
       info: {
-        scr: 'SCR-88', name: 'Mẫu thông báo', uc: 'Backlog W1_T10 › Thông báo › Mẫu thông báo (dòng 183–187)',
-        notes: [
+        scr: isSx() ? 'SX-21' : 'SCR-88', name: 'Mẫu thông báo', uc: isSx() ? 'SX-ULNL nhóm Quản lý thông báo; Backlog W1_T10 › Thông báo › Mẫu thông báo' : 'Backlog W1_T10 › Thông báo › Mẫu thông báo (dòng 183–187)',
+        q: isSx() ? ['P-258'] : undefined,
+        notes: (isSx() ? ['<b>Phân hệ Quản lý sản xuất</b> (T71 S12, D-124): cùng màn và API của ĐTMS, chỉ hiện mẫu của phân hệ (mã tiền tố SX_, BE lọc theo ứng dụng). Sự kiện SX: giao việc của luồng sản xuất, công việc sắp đến hạn / quá hạn, phiếu bất thường quá hạn SLA, hạng mục kế hoạch chậm, vật tư đến hạn đặt hàng, ban hành ECN, yêu cầu ký số MySign. Kênh gửi dùng chung Kênh thông báo của hệ thống.'] : []).concat([
           'Dùng nguyên màn notification-template của repo-khcn-bpmn-fe và API /message/api/v1/notification-templates (BE be/messages) — chỉ thay dữ liệu mẫu theo sự kiện ĐTMS.',
           'Mã mẫu theo quy ước của BE khi gửi: <b>&lt;mã sự kiện&gt;_&lt;KÊNH&gt;</b> (vd TASK_OVERDUE_EMAIL) — NotificationDispatcherServiceImpl.findTemplate tìm mẫu theo mã sự kiện của Trigger và kênh. Mẫu Dừng hoạt động thì kênh đó không gửi.',
           'Kênh của mẫu: Email, In-app, SMS (enum NotificationChannel của BE). Web / App ở Kênh thông báo đều nhận mẫu In-app.',
-        ],
+        ]),
         src: 'notification-template/notification-template.component · /notification-template',
       },
     });
@@ -119,7 +142,7 @@
   function tplForm() {
     // Theo: fe/repo-khcn-bpmn-fe/src/app/features/notification-template/components/notification-template-form/notification-template-form.component.html (+ utils/notification-template-form.utils.ts)
     const t = F.id ? tOf(F.id) : null;
-    if (F.mode !== 'CREATE' && !t) return `<div class="pg">${head({ title: 'Xem chi tiết thông báo', back: 'mau-thong-bao', lg: true })}${K().emptyCard('Thông tin chung', 'Không tìm thấy mẫu thông báo')}</div>`;
+    if (F.mode !== 'CREATE' && !t) return `<div class="pg">${head({ title: 'Xem chi tiết thông báo', back: BASE(), lg: true })}${K().emptyCard('Thông tin chung', 'Không tìm thấy mẫu thông báo')}</div>`;
     const view = F.mode === 'DETAIL', v = F.v, err = F.err, k = K();
     const title = { CREATE: 'Tạo mới mẫu thông báo', EDIT: 'Chỉnh sửa mẫu thông báo', DETAIL: 'Xem chi tiết thông báo' }[F.mode];
     const info = {
@@ -134,7 +157,7 @@
     if (view) {
       const used = usedBy(t);
       return `<div class="pg">
-        ${head({ title, back: 'mau-thong-bao', lg: true, info, right: `<button type="button" class="vbtn primary" data-go="mau-thong-bao/edit/${t.id}">Chỉnh sửa</button>` })}
+        ${head({ title, back: BASE(), lg: true, info, right: `<button type="button" class="vbtn primary" data-go="${BASE()}/edit/${t.id}">Chỉnh sửa</button>` })}
         <section class="vcard pad24"><h3>Thông tin chung</h3>
           <div class="ginfo c3">${k.kv('Mã mẫu thông báo', esc(t.code))}${k.kv('Kênh thông báo', esc(CH[t.channel]))}${k.kv('Trạng thái', t.status === 'ACTIVE' ? 'Đang hoạt động' : 'Dừng hoạt động')}
             ${k.kv('Tên mẫu thông báo', esc(t.name), 'span3')}${k.kv('Tiêu đề (Email/Web/App)', esc(t.subject), 'span3')}</div>
@@ -145,7 +168,7 @@
     }
     const inp = (key, ph, max, extra) => `<input class="vctl" id="tb-${key}" data-tbf="${key}" maxlength="${max}" placeholder="${ph}" value="${esc(v[key])}" ${err[key] ? 'aria-invalid="true"' : ''} ${extra || ''}>`;
     return `<form class="pg" data-tb-form>
-      ${head({ title, back: 'mau-thong-bao', lg: true, info, right: `<button type="button" class="vbtn secondary grey" data-tb-cancel>Hủy</button><button type="submit" class="vbtn primary" id="tb-save">Lưu</button>` })}
+      ${head({ title, back: BASE(), lg: true, info, right: `<button type="button" class="vbtn secondary grey" data-tb-cancel>Hủy</button><button type="submit" class="vbtn primary" id="tb-save">Lưu</button>` })}
       <section class="vcard pad24"><h3>Thông tin chung</h3>
         <div class="tb-grid2">
           ${k.field('Mã mẫu thông báo', inp('code', 'Nhập mã mẫu thông báo', 50, 'style="text-transform:uppercase"'), { req: true, err: err.code })}
@@ -165,12 +188,12 @@
     if (!v.name) err.name = 'Bạn cần nhập Tên mẫu thông báo.';
     else if (!NAME_OK.test(v.name)) err.name = 'Tên mẫu thông báo chỉ bao gồm chữ cái, chữ số, khoảng trắng, ký tự gạch ngang (-) và gạch dưới (_).';
     if (Object.keys(err).length) { rerender(); return; }
-    if (F.mode === 'CREATE') U.t.unshift({ id: String(Math.max(...U.t.map((t) => Number(t.id)), 0) + 1), code: v.code, name: v.name, channel: v.channel, subject: v.subject.trim(), content: v.content.trim(), status: 'ACTIVE', createdAt: Flow.dateOf(Flow.state.clock) });
+    if (F.mode === 'CREATE') U.t.unshift({ id: String(Math.max(...U.t.map((t) => Number(t.id)), 0) + 1), code: v.code, name: v.name, channel: v.channel, subject: v.subject.trim(), content: v.content.trim(), status: 'ACTIVE', app: isSx() ? 'SX' : undefined, createdAt: Flow.dateOf(Flow.state.clock) });
     else Object.assign(tOf(F.id), { code: v.code, name: v.name, channel: v.channel, subject: v.subject.trim(), content: v.content.trim() });
     persist();
     F.snap = JSON.stringify(F.v);
     toast(`<b>Thông báo</b><br>${F.mode === 'CREATE' ? 'Thêm mới mẫu thông báo thành công' : 'Lưu mẫu thông báo thành công'}`);
-    location.hash = '#/mau-thong-bao';
+    location.hash = '#/' + BASE();
   }
   async function leave() {
     if (F.mode !== 'DETAIL' && JSON.stringify(F.v) !== F.snap) {
@@ -178,7 +201,7 @@
       if (!ok) return;
     }
     F.snap = JSON.stringify(F.v);
-    location.hash = '#/mau-thong-bao';
+    location.hash = '#/' + BASE();
   }
 
   /* ---------- SCR-90 Kênh thông báo ---------- */
@@ -223,11 +246,11 @@
   });
   document.addEventListener('click', async (e) => {
     const t = e.target;
-    if (t.closest('[data-tb-cancel]') || (t.closest('.pg-head .vbtn.back') && /^#\/mau-thong-bao\/(create|edit)/.test(location.hash))) {
+    if (t.closest('[data-tb-cancel]') || (t.closest('.pg-head .vbtn.back') && /^#\/(sx\/)?mau-thong-bao\/(create|edit)/.test(location.hash))) {
       e.preventDefault(); e.stopImmediatePropagation(); leave(); return;
     }
     const ed = t.closest('[data-tb-edit]');
-    if (ed) { e.stopImmediatePropagation(); location.hash = '#/mau-thong-bao/edit/' + ed.dataset.tbEdit; return; }
+    if (ed) { e.stopImmediatePropagation(); location.hash = `#/${BASE()}/edit/` + ed.dataset.tbEdit; return; }
     const del = t.closest('[data-tb-del]');
     if (del) {
       e.stopImmediatePropagation();

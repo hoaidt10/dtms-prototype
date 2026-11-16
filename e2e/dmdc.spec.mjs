@@ -30,7 +30,7 @@ test('D-42: Danh mục dùng chung là phân hệ riêng — menu ĐTMS không c
   await page.locator('.sb-nav [data-go="dmdc"]').click();
   await expect(page).toHaveURL(/#\/dmdc$/);
   await expect(page.locator('.ov-title')).toHaveText('Các module trong phân hệ');
-  await expect(page.locator('.ov-tile')).toHaveCount(27); // T67 H1: + Mẫu hợp đồng; T71 S0: + 5 danh mục Quản lý sản xuất
+  await expect(page.locator('.ov-tile')).toHaveCount(28); // T67 H1: + Mẫu hợp đồng; T71 S0: + 5 danh mục Quản lý sản xuất; T71 S11: + Biểu mẫu tài liệu sản xuất
   await expect(page.locator('.ov-tile').nth(5)).toContainText('Danh mục Nguồn vốn');
   await expect(page.locator('.ov-tile').nth(5).locator('.n')).toHaveText('6');
   await page.locator('.ov-tile', { hasText: 'Nguồn vốn' }).click();

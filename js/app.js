@@ -51,7 +51,8 @@
   function topbar(app) {
     const prod = app === 'dmdc' ? { code: 'DMDC', name: 'Danh mục dùng chung' } : app === 'sx' ? D.sxProduct : D.product;
     const p = persona(Flow.state.persona);
-    const n = app === 'sx' ? window.SxFlow.pending(p.id) : Flow.pendingCount(p.id);
+    /* T71 S9: chuông của phân hệ Sản xuất = việc chờ xử lý + công việc quá hạn / sắp đến hạn của người dùng (sx-cong-viec.js). */
+    const n = app === 'sx' ? window.SxFlow.pending(p.id) + (window.SxCv ? window.SxCv.remindCount(p.id) : 0) : Flow.pendingCount(p.id);
     return `<header class="topbar">
       <a class="brand" href="#/phan-he" aria-label="Về Danh sách Phân hệ"><span class="brand-logo">VHT</span>
         <span class="brand-text"><span>${prod.code}</span><span>${prod.name}</span></span></a>
@@ -514,7 +515,7 @@
     if (t.closest('#reset')) {
       const m = modal(`<div class="modal-h"><h3>Reset luồng?</h3></div><div class="modal-b">Xoá hồ sơ đang chạy và các ĐXMS, hồ sơ đã tạo trên prototype, đưa quy trình và luật hiển thị về mẫu, quay về trước bước Thêm mới ĐXMS (SCR-28). Ý kiến ❓ đã ghi được giữ lại.</div>
         <div class="modal-f"><button class="btn secondary" data-close>Huỷ</button><button class="btn primary" id="rs">Reset</button></div>`);
-      m.el.querySelector('#rs').onclick = () => { m.close(); Flow.reset(); if (window.SxFlow) { window.SxFlow.reset(); window.SxDuAn.reset(); window.SxCg.reset(); } Flow.setPersona('minh'); demoOpen = false; location.hash = '#/viec-cua-toi'; toast('Đã reset luồng.'); };
+      m.el.querySelector('#rs').onclick = () => { m.close(); Flow.reset(); if (window.SxFlow) { window.SxFlow.reset(); window.SxDuAn.reset(); window.SxCg.reset(); window.SxMs.reset(); window.SxBtp.reset(); window.SxBt.reset(); window.SxTd.reset(); if (window.SxCv) window.SxCv.reset(); if (window.SxNc) window.SxNc.reset(); if (window.SxHs) window.SxHs.reset(); if (window.SxVmms) window.SxVmms.reset(); window.SxNt.reset(); } Flow.setPersona('minh'); demoOpen = false; location.hash = '#/viec-cua-toi'; toast('Đã reset luồng.'); };
       return;
     }
     /* Reset luồng không đụng dữ liệu DMDC, E-Form, thầu, hợp đồng, thông báo; khôi phục riêng ở đây. */

@@ -117,9 +117,10 @@ test('SX-04 Tài liệu: Chọn mẫu tài liệu thêm dòng từ mẫu BM.QLHD
   await page.locator('[data-ttab="docs"]').click();
   await expect(page.locator('[data-sx-docs] tbody tr')).toHaveCount(3);
   await page.locator('[data-sx-tpl]').click();
-  await page.locator('.vmodal [data-sx-tpl-use="BB"]').click();
+  // T71 S11: mẫu lấy từ danh mục Biểu mẫu tài liệu sản xuất, chọn theo mã biểu mẫu.
+  await page.locator('.vmodal [data-sx-tpl-use="BM.QLHDSX.04"]').click();
   await expect(page.locator('[data-sx-docs] tbody tr')).toHaveCount(4);
-  await expect(page.locator('[data-sx-docs] tbody tr').first()).toContainText('Biên bản làm việc với nhà máy — DA-SX-2026-001.docx');
+  await expect(page.locator('[data-sx-docs] tbody tr').first()).toContainText('Biên bản làm việc Tổng công ty với nhà máy — DA-SX-2026-001.docx');
   await page.locator('[data-ttab="hist"]').click();
   await expect(page.locator('main .vtable tbody tr').first()).toContainText('Tạo tài liệu từ mẫu');
   expect(page.errors).toEqual([]);

@@ -1,6 +1,7 @@
 /* Phân hệ Quản lý sản xuất — Đề xuất mua sắm từ sản xuất (T71 S4, D-121 Q6). SX-10: danh sách, lập / chỉnh sửa, chi tiết; tab Mua sắm & hợp đồng của dự án.
    Lập đề xuất: MBOM dự toán (VMMS, chỉ xem) × số lượng dự án, tồn kho khả dụng ERP Kho TCT tra cứu tức thì, đề xuất mua = nhu cầu − tồn (sửa được), chia đợt.
-   Gửi sang ĐTMS (API-01) = tạo ĐXMS thật trên ĐTMS (Flow.createDxms), nguồn "Phân hệ Sản xuất". Trạng thái đọc ngược từ ĐTMS (API-02 ĐXMS / KHLCNT / gói thầu,
+   T71 S10 (D-124): Gửi phê duyệt → luồng SX-MS (Lãnh đạo Khối Duyệt / Từ chối, P-255); Duyệt → service task gửi sang ĐTMS (API-01) = tạo ĐXMS thật (Flow.createDxms), nguồn "Phân hệ Sản xuất".
+   Lập từ Nhu cầu vật tư (sx-nhu-cau.js) chọn sẵn dòng (preset). Danh sách Gói thầu, hợp đồng (#/sx/goi-thau-hd) đọc ngược từ ĐTMS. Trạng thái đọc ngược từ ĐTMS (API-02 ĐXMS / KHLCNT / gói thầu,
    API-03 hợp đồng); nhập kho (API-04) GIẢ LẬP. Không sửa SRS ĐTMS (C18). Route: #/sx/mua-sam, …/create[/<mã dự án>], …/<mã>, …/<mã>/edit. Lưu localStorage sx-proto-ms. */
 (function () {
   const D = window.D, Flow = window.Flow;
@@ -17,11 +18,11 @@
 
   /* ---------- Lưu ---------- */
   const KEY = 'sx-proto-ms';
-  const blank = () => ({ props: [], edit: {}, stockAt: null });
+  const blank = () => ({ props: [], edit: {}, stockAt: null, del: [] });
   let U = blank();
   try { U = Object.assign(U, JSON.parse(localStorage.getItem(KEY) || '{}')); } catch (e) { /* bỏ qua */ }
   const persist = () => { try { localStorage.setItem(KEY, JSON.stringify(U)); } catch (e) { /* bỏ qua */ } };
-  const all = () => U.props.concat(D.sxProposals).map((x) => Object.assign({}, x, U.edit[x.code] || {}));
+  const all = () => U.props.concat(D.sxProposals).filter((x) => !(U.del || []).includes(x.code)).map((x) => Object.assign({}, x, U.edit[x.code] || {}));
   const byCode = (code) => all().find((x) => x.code === code) || null;
   const visible = () => { const ids = new Set(P().visible().map((p) => p.code)); return all().filter((x) => ids.has(x.project)); };
 
@@ -32,7 +33,13 @@
   const linesOf = (x) => { const p = P().byCode(x.project); const m = mbomOf(p); return x.lines.map(([c, q]) => Object.assign({}, m.find((r) => r.code === c) || { code: c, name: c, unit: '', per: 0, price: 0, lt: 0 }, { qty: q })); };
   const totalOf = (x) => linesOf(x).reduce((a, r) => a + r.qty * r.price, 0);
   const canCreate = () => isAdmin() || D.roleOf(pid()) === 'R-SX-PM';
-  const sentSt = (x) => (x.sent ? ['Đã gửi ĐTMS', 'success'] : ['Nháp', 'default']);
+  const FL = () => window.SxFlow;
+  const caseOf = (x) => { const l = FL().cases(x.code, 'SX-MS'); return l[l.length - 1] || null; };
+  const pending = (x) => { const c = caseOf(x); return !!c && c.status === 'running'; };
+  const sentSt = (x) => (x.sent ? ['Đã gửi ĐTMS', 'success'] : pending(x) ? ['Chờ phê duyệt', 'warning'] : x.rejected ? ['Bị từ chối', 'error'] : ['Nháp', 'default']);
+  const canEditP = (x) => !x.sent && !pending(x) && (isAdmin() || x.creator === pid() || (P().byCode(x.project) || {}).pm === pid());
+  const canDelP = (x) => !x.sent && !FL().cases(x.code, 'SX-MS').length && (isAdmin() || x.creator === pid() || (P().byCode(x.project) || {}).pm === pid());
+  const patchP = (code, data) => { const own = U.props.find((y) => y.code === code); if (own) Object.assign(own, data); else U.edit[code] = Object.assign(U.edit[code] || {}, data); persist(); };
 
   /* ---------- Tiến trình bên ĐTMS (đọc ngược) ---------- */
   function chain(x) {
@@ -57,7 +64,7 @@
       .concat(c.pkgs.map((g) => ['Gói thầu', g[0], g[1], [g[2], g[3]], '', 'API-02', c.live ? `goi-thau/${encodeURIComponent(g[0])}` : null]))
       .concat(c.hd.map((h) => ['Hợp đồng', h[0], `${h[1]}${h[4] ? ` · ${h[4]}` : ''}${h[5] ? ` · ${num(h[5])} đồng` : ''}`, [h[2], h[3]], d(h[6]), 'API-03', null]))
       .concat(c.kho.map((n) => ['Phiếu nhập kho TCT', n[0], n[1], [n[3], 'success'], d(n[2]), 'API-04', null]));
-    return k.table([['Đối tượng trên ĐTMS', 200], ['Mã', 170], ['Nội dung', 380], ['Trạng thái', 190, 'c'], ['Ngày cập nhật', 130], ['Luồng tích hợp', 120, 'c']], rows,
+    return k.table([['Đối tượng trên ĐTMS', 180], ['Mã', 150], ['Nội dung', 320], ['Trạng thái', 180, 'c'], ['Ngày cập nhật', 120], ['Luồng tích hợp', 110, 'c']], rows,
       (r) => `<td>${esc(r[0])}</td><td>${r[6] ? `<a class="link" data-go="${r[6]}">${esc(r[1])}</a>` : esc(r[1])}</td><td>${r[2] ? k.clamp(r[2]) : k.dash}</td><td class="c">${badge(r[3][0], r[3][1])}</td>
         <td class="num">${r[4] ? esc(r[4]) : k.dash}</td><td class="c">${esc(r[5])}</td>`)
       + (c.live && !c.pkgs.length ? '<p class="cap">Kế hoạch lựa chọn nhà thầu, gói thầu, hợp đồng và nhập kho hiện ở đây khi ĐTMS xử lý xong các bước tương ứng.</p>' : '');
@@ -65,29 +72,31 @@
 
   /* ---------- SX-10 Danh sách ---------- */
   const href = (x) => 'sx/mua-sam/' + encodeURIComponent(x.code);
-  const INFO_Q = ['P-248', 'P-249', 'P-243'];
+  const INFO_Q = ['P-255', 'P-248', 'P-249', 'P-243', 'P-262'];
   function list() {
     // Theo: task-management (danh sách đối tượng) — đề xuất mua sắm của sản xuất là bản ghi phía Sản xuất, ĐXMS thật nằm ở ĐTMS
     const k = K();
     const info = {
       scr: 'SX-10', name: 'Danh sách đề xuất mua sắm từ sản xuất', uc: 'SX-KS-K2 §2.3, §6 (API-01…04); SX-KS-K1 §2.3, §2.5; CDS-BT-03COP COP2 công đoạn 3',
       notes: [
-        'Phân hệ Sản xuất không dựng màn xử lý mua sắm: đề xuất lập ở đây, <b>Gửi sang ĐTMS</b> tạo ĐXMS trên ĐTMS (API-01) — thẩm định, lựa chọn nhà thầu, hợp đồng chạy trên ĐTMS. Không sửa SRS ĐTMS tới khi chốt phạm vi (C18).',
+        'Phân hệ Sản xuất không dựng màn xử lý mua sắm: đề xuất lập ở đây (hoặc từ <b>Nhu cầu vật tư</b>), <b>Gửi phê duyệt</b> → Lãnh đạo Khối Duyệt / Từ chối (luồng phê duyệt đề xuất mua sắm, GIẢ LẬP P-255); Duyệt thì hệ thống gửi sang ĐTMS tạo ĐXMS (API-01) — thẩm định, lựa chọn nhà thầu, hợp đồng chạy trên ĐTMS. Không sửa SRS ĐTMS tới khi chốt phạm vi (C18).',
+        'Trạng thái: Nháp → Chờ phê duyệt → Đã gửi ĐTMS; bị từ chối thì về Bị từ chối, người lập sửa rồi gửi lại (hồ sơ phê duyệt mới).',
         'Trạng thái ĐTMS đọc ngược: ĐXMS, KHLCNT, gói thầu (API-02), hợp đồng (API-03), phiếu nhập kho TCT (API-04 — GIẢ LẬP, chưa có ERP Kho trên prototype). Hai đề xuất mẫu là dữ liệu chuyển đổi: trạng thái ĐTMS là ảnh đồng bộ (GIẢ LẬP P-249).',
       ],
       q: INFO_Q, src: 'task-management/task-management.component · /task-management',
     };
     return k.listPage({
-      id: 'sxms', title: 'Danh sách đề xuất mua sắm từ sản xuất', ph: 'Tìm kiếm theo mã, tên đề xuất, dự án', info,
+      id: 'sxms', exp: 'Danh sach de xuat mua sam tu san xuat', title: 'Danh sách đề xuất mua sắm từ sản xuất', ph: 'Tìm kiếm theo mã, tên đề xuất, dự án', info,
       right: canCreate() ? `<button class="vbtn primary" data-go="sx/mua-sam/create">${icon('add')} Thêm mới</button>` : '',
       rows: () => visible().map((x) => Object.assign({}, x, { st: sentSt(x), ds: dxmsSt(x), total: totalOf(x), dx: (chain(x) || { dxms: [''] }).dxms[0] })),
       kwText: (x) => `${x.code} ${x.title} ${x.project}`,
-      empty: () => ({ code: '', title: '', project: null, dot: null }),
-      match: (x, f) => k.has(f.code, x.code) && k.has(f.title, x.title) && (!f.project || x.project === f.project) && (!f.dot || String(x.dot) === String(f.dot)),
+      empty: () => ({ code: '', title: '', project: null, dot: null, st: [] }),
+      match: (x, f) => k.has(f.code, x.code) && k.has(f.title, x.title) && (!f.project || x.project === f.project) && (!f.dot || String(x.dot) === String(f.dot)) && k.inSet(f.st, x.st[0]),
       adv: (txt, sel) => `${txt('code', 'Mã đề xuất')}${txt('title', 'Tên đề xuất')}
         ${sel('project', 'Dự án', { options: P().visible().map((p) => ({ value: p.code, label: `${p.code} — ${p.name}` })) })}
-        ${sel('dot', 'Đợt', { searchable: false, options: [{ value: '1', label: 'Đợt 1' }, { value: '2', label: 'Đợt 2' }] })}`,
-      cols: [['Trạng thái', 140, 'c'], ['Mã đề xuất', 140], ['Tên đề xuất', 300], ['Dự án', 150], ['Đợt', 70, 'c'], ['Giá trị dự toán (đồng)', 180, 'r'], ['Mã ĐXMS', 150], ['Trạng thái trên ĐTMS', 170, 'c'], ['Ngày gửi', 120]],
+        ${sel('dot', 'Đợt', { searchable: false, options: [{ value: '1', label: 'Đợt 1' }, { value: '2', label: 'Đợt 2' }] })}
+        ${sel('st', 'Trạng thái', { multi: true, searchable: false, options: ['Nháp', 'Chờ phê duyệt', 'Bị từ chối', 'Đã gửi ĐTMS'].map((x) => ({ value: x, label: x })) })}`,
+      cols: [['Trạng thái', 150, 'c'], ['Mã đề xuất', 140], ['Tên đề xuất', 300], ['Dự án', 150], ['Đợt', 70, 'c'], ['Giá trị dự toán (đồng)', 180, 'r'], ['Mã ĐXMS', 150], ['Trạng thái trên ĐTMS', 170, 'c'], ['Ngày gửi', 120]],
       href,
       cell: (x) => `<td class="c">${badge(...x.st)}</td><td><a class="link" data-go="${href(x)}">${esc(x.code)}</a></td><td>${k.clamp(x.title)}</td><td>${esc(x.project)}</td><td class="c">${x.dot}</td>
         <td class="r num">${num(x.total)}</td><td>${x.dx ? esc(x.dx) : k.dash}</td><td class="c">${x.ds ? badge(...x.ds) : k.dash}</td><td class="num">${x.sent ? esc(dmy(x.sent)) : k.dash}</td>`,
@@ -108,7 +117,17 @@
     if (x) { const m = pick(x.project, x.dot); F.v = { project: x.project, title: x.title, dot: x.dot, note: x.note || '', rows: m.map((r) => { const l = x.lines.find((y) => y[0] === r.code); return { code: r.code, on: !!l, qty: l ? l[1] : r.qty }; }) }; return; }
     const p = project && P().byCode(project);
     F.v = { project: p ? p.code : null, title: p ? `Mua sắm vật tư sản xuất ${p.product} — đợt 1` : '', dot: 1, note: '', rows: p ? pick(p.code, 1) : [] };
+    /* Lập từ Nhu cầu vật tư: chỉ chọn các dòng đã chọn ở đó, số lượng = phần còn thiếu. */
+    if (p && PRESET && PRESET.project === p.code) {
+      const map = PRESET.map;
+      F.v.rows = F.v.rows.map((r) => ({ code: r.code, on: map[r.code] != null, qty: map[r.code] != null ? map[r.code] : r.qty }));
+      F.v.title = `Mua sắm vật tư sản xuất ${p.product} theo nhu cầu vật tư`;
+      F.v.note = PRESET.note || '';
+    }
+    PRESET = null;
   }
+  let PRESET = null;
+  const preset = (project, map, note) => { PRESET = { project, map, note }; };
   function keep() {
     const g = (id) => document.getElementById(id);
     if (g('sxm-title')) F.v.title = g('sxm-title').value;
@@ -119,14 +138,15 @@
     // Theo: task-create (create / edit) + bảng nhập dòng (vht-table có ô nhập, như hạng mục Lập ĐXMS)
     const k = K(), v = F.v, err = F.err, x = code ? byCode(code) : null;
     const back = x ? href(x) : 'sx/mua-sam';
-    if (x && x.sent) return `<div class="pg">${head({ title: 'Chỉnh sửa đề xuất mua sắm', back, lg: true })}${k.emptyCard('Thông tin chung', 'Đề xuất đã gửi sang ĐTMS, không chỉnh sửa được. Điều chỉnh thực hiện trên ĐTMS.')}</div>`;
+    if (x && !canEditP(x)) return `<div class="pg">${head({ title: 'Chỉnh sửa đề xuất mua sắm', back, lg: true })}${k.emptyCard('Thông tin chung', x.sent ? 'Đề xuất đã gửi sang ĐTMS, không chỉnh sửa được. Điều chỉnh thực hiện trên ĐTMS.' : 'Đề xuất đang chờ phê duyệt, không chỉnh sửa được.')}</div>`;
     const p = v.project ? P().byCode(v.project) : null, cg = window.SxCg, rel = p && cg.relOf(p.product);
     const info = {
       scr: 'SX-10', name: x ? 'Chỉnh sửa đề xuất mua sắm từ sản xuất' : 'Lập đề xuất mua sắm từ sản xuất', uc: 'SX-KS-K2 §2.1 (Tờ trình mua sắm, tồn kho real-time), §2.3 API-01; SX-KS-K1 §2.3, §2.5',
       notes: [
         'Khuôn task-create. Nguồn kinh phí trích từ căn cứ hình thành của dự án (PAKD / nhiệm vụ / hợp đồng); chỉ tiêu kỹ thuật đính kèm từ Kho sản phẩm sẵn sàng sản xuất — sản phẩm chưa qua cổng chuyển giao thì chưa lập được (công đoạn trước xong mới kích hoạt công đoạn sau, SX-KS-K2 §4.1).',
         '<b>Danh mục vật tư</b>: MBOM dự toán đồng bộ từ VMMS (chỉ xem) × số lượng dự án = nhu cầu; <b>Tra cứu tồn kho</b> đọc tồn khả dụng ERP Kho TCT tức thì (thay 3–5 ngày xin xác nhận giấy); đề xuất mua = nhu cầu − tồn, sửa được. Đợt 1 gợi ý vật tư leadtime từ 16 tuần, đợt 2 phần còn lại (GIẢ LẬP P-248).',
-        '<b>Gửi sang ĐTMS</b> tạo ĐXMS trên ĐTMS ở trạng thái Chưa khởi tạo, Đơn vị đề xuất = Trung tâm Sản xuất, ghi nguồn Phân hệ Sản xuất; Trung tâm Mua sắm xử lý tiếp trên ĐTMS (GIẢ LẬP P-249). Sau khi gửi không sửa ở đây.',
+        '<b>Gửi phê duyệt</b> khởi tạo hồ sơ phê duyệt đề xuất (Lãnh đạo Khối Duyệt / Từ chối — GIẢ LẬP P-255). Duyệt thì hệ thống gửi sang ĐTMS: tạo ĐXMS ở trạng thái Chưa khởi tạo, Đơn vị đề xuất = Trung tâm Sản xuất, ghi nguồn Phân hệ Sản xuất; Trung tâm Mua sắm xử lý tiếp trên ĐTMS (P-249). Chờ phê duyệt và sau khi gửi không sửa ở đây.',
+        'Mở từ <b>Nhu cầu vật tư</b>: chỉ chọn sẵn các vật tư đã chọn ở đó, số lượng đề xuất = phần còn thiếu so với tồn kho.',
       ],
       q: INFO_Q, src: 'task-management/components/task-create · /task-management/create',
     };
@@ -146,7 +166,7 @@
       <td class="r num">${num(r.price)}</td><td class="r num">${r.on ? num(r.qty * r.price) : k.dash}</td><td class="r num">${r.lt}</td><td class="c">${r.el ? 'Có' : 'Không'}</td>`) : '<p class="faint">Chọn dự án để lấy danh mục vật tư theo MBOM dự toán.</p>';
     return `<form class="pg" data-sxm-form="${x ? esc(x.code) : ''}">
       ${head({ title: x ? 'Chỉnh sửa đề xuất mua sắm' : 'Lập đề xuất mua sắm', back, lg: true, info,
-    right: `<button type="button" class="vbtn secondary grey" data-go="${back}">Huỷ</button><button type="button" class="vbtn secondary" data-sxm-save>Lưu nháp</button><button type="submit" class="vbtn primary">Gửi sang ĐTMS</button>` })}
+    right: `<button type="button" class="vbtn secondary grey" data-go="${back}">Huỷ</button><button type="button" class="vbtn secondary" data-sxm-save>Lưu nháp</button><button type="submit" class="vbtn primary">Gửi phê duyệt</button>` })}
       ${err.gate ? `<div class="hd-alerts"><div class="hd-alert error">${icon('info')}<span>${esc(err.gate)}</span></div></div>` : ''}
       <section class="vcard"><h3>Thông tin chung</h3><div class="grid3">
         ${k.field('Mã đề xuất', `<input class="vctl" value="${x ? esc(x.code) : ''}" placeholder="Hệ thống tự sinh" disabled>`)}
@@ -159,8 +179,8 @@
       </div></section>
       <section class="vcard pad24" data-sxm-lines><div class="vcard-h"><h3>Danh mục vật tư (MBOM dự toán)</h3><div class="row">
         ${U.stockAt ? `<span class="cap">Tồn kho cập nhật ${esc(U.stockAt)}</span>` : ''}${p ? '<button type="button" class="vbtn secondary" data-sxm-stock>Tra cứu tồn kho</button>' : ''}</div></div>
-        ${err.lines ? `<div class="msg err-line">${esc(err.lines)}</div>` : ''}${tbl}
-        ${p ? `<div class="sum-row"><b>Tổng giá trị dự toán: <span data-sxm-total>${num(total)}</span> đồng</b></div>` : ''}</section></form>`;
+        ${err.lines ? `<div class="t-err" style="margin:0 0 8px">${esc(err.lines)}</div>` : ''}${tbl}
+        ${p ? `<div style="display:flex;justify-content:flex-end;padding-top:12px"><b>Tổng giá trị dự toán: <span data-sxm-total>${num(total)}</span> đồng</b></div>` : ''}</section></form>`;
   }
   function validate(send) {
     keep();
@@ -193,45 +213,111 @@
     toast('<b>Thành công</b><br>Lưu nháp thành công!');
     location.hash = '#/' + href({ code });
   }
-  /* Gửi sang ĐTMS (API-01): tạo ĐXMS thật trên ĐTMS rồi khoá đề xuất. */
-  function send() {
-    if (!validate(true)) { rerender(); return; }
-    const code = store(), x = byCode(code), p = P().byCode(x.project), total = totalOf(x);
-    const m = vModal({ title: 'Gửi đề xuất sang ĐTMS', size: 'sm', body: `<p>Gửi đề xuất <b>${esc(x.title)}</b> (dự toán ${num(total)} đồng) sang phần mềm ĐTMS để Trung tâm Mua sắm thẩm định, tổ chức lựa chọn nhà thầu?</p><p class="cap">Sau khi gửi, đề xuất không chỉnh sửa được ở phân hệ Sản xuất.</p>`,
+  /* Gửi phê duyệt: khởi tạo hồ sơ SX-MS (bước 1 Lãnh đạo Khối). Dùng từ form (sau khi lưu) và từ Chi tiết. */
+  function submitDlg(code) {
+    const x = byCode(code), total = totalOf(x);
+    if (!x.lines.some((l) => l[1] > 0)) { toast('Bạn cần chọn ít nhất một vật tư có số lượng đề xuất mua lớn hơn 0.', 'warn'); return; }
+    const m = vModal({ title: 'Gửi phê duyệt đề xuất', size: 'sm', body: `<p>Gửi đề xuất <b>${esc(x.title)}</b> (dự toán ${num(total)} đồng) để Lãnh đạo Khối phê duyệt?</p><p class="cap">Đề xuất được duyệt sẽ tự động gửi sang phần mềm ĐTMS. Trong thời gian chờ phê duyệt, đề xuất không chỉnh sửa được.</p>`,
       actions: '<button type="button" class="vbtn secondary" data-close>Hủy</button><button type="button" class="vbtn primary" data-sxm-send-ok>Gửi</button>' });
     m.el.querySelector('[data-sxm-send-ok]').onclick = () => {
-      const dx = Flow.createDxms({ title: x.title, nv: null, unit: 'Trung tâm Sản xuất', priority: 'Thường', est: Math.round(total / 1e6) / 1e3,
-        period: `${dmy(p.start).slice(3)} – ${dmy(p.end).slice(3)}`, src: 'SX', sxProject: p.code, sxProposal: code });
-      const own = U.props.find((y) => y.code === code);
-      if (own) Object.assign(own, { sent: D.sxToday, dxms: dx }); else U.edit[code] = Object.assign(U.edit[code] || {}, { sent: D.sxToday, dxms: dx });
-      persist();
-      P().log(p.code, 'Gửi đề xuất mua sắm sang ĐTMS', `${code} → ${dx}`);
-      m.close(); toast(`<b>Thành công</b><br>Đã gửi sang ĐTMS: ${esc(dx)}`);
+      patchP(code, { rejected: null });
+      FL().start('SX-MS', code);
+      m.close(); toast('<b>Thành công</b><br>Gửi phê duyệt thành công!');
       location.hash = '#/' + href({ code });
+      rerender();
     };
   }
+  function send() {
+    if (!validate(true)) { rerender(); return; }
+    submitDlg(store());
+  }
+  /* Service task bước 2 của SX-MS (API-01): tạo ĐXMS thật trên ĐTMS rồi khoá đề xuất. */
+  function toDtms(code) {
+    const x = byCode(code), p = P().byCode(x.project), total = totalOf(x);
+    const dx = Flow.createDxms({ title: x.title, nv: null, unit: 'Trung tâm Sản xuất', priority: 'Thường', est: Math.round(total / 1e6) / 1e3,
+      period: `${dmy(p.start).slice(3)} – ${dmy(p.end).slice(3)}`, src: 'SX', sxProject: p.code, sxProposal: code });
+    patchP(code, { sent: D.sxToday, dxms: dx });
+    P().log(p.code, 'Gửi đề xuất mua sắm sang ĐTMS', `${code} → ${dx}`);
+    return dx;
+  }
+  Object.assign(FL().ACT, {
+    'ms.start': (c) => { const x = byCode(c.obj); P().log(x.project, 'Gửi phê duyệt đề xuất mua sắm', x.code); },
+    'ms.review': (c, ch) => {
+      const x = byCode(c.obj);
+      if (ch && ch[2] === 'no') { c.vars.msRejected = true; patchP(x.code, { rejected: c.vars.ykNoiDung || 'Từ chối' }); P().log(x.project, 'Từ chối đề xuất mua sắm', `${x.code}: ${c.vars.ykNoiDung || ''}`); return; }
+      patchP(x.code, { rejected: null, approved: D.sxToday, approver: pid() });
+      P().log(x.project, 'Duyệt đề xuất mua sắm', x.code);
+    },
+    'ms.send': (c) => { toDtms(c.obj); },
+  });
 
   /* ---------- SX-10 Chi tiết ---------- */
-  function detail(code) {
-    const k = K(), x = byCode(code);
-    if (!x || !visible().some((y) => y.code === code)) return `<div class="pg">${head({ title: 'Xem chi tiết đề xuất mua sắm', back: 'sx/mua-sam', lg: true })}${k.emptyCard('Thông tin chung', 'Không tìm thấy đề xuất mua sắm hoặc bạn không có quyền xem.')}</div>`;
-    const p = P().byCode(x.project), lines = linesOf(x), c = chain(x);
+  function detail(code, opt) {
+    const o = opt || {}, k = K(), x = byCode(code);
+    const involved = x && FL().cases(x.code, 'SX-MS').some((cc) => cc.tokens.some((t) => t.who === pid()) || cc.hist.some((h) => h.who === pid()));
+    if (!x || (!visible().some((y) => y.code === code) && !involved && !isAdmin())) return `<div class="pg">${head({ title: o.title || 'Xem chi tiết đề xuất mua sắm', back: o.back || 'sx/mua-sam', lg: true })}${k.emptyCard('Thông tin chung', 'Không tìm thấy đề xuất mua sắm hoặc bạn không có quyền xem.')}</div>`;
+    const p = P().byCode(x.project), lines = linesOf(x), c = chain(x), hs = caseOf(x);
     const info = {
       scr: 'SX-10', name: 'Chi tiết đề xuất mua sắm từ sản xuất', uc: 'SX-KS-K2 §2.3, §6',
-      notes: ['Card <b>Tiến trình trên ĐTMS</b> đọc ngược từ ĐTMS: ĐXMS, KHLCNT, gói thầu (API-02), hợp đồng (API-03), phiếu nhập kho TCT (API-04, GIẢ LẬP). Mã ĐXMS mở thẳng màn ĐTMS (thật: liên kết sang phân hệ ĐTMS theo quyền người dùng).'],
+      notes: ['Card <b>Tiến trình trên ĐTMS</b> đọc ngược từ ĐTMS: ĐXMS, KHLCNT, gói thầu (API-02), hợp đồng (API-03), phiếu nhập kho TCT (API-04, GIẢ LẬP). Mã ĐXMS mở thẳng màn ĐTMS (thật: liên kết sang phân hệ ĐTMS theo quyền người dùng).',
+        '<b>Xoá</b> (T71 S12): chỉ đề xuất Nháp chưa gửi phê duyệt lần nào — đã khởi tạo hồ sơ phê duyệt (kể cả Bị từ chối) thì không xoá được.', 'Card <b>Hồ sơ phê duyệt đề xuất</b>: hồ sơ mới nhất của luồng phê duyệt (P-255). Màn xử lý việc của Lãnh đạo Khối dùng chính thân màn này + thanh trạng thái (my-task-detail).'],
       q: INFO_Q, src: 'task-create (mode detail)',
     };
-    const right = !x.sent && (isAdmin() || x.creator === pid() || (p && p.pm === pid())) ? `<button type="button" class="vbtn primary" data-go="${href(x)}/edit">${icon('edit')} Chỉnh sửa</button>` : '';
+    /* T71 S12: Xoá chỉ đề xuất Nháp chưa từng gửi phê duyệt (chưa khởi tạo hồ sơ SX-MS); đã có hồ sơ (kể cả Bị từ chối) thì giữ để tra vết. */
+    const right = o.task || !canEditP(x) ? '' : (canDelP(x) ? `<button type="button" class="vbtn secondary" data-sxm-del="${esc(x.code)}">${icon('del')} Xoá</button>` : '')
+      + `<button type="button" class="vbtn secondary" data-go="${href(x)}/edit">${icon('edit')} Chỉnh sửa</button><button type="button" class="vbtn primary" data-sxm-submit="${esc(x.code)}">Gửi phê duyệt</button>`;
+    const alert = x.rejected && !x.sent && !pending(x) ? `<div class="hd-alerts"><div class="hd-alert error">${icon('info')}<span>Đề xuất bị từ chối: ${esc(x.rejected)}</span></div></div>` : '';
+    const pr = hs ? FL().progress(hs) : null;
     return `<div class="pg" data-sxm-detail="${esc(x.code)}">
-      ${head({ title: 'Xem chi tiết đề xuất mua sắm', back: 'sx/mua-sam', lg: true, info, right })}
+      ${head({ title: o.title || 'Xem chi tiết đề xuất mua sắm', back: o.back || 'sx/mua-sam', lg: true, info, right })}${o.bar || ''}${alert}
       ${k.card('Thông tin chung', `<div class="ginfo c3">${k.kv('Mã đề xuất', esc(x.code))}${k.kv('Tên đề xuất', esc(x.title), 'span2')}
         ${k.kv('Trạng thái', badge(...sentSt(x)))}${k.kv('Dự án sản xuất', `<a class="link" data-go="sx/du-an/${encodeURIComponent(x.project)}">${esc(x.project)}</a>`)}${k.kv('Đợt mua sắm', String(x.dot))}
         ${k.kv('Nguồn kinh phí', p ? esc(`${D.sxBasis[(p.basis || [])[0]] || ''} — ${(p.basis || [])[1] || ''}`) : null, 'span2')}${k.kv('Giá trị dự toán', `${num(totalOf(x))} đồng`)}
         ${k.kv('Người lập', esc(pName(x.creator)))}${k.kv('Ngày lập', esc(dmy(x.created)))}${k.kv('Ngày gửi ĐTMS', x.sent ? esc(dmy(x.sent)) : null)}
+        ${k.kv('Người duyệt', x.approver ? esc(pName(x.approver)) : null)}${k.kv('Ngày duyệt', x.approved ? esc(dmy(x.approved)) : null)}
         ${k.kv('Ghi chú', x.note ? esc(x.note) : null, 'span3')}</div>`)}
-      ${k.card('Danh mục vật tư', k.table([['Mã vật tư', 140], ['Tên vật tư', 300], ['ĐVT', 70], ['Đề xuất mua', 120, 'r'], ['Đơn giá dự toán (đồng)', 170, 'r'], ['Thành tiền (đồng)', 170, 'r'], ['Leadtime (tuần)', 120, 'r'], ['Export License', 120, 'c']], lines,
+      ${k.card('Danh mục vật tư', k.table([['Mã vật tư', 130], ['Tên vật tư', 250], ['ĐVT', 60], ['Đề xuất mua', 110, 'r'], ['Đơn giá dự toán (đồng)', 150, 'r'], ['Thành tiền (đồng)', 150, 'r'], ['Leadtime (tuần)', 100, 'r'], ['Export License', 100, 'c']], lines,
         (r) => `<td>${esc(r.code)}</td><td>${k.clamp(r.name)}</td><td>${esc(r.unit)}</td><td class="r num">${num(r.qty)}</td><td class="r num">${num(r.price)}</td><td class="r num">${num(r.qty * r.price)}</td><td class="r num">${r.lt}</td><td class="c">${r.el ? 'Có' : 'Không'}</td>`))}
+      ${pr ? `<div data-sxm-hs>${k.card('Hồ sơ phê duyệt đề xuất', pr.top + pr.steps)}${k.card('Lịch sử xử lý', pr.hist)}</div>` : ''}
       <section class="vcard pad24" data-sxm-chain><div class="vcard-h"><h3>Tiến trình trên ĐTMS</h3>${c && !c.live ? '<span class="cap">Dữ liệu đồng bộ từ ĐTMS</span>' : ''}</div>${chainTable(x)}</section></div>`;
+  }
+  /* Ngữ cảnh eForm của luồng SX-MS. */
+  function ctx(code) {
+    const x = byCode(code);
+    return { de: { code: x.code, title: x.title, project: x.project, dot: x.dot, lines: x.lines.length, totalText: num(totalOf(x)) } };
+  }
+
+  /* ---------- Gói thầu, hợp đồng (đọc ngược ĐTMS — API-02, API-03; chỉ xem) ---------- */
+  function pkgRows() {
+    return visible().flatMap((x) => {
+      const c = chain(x);
+      if (!c) return [];
+      const go = (kind, code) => (c.live ? `${kind === 'GT' ? 'goi-thau' : 'hop-dong'}/${encodeURIComponent(code)}` : href(x));
+      return c.pkgs.map((g) => ({ kind: 'GT', code: g[0], name: g[1], st: [g[2], g[3]], ncc: '', value: null, at: '', x, go: go('GT', g[0]) }))
+        .concat(c.hd.map((h) => ({ kind: 'HD', code: h[0], name: h[1], st: [h[2], h[3]], ncc: h[4] || '', value: h[5], at: h[6] || '', x, go: go('HD', h[0]) })));
+    });
+  }
+  function pkgList() {
+    // Theo: task-management (danh sách chỉ xem, như SCR-103 Danh sách đề tài / dự án) — dữ liệu đọc ngược ĐTMS
+    const k = K(), KIND = { GT: 'Gói thầu', HD: 'Hợp đồng' };
+    const info = {
+      scr: 'SX-10', name: 'Danh sách gói thầu, hợp đồng của dự án sản xuất', uc: 'SX-ULNL (Thông tin gói thầu, hợp đồng: Danh sách, Tìm kiếm, Xem chi tiết); SX-KS-K2 §6 API-02, API-03',
+      notes: ['Chỉ xem: gói thầu và hợp đồng sinh từ các đề xuất mua sắm của dự án sau khi ĐTMS xử lý (API-02 gói thầu, API-03 hợp đồng). Mã mở thẳng màn ĐTMS khi dữ liệu là liên kết trực tiếp; dữ liệu đồng bộ (đề xuất chuyển đổi) mở đề xuất nguồn.',
+        'Thật: BE phân hệ Sản xuất gọi API ĐTMS theo mã ĐXMS đã lưu; không lưu bản sao gói thầu / hợp đồng.'],
+      q: ['P-249'], src: 'task-management/task-management.component · /task-management (chỉ xem)',
+    };
+    return k.listPage({
+      id: 'sxgt', exp: 'Danh sach goi thau hop dong', title: 'Danh sách gói thầu, hợp đồng', ph: 'Tìm kiếm theo mã, tên, dự án', info,
+      rows: () => pkgRows(), kwText: (r) => `${r.code} ${r.name} ${r.x.project} ${r.ncc}`,
+      empty: () => ({ kind: null, project: null, code: '' }),
+      match: (r, f) => (!f.kind || r.kind === f.kind) && (!f.project || r.x.project === f.project) && k.has(f.code, r.code),
+      adv: (txt, sel) => `${sel('kind', 'Loại', { searchable: false, options: Object.entries(KIND).map(([value, label]) => ({ value, label })) })}
+        ${sel('project', 'Dự án', { options: P().visible().map((pp) => ({ value: pp.code, label: `${pp.code} — ${pp.name}` })) })}${txt('code', 'Mã gói thầu / hợp đồng')}`,
+      cols: [['Trạng thái', 170, 'c'], ['Loại', 100], ['Mã', 150], ['Tên', 340], ['Dự án', 140], ['Đề xuất mua sắm', 150], ['Nhà thầu', 240], ['Giá trị (đồng)', 170, 'r'], ['Ngày ký', 120]],
+      href: (r) => r.go,
+      cell: (r) => `<td class="c">${badge(...r.st)}</td><td>${KIND[r.kind]}</td><td><a class="link" data-go="${r.go}">${esc(r.code)}</a></td><td>${k.clamp(r.name)}</td><td>${esc(r.x.project)}</td>
+        <td><a class="link" data-go="${href(r.x)}">${esc(r.x.code)}</a></td><td>${r.ncc ? k.clamp(r.ncc) : k.dash}</td><td class="r num">${r.value ? num(r.value) : k.dash}</td><td class="num">${r.at ? esc(dmy(r.at)) : k.dash}</td>`,
+    });
   }
 
   /* ---------- Tab Mua sắm & hợp đồng của dự án ---------- */
@@ -251,12 +337,28 @@
     ([, n]) => `<td>${esc(n[0])}</td><td>${k.clamp(n[1])}</td><td class="num">${esc(dmy(n[2]))}</td><td class="c">${badge(n[3], 'success')}</td>`))}</div>`;
   }
 
+  async function delP(code) {
+    const x = byCode(code);
+    if (!x || !canDelP(x)) return;
+    const yes = await window.Catalog.confirm({ sev: 'danger', title: 'Bạn chắc chắn muốn xoá không?', desc: `Bạn có chắc chắn muốn xóa đề xuất mua sắm: ${x.code} — ${x.title} không?`, hl: `${x.code} — ${x.title}`, cancel: 'Hủy', ok: 'Xoá' });
+    if (!yes) return;
+    U.props = U.props.filter((y) => y.code !== code);
+    if (D.sxProposals.some((y) => y.code === code)) U.del = (U.del || []).concat(code);
+    persist();
+    P().log(x.project, 'Xoá đề xuất mua sắm', code);
+    toast('<b>Thành công</b><br>Xoá đề xuất mua sắm thành công');
+    location.hash = '#/sx/mua-sam';
+  }
   /* ---------- Sự kiện ---------- */
   document.addEventListener('submit', (e) => { if (e.target.closest && e.target.closest('[data-sxm-form]')) { e.preventDefault(); send(); } });
   document.addEventListener('click', (e) => {
     const t = e.target;
     if (!t.closest) return;
     if (t.closest('[data-sxm-save]')) { saveDraft(); return; }
+    const dl = t.closest('[data-sxm-del]');
+    if (dl) { delP(dl.dataset.sxmDel); return; }
+    const sb = t.closest('[data-sxm-submit]');
+    if (sb) { submitDlg(sb.dataset.sxmSubmit); return; }
     if (t.closest('[data-sxm-stock]')) { keep(); U.stockAt = `${dmy(D.sxToday)} ${new Date().toTimeString().slice(0, 5)}`; persist(); toast('Đã cập nhật tồn kho khả dụng từ ERP Kho TCT.', 'success'); rerender(); }
   });
   document.addEventListener('change', (e) => {
@@ -267,6 +369,7 @@
   });
 
   function route(parts) {
+    if (parts[0] === 'goi-thau-hd') return pkgList();
     const [, a, b] = parts;
     if (a === 'create') return form(null);
     if (a && b === 'edit') return form(decodeURIComponent(a));
@@ -280,5 +383,5 @@
   }
   function reset() { U = blank(); persist(); }
 
-  window.SxMs = { route, enter, reset, all, byCode, chain, projectTab, totalOf };
+  window.SxMs = { route, enter, reset, all, byCode, chain, projectTab, totalOf, detail, ctx, preset, stOf: sentSt, viewTitle: 'Xem chi tiết đề xuất mua sắm', tabKey: (code) => 'ms:' + code };
 })();

@@ -285,9 +285,28 @@
   /* ---------- Khuôn danh sách dùng chung (profile-list / task-management): ô tìm + Tìm kiếm nâng cao, phân trang ---------- */
   const LST = {};
   const st = (id, empty) => (LST[id] = LST[id] || { kw: '', adv: false, f: empty(), d: empty(), page: 1, size: 10, psOpen: false, empty });
+  /* T71 S12 (D-124): o.exp = tên tệp → nút Xuất Excel đầu hàng tiêu đề; xuất mọi dòng thỏa tìm kiếm / bộ lọc đang áp, đúng các cột đang hiện (bỏ cột Thao tác, cột chọn).
+     BE: API xuất .xlsx của danh sách; prototype tải .csv (UTF-8). */
+  const EXP = {};
+  const filtered = (o) => { const L = st(o.id, o.empty); return o.rows().filter((r) => (!L.adv ? !L.kw || norm(o.kwText(r)).includes(norm(L.kw)) : o.match(r, L.f))); };
+  function exportList(o) {
+    const keep = o.cols.map(([h], i) => (h && h !== 'Thao tác' ? i : -1)).filter((i) => i >= 0);
+    const t = document.createElement('table');
+    t.innerHTML = '<tbody>' + filtered(o).map((r) => `<tr>${o.cell(r)}</tr>`).join('') + '</tbody>';
+    const txt = (td) => (td ? td.textContent.replace(/\s+/g, ' ').trim() : '');
+    const body = [...t.querySelectorAll('tr')].map((tr, i) => [i + 1].concat(keep.map((k) => { const v = txt(tr.children[k]); return v === '-' ? '' : v; })));
+    const q = (v) => `"${String(v == null ? '' : v).replace(/"/g, '""')}"`;
+    const lines = [[o.title.toUpperCase()], [], ['STT'].concat(keep.map((k) => o.cols[k][0]))].concat(body);
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob(['﻿' + lines.map((r) => r.map(q).join(',')).join('\n')], { type: 'text/csv;charset=utf-8;' }));
+    a.download = o.exp + '.csv';
+    a.click();
+    toast('<b>Thành công</b><br>Xuất file thành công');
+  }
   function listPage(o) {
     const L = st(o.id, o.empty);
-    const rows = o.rows().filter((r) => (!L.adv ? !L.kw || norm(o.kwText(r)).includes(norm(L.kw)) : o.match(r, L.f)));
+    if (o.exp) EXP[o.id] = o;
+    const rows = filtered(o);
     const pages = Math.max(1, Math.ceil(rows.length / L.size));
     if (L.page > pages) L.page = pages;
     const from = (L.page - 1) * L.size;
@@ -300,7 +319,7 @@
       <div class="acts"><button type="button" class="vbtn secondary" data-tl="${o.id}:reset">Làm mới</button><button type="submit" class="vbtn primary">Tìm kiếm</button></div></form>`;
     const body = rows.slice(from, from + L.size).map((r, i) => `<tr class="click" data-go="${o.href(r)}" data-code="${esc(r.code)}"><td class="ord">${from + i + 1}</td>${o.cell(r)}</tr>`).join('');
     return `<div class="pg">
-      ${head({ title: o.title, info: o.info, right: o.right || '' })}
+      ${head({ title: o.title, info: o.info, right: (o.exp ? `<button type="button" class="vbtn secondary" data-lx="${o.id}">${icon('excel')} Xuất Excel</button>` : '') + (o.right || '') })}
       ${o.top || ''}
       <div class="vcard">
         <div class="pg-head"><span></span><div class="r">
@@ -1011,6 +1030,8 @@
       else return;
       rerender(); return;
     }
+    const lx = t.closest('[data-lx]');
+    if (lx && EXP[lx.dataset.lx]) { exportList(EXP[lx.dataset.lx]); return; }
     const tl = t.closest('[data-tl]');
     if (!tl) return;
     const [id, act] = tl.dataset.tl.split(':'), L = LST[id];

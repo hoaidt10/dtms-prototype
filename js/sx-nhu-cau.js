@@ -1,0 +1,235 @@
+/* Phân hệ Quản lý sản xuất — Nhu cầu vật tư (T71 S10, D-124; SX-ULNL "Bước 4: Cung ứng vật tư › Nhu cầu vật tư", "Tích hợp với module Kho"). SX-17:
+   mỗi dòng = một vật tư của một dự án: nhu cầu = định mức MBOM (VMMS) × số lượng dự án, tồn khả dụng ERP Kho TCT, còn thiếu, ngày cần, hạn đặt hàng = ngày cần − leadtime.
+   Thêm mới / Sửa / Xem (hộp thoại eForm như catalog-form-dialog), Xoá (dòng chưa đề xuất), Tạo từ MBOM (thêm dòng còn thiếu của một dự án), Tra cứu tồn kho,
+   chọn dòng cùng dự án → Lập đề xuất mua sắm (SX-10 chọn sẵn vật tư, số lượng = còn thiếu). Ngày cần mặc định = ngày bắt đầu giai đoạn Tổ chức sản xuất (GIẢ LẬP P-260).
+   Route: #/sx/nhu-cau. Lưu localStorage sx-proto-nc. */
+(function () {
+  const D = window.D, Flow = window.Flow;
+  const { esc, icon, badge, toast } = window.UI;
+  const K = () => window.Thau.kit;
+  const rerender = () => window.App.render();
+  const P = () => window.SxDuAn;
+  const B = () => window.EForms.b;
+  const DAY = 86400000;
+  const ms = (s) => Date.parse(String(s).slice(0, 10) + 'T00:00:00');
+  const iso = (t) => { const d = new Date(t); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+  const dmy = (s) => { if (!s) return ''; const [d, t] = String(s).split(' '); const [y, m, dd] = d.split('-'); return `${dd}/${m}/${y}${t ? ' ' + t : ''}`; };
+  const fromDmy = (s) => { const m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(String(s || '').trim()); return m ? `${m[3]}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}` : null; };
+  const num = (n) => Number(n || 0).toLocaleString('vi-VN');
+  const pid = () => Flow.state.persona;
+  const isAdmin = () => D.allAccess(pid()) || pid() === 'qt';
+
+  /* ---------- Dữ liệu ---------- */
+  const KEY = 'sx-proto-nc';
+  const blank = () => ({ rows: null, stockAt: null });
+  let U = blank();
+  try { U = Object.assign(U, JSON.parse(localStorage.getItem(KEY) || '{}')); } catch (e) { /* bỏ qua */ }
+  const persist = () => { try { localStorage.setItem(KEY, JSON.stringify(U)); } catch (e) { /* bỏ qua */ } };
+  const mbomOf = (p) => (p && D.sxMbom[p.product]) || [];
+  const needDateOf = (p) => iso(P().planOf(p)[2].s);
+  const codeFor = (project, list) => { const pre = `NCVT-${project.slice(-3)}-`, n = Math.max(0, ...list.filter((r) => r.code.startsWith(pre)).map((r) => Number(r.code.slice(-2)))) + 1; return pre + String(n).padStart(2, '0'); };
+  /* Dữ liệu mẫu: dự án đã chốt kế hoạch có MBOM — toàn bộ dòng MBOM. */
+  function seed() {
+    const out = [];
+    D.sxProjects.filter((p) => p.baseline && D.sxMbom[p.product]).forEach((p0) => {
+      const p = P().byCode(p0.code), need = needDateOf(p);
+      mbomOf(p).forEach((m) => out.push({ code: codeFor(p.code, out), project: p.code, mat: m.code, qty: m.per * p.qty, need, note: '', src: 'MBOM', creator: p.pm, created: p.baseline }));
+    });
+    return out;
+  }
+  const rows = () => U.rows || seed();
+  const save = (list) => { U.rows = list; persist(); };
+  const matOf = (r) => { const p = P().byCode(r.project); return mbomOf(p).find((m) => m.code === r.mat) || { code: r.mat, name: r.mat, unit: '', lt: 0, price: 0 }; };
+  const stockOf = (code) => D.sxStock[code] || 0;
+  /* Đề xuất mua sắm của cùng dự án có vật tư này (mới nhất). */
+  const propOf = (r) => window.SxMs.all().filter((x) => x.project === r.project && x.lines.some((l) => l[0] === r.mat)).sort((a, b) => (a.code < b.code ? 1 : -1))[0] || null;
+  function decorate(r) {
+    const m = matOf(r), short = Math.max(0, r.qty - stockOf(r.mat)), order = iso(ms(r.need) - (m.lt || 0) * 7 * DAY), prop = propOf(r);
+    let st;
+    if (prop) st = prop.sent ? ['Đã đề xuất', 'success'] : ['Đang đề xuất', 'info'];
+    else if (!short) st = ['Đủ tồn kho', 'default'];
+    else if (order < D.sxToday) st = ['Trễ hạn đặt hàng', 'error'];
+    else st = ['Chưa đề xuất', 'warning'];
+    return Object.assign({}, r, { m, short, order, prop, st, free: !prop && short > 0 });
+  }
+  const visibleProjects = () => P().visible();
+  const all = () => { const ids = new Set(visibleProjects().map((p) => p.code)); return rows().filter((r) => ids.has(r.project)).map(decorate); };
+  const canManage = (project) => { const p = P().byCode(project); return !!p && p.status !== 'DONE' && (isAdmin() || p.pm === pid() || (p.khoi === 'K1' && D.roleOf(pid()) === 'R-SX-SUBPM')); };
+  const canCreate = () => isAdmin() || ['R-SX-PM', 'R-SX-SUBPM'].includes(D.roleOf(pid()));
+  const projOpts = () => visibleProjects().filter((p) => D.sxMbom[p.product] && canManage(p.code));
+
+  /* ---------- SX-17 Danh sách ---------- */
+  const SEL = new Set();
+  function list() {
+    // Theo: task-management (danh sách; cột chọn như bảng Rà soát tồn kho của ĐXMS); hộp thoại theo ecat catalog-form-dialog (ngoại lệ B6)
+    const k = K();
+    [...SEL].forEach((c) => { const r = all().find((x) => x.code === c); if (!r || !r.free) SEL.delete(c); });
+    const info = {
+      scr: 'SX-17', name: 'Danh sách nhu cầu vật tư', uc: 'SX-ULNL Bước 4 Cung ứng vật tư (Nhu cầu vật tư: Xem danh sách, Tìm kiếm, Thêm mới, Chỉnh sửa, Xem chi tiết, Xóa, Tích hợp với module Kho); SX-KS-K2 §2.1; SX-KS-K1 §3.1 bước 4',
+      notes: [
+        'Mỗi dòng = một vật tư của một dự án. <b>Nhu cầu</b> = định mức MBOM (đồng bộ VMMS) × số lượng dự án; <b>Tồn kho TCT</b> = tồn khả dụng ERP Kho Tổng công ty (Tra cứu tồn kho gọi API Kho — GIẢ LẬP); <b>Còn thiếu</b> = nhu cầu − tồn.',
+        '<b>Ngày cần</b> mặc định = ngày bắt đầu giai đoạn Tổ chức sản xuất của kế hoạch (sửa được); <b>Hạn đặt hàng</b> = ngày cần − leadtime. Trạng thái: Đã / Đang đề xuất (có trong đề xuất mua sắm của dự án), Đủ tồn kho, Trễ hạn đặt hàng (chưa đề xuất, đã qua hạn đặt hàng), Chưa đề xuất (GIẢ LẬP P-260).',
+        '<b>Tạo từ MBOM</b>: thêm các vật tư MBOM chưa có dòng của một dự án. Chọn dòng còn thiếu (cùng dự án) → <b>Lập đề xuất mua sắm</b>: mở màn lập đề xuất chọn sẵn các vật tư đó, số lượng = còn thiếu.',
+        '<b>Nhập Excel</b> (T71 S12): file mẫu (Dự án, Mã vật tư, Số lượng, Ngày cần), kiểm lỗi từng dòng — vật tư phải thuộc MBOM của dự án, chưa có dòng nhu cầu, người nhập quản lý dự án; chỉ ghi khi Xác nhận nhập. <b>Xuất Excel</b> đúng các cột đang hiện, mọi dòng thỏa bộ lọc.',
+        'Thêm mới / Sửa / Xem bằng hộp thoại (như danh mục). Xoá chỉ dòng chưa đưa vào đề xuất. Người quản lý: PM của dự án, Sub PM (Khối 1).',
+      ],
+      q: ['P-260', 'P-248', 'P-262'], src: 'task-management/task-management.component · /task-management; ecat catalog-form-dialog',
+    };
+    const ST = ['Chưa đề xuất', 'Trễ hạn đặt hàng', 'Đang đề xuất', 'Đã đề xuất', 'Đủ tồn kho'];
+    const right = `<button type="button" class="vbtn secondary" data-sxnc-stock>Tra cứu tồn kho</button>`
+      + (canCreate() ? `<button type="button" class="vbtn secondary" data-sxnc-import>${icon('upload')} Nhập Excel</button><button type="button" class="vbtn secondary" data-sxnc-mbom>Tạo từ MBOM</button><button type="button" class="vbtn secondary" data-sxnc-prop ${SEL.size ? '' : 'disabled'}>Lập đề xuất mua sắm${SEL.size ? ` (${SEL.size})` : ''}</button><button class="vbtn primary" data-sxnc-add>${icon('add')} Thêm mới</button>` : '');
+    const iconBtn = (ic, label, attrs) => `<button type="button" class="vbtn icon ghost" aria-label="${label}" title="${label}" ${attrs}>${icon(ic)}</button>`;
+    return k.listPage({
+      id: 'sxnc', exp: 'Danh sach nhu cau vat tu', title: 'Danh sách nhu cầu vật tư', ph: 'Tìm kiếm theo mã, vật tư, dự án', info, right,
+      top: U.stockAt ? `<p class="cap" data-sxnc-at style="margin:-8px 0 12px">Tồn kho TCT cập nhật lúc ${esc(U.stockAt)}</p>` : '',
+      rows: () => all().sort((a, b) => (a.project === b.project ? (a.order < b.order ? -1 : 1) : a.project < b.project ? -1 : 1)),
+      kwText: (r) => `${r.code} ${r.mat} ${r.m.name} ${r.project}`,
+      empty: () => ({ project: null, mat: '', st: [], lt: null }),
+      match: (r, f) => (!f.project || r.project === f.project) && (k.has(f.mat, r.mat) || k.has(f.mat, r.m.name)) && k.inSet(f.st, r.st[0]) && (!f.lt || (f.lt === 'DAI') === (r.m.lt >= 16)),
+      adv: (txt, sel) => `${sel('project', 'Dự án', { options: visibleProjects().map((p) => ({ value: p.code, label: `${p.code} — ${p.name}` })) })}${txt('mat', 'Vật tư')}
+        ${sel('st', 'Trạng thái', { multi: true, searchable: false, options: ST.map((x) => ({ value: x, label: x })) })}
+        ${sel('lt', 'Leadtime', { searchable: false, options: [{ value: 'DAI', label: 'Dài (từ 16 tuần)' }, { value: 'NGAN', label: 'Dưới 16 tuần' }] })}`,
+      cols: [['', 48, 'c'], ['Thao tác', 100, 'c'], ['Trạng thái', 170, 'c'], ['Mã nhu cầu', 140], ['Dự án', 140], ['Mã vật tư', 150], ['Tên vật tư', 260], ['ĐVT', 70], ['Nhu cầu', 110, 'r'],
+        ['Tồn kho TCT', 120, 'r'], ['Còn thiếu', 110, 'r'], ['Ngày cần', 120], ['Leadtime (tuần)', 120, 'r'], ['Hạn đặt hàng', 130], ['Đề xuất mua sắm', 150]],
+      href: () => 'sx/nhu-cau',
+      cell: (r) => `<td class="c">${r.free && canManage(r.project) ? `<input type="checkbox" data-sxnc-sel="${esc(r.code)}" ${SEL.has(r.code) ? 'checked' : ''} aria-label="Chọn ${esc(r.code)}">` : ''}</td>
+        <td class="c"><div class="acts">${canManage(r.project) ? iconBtn('edit', 'Sửa', `data-sxnc-edit="${esc(r.code)}"`) : ''}${canManage(r.project) && !r.prop ? `<span class="sep"></span>${iconBtn('del', 'Xoá', `data-sxnc-del="${esc(r.code)}"`)}` : ''}</div></td>
+        <td class="c">${badge(...r.st)}</td><td><a class="link" data-sxnc-view="${esc(r.code)}">${esc(r.code)}</a></td><td>${esc(r.project)}</td><td>${esc(r.mat)}</td><td>${k.clamp(r.m.name)}</td><td>${esc(r.m.unit)}</td>
+        <td class="r num">${num(r.qty)}</td><td class="r num">${num(stockOf(r.mat))}</td><td class="r num">${r.short ? num(r.short) : k.dash}</td><td class="num">${esc(dmy(r.need))}</td>
+        <td class="r num">${r.m.lt}</td><td class="num${r.st[0] === 'Trễ hạn đặt hàng' ? ' due-over' : ''}">${esc(dmy(r.order))}</td>
+        <td>${r.prop ? `<a class="link" data-go="sx/mua-sam/${encodeURIComponent(r.prop.code)}">${esc(r.prop.code)}</a>` : k.dash}</td>`,
+    });
+  }
+
+  /* ---------- Hộp thoại (eForm) ---------- */
+  async function view(code) {
+    const r = all().find((x) => x.code === code);
+    if (!r) return;
+    const { txt } = B();
+    await window.EFormRun.open({ title: 'Xem chi tiết nhu cầu vật tư', readOnly: true, schema: { id: 'sx-nc-view', components: [
+      txt(`**${r.code}** — ${r.m.name} (${r.mat})\nDự án ${r.project} · ${r.st[0]}`),
+      txt(`Nhu cầu **${num(r.qty)} ${r.m.unit}** · Tồn kho TCT ${num(stockOf(r.mat))} · Còn thiếu ${num(r.short)}\nNgày cần ${dmy(r.need)} · Leadtime ${r.m.lt} tuần · Hạn đặt hàng ${dmy(r.order)}`),
+      txt(`Đề xuất mua sắm: ${r.prop ? r.prop.code : '-'} · Nguồn: ${r.src === 'MBOM' ? 'Tạo từ MBOM' : 'Nhập tay'}${r.note ? `\nGhi chú: ${r.note}` : ''}`)] }, values: {} });
+  }
+  async function edit(code) {
+    const list = rows(), r = list.find((x) => x.code === code);
+    if (!r) return;
+    const m = matOf(r), { txt, num: n, dt, ta, req } = B(), L = (k) => ({ layout: { columns: k } });
+    const res = await window.EFormRun.open({ title: 'Chỉnh sửa nhu cầu vật tư', schema: { id: 'sx-nc-edit', components: [
+      txt(`**${r.code}** — ${m.name} (${r.mat}) · Dự án ${r.project}`),
+      n('ncQty', `Số lượng nhu cầu (${m.unit})`, req(Object.assign(L(8), { validate: { required: true, min: 1 } }))), dt('ncNeed', 'Ngày cần', req(L(8))), ta('ncNote', 'Ghi chú', { rows: 2 })] },
+    values: { ncQty: r.qty, ncNeed: dmy(r.need), ncNote: r.note || '' },
+    check: (v) => (!fromDmy(v.ncNeed) ? 'Ngày cần phải đúng định dạng DD/MM/YYYY.' : null) });
+    if (!res || !res.submit) return;
+    Object.assign(r, { qty: Number(res.values.ncQty), need: fromDmy(res.values.ncNeed), note: (res.values.ncNote || '').trim() });
+    save(list);
+    toast('<b>Thành công</b><br>Cập nhật thành công!');
+    rerender();
+  }
+  async function add() {
+    const list = rows(), have = new Set(list.map((r) => `${r.project}|${r.mat}`));
+    const opts = projOpts().flatMap((p) => mbomOf(p).filter((m) => !have.has(`${p.code}|${m.code}`)).map((m) => [`${p.code}|${m.code}`, `${p.code} · ${m.code} — ${m.name}`]));
+    if (!opts.length) { toast('Mọi vật tư trong MBOM của các dự án bạn quản lý đã có dòng nhu cầu.', 'warn'); return; }
+    const { sel, num: n, dt, ta, req, opts: o } = B(), L = (k) => ({ layout: { columns: k } });
+    const res = await window.EFormRun.open({ title: 'Thêm mới nhu cầu vật tư', schema: { id: 'sx-nc-add', components: [
+      sel('ncMat', 'Dự án · vật tư (theo MBOM dự toán)', req({ searchable: true, values: o(opts) })),
+      n('ncQty', 'Số lượng nhu cầu', req(Object.assign(L(8), { validate: { required: true, min: 1 } }))), dt('ncNeed', 'Ngày cần', req(L(8))), ta('ncNote', 'Ghi chú', { rows: 2 })] },
+    values: { ncMat: null, ncQty: null, ncNeed: '', ncNote: '' },
+    check: (v) => (!fromDmy(v.ncNeed) ? 'Ngày cần phải đúng định dạng DD/MM/YYYY.' : null) });
+    if (!res || !res.submit) return;
+    const [project, mat] = res.values.ncMat.split('|');
+    const code = codeFor(project, list);
+    list.push({ code, project, mat, qty: Number(res.values.ncQty), need: fromDmy(res.values.ncNeed), note: (res.values.ncNote || '').trim(), src: 'TAY', creator: pid(), created: D.sxToday });
+    save(list);
+    P().log(project, 'Thêm nhu cầu vật tư', `${code}: ${mat}`);
+    toast('<b>Thành công</b><br>Thêm mới thành công!');
+    rerender();
+  }
+  async function fromMbom() {
+    const ps = projOpts();
+    if (!ps.length) { toast('Bạn chưa quản lý dự án nào có MBOM dự toán.', 'warn'); return; }
+    const { sel, txt, req, opts: o } = B();
+    const res = await window.EFormRun.open({ title: 'Tạo nhu cầu từ MBOM', schema: { id: 'sx-nc-mbom', components: [
+      txt('Thêm các vật tư trong MBOM dự toán (đồng bộ VMMS) chưa có dòng nhu cầu của dự án: số lượng = định mức × số lượng dự án, ngày cần = ngày bắt đầu giai đoạn Tổ chức sản xuất.'),
+      sel('ncProject', 'Dự án sản xuất', req({ searchable: true, values: o(ps.map((p) => [p.code, `${p.code} — ${p.name}`])) }))] }, values: { ncProject: null } });
+    if (!res || !res.submit) return;
+    const list = rows(), p = P().byCode(res.values.ncProject), need = needDateOf(p);
+    let n = 0;
+    mbomOf(p).forEach((m) => { if (!list.some((r) => r.project === p.code && r.mat === m.code)) { list.push({ code: codeFor(p.code, list), project: p.code, mat: m.code, qty: m.per * p.qty, need, note: '', src: 'MBOM', creator: pid(), created: D.sxToday }); n += 1; } });
+    if (!n) { toast(`Dự án ${p.code} đã có đủ dòng nhu cầu theo MBOM.`, 'warn'); return; }
+    save(list);
+    P().log(p.code, 'Tạo nhu cầu vật tư từ MBOM', `${n} vật tư`);
+    toast(`<b>Thành công</b><br>Đã tạo ${n} dòng nhu cầu từ MBOM.`);
+    rerender();
+  }
+  function toProposal() {
+    const l = all().filter((r) => SEL.has(r.code));
+    if (!l.length) return;
+    const ps = [...new Set(l.map((r) => r.project))];
+    if (ps.length > 1) { toast('Chọn vật tư của cùng một dự án để lập một đề xuất mua sắm.', 'warn'); return; }
+    window.SxMs.preset(ps[0], Object.fromEntries(l.map((r) => [r.mat, r.short])), `Lập từ nhu cầu vật tư: ${l.map((r) => r.code).join(', ')}.`);
+    SEL.clear();
+    location.hash = '#/sx/mua-sam/create/' + encodeURIComponent(ps[0]);
+  }
+
+  /* ---------- Sự kiện (pha capture: nút trong dòng có data-go) ---------- */
+  document.addEventListener('click', async (e) => {
+    const t = e.target.closest && e.target.closest('[data-sxnc-sel],[data-sxnc-edit],[data-sxnc-del],[data-sxnc-view]');
+    if (!t) return;
+    e.stopPropagation();
+    if (t.dataset.sxncSel) { if (t.checked) SEL.add(t.dataset.sxncSel); else SEL.delete(t.dataset.sxncSel); rerender(); return; }
+    e.preventDefault();
+    if (t.dataset.sxncEdit) { edit(t.dataset.sxncEdit); return; }
+    if (t.dataset.sxncView) { view(t.dataset.sxncView); return; }
+    const r = all().find((x) => x.code === t.dataset.sxncDel);
+    const yes = await window.Catalog.confirm({ sev: 'danger', title: 'Bạn chắc chắn muốn xoá không?', desc: `Bạn có chắc chắn muốn xóa nhu cầu vật tư: ${r.code} — ${r.m.name} không?`, hl: `${r.code} — ${r.m.name}`, cancel: 'Hủy', ok: 'Xoá' });
+    if (!yes) return;
+    save(rows().filter((x) => x.code !== r.code));
+    toast('<b>Thành công</b><br>Xoá nhu cầu vật tư thành công');
+    rerender();
+  }, true);
+  /* Bấm vào dòng (ngoài nút / liên kết): xem chi tiết. */
+  document.addEventListener('click', (e) => {
+    const tr = e.target.closest && e.target.closest('tr.click[data-go="sx/nhu-cau"]');
+    if (!tr || e.target.closest('a,button,input')) return;
+    e.stopPropagation(); e.preventDefault();
+    const c = tr.querySelector('[data-sxnc-view]');
+    if (c) view(c.dataset.sxncView);
+  }, true);
+  document.addEventListener('click', (e) => {
+    const t = e.target.closest && e.target.closest('[data-sxnc-add],[data-sxnc-mbom],[data-sxnc-prop],[data-sxnc-stock]');
+    if (!t) return;
+    if (t.dataset.sxncAdd !== undefined) add();
+    else if (t.dataset.sxncMbom !== undefined) fromMbom();
+    else if (t.dataset.sxncProp !== undefined) toProposal();
+    else { U.stockAt = `${dmy(D.sxToday)} ${new Date().toTimeString().slice(0, 5)}`; persist(); toast('Đã cập nhật tồn kho khả dụng từ ERP Kho TCT.', 'success'); rerender(); }
+  });
+
+  /* ---------- T71 S12: Nhập Excel ----------
+     File giả lập 5 dòng: dòng 3 vật tư không thuộc MBOM của dự án, dòng 4 vật tư đã có dòng nhu cầu, dòng 5 dự án không tồn tại. */
+  const IMP = [['DA-SX-2026-004', 'FPGA-ZU47DR', 6000, '2027-01-11'], ['DA-SX-2026-004', 'PA-GAN-80W', 12000, '2027-01-11'], ['DA-SX-2026-004', 'FPGA-XC7K325', 10, '2027-01-11'],
+    ['DA-SX-2026-003', 'SOC-MT7981', 120000, '2026-06-01'], ['DA-SX-2026-009', 'SOC-ONT-X2', 5000, '2027-02-01']];
+  function importDlg() {
+    window.SxChung.importDlg({ entity: 'nhu cầu vật tư', tpl: 'mau-nhap-nhu-cau-vat-tu.xlsx', file: 'nhu-cau-vat-tu.xlsx', unit: 'dòng nhu cầu',
+      cols: [['Dự án', 140], ['Mã vật tư', 150], ['Tên vật tư', 240], ['Số lượng', 110], ['Ngày cần', 120]],
+      rows: () => IMP.map(([project, mat, qty, need]) => {
+        const errs = [], p = P().byCode(project), m = p ? mbomOf(p).find((x) => x.code === mat) : null;
+        if (!p) errs.push(`Dự án ${project} không tồn tại.`);
+        else if (!canManage(project)) errs.push(`Bạn không quản lý dự án ${project}.`);
+        else if (!m) errs.push(`Vật tư ${mat} không thuộc MBOM của sản phẩm ${p.product}.`);
+        else if (rows().some((r) => r.project === project && r.mat === mat)) errs.push(`Vật tư ${mat} đã có dòng nhu cầu của dự án.`);
+        return { errs, data: { project, mat, qty, need }, cells: [project, mat, m ? m.name : '', num(qty), dmy(need)] };
+      }),
+      commit: (ok) => {
+        const list = rows().slice();
+        ok.forEach((r) => list.push(Object.assign({ code: codeFor(r.data.project, list), note: '', src: 'XLS', creator: pid(), created: D.sxToday }, r.data)));
+        save(list);
+        return ok.length;
+      } });
+  }
+  document.addEventListener('click', (e) => { if (e.target.closest && e.target.closest('[data-sxnc-import]')) importDlg(); });
+
+  function route() { return list(); }
+  function reset() { U = blank(); persist(); SEL.clear(); }
+  window.SxNc = { route, reset, all };
+})();

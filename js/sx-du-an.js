@@ -21,10 +21,10 @@
 
   /* ---------- Lưu thay đổi ---------- */
   const KEY = 'sx-proto-du-an';
-  let U = { created: [], edit: {}, docs: {}, hist: {} };
+  let U = { created: [], edit: {}, docs: {}, hist: {}, del: [] };
   try { U = Object.assign(U, JSON.parse(localStorage.getItem(KEY) || '{}')); } catch (e) { /* bỏ qua */ }
   const persist = () => { try { localStorage.setItem(KEY, JSON.stringify(U)); } catch (e) { /* bỏ qua */ } };
-  const all = () => U.created.concat(D.sxProjects).map((p) => Object.assign({}, p, U.edit[p.code] || {}, {
+  const all = () => U.created.concat(D.sxProjects).filter((p) => !(U.del || []).includes(p.code)).map((p) => Object.assign({}, p, U.edit[p.code] || {}, {
     docs: (p.docs || []).concat(U.docs[p.code] || []), hist: (p.hist || []).concat(U.hist[p.code] || []) }));
   const byCode = (code) => all().find((p) => p.code === code) || null;
   const addHist = (code, act, note) => { (U.hist[code] = U.hist[code] || []).push([nowStamp(), Flow.state.persona, act, note || '']); };
@@ -43,6 +43,11 @@
   /* Đang trình duyệt (hồ sơ SX-KH ở bước 3 trở đi) thì khoá; bị trả về bước 2 thì sửa lại được. */
   const inReview = (p) => { const c = window.SxFlow && window.SxFlow.running(p.code, 'SX-KH'); return !!c && c.tokens.some((t) => Number(t.step) >= 3); };
   const canEdit = (p) => p.status === 'PLANNING' && (isAdmin() || p.pm === Flow.state.persona) && !inReview(p);
+  /* T71 S12 (D-124): Xoá chỉ khi dự án chưa khởi tạo luồng nào (không có hồ sơ của bất kỳ quy trình nào) và chưa có bản ghi con (đề xuất mua sắm, nhu cầu vật tư, công việc,
+     phiếu bất thường, thay đổi kỹ thuật, nghiệm thu) — BE: API xoá trả lỗi khi có process instance gắn đối tượng hoặc còn bản ghi con. */
+  const hasChild = (code) => [window.SxMs, window.SxNc, window.SxCv, window.SxBt, window.SxTd, window.SxNt].some((m) => m && m.all().some((x) => x.project === code));
+  const canDel = (p) => p.status === 'PLANNING' && !p.baseline && (isAdmin() || p.pm === Flow.state.persona || p.creator === Flow.state.persona)
+    && !!window.SxFlow && !window.SxFlow.cases(p.code).length && !hasChild(p.code);
 
   /* ---------- Tra cứu ---------- */
   const catName = (key, code) => { const r = window.Catalog.rows(key).find((x) => x.code === code); return r ? r.name : (code || ''); };
@@ -66,15 +71,15 @@
   /* Bước 9 theo Mô hình tổ chức (danh mục sx-mo-hinh): tự sản xuất → bán thành phẩm (Sub PM); VMC tổng thầu → mốc tổng của gói; gia công → lô. */
   function b9Kids(p) {
     if (p.model === 'VHT_TU_SX') {
-      return [['BTP1', 'Bán thành phẩm: Khối quang học', 'sub', [0, 0.7]], ['BTP2', 'Bán thành phẩm: Khối xử lý ảnh', 'sub', [0, 0.6]], ['BTP3', 'Bán thành phẩm: Khối nguồn', 'sub', [0.05, 0.5]],
-        ['BTP4', 'Bán thành phẩm: Vỏ cơ khí', 'sub', [0, 0.55]], ['BTP5', 'Tích hợp tổ hợp hoàn chỉnh', 'sub', [0.6, 1]]];
+      return [['BTP1', 'Bán thành phẩm: Khối quang học', 'sub', [0, 0.7], p.qty], ['BTP2', 'Bán thành phẩm: Khối xử lý ảnh', 'sub', [0, 0.6], p.qty], ['BTP3', 'Bán thành phẩm: Khối nguồn', 'sub', [0.05, 0.5], p.qty],
+        ['BTP4', 'Bán thành phẩm: Vỏ cơ khí', 'sub', [0, 0.55], p.qty], ['BTP5', 'Tích hợp tổ hợp hoàn chỉnh', 'sub', [0.6, 1], p.qty]];
     }
     if (p.model === 'VMC_TONG_THAU') {
       return [['M1', 'Ký hợp đồng tổng thầu với VMC', 'nm', [0, 0.1]], ['M2', 'Vật tư, linh kiện về đủ', 'nm', [0.05, 0.45]], ['M3', 'Hoàn thành chế tạo, tích hợp', 'nm', [0.4, 0.85]],
         ['M4', 'Hoàn thành đo kiểm tại nhà máy', 'nm', [0.8, 1]]];
     }
     const lot = p.lot || Math.ceil(p.qty / 6), n = Math.max(1, Math.ceil(p.qty / lot));
-    return Array.from({ length: n }, (_, i) => [`L${i + 1}`, `Lô ${i + 1} (${num(Math.min(lot, p.qty - i * lot))} ${p.unitName})`, 'nm', [i / n * 0.9, (i + 1) / n * 0.9 + 0.1]]);
+    return Array.from({ length: n }, (_, i) => { const q = Math.min(lot, p.qty - i * lot); return [`L${i + 1}`, `Lô ${i + 1} (${num(q)} ${p.unitName})`, 'nm', [i / n * 0.9, (i + 1) / n * 0.9 + 0.1], q]; });
   }
   function who(p, r) {
     if (r === 'pm') return pName(p.pm);
@@ -88,6 +93,11 @@
     let pct = 0, act = null;
     /* Đã chốt kế hoạch gốc (bước 3 kick-off) nghĩa là giai đoạn Lập kế hoạch đã xong — thực tế không muộn hơn ngày chốt. */
     if (gi === 0 && p.baseline) return { key, name, who: who(p, role), s, e, pct: 100, act: Math.min(e, ms(p.baseline)) };
+    /* T71 S5: hạng mục bước 9 (bán thành phẩm / mốc / lô) lấy % và ngày hoàn thành thực tế từ nhật ký sản lượng (sx-btp.js), không còn giả lập theo ngày. */
+    if (/^B9\./.test(key) && window.SxBtp) { const r = window.SxBtp.progress(p, key.slice(3)); return { key, name, who: who(p, role), s, e, pct: r.pct, act: r.act }; }
+    /* T71 S9: hạng mục đã giao công việc (Giao việc / kick-off) lấy % và ngày hoàn thành thực tế từ công việc cấp 1 gắn hạng mục (sx-cong-viec.js). */
+    const w = window.SxCv && window.SxCv.planProgress(p.code, key);
+    if (w) return { key, name, who: who(p, role), s, e, pct: w.pct, act: w.act };
     if (gi + 1 <= (p.cap || 0) && p.baseline) {
       const f = Math.max(0, Math.min(1, (today() - s) / Math.max(DAY, e - s))), perf = p.perf || 0;
       pct = f >= 1 ? (perf >= 0.9 ? 100 : Math.round(perf * 100)) : Math.round(f * perf * 100);
@@ -137,14 +147,15 @@
         'Dự án sản xuất là <b>đối tượng cha</b> của phân hệ (như ĐXMS / KĐT): hồ sơ con chạy luồng (phê duyệt kế hoạch, chuyển giao, bất thường, thay đổi kỹ thuật, nghiệm thu) gắn vào dự án ở các lát S2–S8.',
         'Theo dõi từ khi có nhiệm vụ, <b>trước khi</b> kế hoạch được phê duyệt (CDS-BT-03COP §2.4): dự án mới ở trạng thái Lập kế hoạch.',
         'Phạm vi dữ liệu theo vai (GIẢ LẬP P-241): vai Khối 1 thấy dự án Khối 1, vai Khối 2 thấy Khối 2, vai Nhà máy chỉ thấy dự án giao cho nhà máy của mình; Lãnh đạo Khối 1 thấy Khối 1; QA, Kinh doanh, Quản trị thấy tất cả. Thật: phân quyền theo đơn vị / dự án của IAM.',
-        'Tiến độ (%) và Mốc chậm tính từ tab Kế hoạch & mốc. Không có cột Thao tác (như D-43): mở chi tiết bằng mã.',
+        'Tiến độ (%) và Mốc chậm tính từ tab Kế hoạch & mốc. Không có cột Thao tác (như D-43): mở chi tiết bằng mã; <b>Xoá</b> ở Chi tiết dự án, chỉ khi dự án chưa khởi tạo quy trình nào và chưa có bản ghi con (T71 S12).',
+        '<b>Xuất Excel</b>: mọi dòng thỏa tìm kiếm / bộ lọc đang áp, đúng các cột đang hiện (BE xuất .xlsx; prototype tải .csv). <b>Nhập Excel</b>: file mẫu, kiểm lỗi từng dòng (sản phẩm, khối, mô hình, Giám đốc dự án, ngày), chỉ ghi khi Xác nhận nhập; dự án nhập vào ở trạng thái Lập kế hoạch, mã hệ thống tự sinh.',
       ],
-      q: ['P-241', 'P-242', 'P-243'], src: 'task-management/task-management.component · /task-management',
+      q: ['P-241', 'P-242', 'P-243', 'P-262'], src: 'task-management/task-management.component · /task-management',
     };
     const yes = [{ value: 'CO', label: 'Có' }, { value: 'KHONG', label: 'Không' }];
     return k.listPage({
-      id: 'sxda', title: 'Danh sách dự án sản xuất', ph: 'Tìm kiếm theo mã, tên dự án, sản phẩm', info,
-      right: canCreate() ? `<button class="vbtn primary" data-go="sx/du-an/create">${icon('add')} Thêm mới</button>` : '',
+      id: 'sxda', exp: 'Danh sach du an san xuat', title: 'Danh sách dự án sản xuất', ph: 'Tìm kiếm theo mã, tên dự án, sản phẩm', info,
+      right: canCreate() ? `<button type="button" class="vbtn secondary" data-sxda-import>${icon('upload')} Nhập Excel</button><button class="vbtn primary" data-go="sx/du-an/create">${icon('add')} Thêm mới</button>` : '',
       rows: () => visible().map(rowOf), kwText: (p) => `${p.code} ${p.name} ${p.prodN}`,
       empty: () => ({ code: '', name: '', khoi: null, model: null, st: [], factory: null, pm: null, late: null }),
       match: (p, f) => k.has(f.code, p.code) && k.has(f.name, p.name) && (!f.khoi || p.khoi === f.khoi) && (!f.model || p.model === f.model) && k.inSet(f.st, p.status)
@@ -273,17 +284,20 @@
     const info = {
       scr: 'SX-04', name: 'Chi tiết dự án sản xuất', uc: 'CDS-BT-03COP COP2 A01, A03, A08; SX-KS-K1 §3.1 (QT.VHT.TTSX.4A.1.1, 15 bước, 4 giai đoạn); SX-KS-K2 §2.2',
       notes: [
-        'Khuôn task-create (mode detail) + app-tabs. Tab: Thông tin chung, Phê duyệt kế hoạch (hồ sơ luồng phê duyệt kế hoạch), Kế hoạch & mốc, Hồ sơ chuyển giao (gói của sản phẩm · phiên bản dự án), <b>Điều kiện 4M</b> (cổng Bắt đầu sản xuất: đủ tiêu chí mới chuyển Đang sản xuất — GIẢ LẬP P-246), Tài liệu, Lịch sử; Mua sắm & hợp đồng, Bán thành phẩm & tiến độ, Chất lượng & nghiệm thu, Bất thường & thay đổi thêm ở S4–S8.',
+        'Khuôn task-create (mode detail) + app-tabs. Tab: Thông tin chung, Phê duyệt kế hoạch (hồ sơ luồng phê duyệt kế hoạch), Kế hoạch & mốc, Hồ sơ chuyển giao (gói của sản phẩm · phiên bản dự án), <b>Điều kiện 4M</b> (cổng Bắt đầu sản xuất: đủ tiêu chí mới chuyển Đang sản xuất — GIẢ LẬP P-246), <b>Mua sắm & hợp đồng</b> (đề xuất gửi ĐTMS, hợp đồng, nhập kho đọc ngược — P-249), <b>Bán thành phẩm & tiến độ</b> (nhật ký sản lượng, trạm đo VMMS — P-250), <b>Bất thường & thay đổi</b> (phiếu bất thường, hạn xử lý — P-251; thay đổi kỹ thuật, nhật ký quản lý dự án — P-252), <b>Chất lượng & nghiệm thu</b> (nghiệm thu theo lô, IQC từ VMMS — P-253), Tài liệu, Lịch sử.',
         '<b>Kế hoạch & mốc</b>: khung 15 bước QT.VHT.TTSX.4A.1.1 chia 4 giai đoạn; bước 9 có nhánh con theo <b>Mô hình tổ chức</b> (cấu hình danh mục): tự sản xuất → bán thành phẩm do Sub PM phụ trách; VMC tổng thầu → mốc tổng của gói; thuê gia công → lô (SX-GA-0911 Phần 3). Bước 11 chỉ có ở Khối 1.',
         'Kế hoạch gốc chốt ở bước 5 luồng Phê duyệt kế hoạch sản xuất (S2). Ngày kế hoạch khung chia theo tỷ lệ thời gian dự án; % hoàn thành GIẢ LẬP theo ngày (thật: bước luồng hoàn thành, sản lượng nhập tay / trạm đo VMMS — S5). Ngày hiện tại của phân hệ: ' + dmy(D.sxToday) + '.',
         'Hiển thị bằng bảng cây (vht-tree-table) với cột kế hoạch / thực tế / chênh lệch; <b>biểu đồ Gantt cần dev riêng</b> (@khcn-core/ui chưa có component, D-121 Q8).',
+        '<b>Dữ liệu VMMS</b> (T71 S12, D-124 — giữ D-121 Q5 chỉ xem): cấu trúc EBOM / MBOM theo phiên bản (dòng thay theo ECN đánh dấu), lịch sử thay đổi, thiết bị và nhân công của đơn vị sản xuất, lệnh sản xuất theo hạng mục bước 9; nút Đồng bộ ngay gọi API VMMS (job 06:00 hằng ngày). Không sửa ở QLSX — thay đổi cấu trúc qua ECR / ECN (P-256).',
+        '<b>Ký số</b>: kế hoạch đã phê duyệt có chữ ký số MySign của Lãnh đạo ở bước 4 hiện nhãn Đã ký số ở tab Tài liệu và Phê duyệt kế hoạch (GIẢ LẬP P-258). <b>Xoá</b> dự án: chỉ Lập kế hoạch, chưa khởi tạo quy trình nào, chưa có bản ghi con (P-262).',
         '<b>Tài liệu</b>: card Danh sách tài liệu chung (Chọn mẫu tài liệu, Tải file lên). Mẫu BM.QLHDSX.01 / 04 lấy từ danh mục mẫu tài liệu (GIẢ LẬP: tạo dòng tài liệu, không sinh tệp).',
       ],
-      q: ['P-238', 'P-241', 'P-243'], src: 'task-management/components/task-create (mode detail) · /task-management/detail/:id · @khcn-core/ui app-tabs, vht-tree-table',
+      q: ['P-238', 'P-241', 'P-243', 'P-256', 'P-258', 'P-262'], src: 'task-management/components/task-create (mode detail) · /task-management/detail/:id · @khcn-core/ui app-tabs, vht-tree-table',
     };
     /* Màn xử lý việc (SX-05) dùng thân màn này: không có nút của màn chi tiết, nút hành động nằm ở thanh trạng thái. */
     const right = o.task ? '' : (window.SxFlow && window.SxFlow.canStartKh(p) ? `<button type="button" class="vbtn secondary" data-sx-kh-start="${esc(p.code)}">Khởi tạo phê duyệt kế hoạch</button>` : '')
       + (window.SxCg ? window.SxCg.headBtn(p) : '')
+      + (canDel(p) ? `<button type="button" class="vbtn secondary" data-sx-del="${esc(p.code)}">${icon('del')} Xoá</button>` : '')
       + (canEdit(p) ? `<button type="button" class="vbtn primary" data-go="${href(p)}/edit">${icon('edit')} Chỉnh sửa</button>` : '');
     const alerts = late.length ? `<div class="hd-alerts"><div class="hd-alert error">${icon('info')}<span>${late.length} hạng mục chậm tiến độ: ${esc(late.slice(0, 3).map((r) => r.name).join('; '))}${late.length > 3 ? '…' : ''}</span></div></div>` : '';
     const tInfo = () => k.card('Thông tin chung', `<div class="ginfo c3">
@@ -306,7 +320,7 @@
         { h: 'Hoàn thành', w: 110, align: 'r', cell: (r) => `<span class="num">${r.pct}%</span>` },
         { h: 'Chênh lệch (ngày)', w: 130, align: 'r', cell: (r) => { const d = delay(r); return d == null ? k.dash : `<span class="num ${d > 0 ? 't-err' : ''}">${d > 0 ? '+' + d : 0}</span>`; } },
         { h: 'Trạng thái', w: 150, align: 'c', cell: (r) => badge(...stOf(r)) },
-      ];
+      ].concat(window.SxCv ? [{ h: 'Công việc', w: 190, align: 'r', cell: (r) => window.SxCv.planCell(p, r) }] : []);
       const open = T.open[p.code] || (T.open[p.code] = new Set(['G1', 'G2', 'G3', 'G3.B9', 'G4']));
       const keyed = (rows, pre) => rows.map((r) => Object.assign({}, r, { key: pre ? `${pre}.${r.key.split('.').pop()}` : r.key, children: r.children ? keyed(r.children, pre ? `${pre}.${r.key.split('.').pop()}` : r.key) : null }));
       const cap = p.baseline ? `Kế hoạch gốc chốt ngày ${dmy(p.baseline)}${p.planNo ? ` · Kế hoạch số ${p.planNo}` : ''}` : 'Chưa có kế hoạch gốc — kế hoạch được chốt khi phê duyệt kế hoạch sản xuất';
@@ -318,7 +332,7 @@
         <button type="button" class="vbtn secondary" data-sx-tpl="${esc(p.code)}">Chọn mẫu tài liệu</button>
         <label class="vbtn secondary">${icon('upload')} Tải file lên<input type="file" hidden data-sx-up="${esc(p.code)}"></label></div></div>
       ${k.table([['Tên tài liệu', 420], ['Loại tài liệu', 280], ['Phiên bản', 100], ['Người tải lên', 200], ['Ngày tải lên', 130]], p.docs.slice().reverse(),
-    (d) => `<td>${k.clamp(d[0])}</td><td>${k.clamp(D.sxDocKind[d[1]] || d[1])}</td><td>${esc(d[2])}</td><td>${k.clamp(pName(d[3]))}</td><td class="num">${esc(dmy(d[4]))}</td>`)}</section>`;
+    (d) => `<td>${k.clamp(d[0])}${d[5] === 'SIGN' ? ' ' + badge('Đã ký số', 'success') : ''}</td><td>${k.clamp(D.sxDocKind[d[1]] || d[1])}</td><td>${esc(d[2])}</td><td>${k.clamp(pName(d[3]))}</td><td class="num">${esc(dmy(d[4]))}</td>`)}</section>`;
     const tHist = () => k.card('Lịch sử', k.table([['Thời gian', 160], ['Người thực hiện', 220], ['Hành động', 240], ['Nội dung', 420]], p.hist.slice().sort((a, b) => (a[0] < b[0] ? 1 : -1)),
       (h) => `<td class="num">${esc(dmy(h[0]))}</td><td>${k.clamp(pName(h[1]))}</td><td>${k.clamp(h[2])}</td><td>${h[3] ? k.clamp(h[3]) : k.dash}</td>`));
     const tKh = () => window.SxFlow.planTab(p);
@@ -326,26 +340,53 @@
       ${head({ title: o.title || 'Xem chi tiết dự án sản xuất', back: o.back || 'sx/du-an', lg: true, info: o.info || info, right })}
       ${o.bar || ''}
       ${alerts}
-      ${k.tabs('sx:' + p.code, [['info', 'Thông tin chung'], ['kh', 'Phê duyệt kế hoạch'], ['plan', 'Kế hoạch & mốc'], ['cg', 'Hồ sơ chuyển giao'], ['m4', 'Điều kiện 4M'], ['docs', 'Tài liệu'], ['hist', 'Lịch sử']],
-    { info: tInfo, kh: tKh, plan: tPlan, cg: () => window.SxCg.projectCg(p), m4: () => window.SxCg.projectM4(p), docs: tDocs, hist: tHist })}</div>`;
+      ${k.tabs('sx:' + p.code, [['info', 'Thông tin chung'], ['kh', 'Phê duyệt kế hoạch'], ['plan', 'Kế hoạch & mốc'], ['cg', 'Hồ sơ chuyển giao'], ['m4', 'Điều kiện 4M'], ['ms', 'Mua sắm & hợp đồng'], ['btp', 'Bán thành phẩm & tiến độ'], ['bt', 'Bất thường & thay đổi'], ['nt', 'Chất lượng & nghiệm thu'], ['vmms', 'Dữ liệu VMMS'], ['docs', 'Tài liệu'], ['hist', 'Lịch sử']],
+    { info: tInfo, kh: tKh, plan: tPlan, cg: () => window.SxCg.projectCg(p), m4: () => window.SxCg.projectM4(p), ms: () => window.SxMs.projectTab(p), btp: () => window.SxBtp.projectTab(p), bt: () => window.SxBt.projectTab(p), nt: () => window.SxNt.projectTab(p), vmms: () => window.SxVmms.projectTab(p), docs: tDocs, hist: tHist })}</div>`;
   }
   const T = { open: {} };
 
-  /* Chọn mẫu tài liệu: mẫu của QT.VHT.TTSX.4A.1.1 (BM-QLHDSX-01 / 04). */
-  const TPL = [['KH', 'BM.QLHDSX.01 — Kế hoạch dự án sản xuất'], ['BB', 'BM.QLHDSX.04 — Biên bản làm việc với nhà máy']];
+  /* Chọn mẫu tài liệu: biểu mẫu đang hoạt động, có tệp mẫu, của danh mục Biểu mẫu tài liệu sản xuất (T71 S11 — trước đây cố định BM-QLHDSX-01 / 04). */
+  const TPL = () => window.Catalog.rows('sx-bieu-mau').filter((r) => r.active !== false && r.file).map((r) => [r.code, r.kind, r.name]);
   function tplDlg(code) {
     const m = vModal({ title: 'Chọn mẫu tài liệu', size: 'md',
-      body: K().table([['Mẫu tài liệu', 380], ['Loại tài liệu', 260], ['', 120, 'c']], TPL,
-        (t) => `<td>${esc(t[1])}</td><td>${esc(D.sxDocKind[t[0]])}</td><td class="c"><button type="button" class="vbtn sm secondary" data-sx-tpl-use="${t[0]}">Sử dụng</button></td>`),
+      body: K().table([['Mã biểu mẫu', 200], ['Tên biểu mẫu', 300], ['Loại tài liệu', 260], ['', 120, 'c']], TPL(),
+        (t) => `<td>${esc(t[0])}</td><td>${esc(t[2])}</td><td>${esc(D.sxDocKind[t[1]] || '')}</td><td class="c"><button type="button" class="vbtn sm secondary" data-sx-tpl-use="${esc(t[0])}">Sử dụng</button></td>`),
       actions: '<button type="button" class="vbtn secondary" data-close>Đóng</button>' });
     m.el.addEventListener('click', (e) => {
       const b = e.target.closest('[data-sx-tpl-use]');
       if (!b) return;
-      const t = TPL.find((x) => x[0] === b.dataset.sxTplUse);
-      (U.docs[code] = U.docs[code] || []).push([`${t[1].split(' — ')[1]} — ${code}.docx`, t[0], 'v0.1', Flow.state.persona, D.sxToday]);
-      addHist(code, 'Tạo tài liệu từ mẫu', t[1]);
-      persist(); m.close(); toast('<b>Thành công</b><br>Thêm tài liệu thành công!'); rerender();
+      const t = TPL().find((x) => x[0] === b.dataset.sxTplUse);
+      useTpl(code, t);
+      m.close(); toast('<b>Thành công</b><br>Thêm tài liệu thành công!'); rerender();
     });
+  }
+  /* Tạo tài liệu từ biểu mẫu t = [mã, loại, tên] (cũng dùng ở Hồ sơ dự án). */
+  function useTpl(code, t) {
+    (U.docs[code] = U.docs[code] || []).push([`${t[2]} — ${code}.docx`, t[1], 'v0.1', Flow.state.persona, D.sxToday, 'TPL']);
+    addHist(code, 'Tạo tài liệu từ mẫu', `${t[0]} — ${t[2]}`);
+    persist();
+  }
+  /* ---------- T71 S11: tài liệu cho Hồ sơ dự án (SX-18) ----------
+     Mỗi tài liệu: { id, project, i (chỉ số trong danh sách của dự án), own (người dùng thêm — sửa / xoá được), d: [tên, loại, phiên bản, người, ngày, nguồn?] }.
+     Tài liệu có sẵn của dự án (dữ liệu mẫu) chỉ xem. */
+  function docsAll() {
+    return all().flatMap((p) => {
+      const base = (U.created.concat(D.sxProjects).find((x) => x.code === p.code) || {}).docs || [];
+      return p.docs.map((d, i) => ({ id: `${p.code}#${i}`, project: p.code, i, own: i >= base.length, d }));
+    });
+  }
+  function docAdd(code, d) { (U.docs[code] = U.docs[code] || []).push(d); addHist(code, 'Tải lên tài liệu', d[0]); persist(); }
+  function docUpdate(id, d) {
+    const x = docsAll().find((y) => y.id === id);
+    if (!x || !x.own) return;
+    const l = U.docs[x.project], off = byCode(x.project).docs.length - l.length;
+    l[x.i - off] = d; addHist(x.project, 'Cập nhật tài liệu', d[0]); persist();
+  }
+  function docRemove(id) {
+    const x = docsAll().find((y) => y.id === id);
+    if (!x || !x.own) return;
+    const l = U.docs[x.project], off = byCode(x.project).docs.length - l.length;
+    const [r] = l.splice(x.i - off, 1); addHist(x.project, 'Xoá tài liệu', r[0]); persist();
   }
 
   document.addEventListener('submit', (e) => {
@@ -366,6 +407,54 @@
     persist(); toast('<b>Thành công</b><br>Tải lên thành công!'); rerender();
   });
 
+  /* ---------- T71 S12: Xoá dự án (chưa khởi tạo luồng), Nhập Excel ---------- */
+  document.addEventListener('click', async (e) => {
+    const b = e.target.closest && e.target.closest('[data-sx-del]');
+    if (!b) return;
+    const p = byCode(b.dataset.sxDel);
+    if (!p || !canDel(p)) return;
+    const yes = await window.Catalog.confirm({ sev: 'danger', title: 'Bạn chắc chắn muốn xoá không?', desc: `Bạn có chắc chắn muốn xóa dự án sản xuất: ${p.code} — ${p.name} không?`, hl: `${p.code} — ${p.name}`, cancel: 'Hủy', ok: 'Xoá' });
+    if (!yes) return;
+    U.created = U.created.filter((x) => x.code !== p.code);
+    if (D.sxProjects.some((x) => x.code === p.code)) U.del = (U.del || []).concat(p.code);
+    persist();
+    toast('<b>Thành công</b><br>Xoá dự án thành công');
+    location.hash = '#/sx/du-an';
+  });
+  /* File giả lập 5 dòng: dòng 3 sản phẩm không có trong danh sách sản phẩm, dòng 5 ngày kết thúc trước ngày bắt đầu. */
+  const IMP = [
+    ['Sản xuất loạt bộ phát Wi-Fi Mesh WM-6 cho thị trường trong nước', 'K2', 'GIA_CONG', 'WM-6', 50000, 'thiết bị', 'sxk2', '2027-01-04', '2027-06-30', 'HD', 'Hợp đồng 12/2027/HĐ-VTT'],
+    ['Sản xuất đài ra-đa cảnh giới tầm thấp RĐ-40 — đợt 2', 'K1', 'VMC_TONG_THAU', 'RĐ-40', 6, 'bộ', 'sxpm', '2027-02-01', '2027-10-31', 'NV', 'Quyết định 2210/QĐ-VHT'],
+    ['Sản xuất thiết bị định tuyến biên ER-9', 'K2', 'GIA_CONG', 'ER-9', 2000, 'thiết bị', 'sxk2', '2027-03-01', '2027-08-31', 'PAKD', 'PAKD 401/PAKD-VHT'],
+    ['Sản xuất thiết bị đầu cuối quang ONT-X2 năm 2027', 'K2', 'GIA_CONG', 'ONT-X2', 80000, 'thiết bị', 'sxk2', '2027-01-15', '2027-09-30', 'PAKD', 'PAKD 388/PAKD-VHT'],
+    ['Sản xuất trạm 5G Macro gNB-M3 bổ sung', 'K2', 'VMC_TONG_THAU', 'gNB-M3', 500, 'trạm', 'sxk2', '2027-09-01', '2027-05-31', 'PAKD', 'PAKD 352/PAKD-VHT'],
+  ];
+  function importDlg() {
+    window.SxChung.importDlg({ entity: 'dự án sản xuất', tpl: 'mau-nhap-du-an-san-xuat.xlsx', file: 'danh-sach-du-an-san-xuat.xlsx', unit: 'dự án',
+      cols: [['Tên dự án', 300], ['Khối', 90], ['Mô hình tổ chức', 200], ['Sản phẩm', 120], ['Số lượng', 110], ['Giám đốc dự án', 170], ['Ngày bắt đầu', 120], ['Ngày kết thúc', 120]],
+      rows: () => IMP.map(([name, khoi, model, product, qty, unitName, pm, start, end, bk, bn]) => {
+        const errs = [], pr = prodOf(product);
+        if (!pr) errs.push(`Sản phẩm ${product} không có trong danh sách sản phẩm.`);
+        else if (pr.khoi !== khoi) errs.push(`Sản phẩm ${product} không thuộc ${KHOI[khoi]}.`);
+        if (!window.Catalog.rows('sx-mo-hinh').some((r) => r.code === model)) errs.push(`Mô hình tổ chức ${model} không tồn tại.`);
+        if (!D.personas.some((x) => x.id === pm && x.urd === 'R-SX-PM')) errs.push('Giám đốc dự án không có trong hệ thống.');
+        if (ms(end) <= ms(start)) errs.push('Ngày kết thúc phải sau Ngày bắt đầu.');
+        return { errs, data: { name, khoi, model, product, version: pr ? pr.version : '', qty, unitName, pm, start, end, basis: [bk, bn], factory: null, customer: '', goal: '' },
+          cells: [name, KHOI[khoi], catName('sx-mo-hinh', model), product, `${num(qty)} ${unitName}`, pName(pm), dmy(start), dmy(end)] };
+      }),
+      commit: (ok) => {
+        ok.forEach((r) => {
+          const n = Math.max(0, ...all().filter((p) => p.code.startsWith('DA-SX-2026-')).map((p) => Number(p.code.slice(-3)))) + 1, code = 'DA-SX-2026-' + String(n).padStart(3, '0');
+          U.created.unshift(Object.assign({ code, status: 'PLANNING', perf: 0, cap: 0, baseline: null, creator: Flow.state.persona, created: D.sxToday, docs: [], hist: [] }, r.data));
+          addHist(code, 'Tạo dự án', 'Nhập từ Excel');
+        });
+        persist();
+        if (K().LST.sxda) K().LST.sxda.page = 1;
+        return ok.length;
+      } });
+  }
+  document.addEventListener('click', (e) => { if (e.target.closest && e.target.closest('[data-sxda-import]')) importDlg(); });
+
   /* Router con: parts sau 'du-an'. */
   function route(parts) {
     const [a, b] = parts;
@@ -381,8 +470,13 @@
     /* Mở chi tiết từ danh sách / liên kết: về tab Thông tin chung (tab của luồng chỉ chọn sẵn khi mở từ Việc của tôi). */
     else if (parts[1] && !parts[2]) K().setTab('sx:' + decodeURIComponent(parts[1]), 'info');
   }
-  function reset() { U = { created: [], edit: {}, docs: {}, hist: {} }; persist(); }
+  function reset() { U = { created: [], edit: {}, docs: {}, hist: {}, del: [] }; persist(); }
 
-  window.SxDuAn = { route, enter, reset, all, byCode, visible, planOf, progressOf, leaves, stOf, detail, log, patch, addDoc, canEdit,
+  /* Hạng mục sản xuất của bước 9 (cho sx-btp.js): key, tên, vai phụ trách, người phụ trách, mục tiêu (null = mốc theo %), ngày kế hoạch. */
+  function b9Items(p) {
+    const g3 = planOf(p)[2], b9 = g3.children.find((x) => x.key === 'B9');
+    return b9Kids(p).map(([ck, cn, cr, , target]) => { const r = b9.children.find((x) => x.key === 'B9.' + ck); return { key: ck, name: cn, role: cr, who: who(p, cr), target: target || null, s: r.s, e: r.e }; });
+  }
+  window.SxDuAn = { route, enter, reset, all, byCode, visible, canDel, planOf, progressOf, leaves, stOf, detail, log, patch, addDoc, canEdit, b9Items, docsAll, docAdd, docUpdate, docRemove, useTpl, TPL,
     tabKey: (code) => 'sx:' + code, viewTitle: 'Xem chi tiết dự án sản xuất' };
 })();
