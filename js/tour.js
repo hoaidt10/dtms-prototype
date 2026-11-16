@@ -56,13 +56,11 @@
         sel: '.sb-nav [data-go="luong"]', title: 'Đề xuất mua sắm', text: 'Danh sách đề xuất mua sắm (ĐXMS) nằm ở menu <b>Quản lý đề xuất mua sắm &gt; Đề xuất mua sắm</b>.' },
       { sel: '[data-go="luong/create"]', title: 'Thêm mới', text: '<b>Bấm vào đây</b> để lập đề xuất mua sắm mới.', wait: route(/#\/luong\/create$/), do: () => go('#/luong/create') },
       { sel: '#lf-title', title: 'Thông tin chung', text: 'Nhập Tên đề xuất mua sắm. Các trường có dấu <b>*</b> là bắt buộc.' },
-      { sel: '[data-vsel="lf-nv"]', title: 'Bước 1 — Đề tài / dự án', text: 'Chọn đề tài / dự án và văn bản căn cứ. Chọn xong, mỗi khối hiện nút <b>✦ Gợi ý từ AI</b> — AI chỉ chạy khi bấm. Bước 1 đến 5 làm trên cùng màn này.' },
+      { sel: '[data-vsel="lf-nv"]', title: 'Bước 1 — Đề tài / dự án', text: 'Chọn đề tài / dự án và văn bản căn cứ. Chọn xong, hệ thống tự bóc tách hàng hoá của căn cứ vào bảng chi phí; khối Thông tin chung, Căn cứ pháp lý có nút <b>✦ Gợi ý từ AI</b> — AI chỉ chạy khi bấm. Bước 1 đến 5 làm trên cùng màn này.' },
       { sel: '#lf-draft', title: 'Lưu nháp', text: '<b>Bấm Lưu nháp</b>: hệ thống tạo luồng (mã ĐXMS tự sinh), hồ sơ Phê duyệt và giữ việc <b>Lập đề xuất mua sắm</b> để làm tiếp. Bấm <i>Làm hộ</i> để dùng hồ sơ mẫu.',
         wait: route(/#\/task\//), do: () => goTask(1) },
-      { enter: () => { if (!tokOf(1)) goTask(1); }, sel: '[data-lf-ai-sec="boc"]', title: 'Bước 2, 6 — Gợi ý từ AI: Bóc tách và đối chiếu',
-        text: 'Mỗi khối có nút <b>✦ Gợi ý từ AI</b> riêng. <b>Bấm vào đây</b>: popup hiện dữ liệu căn cứ AI đã lấy (bước 2) và bảng bóc tách, đối chiếu (bước 6). Chọn hạng mục, chỉnh SL rồi <b>Áp dụng vào màn</b>.',
-        wait: () => !!find('[data-lf-boc] [data-lf-ai2]'), do: aiDo('boc') },
-      { sel: '[data-lf-boc]', title: 'Bước 5 — Bóc tách và đối chiếu', text: 'Áp dụng xong, AI ghép hàng hoá vào khoản mục dự toán và điền <b>bảng Loại chi phí</b> ở trên; ở đây chỉ còn dòng tóm tắt. Muốn xem / sửa danh mục bóc tách (SL, bỏ hạng mục) thì bấm <b>✦ Gợi ý lại</b>.' },
+      /* [T72 #83, D-122 Q4] bỏ bước "Gợi ý từ AI: Bóc tách và đối chiếu" (nút [data-lf-ai-sec="boc"], aiDo('boc')) — hệ thống bóc tách khi chọn đề tài. */
+      { enter: () => { if (!tokOf(1)) goTask(1); }, sel: '[data-lf-boc]', title: 'Bước 2, 5, 6 — Bóc tách hạng mục', text: 'Chọn đề tài / dự án xong, <b>hệ thống</b> lấy dữ liệu căn cứ, ghép hàng hoá vào khoản mục dự toán còn khả dụng và điền <b>bảng bóc tách</b> ở trên (cột SL còn được mua, Còn lại khả dụng); ở đây là dòng tóm tắt đối chiếu. Sửa, xoá, thêm dòng ngay trên bảng.' },
       /* Review nhi 06/11 #1: bỏ khối Thông tin cơ bản — Nhóm mục đích, Nguồn vốn ở Thông tin chung. */
       { sel: '[data-lf-chung]', title: 'Bước 3, 4 — Thông tin chung', text: '<b>Nhóm mục đích mua sắm</b> và <b>Nguồn vốn</b> điền sẵn theo đề tài / dự án, sửa được; nút <b>✦ Gợi ý từ AI</b> của khối gợi ý cả Tên luồng, Giá trị dự kiến, Thời gian thực hiện. Nội dung các mục Tờ trình nhập ở bước lập dự thảo (tour 4).' },
       { sel: '#lf-save', title: 'Gửi', text: '<b>Bấm Gửi</b>: hoàn thành bước 1–5, hồ sơ chuyển <b>Chỉ huy ĐVĐX xác nhận khởi tạo</b>, rồi Phòng Quản lý tài sản rà soát tồn kho (tour 2).',

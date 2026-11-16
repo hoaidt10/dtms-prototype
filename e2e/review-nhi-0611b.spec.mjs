@@ -19,13 +19,8 @@ test('#18 popup Bóc tách: bảng AI bước 6 tạm ẩn, Áp dụng vẫn đi
   await expect(page.locator('[data-lf-plcard]')).toHaveCount(0);
   await page.locator('[data-vsel="lf-nv"]').click();
   await page.locator('.vsel-panel [data-opt="NV-KHCN-2026-014"]').click();
-  await page.locator('[data-lf-ai-sec="boc"]').click();
-  const pop = page.locator('[data-lf-ai-pop]');
-  await expect(pop.locator('[data-lf-pop-item="1"]')).toBeHidden();
-  await expect(pop.locator('h4', { hasText: 'Bước 6' })).toBeHidden();
-  await expect(pop).toContainText('Điền vào bảng Loại chi phí');
-  await page.locator('[data-lf-ai-apply]').click();
-  await expect(pop).toHaveCount(0);
+  // T72 #83 (D-122 Q4): không còn nút / popup AI ở khối Căn cứ — chọn đề tài thì hệ thống bóc tách, điền bảng.
+  await expect(page.locator('[data-lf-ai-sec="boc"]')).toHaveCount(0);
   await expect(page.locator('[data-lf-boc-sum]')).toContainText('5 / 5');
   await expect(page.locator('[data-lf-boc-sum]')).not.toContainText('Gợi ý lại');
   await expect(page.locator('[data-lf-cqty]').first()).toBeVisible();

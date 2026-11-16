@@ -314,9 +314,9 @@
     const T = window.Thau, H = window.HopDong, rows = [];
     if (!T) return rows;
     T.khAll().filter((k) => k.src[0] === 'DXMS' && Flow.dxmsChain(Flow.state.dxms).some((x) => x.code === k.src[1])).forEach((k) => {
-      rows.push({ loai: 'KHLCNT', ma: k.code, noiDung: k.title, trangThai: (T.KH_ST[k.st] || [k.st])[0] });
+      rows.push({ loai: 'KHLCNT', ma: k.code, noiDung: k.title, trangThai: T.khStLabel(k)[0] });
       T.pkgsOf(k).forEach((p) => {
-        rows.push({ loai: 'Gói thầu', ma: p.code, noiDung: p.title || p.name || '', trangThai: (T.PK_ST[p.st] || [p.st])[0] });
+        rows.push({ loai: 'Gói thầu', ma: p.code, noiDung: p.title || p.name || '', trangThai: T.pkStLabel(p)[0] });
         const h = H && H.byPkg(p.code);
         if (h) rows.push({ loai: 'Hợp đồng', ma: h.code, noiDung: h.title || h.name || '', trangThai: (H.HD_ST[h.st] || [h.st])[0] });
       });
@@ -463,9 +463,18 @@
     v.hanTraLoi = u.hanTraLoi || Flow.dateOf(Flow.state.clock + 3);
     /* T29 B4 P2: điều khoản phiếu YCBG — giá trị đã nhập, không thì mẫu của hồ sơ demo (D.ycbgTerms0); đầu mối mặc định người xử lý bước. */
     const yt0 = D.ycbgTerms0 || {};
-    v.dkThanhToan = u.dkThanhToan != null ? u.dkThanhToan : yt0.payment || '';
-    v.diaDiemGiao = u.diaDiemGiao != null ? u.diaDiemGiao : yt0.place || '';
-    v.yeuCauKhac = u.yeuCauKhac != null ? u.yeuCauKhac : yt0.other || '';
+    /* [T72 #86] điều khoản để trống như SRS (BR-DXMS-04-06) tới khi người dùng nhập hoặc bấm ✦ Gợi ý từ AI; giá trị mẫu của hồ sơ demo là gợi ý AI (aiYcbg, GIẢ LẬP P-250).
+       Trước: điền sẵn yt0.payment / place / other. */
+    v.dkThanhToan = u.dkThanhToan != null ? u.dkThanhToan : '';
+    v.diaDiemGiao = u.diaDiemGiao != null ? u.diaDiemGiao : '';
+    v.yeuCauKhac = u.yeuCauKhac != null ? u.yeuCauKhac : '';
+    v.aiYcbg = {
+      dkThanhToan: { value: yt0.payment || '', nguon: 'Điều khoản thanh toán của các YCBG trước cùng đơn vị' },
+      diaDiemGiao: { value: yt0.place || '', nguon: 'Địa chỉ của đơn vị đề xuất (ĐXMS)' },
+      yeuCauKhac: { value: yt0.other || '', nguon: 'Yêu cầu kỹ thuật, kế hoạch thực hiện của ĐXMS' },
+    };
+    /* [T72 #85, D-122 Q6] Mức giá làm cơ sở — mặc định Thấp nhất. */
+    v.mucGia = u.mucGia || 'Thấp nhất';
     v.dauMoiBgOptions = D.ycbgContacts(tok).map((id) => ({ value: id, label: `${pname(id)} — ${persona(id).role}` }));
     /* T29 B18 (màn cũ: chọn nhiều người → bảng Họ tên, Đơn vị): đầu mối là danh sách; bản nháp cũ một người vẫn đọc được. */
     v.dauMoiBg = Array.isArray(u.dauMoiBg) ? u.dauMoiBg : [u.dauMoiBg || tok.who || Flow.state.persona];
@@ -533,8 +542,28 @@
     /* Review nhi 06/11 #36 (GIẢ LẬP P-222): Phụ lục chi phí sửa được ở bước lập dự thảo. Mặc định từ hạng mục hồ sơ; Thầu chỉ nhập một giá trị cuối cùng (#3) nên đơn giá mẫu
        được quy đổi theo tỷ lệ cho khớp giá trị đã duyệt — thật: nhập theo hạng mục hoặc đọc từ báo giá, chờ BA (P-219). */
     const edTotal = Flow.ci().total, edBase = D.items.reduce((a, i) => a + (i.buy || 0) * (i.price || 0), 0), edK = edBase > 0 && Math.abs(edBase - edTotal) > 0.05 ? edTotal / edBase : 1;
-    v.phuLucEd = u.phuLucEd || D.items.map((i) => ({ n: i.n, hang: i.name, chungLoai: goodsName(i.goods), dvt: i.uom, sl: i.buy || 0, donGia: Math.round((i.price || 0) * edK * 1e4) / 1e4,
-      thanhTien: (i.buy || 0) * (i.price || 0) * edK, coSo: i.buy ? `Báo giá ${nccName('NCC-000001')}` : 'Dùng tồn kho', loai: i.cost || '' }));
+    /* [T72 #85, #87–#89, D-122 Q6] Cơ sở giá từng dòng = dropdown các báo giá của hạng mục (+ Giá trung bình); chọn thì Đơn giá tự điền (option.fill, mở rộng E2).
+       Mặc định theo Mức giá làm cơ sở chọn ở bước 8 (u.mucGia: Thấp nhất / Trung bình / Cao nhất). Đơn giá các NCC quy về cùng tỷ lệ với đơn giá mẫu của hồ sơ
+       (báo giá thấp nhất = đơn giá mẫu) để tổng khớp giá trị đã duyệt — GIẢ LẬP, thật: đọc đơn giá quy đổi của báo giá còn hiệu lực (bảng báo giá YCBG). */
+    const r4 = (x) => Math.round(x * 1e4) / 1e4, tyTxt = (x) => x.toLocaleString('vi-VN', { maximumFractionDigits: 4 });
+    const mucGia = u.mucGia || 'Thấp nhất';
+    const priceRow = (i) => {
+      const base = (i.price || 0) * edK, qs = D.quotes.filter((q) => q.prices[i.n] != null);
+      if (!i.buy || !qs.length) return null;
+      const low = Math.min(...qs.map((q) => q.prices[i.n])), k = low > 0 ? base / low : 1;
+      const ps = qs.map((q) => ({ name: nccName(q.ncc), p: r4(q.prices[i.n] * k) })).sort((a, b) => a.p - b.p);
+      const avg = r4(ps.reduce((s, x) => s + x.p, 0) / ps.length);
+      const opts = ps.map((x, j) => ({ value: `Báo giá ${x.name}`, label: `${x.name} — ${tyTxt(x.p)} tỷ${j === 0 ? ' (thấp nhất)' : j === ps.length - 1 ? ' (cao nhất)' : ''}`, fill: { donGia: x.p } }))
+        .concat([{ value: 'Giá trung bình các báo giá', label: `Giá trung bình — ${tyTxt(avg)} tỷ`, fill: { donGia: avg } }]);
+      const def = mucGia === 'Cao nhất' ? opts[ps.length - 1] : mucGia === 'Trung bình' ? opts[ps.length] : opts[0];
+      return { opts, def, low: ps[0].p, avg };
+    };
+    v.mucGiaTt = mucGia;
+    v.phuLucEd = (u.phuLucEd || D.items.map((i) => { const pr = priceRow(i), dg = pr ? pr.def.fill.donGia : r4((i.price || 0) * edK);
+      return { n: i.n, hang: i.name, chungLoai: goodsName(i.goods), dvt: i.uom, sl: i.buy || 0, donGia: dg,
+        thanhTien: (i.buy || 0) * dg, coSo: pr ? pr.def.value : 'Dùng tồn kho', loai: i.cost || '' }; }))
+      .map((r) => { const i = D.items.find((x) => x.n === r.n), pr = i && priceRow(i);
+        return Object.assign({}, r, { coSoOpts: pr ? pr.opts : [{ value: r.coSo, label: r.coSo }], giaNote: pr ? `Thấp nhất: ${tyTxt(pr.low)} tỷ · Trung bình: ${tyTxt(pr.avg)} tỷ` : '' }); });
     v.giaTriDuyetTy = Math.round(edTotal * 100) / 100;
     v.nguongTy = ((Flow.state.vars.th || D.dxmsRules()).find((r) => r.from > 0) || { from: 160 }).from;
     v.danhMucHang = u.phuLucEd ? u.phuLucEd.filter((r) => r.sl > 0).map((r, k) => ({ n: k + 1, hang: r.hang, loai: r.chungLoai, dvt: r.dvt, sl: r.sl }))

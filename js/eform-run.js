@@ -177,7 +177,14 @@
     }
     /* select, taglist → vht-select / vht-multi-select */
     return vSelect({ id: 'ef-' + fk, value: v, multi: c.type === 'taglist', searchable: c.searchable || opts.length > 8, placeholder: c.type === 'taglist' ? 'Chọn' : 'Chọn ' + String(c.label || '').toLowerCase(),
-      options: opts.map((o) => ({ value: o.value, label: o.label })), disabled: !!dis, invalid: !!form.errors[fk], onChange: (x) => form.set(fk, x, true) });
+      options: opts.map((o) => ({ value: o.value, label: o.label })), disabled: !!dis, invalid: !!form.errors[fk],
+      /* [T72 #89] mở rộng E2 (chưa có ở vht-e-form, cần dev nhỏ): option có `fill` ({ key: giá trị }) → chọn thì điền các ô cùng dòng / cùng cấp, vẫn sửa được.
+         Vd Cơ sở giá (NCC) của Phụ lục chi phí điền Đơn giá theo báo giá của NCC đó. */
+      onChange: (x) => {
+        const o = opts.find((y) => y.value === x);
+        if (o && o.fill) Object.entries(o.fill).forEach(([k, val]) => form.set(fk.includes('::') ? fk.replace(/[^:]+$/, k) : k, val, false));
+        form.set(fk, x, true);
+      } });
   }
 
   function renderList(comps, ctx, form, row, prefix) {

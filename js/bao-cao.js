@@ -32,7 +32,9 @@
     const chainAdj = new Set(dxr.filter((o) => o.x.adjFrom && o.m.state !== 'NEW').map((o) => o.root));
     const dx = dxr.map(({ x, m, root }) => {
       const nv = D.nvOf(x.nv) || {}, draft = m.state === 'NEW';
-      return { kind: 'DXMS', code: x.code, title: x.title, href: 'dxms/' + encodeURIComponent(x.code), unit: x.unit, field: nv.field || 'KHAC', fund: nv.fund || 'CPTX',
+      /* T70 (SRS 31 V0.4): lĩnh vực rỗng = "Lĩnh vực khác" (D-120); nguồn kinh phí = nguồn vốn của ĐXMS, mặc định theo đề tài (BR-BDX-C-05); cột Đề tài / dự án "{mã} — {tên}". */
+      return { kind: 'DXMS', code: x.code, title: x.title, href: 'dxms/' + encodeURIComponent(x.code), unit: x.unit, field: nv.field || 'KHAC', fund: x.fund || nv.fund || 'CPTX',
+        mission: x.nv ? x.nv + (nv.name ? ' — ' + nv.name : '') : null, adjN: x.adjN || 0,
         st: S.DXMS_STATUS[m.state][0], state: m.state, grp: DX_GRP[m.state], draft, value: m.value, inV: !draft && (!chainOk.has(root) || m.state === 'OK' || m.state === 'DC'),
         date: x.created, adj: !!x.adjFrom, adjFrom: x.adjFrom || null, chain: root, adjChain: chainAdj.has(root), approved: m.approved };
     });
@@ -53,13 +55,13 @@
     const T = window.Thau;
     const kh = T.khAll().map((k) => {
       const s = src(k.src[0], k.src[1]), gs = T.pkgsOf(k);
-      return { kind: 'KHLCNT', code: k.code, title: k.title, href: 'khlcnt/' + encodeURIComponent(k.code), unit: s.unit, field: s.field, fund: s.fund, st: T.KH_ST[k.st][0],
-        grp: k.st === 'OK' ? 'done' : 'run', value: r2(gs.reduce((a, g) => a + g.price, 0)), n: gs.length, date: k.created, adj: (k.versions || []).length > 1 || k.st === 'ADJ', srcCode: k.src[1], srcDate: s.date };
+      return { kind: 'KHLCNT', code: k.code, title: k.title, href: 'khlcnt/' + encodeURIComponent(k.code), unit: s.unit, field: s.field, fund: s.fund, st: T.khStLabel(k)[0],
+        grp: k.st === 'OK' ? 'done' : k.st === 'CANCEL' ? 'stop' : 'run', value: r2(gs.reduce((a, g) => a + g.price, 0)), n: gs.length, date: k.created, adj: (k.versions || []).length > 1 || k.st === 'ADJ', srcCode: k.src[1], srcDate: s.date };
     });
     const gt = T.PK.map((g) => {
       const r = T.pkRow(g), k = kh.find((x) => x.code === g.kh) || {}, win = g.winner && (g.bidders || []).find((b) => b[0] === g.winner);
       const kn = (g.events || []).filter((e) => /Kiến nghị/.test(e[0]));
-      return { kind: 'GOI', code: g.code, title: g.name, href: 'goi-thau/' + encodeURIComponent(g.code), unit: k.unit, field: k.field, fund: k.fund, st: T.PK_ST[r.stx][0], stx: r.stx,
+      return { kind: 'GOI', code: g.code, title: g.name, href: 'goi-thau/' + encodeURIComponent(g.code), unit: k.unit, field: k.field, fund: k.fund, st: T.pkStLabel(g)[0], stx: r.stx, lc: r.lc, prog: r.prog,
         grp: r.stx === 'KQ' ? 'done' : r.stx === 'HUY' ? 'stop' : 'run', value: g.price, win: win ? win[1] : null, winner: g.winner || (g.assignee ? null : null), assignee: g.assignee, form: g.form, type: g.type, method: g.method, online: g.online,
         kn: kn.length, knOpen: kn.filter((e) => !/Đã giải quyết/.test(e[3])).length, knEv: kn, adj: k.adj, date: k.date, kq: g.kq, start: g.start, kh: g.kh, srcDate: k.srcDate, bidders: g.bidders || [] };
     });
@@ -90,7 +92,8 @@
       const hs = c.kdt ? HS_KDT[c.kind === 'KDT' ? 'KDT' : 'CT'] : fam === 'MS02' ? 'Hồ sơ điều chỉnh ĐXMS' : 'Hồ sơ phê duyệt ĐXMS';
       /* T59 #52 #53: bước đang quá hạn (số + tên bước) cho khối Top 5 điểm nghẽn — hồ sơ chạy luồng lấy công việc quá hạn đầu tiên. */
       const tk = c.live ? (Flow.state.tokens.find((t) => S.dueOf(t.task, t.since) < Flow.state.clock) || Flow.state.tokens[0] || {}).task : c.task;
-      const stepName = (tk != null && ((F[tk] || {}).name || (c.live ? Flow.taskName(tk) : ''))) || String(r.step || '-').replace(/ \(\+\d+\)$/, '');
+      /* T70: hồ sơ mẫu ĐXMS có bước mà định nghĩa luồng không ghi name (vd MS01 bước 10) → lấy tên việc như Flow.taskName, tránh nhãn "Bước 10 — -". */
+      const stepName = (tk != null && ((F[tk] || {}).name || (c.live || !c.kdt ? Flow.taskName(tk) : ''))) || String(r.step || '-').replace(/ \(\+\d+\)$/, '');
       return { kind: c.kdt ? 'KDT' : 'DXMS', code: r.code, fam, task: tk != null ? tk : null, stepName, obj: objCode, href: r.href, title: c.title || (obj || {}).title || '', hs, step: r.step || '-', proc: r.proc, unit: (obj || {}).unit || '-',
         field: row.field, fund: row.fund, date: since,
         who: c.live ? [...new Set(Flow.state.tokens.map((t) => window.UI.persona(t.who).name))].join(', ') : c.creator || '-', since, days: Math.max(1, wd(since, HD().TODAY) - sla) };
@@ -107,7 +110,7 @@
   }
 
   /* ---------- Biểu đồ (phần tử thường, như hr-tools report-dashboard) ---------- */
-  const fmtN = (v, money) => (money ? ty(v, 2) : String(v));
+  const fmtN = (v, money) => (money ? DONG(v) : String(v)); // T70: tiền theo đồng (SRS 30 BR-BCC-C-06)
   /* Cột dọc: lưới đứt nét, nhãn số trên cột (monthly-allocation-chart). items: [{label, value, drill}] */
   function vbars(title, items, o) {
     const max = Math.max(1, ...items.map((x) => x.value));
@@ -140,8 +143,11 @@
   const countBy = (rows, key, labels, order) => {
     const m = new Map((order || []).map((k) => [k, 0]));
     rows.forEach((r) => { const k = typeof key === 'function' ? key(r) : r[key]; m.set(k, (m.get(k) || 0) + 1); });
-    return [...m.entries()].map(([k, v]) => ({ key: k, label: labels ? labels(k) : k, value: v }));
+    const out = [...m.entries()].map(([k, v]) => ({ key: k, label: labels ? labels(k) : k, value: v }));
+    /* T70 (SRS 30 BR-BCC-02-03): nhóm cố định giữ thứ tự định nghĩa, hiện cả nhóm 0; chiều theo dữ liệu sắp giảm dần, bằng nhau theo nhãn A–Z. */
+    return order ? out : out.sort(byVal);
   };
+  const byVal = (a, b) => b.value - a.value || String(a.label).localeCompare(String(b.label), 'vi');
   /* Giá trị cộng vào tổng: ĐXMS không phải bản hiệu lực của chuỗi điều chỉnh (inV = false) không cộng (T48 L1). */
   const vOf = (r) => (r.inV === false ? 0 : r.value || 0);
   const sumV = (a) => r2(a.reduce((s, x) => s + vOf(x), 0));
@@ -149,32 +155,41 @@
   const sumBy = (rows, key, labels) => {
     const m = new Map(), add = (k, v) => m.set(k, r2((m.get(k) || 0) + v));
     rows.forEach((r) => { if (key === 'fund' && r.fundParts) r.fundParts.forEach((p) => add(p.fund, vOf(r) * p.share)); else add(typeof key === 'function' ? key(r) : r[key], vOf(r)); });
-    return [...m.entries()].sort((a, b) => b[1] - a[1]).map(([k, v]) => ({ key: k, label: labels ? labels(k) : k, value: v }));
+    return [...m.entries()].map(([k, v]) => ({ key: k, label: labels ? labels(k) : k, value: v })).sort(byVal);
   };
   const pct = (a, b) => (b ? Math.round(a / b * 100) : 0);
 
   /* ---------- Bộ lọc chung (khối lọc trắng của report-dashboard) ---------- */
-  const emptyF = () => ({ year: null, from: '', to: '', unit: null, field: null, fund: null, kind: [], st: [] });
+  const emptyF = () => ({ year: null, q: null, m: null, from: '', to: '', unit: null, field: null, fund: null, kind: [], st: [] });
+  /* T70 (SRS 30 V0.4 BR-BCC-01-02): Quý, Tháng thu hẹp Năm theo lịch; chỉ chọn được khi đã chọn Năm, chọn Tháng thì xoá Quý và ngược lại. */
+  const QUY = ['I', 'II', 'III', 'IV'];
+  const monthOf = (s) => Number(String(s || '').split('/')[1]) || 0;
   const FL = {};
   const fst = (id) => (FL[id] = FL[id] || { f: emptyF(), d: emptyF(), at: '07/10/2026 08:00' });
+  /* T70 (SRS 30 BR-BCC-01-03, 02-03): bộ trạng thái của đối tượng theo thứ tự vòng đời — dùng cho ô lọc Trạng thái và thẻ Theo trạng thái (nhóm cố định). */
+  function stOrder(kind) {
+    const T = window.Thau, v = (m) => Object.values(m).map((x) => x[0]);
+    return { DXMS: v(S.DXMS_STATUS), KDT: v(window.Kdt.KDT_STAGE), KHLCNT: v(T.KHL), GOI: v(T.LC), HD: v(HD().HD_ST) }[kind] || null;
+  }
   function statusOpts(kinds, fx) {
-    if (kinds.length === 1) return [...new Set(fx.all.filter((x) => x.kind === kinds[0]).map((x) => x.st))].map((s) => ({ value: s, label: s }));
+    if (kinds.length === 1) return [...new Set(stOrder(kinds[0]) || fx.all.filter((x) => x.kind === kinds[0]).map((x) => x.st))].map((s) => ({ value: s, label: s }));
     return Object.entries(GRP).map(([value, label]) => ({ value, label }));
   }
   function applyF(rows, f) {
-    return rows.filter((x) => (!f.year || yearOf(x.date) === f.year) && (!f.from || dk(x.date) >= dk(f.from)) && (!f.to || dk(x.date) <= dk(f.to))
+    return rows.filter((x) => (!f.year || yearOf(x.date) === f.year) && (!f.q || Math.ceil(monthOf(x.date) / 3) === Number(f.q)) && (!f.m || monthOf(x.date) === Number(f.m)) && (!f.from || dk(x.date) >= dk(f.from)) && (!f.to || dk(x.date) <= dk(f.to))
       && (!f.unit || x.unit === f.unit) && (!f.field || x.field === f.field) && (!f.fund || x.fund === f.fund || (x.fundParts || []).some((p) => p.fund === f.fund)) && (!f.kind.length || f.kind.includes(x.kind))
       && (!f.st.length || f.st.includes(x.st) || f.st.includes(x.grp))
       && (!x.draft || f.st.includes(x.st))); // T48 Q2: ĐXMS Chưa khởi tạo chỉ hiện khi lọc đúng trạng thái này
   }
   function filterBar(id, fx, o) {
     const L = fst(id), d = L.d;
-    const set = (k) => (v) => { d[k] = v; if (k === 'kind') d.st = []; rerender(); };
+    const set = (k) => (v) => { d[k] = v; if (k === 'kind') d.st = []; if (k === 'year' && !v) { d.q = null; d.m = null; } if (k === 'q' && v) d.m = null; if (k === 'm' && v) d.q = null; rerender(); };
     const sel = (k, label, opts, extra) => `<div class="vfield rp-f"><div class="lr"><label>${label}</label></div>${vSelect(Object.assign({ id: `rp-${id}-${k}`, value: d[k], clear: true, searchable: true, placeholder: 'Tất cả', options: opts, onChange: set(k) }, extra))}</div>`;
     const units = [...new Set(fx.all.map((x) => x.unit).filter(Boolean))].sort();
     const kinds = o.kinds || [];
     return `<section class="rp-filter" data-rp="${id}">
       ${sel('year', 'Năm', ['2026', '2025'].map((y) => ({ value: y, label: y })), { searchable: false, placeholder: 'Tất cả các năm' })}
+      ${o.qm ? sel('q', 'Quý', QUY.map((r, i) => ({ value: String(i + 1), label: 'Quý ' + r })), { searchable: false, disabled: !d.year }) + sel('m', 'Tháng', Array.from({ length: 12 }, (_, i) => ({ value: String(i + 1), label: 'Tháng ' + (i + 1) })), { searchable: false, disabled: !d.year }) : ''}
       ${window.UI.vDateRange({ split: ['Từ ngày', 'Đến ngày'], cls: 'rp-f', from: [`data-rpf="${id}:from"`, d.from], to: [`data-rpf="${id}:to"`, d.to] })}
       ${sel('unit', 'Đơn vị', units.map((u) => ({ value: u, label: u })))}
       ${sel('field', 'Lĩnh vực', K().catOpts('linh-vuc'), { searchable: false })}
@@ -189,17 +204,23 @@
      GIẢ LẬP: ánh xạ 4 nhóm trạng thái (Q3), hạn bước và "sắp đến hạn" (Q4) — ghi ở (i). Bản 7 tab cũ: tongQuanOld (không gọi). ---------- */
   const TQ4 = { tab: 'dxms' };
   const TQD = {};
-  /* Hồ sơ chạy luồng đang ở bước phê duyệt cuối (MS01 / MS02 bước 60 Thủ trưởng đơn vị VHT phê duyệt) → ĐXMS Chờ phê duyệt. */
-  function dxWaiting() {
-    const set = new Set();
+  /* T69 (SRS 34 L3, BR-TQ-C-01): nhóm Chờ phê duyệt theo **mã bước cấu hình** của tab (`waiting_step`, "quy trình:bước") — không cứng bước 60 trong code.
+     Hồ sơ chạy luồng: xét mọi việc đang mở; hồ sơ mẫu: bước đang ở (c.task), không có số bước thì theo tên bước. */
+  function dxWaiting(steps) {
+    const set = new Set(), on = (fam, k) => steps.includes(`${fam}:${k}`);
     S.allCases().forEach((c) => {
       if (c.st !== 'processing' || !c.dxms) return;
-      const at60 = c.live ? (Flow.state.tokens || []).some((t) => String(t.task) === '60') : String(c.task) === '60' || /Xem xét, phê duyệt/.test(c.step || '');
-      if (at60) set.add(c.dxms);
+      const fam = D.familyOf(c.flow || (c.live && Flow.state.vars ? Flow.state.vars.process : ''));
+      const at = c.live ? (Flow.state.tokens || []).some((t) => on(fam, t.task)) : c.task != null ? on(fam, c.task) : /Xem xét, phê duyệt/.test(c.step || '');
+      if (at) set.add(c.dxms);
     });
     return set;
   }
+  /* KĐT: stage của Kdt.meta suy từ bước đang mở của hồ sơ hiệu lực — các stage dưới = các bước ký chủ trương / quyết định / hồ sơ gộp, trình và Tập đoàn thẩm định (MS13, MS14). */
   const KDT_WAIT = ['KYCT', 'KYQD', 'KYGOP', 'TD', 'TDTD'];
+  /* T69 L1 (SRS 34 BR-TQ-C-04): tiền theo đồng — dữ liệu prototype lưu tỷ đồng, quy ra đồng khi hiện / xuất. */
+  const dongN = (v) => Math.round((v || 0) * 1e9);
+  const DONG = (v) => ty(dongN(v), 0);
   function addWd(s, n) {
     const [d, m, y] = String(s).split('/').map(Number); const x = new Date(y, m - 1, d); let k = 0;
     while (k < n) { x.setDate(x.getDate() + 1); if (x.getDay() % 6) k += 1; }
@@ -227,89 +248,112 @@
     return out;
   }
   const TQ_TABS = {
-    dxms: { label: 'Đề xuất mua sắm', kind: 'DXMS', obj: 'ĐXMS',
+    dxms: { label: 'Đề xuất mua sắm', kind: 'DXMS', obj: 'ĐXMS', code: 'DXMS', waitSteps: ['MS01:60', 'MS02:60'], near: 3,
       groups: [['run', 'Đang xử lý', '#2a78d6'], ['wait', 'Chờ phê duyệt', '#b25e09'], ['done', 'Đã phê duyệt', '#12805c'], ['late', 'Quá hạn', '#d92d20']] },
-    kdt: { label: 'Khoản đầu tư', kind: 'KDT', obj: 'KĐT',
+    kdt: { label: 'Khoản đầu tư', kind: 'KDT', obj: 'KĐT', code: 'KDT', near: 3,
       groups: [['run', 'Đang lập / thẩm định', '#2a78d6'], ['wait', 'Chờ phê duyệt', '#b25e09'], ['done', 'Đã phê duyệt', '#12805c'], ['late', 'Quá hạn', '#d92d20']] },
-    goi: { label: 'Gói thầu', kind: 'GOI', obj: 'gói thầu',
+    goi: { label: 'Gói thầu', kind: 'GOI', obj: 'gói thầu', code: 'GOI', near: 3,
       groups: [['run', 'Đang LCNT', '#2a78d6'], ['wait', 'Chờ phê duyệt kết quả', '#b25e09'], ['done', 'Đã có kết quả', '#12805c'], ['late', 'Chậm tiến độ', '#d92d20']] },
-    hd: { label: 'Hợp đồng', kind: 'HD', obj: 'hợp đồng',
+    hd: { label: 'Hợp đồng', kind: 'HD', obj: 'hợp đồng', code: 'HD', near: 3,
       groups: [['run', 'Đang thực hiện', '#2a78d6'], ['wait', 'Chờ hoàn tất', '#b25e09'], ['done', 'Đã hoàn thành', '#12805c'], ['late', 'Chậm tiến độ', '#d92d20']] },
   };
   /* Q3 GIẢ LẬP: nhóm trạng thái (run / wait / done; null = Dừng, Hủy, Nháp, Chờ phê duyệt KHLCNT — không vào thẻ) và cờ quá hạn / chậm (đếm chéo). */
   function grp4(x, ctx) {
     if (x.kind === 'DXMS') return x.state === 'PD' ? (ctx.wait.has(x.code) ? 'wait' : 'run') : ['OK', 'DC', 'SUP'].includes(x.state) ? 'done' : null;
     if (x.kind === 'KDT') return x.stage === 'STOP' ? null : KDT_WAIT.includes(x.stage) ? 'wait' : ['OK', 'CT_OK'].includes(x.stage) ? 'done' : 'run';
-    if (x.kind === 'GOI') return ['HS', 'MOI', 'DG', 'TH'].includes(x.stx) ? 'run' : x.stx === 'KQ_CHO' ? 'wait' : x.stx === 'KQ' ? 'done' : null;
+    /* T69 L10: gói thầu theo trạng thái LC-… (THAU-TT-1311 §4.1): LC-01…07 Đang LCNT, LC-08 Chờ phê duyệt kết quả, LC-09…11 Đã có kết quả; CHO-KH, LC-X không vào nhóm. */
+    if (x.kind === 'GOI') { const n = /^LC-(\d\d)$/.exec(x.lc || ''); return !n ? null : +n[1] <= 7 ? 'run' : +n[1] === 8 ? 'wait' : 'done'; }
     return ['TT', 'KY', 'TH'].includes(x.stc) ? 'run' : x.stc === 'TL' ? 'wait' : x.stc === 'DONG' ? 'done' : null;
   }
-  const gtIsLate = (g) => g.grp === 'run' && g.stx !== 'KH' && /Quý III\/2026|Quý II\/2026/.test(g.start || '');
+  /* T69 L5 (SRS 34 BR-TQ-C-07): gói LC-01…08 chậm khi (a) kỳ bắt đầu LCNT trong KHLCNT ("Quý III/2026", "Tháng 11/2026") đã kết thúc trước ngày hiện tại,
+     hoặc (b) việc đang mở của tiến trình LCNT quá hạn (Thau.pkRow prog.late). */
+  const ROMAN = { I: 1, II: 2, III: 3, IV: 4 };
+  function periodEnd(s) {
+    const q = /Quý\s+(I{1,3}|IV)\/(\d{4})/.exec(s || ''), m = /Tháng\s+(\d{1,2})\/(\d{4})/.exec(s || '');
+    const end = q ? new Date(+q[2], ROMAN[q[1]] * 3, 0) : m ? new Date(+m[2], +m[1], 0) : null;
+    return end ? `${String(end.getDate()).padStart(2, '0')}/${String(end.getMonth() + 1).padStart(2, '0')}/${end.getFullYear()}` : null;
+  }
+  const gtLatePlan = (g) => { const e = periodEnd(g.start); return !!e && dk(e) < dk(HD().TODAY); };
+  const gtOpen = (g) => /^LC-0[1-8]$/.test(g.lc || '');
+  const gtIsLate = (g) => gtOpen(g) && (gtLatePlan(g) || !!(g.prog && g.prog.late));
   function isLate(x, ctx) {
     if (x.kind === 'DXMS' || x.kind === 'KDT') return ctx.odObj.has(x.code);
     if (x.kind === 'GOI') return gtIsLate(x);
     return x.late.length > 0;
   }
+  /* T69 L8 (SRS 34 thành phần 15): ĐXMS không phải bản tính vào tổng hiện Giá trị ĐXMS kèm "*" (không còn 0,00); tiền theo đồng (L1). */
+  const NOT_IN = 'Không cộng vào tổng: không phải bản hiệu lực của chuỗi điều chỉnh';
+  const valCell = (r) => (r.kind === 'DXMS' && r.inV === false ? `<span data-tip="${NOT_IN}">${DONG(r.value)}*</span>` : DONG(r.value));
+  /* T69 L4 (SRS 34 BR-TQ-C-05): số ngày còn lại tới một ngày hạn — âm là quá hạn; việc quy trình đếm ngày làm việc. */
+  const leftWd = (due) => (dk(due) < dk(HD().TODAY) ? -wd(due, HD().TODAY) : wd(HD().TODAY, due));
   function tongQuan() {
     // Theo: fe/repo-khcn-hr-tools-fe/src/app/features/reporting/report-dashboard (khối lọc) + app-tabs; ô chỉ số theo ecat common-catalog/overview; ngăn chi tiết = vht-modal dạng drawer
     const fx = facts(), L = fst('tq'), f = L.f, T = TQ_TABS[TQ4.tab], cat = K().cat;
     const od = overdue(fx), near = nearDue();
-    const ctx = { wait: dxWaiting(), odObj: new Set(od.map((o) => o.obj)) };
+    const ctx = { wait: dxWaiting(TQ_TABS.dxms.waitSteps), odObj: new Set(od.map((o) => o.obj)) };
     /* Q2: lọc chung Năm, Từ – Đến, Đơn vị, Lĩnh vực; Trạng thái = 4 nhóm của tab. */
     const base = applyF(fx.all, Object.assign({}, f, { st: [], kind: [T.kind], fund: null }));
     base.forEach((x) => { x.g4 = grp4(x, ctx); x.late4 = isLate(x, ctx); });
     const rows = f.st.length ? base.filter((x) => f.st.some((s) => (s === 'late' ? x.late4 : x.g4 === s))) : base;
     const G = (k) => (k === 'late' ? rows.filter((x) => x.late4) : rows.filter((x) => x.g4 === k));
-    const money = (v) => ty(r2(v), 2);
+    /* T69 L2: mô tả ô theo SRS 34 bảng chỉ số §3.1.2; [tên, mô tả, hồ sơ cấu thành, loại số, màu, mã chỉ số (tên tệp xuất)]. */
     const M = {
-      dxms: [['Tổng số ĐXMS', 'Số ĐXMS thuộc phạm vi lọc', rows], ['Tổng giá trị ĐXMS', 'Tỷ đồng · giá trị bản đang có hiệu lực', rows.filter((x) => x.inV !== false), 'value'],
-        ['ĐXMS chờ phê duyệt', 'Hồ sơ đang ở bước Thủ trưởng đơn vị phê duyệt', G('wait'), 'count', 'warn'], ['ĐXMS quá hạn xử lý', 'Chưa hoàn tất, vượt hạn bước (Giám sát tiến trình)', G('late'), 'count', 'bad']],
-      kdt: [['Tổng số khoản đầu tư', 'Số KĐT thuộc phạm vi lọc', rows], ['Tổng mức vốn KĐT', 'Tỷ đồng · tổng mức vốn đang có hiệu lực', rows, 'value'],
-        ['KĐT chờ phê duyệt', 'Chờ ký chủ trương / quyết định, đang trình Tập đoàn', G('wait'), 'count', 'warn'], ['KĐT quá hạn xử lý', 'Chưa hoàn tất, vượt hạn bước (Giám sát tiến trình)', G('late'), 'count', 'bad']],
-      goi: [['Tổng số gói thầu', 'Số gói thầu thuộc phạm vi lọc', rows], ['Tổng giá gói thầu đã duyệt', 'Tỷ đồng · gói thuộc KHLCNT đã phê duyệt', rows.filter((g) => g.stx !== 'KH'), 'value'],
-        ['Gói thầu đang LCNT', 'Đang lập hồ sơ mời, mời thầu, đánh giá, xử lý tình huống', G('run'), 'count'], ['Gói thầu chậm tiến độ', 'Chưa có KQLCNT, quá thời gian bắt đầu LCNT kế hoạch', G('late'), 'count', 'bad']],
-      hd: [['Tổng số hợp đồng', 'Số hợp đồng thuộc phạm vi lọc', rows], ['Tổng giá trị hợp đồng', 'Tỷ đồng · giá trị hợp đồng', rows, 'value'],
-        ['Hợp đồng đang thực hiện', 'Đang thương thảo, trình ký, thực hiện', G('run'), 'count'], ['Hợp đồng chậm tiến độ', 'Có mốc thực hiện quá hạn', G('late'), 'count', 'bad'],
-        ['Giá trị đã thanh toán', 'Tỷ đồng · theo MS24 / SAP', rows.filter((h) => h.paid > 0), 'paid'], ['Giá trị còn phải thanh toán', 'Tỷ đồng · giá trị hợp đồng trừ đã thanh toán', rows.filter((h) => h.remain > 0), 'remain']],
+      dxms: [['Tổng số ĐXMS', 'Số ĐXMS thuộc phạm vi lọc', rows, 'count', '', 'tong_so'], ['Tổng giá trị ĐXMS', 'Đồng · giá trị bản tính vào tổng', rows.filter((x) => x.inV !== false), 'value', '', 'gia_tri'],
+        ['ĐXMS chờ phê duyệt', 'Hồ sơ đang ở bước phê duyệt cuối', G('wait'), 'count', 'warn', 'cho_phe_duyet'], ['ĐXMS quá hạn xử lý', 'Chưa hoàn tất, vượt hạn xử lý', G('late'), 'count', 'bad', 'qua_han']],
+      kdt: [['Tổng số khoản đầu tư', 'Số KĐT thuộc phạm vi lọc', rows, 'count', '', 'tong_so'], ['Tổng mức vốn KĐT', 'Đồng · tổng mức vốn hiển thị', rows, 'value', '', 'tong_muc_von'],
+        ['KĐT chờ phê duyệt', 'Chờ ký chủ trương / quyết định, đang trình Tập đoàn', G('wait'), 'count', 'warn', 'cho_phe_duyet'], ['KĐT quá hạn xử lý', 'Chưa hoàn tất, vượt hạn xử lý', G('late'), 'count', 'bad', 'qua_han']],
+      goi: [['Tổng số gói thầu', 'Số gói thầu thuộc phạm vi lọc', rows, 'count', '', 'tong_so'], ['Tổng giá gói thầu đã duyệt', 'Đồng · gói thuộc KHLCNT đã hoàn thành', rows.filter((g) => g.lc !== 'CHO-KH'), 'value', '', 'gia_da_duyet'],
+        ['Gói thầu đang LCNT', 'Đang chuẩn bị, phát hành, nhận, đánh giá hồ sơ, thương thảo', G('run'), 'count', '', 'dang_lcnt'], ['Gói thầu chậm tiến độ', 'Chưa có KQLCNT, quá kỳ kế hoạch hoặc quá hạn bước', G('late'), 'count', 'bad', 'cham']],
+      hd: [['Tổng số hợp đồng', 'Số hợp đồng thuộc phạm vi lọc', rows, 'count', '', 'tong_so'], ['Tổng giá trị hợp đồng', 'Đồng · giá trị hợp đồng', rows, 'value', '', 'gia_tri'],
+        ['Hợp đồng đang thực hiện', 'Đang thương thảo, trình ký, thực hiện', G('run'), 'count', '', 'dang_thuc_hien'], ['Hợp đồng chậm tiến độ', 'Có mốc thực hiện quá hạn', G('late'), 'count', 'bad', 'cham'],
+        ['Giá trị đã thanh toán', 'Đồng · tổng các đợt đã thanh toán', rows.filter((h) => h.paid > 0), 'paid', '', 'da_thanh_toan'], ['Giá trị còn phải thanh toán', 'Đồng · giá trị hợp đồng trừ đã thanh toán', rows.filter((h) => h.remain > 0), 'remain', '', 'con_phai_tt']],
     }[TQ4.tab];
-    const valOf = (m) => (m[3] === 'value' ? money(sumV(m[2])) : m[3] === 'paid' ? money(m[2].reduce((s, h) => s + h.paid, 0)) : m[3] === 'remain' ? money(m[2].reduce((s, h) => s + h.remain, 0)) : String(m[2].length));
-    M.forEach((m, i) => { TQD['m' + i] = { title: m[0], desc: m[1], rows: m[2] }; });
-    T.groups.forEach(([k, l]) => { TQD['g' + k] = { title: `${T.label} — ${l}`, desc: k === 'late' ? 'Đếm chéo: hồ sơ quá hạn / chậm vẫn thuộc nhóm trạng thái của nó.' : '', rows: G(k) }; });
-    const metric = (m, i) => `<button type="button" class="ov-tile rp-tile tq-m" data-tqd="m${i}"><span class="ov-tx"><span class="t">${esc(m[0])}</span><span class="d">${esc(m[1])}</span></span>
-      <span class="ov-n"><span class="n num ${m[4] || ''}">${valOf(m)}${m[3] && m[3] !== 'count' ? ' <small>tỷ</small>' : ''}</span></span></button>`;
+    const valOf = (m) => (m[3] === 'value' ? DONG(sumV(m[2])) : m[3] === 'paid' ? DONG(m[2].reduce((s, h) => s + h.paid, 0)) : m[3] === 'remain' ? DONG(m[2].reduce((s, h) => s + h.remain, 0)) : String(m[2].length));
+    M.forEach((m, i) => { TQD['m' + i] = { title: m[0], desc: m[1], rows: m[2], code: m[5], tab: T }; });
+    T.groups.forEach(([k, l]) => { TQD['g' + k] = { title: `${T.label} — ${l}`, desc: k === 'late' ? 'Đếm chéo: hồ sơ quá hạn / chậm vẫn thuộc nhóm trạng thái của nó.' : '', rows: G(k), code: 'nhom_' + k, tab: T }; });
+    const metric = (m, i) => `<button type="button" class="ov-tile rp-tile tq-m ${m[3] !== 'count' ? 'money' : ''}" data-tqd="m${i}"><span class="ov-tx"><span class="t">${esc(m[0])}</span><span class="d">${esc(m[1])}</span></span>
+      <span class="ov-n"><span class="n num ${m[4] || ''}">${valOf(m)}${m[3] !== 'count' ? ' <small>đồng</small>' : ''}</span></span></button>`;
     const card4 = ([k, l, c]) => `<button type="button" class="tq-st" data-tqd="g${k}" aria-label="${esc(l)}: ${G(k).length} hồ sơ"><span class="tq-st-l">${esc(l)}</span><span class="tq-st-n num" style="color:${c}">${G(k).length}</span></button>`;
-    /* Hồ sơ cần chú ý (Q4): quá hạn + còn dưới 3 ngày đến hạn, chưa hoàn tất; gấp nhất lên đầu. */
+    /* Hồ sơ cần chú ý (SRS 34 BR-TQ-02-04, 02-05): quá hạn / chậm + còn dưới ngưỡng ngày (T.near) đến hạn; gấp nhất lên đầu. */
     const byCode = new Map(rows.map((x) => [x.code, x]));
     let att = [];
     if (T.kind === 'DXMS' || T.kind === 'KDT') {
       od.filter((o) => o.kind === T.kind && byCode.has(o.obj)).forEach((o) => att.push({ x: byCode.get(o.obj), step: o.stepName || o.step, due: addWd(o.since, Math.max(0, wd(o.since, HD().TODAY) - o.days)), left: -o.days }));
-      near.filter((n) => n.kind === T.kind && byCode.has(n.obj) && !ctx.odObj.has(n.obj)).forEach((n) => att.push({ x: byCode.get(n.obj), step: n.step, due: n.due, left: n.left }));
+      near.filter((n) => n.kind === T.kind && byCode.has(n.obj) && !ctx.odObj.has(n.obj) && n.left < T.near).forEach((n) => att.push({ x: byCode.get(n.obj), step: n.step, due: n.due, left: n.left }));
     } else if (T.kind === 'GOI') {
-      rows.filter((g) => g.late4).forEach((g) => att.push({ x: g, step: g.st, due: g.start, left: null }));
+      /* T69 L6: gói LC-01…08 — chậm theo kỳ kế hoạch (không số ngày), hoặc việc đang mở của tiến trình LCNT quá hạn / còn dưới ngưỡng; cột Bước hiện tại = bước của việc đang mở. */
+      rows.filter(gtOpen).forEach((g) => {
+        const p = g.prog || {}, left = p.due ? leftWd(p.due) : null;
+        if (gtLatePlan(g)) att.push({ x: g, step: p.step || '-', due: g.start, left: null });
+        else if (left != null && left < T.near) att.push({ x: g, step: p.step || '-', due: p.due, left });
+      });
     } else {
       rows.filter((h) => h.g4 && h.g4 !== 'done').forEach((h) => {
-        const ms = (h.h.ms || []).filter((m) => !m[2]).map((m) => ({ m, left: -HD().days(m[1], HD().TODAY) })).filter((v) => v.left <= 2).sort((a, b) => a.left - b.left)[0];
+        const ms = (h.h.ms || []).filter((m) => !m[2]).map((m) => ({ m, left: -HD().days(m[1], HD().TODAY) })).filter((v) => v.left < T.near).sort((a, b) => a.left - b.left)[0];
         if (ms) att.push({ x: h, step: ms.m[0], due: ms.m[1], left: ms.left });
       });
     }
     const seen = new Set();
-    att = att.filter((a) => !seen.has(a.x.code) && seen.add(a.x.code)).sort((a, b) => (a.left == null ? -1e9 : a.left) - (b.left == null ? -1e9 : b.left));
+    /* T69 L7: cùng số ngày → Mã tăng dần. */
+    att = att.filter((a) => !seen.has(a.x.code) && seen.add(a.x.code)).sort((a, b) => ((a.left == null ? -1e9 : a.left) - (b.left == null ? -1e9 : b.left)) || a.x.code.localeCompare(b.x.code));
     const tag = (a) => (a.left == null ? badge('Chậm tiến độ', 'error') : a.left < 0 ? badge(`Quá hạn ${-a.left} ngày`, 'error') : a.left === 0 ? badge('Đến hạn hôm nay', 'warning') : badge(`Còn ${a.left} ngày`, 'warning'));
     const isHd = T.kind === 'HD';
-    const attCols = [[`Mã ${T.obj}`, 160], ['Tên', 280], ['Đơn vị', 180], ['Lĩnh vực', 140], ['Trạng thái', 170], [T.kind === 'GOI' ? 'Trạng thái gói' : isHd ? 'Mốc thực hiện' : 'Bước đang xử lý', 240],
-      [T.kind === 'GOI' ? 'Bắt đầu LCNT (kế hoạch)' : 'Hạn xử lý', 150], ['Giá trị (tỷ đồng)', 130, 'r'], ['Thời hạn', 150, 'c']].concat(isHd ? [['Đã thanh toán (tỷ đồng)', 150, 'r']] : []);
+    const attCols = [[`Mã ${T.obj}`, 160], ['Tên', 280], ['Đơn vị', 180], ['Lĩnh vực', 140], ['Trạng thái', 170], [T.kind === 'GOI' ? 'Bước hiện tại' : isHd ? 'Mốc thực hiện' : 'Bước đang xử lý', 240],
+      [T.kind === 'GOI' ? 'Bắt đầu LCNT (kế hoạch)' : 'Hạn xử lý', 150], ['Giá trị (đồng)', 170, 'r'], ['Thời hạn', 150, 'c']].concat(isHd ? [['Đã thanh toán (đồng)', 170, 'r']] : []);
     const attTbl = att.length ? K().table(attCols, att, (a) => `<td><a class="link" data-go="${a.x.href}">${esc(a.x.code)}</a></td><td>${K().clamp(a.x.title)}</td><td>${K().clamp(a.x.unit)}</td>
-        <td>${esc(cat('linh-vuc', a.x.field) || '')}</td><td>${esc(a.x.st)}</td><td>${K().clamp(a.step)}</td><td>${esc(a.due || '-')}</td><td class="r num">${money(vOf(a.x))}</td><td class="c">${tag(a)}</td>${isHd ? `<td class="r num">${money(a.x.paid)}</td>` : ''}`)
-      : '<div class="empty-t">Không có hồ sơ quá hạn hoặc còn dưới 3 ngày đến hạn theo bộ lọc</div>';
+        <td>${esc(cat('linh-vuc', a.x.field) || '')}</td><td>${esc(a.x.st)}</td><td>${K().clamp(a.step)}</td><td>${esc(a.due || '-')}</td><td class="r num">${valCell(a.x)}</td><td class="c">${tag(a)}</td>${isHd ? `<td class="r num">${DONG(a.x.paid)}</td>` : ''}`)
+      : `<div class="empty-t">Không có hồ sơ quá hạn hoặc còn dưới ${T.near} ngày đến hạn theo bộ lọc</div>`;
     const info = {
-      scr: 'SCR-92', name: 'Tổng quan', uc: 'WBS-0211 › Tổng quan · T61 (D-116) ý tưởng BA owner phân hệ Tổng quan 12/11/2026',
+      scr: 'SCR-92', name: 'Tổng quan', uc: 'WBS-0211 › Tổng quan · T61 (D-116) ý tưởng BA owner phân hệ Tổng quan 12/11/2026 · SRS 34 Tổng quan V0.1 (T68, D-119), prototype theo SRS ở T69',
       notes: [
-        '<b>T61 (D-116)</b>: làm gọn — chỉ hiện chỉ số core ảnh hưởng quyết định điều hành. 4 tab theo đối tượng (ĐXMS, Khoản đầu tư, Gói thầu, Hợp đồng), mỗi tab 3 khối: Chỉ số điều hành, Tiến độ nghiệp vụ, Hồ sơ cần chú ý. Thay 7 tab cũ (Chỉ số tổng quan … Cảnh báo); biểu đồ phân tích, Top 5 điểm nghẽn xem ở các màn Báo cáo.',
-        'Bộ lọc chung: Năm, Từ ngày – Đến ngày, Đơn vị, Lĩnh vực (danh mục thật); <b>Trạng thái</b> = 4 nhóm của tab đang xem. Đổi tab thì bỏ lọc Trạng thái.',
-        'Bấm ô chỉ số hoặc thẻ trạng thái → ngăn chi tiết bên phải: danh sách hồ sơ cấu thành con số, mã mở màn chi tiết, Xuất excel.',
-        '<b>GIẢ LẬP — nhóm trạng thái</b> (cần nghiệp vụ chốt): ĐXMS Đang xử lý = Đang phê duyệt chưa tới bước 60; Chờ phê duyệt = hồ sơ đang ở bước 60 (Thủ trưởng đơn vị VHT phê duyệt); Đã phê duyệt = Đã phê duyệt / Đang điều chỉnh / Đã được điều chỉnh. KĐT Chờ phê duyệt = Chờ ký chủ trương / quyết định / hồ sơ gộp, Đang trình Tập đoàn, Tập đoàn thẩm định; Đã phê duyệt gồm Đã phê duyệt chủ trương. Gói thầu Đang LCNT = Đang lập hồ sơ mời / mời thầu / đánh giá / xử lý tình huống. Hợp đồng Chờ hoàn tất = Đang thanh lý. Dừng, Hủy, Nháp, Chờ phê duyệt KHLCNT không vào thẻ.',
-        '<b>Quá hạn / Chậm tiến độ là thẻ đếm chéo</b> — quá hạn là thuộc tính; hồ sơ quá hạn vẫn nằm trong nhóm trạng thái của nó (bản ý tưởng coi là trạng thái riêng).',
-        '<b>Hồ sơ cần chú ý</b>: chưa hoàn tất, quá hạn hoặc còn dưới 3 ngày đến hạn, gấp nhất lên đầu. ĐXMS / KĐT: quá hạn theo Giám sát tiến trình; sắp đến hạn = còn ≤ 2 ngày làm việc tới hạn bước (hồ sơ chạy luồng: hạn công việc thật; <b>hồ sơ mẫu GIẢ LẬP</b> số ngày còn lại). Gói thầu: chỉ gói chậm tiến độ (kế hoạch LCNT theo quý, chưa có hạn theo ngày). Hợp đồng: mốc thực hiện quá hạn hoặc đến hạn trong 2 ngày.',
-        'GIẢ LẬP: hạn bước = số ngày làm việc chuẩn × 2; ngày dữ liệu cố định ' + HD().TODAY + '. Thật: API tổng hợp của BE trên dữ liệu nghiệp vụ và Camunda; "Làm mới dữ liệu" gọi lại API.',
+        '<b>T61 (D-116)</b>: làm gọn — chỉ hiện chỉ số core ảnh hưởng quyết định điều hành. 4 tab theo đối tượng (ĐXMS, Khoản đầu tư, Gói thầu, Hợp đồng), mỗi tab 3 khối: Chỉ số điều hành, Tiến độ nghiệp vụ, Hồ sơ cần chú ý. Biểu đồ phân tích, Top 5 điểm nghẽn xem ở các màn Báo cáo.',
+        '<b>Cấu hình (SRS 34 mục 4.2)</b>: mỗi tab là một dòng định nghĩa báo cáo loại Tổng quan trên bộ máy Báo cáo — chỉ số, 4 nhóm trạng thái, cột, ngưỡng sắp đến hạn (3 ngày). Nhóm <b>Chờ phê duyệt</b> của ĐXMS theo danh sách mã bước cấu hình (mặc định MS01, MS02 bước 60); KĐT theo các bước ký chủ trương / quyết định / hồ sơ gộp, trình và Tập đoàn thẩm định.',
+        'Bộ lọc chung: Năm, Từ ngày, Đến ngày, Đơn vị, Lĩnh vực (danh mục thật); <b>Trạng thái</b> = 4 nhóm của tab đang xem. Đổi tab thì bỏ lọc Trạng thái. Tiền hiện theo đồng.',
+        'Bấm ô chỉ số hoặc thẻ trạng thái → ngăn chi tiết bên phải: danh sách hồ sơ cấu thành con số (Mã giảm dần), mã mở màn chi tiết, Xuất excel. ĐXMS không phải bản tính vào tổng hiện giá trị kèm "*".',
+        '<b>Nhóm trạng thái</b> (SRS 34 mục 2.3, câu hỏi khách 1): ĐXMS Đang xử lý / Chờ phê duyệt (bước cấu hình) / Đã phê duyệt (gồm Đang điều chỉnh, Đã được điều chỉnh). KĐT Đang lập / thẩm định (gồm Mới tạo) / Chờ phê duyệt / Đã phê duyệt (gồm chủ trương). <b>Gói thầu theo trạng thái LC</b> (THAU-TT-1311 §4.1): LC-01…07 Đang LCNT, LC-08 Chờ phê duyệt kết quả, LC-09…11 Đã có kết quả; Chờ hoàn thành KHLCNT, LC-X không vào thẻ. Hợp đồng Chờ hoàn tất = Đang thanh lý.',
+        '<b>Quá hạn / Chậm tiến độ là thẻ đếm chéo</b> — hồ sơ quá hạn vẫn nằm trong nhóm trạng thái của nó.',
+        '<b>Hồ sơ cần chú ý</b>: quá hạn hoặc còn dưới 3 ngày đến hạn, gấp nhất lên đầu, cùng số ngày theo Mã. ĐXMS / KĐT: Hạn xử lý của việc đang mở (việc có hạn sớm nhất), ngày làm việc. Gói thầu LC-01…08: chậm khi kỳ bắt đầu LCNT trong KHLCNT đã kết thúc hoặc việc LCNT quá hạn; thêm gói có việc LCNT còn dưới 3 ngày; cột Bước hiện tại. Hợp đồng: mốc thực hiện quá hạn hoặc còn dưới 3 ngày (ngày lịch).',
+        'GIẢ LẬP: hạn việc của hồ sơ mẫu ĐXMS / KĐT = số ngày làm việc chuẩn × 2 (quá hạn) hoặc suy từ mã hồ sơ (sắp đến hạn); hạn việc LCNT của gói mẫu suy từ mã gói (như cột Hạn ở danh sách gói thầu); ngày dữ liệu cố định ' + HD().TODAY + '. Xuất excel tải .csv (BE xuất .xlsx). Thật: API tổng hợp của BE trên dữ liệu nghiệp vụ và việc đang mở; "Làm mới dữ liệu" gọi lại API.',
       ],
       src: 'hr-tools reporting/report-dashboard · /reporting',
     };
@@ -320,21 +364,29 @@
       <div class="rp-tiles tq-metrics">${M.map(metric).join('')}</div></section>
       <section class="tq-blk"><h2 class="rp-h2">Tiến độ nghiệp vụ</h2><p class="cap">Số lượng ${esc(T.obj)} theo nhóm trạng thái · Quá hạn / Chậm tiến độ đếm chéo</p>
       <div class="tq-sts">${T.groups.map(card4).join('')}</div></section>
-      ${K().card('Hồ sơ cần chú ý', attTbl, `${att.length} hồ sơ quá hạn hoặc còn dưới 3 ngày đến hạn`)}</div>`;
+      ${K().card('Hồ sơ cần chú ý', attTbl, `${att.length} hồ sơ quá hạn hoặc còn dưới ${T.near} ngày đến hạn`)}</div>`;
   }
+  /* T69 L9 (SRS 34 BR-TQ-03-02, 03-03): ngăn chi tiết sắp Mã giảm dần; tiền theo đồng; tệp xuất có dòng tiêu đề, bộ lọc, người xuất; tên Tong_quan_{tab}_{chỉ số}_{thời điểm}. */
   function tqDrawer(key) {
     const x = TQD[key]; if (!x) return;
-    const isHd = TQ4.tab === 'hd';
-    const cols = [['Mã', 160], ['Tên', 260], ['Đơn vị', 170], ['Trạng thái', 160], ['Giá trị (tỷ đồng)', 120, 'r']].concat(isHd ? [['Đã thanh toán (tỷ đồng)', 140, 'r']] : []);
-    const tbl = x.rows.length ? K().table(cols, x.rows, (r) => `<td><a class="link" data-go="${r.href}" data-close>${esc(r.code)}</a></td><td>${K().clamp(r.title)}</td><td>${K().clamp(r.unit)}</td><td>${esc(r.st)}</td><td class="r num">${ty(vOf(r), 2)}</td>${isHd ? `<td class="r num">${ty(r.paid, 2)}</td>` : ''}`)
+    const isHd = TQ4.tab === 'hd', rows = x.rows.slice().sort((a, b) => b.code.localeCompare(a.code));
+    const cols = [['Mã', 160], ['Tên', 260], ['Đơn vị', 170], ['Trạng thái', 160], ['Giá trị (đồng)', 160, 'r']].concat(isHd ? [['Đã thanh toán (đồng)', 160, 'r']] : []);
+    const tbl = rows.length ? K().table(cols, rows, (r) => `<td><a class="link" data-go="${r.href}" data-close>${esc(r.code)}</a></td><td>${K().clamp(r.title)}</td><td>${K().clamp(r.unit)}</td><td>${esc(r.st)}</td><td class="r num">${valCell(r)}</td>${isHd ? `<td class="r num">${DONG(r.paid)}</td>` : ''}`)
       : '<div class="empty-t">Không có dữ liệu phù hợp</div>';
-    const m = window.UI.vModal({ title: x.title, size: 'drawer', body: `<div class="stack">${x.desc ? `<p class="cap">${esc(x.desc)}</p>` : ''}<div class="tq-dr-n"><b>${x.rows.length}</b> hồ sơ</div>${tbl}</div>`,
+    const m = window.UI.vModal({ title: x.title, size: 'drawer', body: `<div class="stack">${x.desc ? `<p class="cap">${esc(x.desc)}</p>` : ''}<div class="tq-dr-n"><b>${rows.length}</b> hồ sơ</div>${tbl}</div>`,
       actions: `<button type="button" class="vbtn secondary" data-close>Đóng</button><button type="button" class="vbtn primary" data-tq-export="${key}">${icon('download')} Xuất excel</button>` });
     m.el.dataset.tqDrawer = key;
     m.el.querySelector('[data-tq-export]').onclick = () => {
-      const lines = [['STT', 'Mã', 'Tên', 'Đơn vị', 'Trạng thái', 'Giá trị (tỷ đồng)'].concat(isHd ? ['Đã thanh toán (tỷ đồng)'] : [])]
-        .concat(x.rows.map((r, i) => [i + 1, r.code, r.title, r.unit, r.st, vOf(r)].concat(isHd ? [r.paid] : [])));
-      toast(`<b>Thành công</b><br>Xuất excel thành công (${x.rows.length} dòng) — ${esc(download('Tong quan - ' + x.title, lines))}`);
+      const f = fst('tq').f, now = new Date(), p2 = (n) => String(n).padStart(2, '0');
+      const stamp = `${now.getFullYear()}${p2(now.getMonth() + 1)}${p2(now.getDate())}${p2(now.getHours())}${p2(now.getMinutes())}${p2(now.getSeconds())}`;
+      const stL = x.tab.groups.filter((g) => f.st.includes(g[0])).map((g) => g[1]).join(', ') || 'Tất cả';
+      const filt = `Năm: ${f.year || 'Tất cả'}; Từ ngày: ${f.from || 'Tất cả'}; Đến ngày: ${f.to || 'Tất cả'}; Đơn vị: ${f.unit || 'Tất cả'}; Lĩnh vực: ${(f.field && K().cat('linh-vuc', f.field)) || 'Tất cả'}; Trạng thái: ${stL}`;
+      const who = window.UI.persona(Flow.state.persona).name;
+      const lines = [[`Tổng quan — ${x.tab.label} — ${x.title}`], [filt], [`Người xuất: ${who}; thời điểm xuất: ${p2(now.getDate())}/${p2(now.getMonth() + 1)}/${now.getFullYear()} ${p2(now.getHours())}:${p2(now.getMinutes())}`], [],
+        ['STT', 'Mã', 'Tên', 'Đơn vị', 'Trạng thái', 'Giá trị (đồng)'].concat(isHd ? ['Đã thanh toán (đồng)'] : [])]
+        .concat(rows.map((r, i) => [i + 1, r.code, r.title, r.unit, r.st, dongN(r.value)].concat(isHd ? [dongN(r.paid)] : [])));
+      download(x.title, lines, `Tong_quan_${x.tab.code}_${x.code}_${stamp}.csv`);
+      toast(`<b>Thành công</b><br>Xuất excel thành công (${rows.length} dòng)`);
     };
   }
 
@@ -431,7 +483,7 @@
   /* ---------- SCR-93 Báo cáo — khuôn chung theo cấu hình ---------- */
   const lk = (r) => `<a class="link" data-go="${r.href}">${esc(r.code)}</a>`;
   const cl = (v) => K().clamp(v);
-  const money = (v) => (v == null ? K().dash : ty(v, 2));
+  const money = (v) => (v == null ? K().dash : DONG(v)); // T70 (SRS 30 BR-BCC-C-06): tiền theo đồng
   /* Cột chi tiết: [tiêu đề, rộng, căn, html(r), khoá sắp xếp(r), giá trị xuất(r)] */
   const COL = {
     code: ['Mã', 160, '', lk, (r) => r.code, (r) => r.code], kind: ['Loại nghiệp vụ', 140, '', (r) => esc(KIND[r.kind]), (r) => KIND[r.kind], (r) => KIND[r.kind]],
@@ -439,21 +491,27 @@
     field: ['Lĩnh vực', 160, '', (r) => esc(K().cat('linh-vuc', r.field)), (r) => r.field, (r) => K().cat('linh-vuc', r.field)],
     fund: ['Nguồn kinh phí', 180, '', (r) => esc(fundTxt(r)), (r) => r.fund, (r) => fundTxt(r)],
     st: ['Trạng thái', 200, 'c', (r) => badge(r.st, r.grp === 'done' ? 'success' : r.grp === 'stop' ? 'default' : 'info'), (r) => r.st, (r) => r.st],
-    value: ['Giá trị (tỷ đồng)', 150, 'r', (r) => (r.inV === false ? `<span class="num muted" title="Không cộng vào tổng: ${r.draft ? 'ĐXMS chưa gửi' : 'không phải bản hiệu lực của chuỗi điều chỉnh'}">${money(r.value)}*</span>` : `<span class="num">${money(r.value)}</span>`), (r) => r.value || 0, (r) => r.value],
+    value: ['Giá trị (đồng)', 150, 'r', (r) => (r.inV === false ? `<span class="num muted" title="Không cộng vào tổng: ${r.draft ? 'ĐXMS chưa gửi' : 'không phải bản hiệu lực của chuỗi điều chỉnh'}">${money(r.value)}*</span>` : `<span class="num">${money(r.value)}</span>`), (r) => r.value || 0, (r) => (r.value == null ? '' : dongN(r.value))],
     date: ['Ngày', 120, '', (r) => `<span class="num">${esc(r.date)}</span>`, (r) => dk(r.date), (r) => r.date],
   };
   const col = (h, w, a, html, key, out) => [h, w, a, html, key, out || key];
+  /* T70: cột tiền — tiêu đề "(đồng)", ô theo đồng, tệp xuất là số đồng (SRS 30 BR-BCC-C-06, 03-03). */
+  const mcol = (h, w, get) => col(h + ' (đồng)', w, 'r', (r) => `<span class="num">${money(get(r))}</span>`, (r) => get(r) || 0, (r) => (get(r) == null ? '' : dongN(get(r))));
   const fundTxt = (r) => (r.fundParts ? r.fundParts.map((p) => `${K().cat('nguon-von', p.fund)} ${Math.round(p.share * 100)}%`).join('; ') : K().cat('nguon-von', r.fund));
   /* T49 R5: giai đoạn nghiệp vụ toàn chuỗi — KĐT tách theo loại hồ sơ đang chạy (D-103). */
   const STAGE = { DXMS: 'ĐXMS', KDT1: 'KĐT – chủ trương', KDT2: 'KĐT – phê duyệt KĐT', KHLCNT: 'KHLCNT', GOI: 'Gói thầu', HD: 'Hợp đồng' };
   const stageOf = (r) => (r.kind === 'KDT' ? (r.hsKind === 'KDT' ? 'KDT2' : 'KDT1') : r.kind);
   /* T49 R13: khoảng thời gian xử lý kiến nghị. */
   const KN_BIN = ['≤ 7 ngày', '8 – 15 ngày', '16 – 30 ngày', '> 30 ngày'];
+  /* T70 (SRS 31 V0.4): khoảng giá trị ĐXMS (BR-BDX-01-05, ngưỡng là cấu hình, giá trị rỗng tính 0); tag trạng thái theo mục 2.3, ĐXMS điều chỉnh kèm lần. */
+  const DX_BIN = ['Dưới 20 tỷ đồng', 'Từ 20 đến dưới 100 tỷ đồng', 'Từ 100 tỷ đồng'];
+  const DX_TAG = { NEW: 'default', PD: 'info', OK: 'success', DC: 'success', SUP: 'success', STOP: 'default' };
+  const dxStL = (r) => r.st + (r.adjN ? ` (điều chỉnh lần ${r.adjN})` : '');
   const knBin = (d) => KN_BIN[d <= 7 ? 0 : d <= 15 ? 1 : d <= 30 ? 2 : 3];
   const REPORTS = {
     'tong-hop': { title: 'Báo cáo tổng hợp', bl: 'Báo cáo tổng hợp (STT 512–527)', list: [
       { key: 'dtms', title: 'Báo cáo tổng hợp đầu tư mua sắm', fund: true, kindSel: true, rows: (fx) => fx.all,
-        metrics: (rs) => Object.entries(KIND).map(([k, l]) => { const a = rs.filter((x) => x.kind === k); return [l, a.length, ty(sumV(a), 2) + ' tỷ đồng', (r) => r.kind === k]; }),
+        metrics: (rs) => Object.entries(KIND).map(([k, l]) => { const a = rs.filter((x) => x.kind === k); return [l, a.length, DONG(sumV(a)) + ' đồng', (r) => r.kind === k]; }),
         groups: [['Tổng hợp theo đơn vị', 'unit'], ['Tổng hợp theo lĩnh vực', 'field', (k) => K().cat('linh-vuc', k)], ['Tổng hợp theo nguồn kinh phí', 'fund', (k) => K().cat('nguon-von', k)]], money: true,
         cols: ['code', 'kind', 'title', 'unit', 'field', 'fund', 'st', 'value', 'date'] },
       { key: 'chuoi', title: 'Báo cáo tiến độ toàn chuỗi ĐTMS', kindSel: true, rows: (fx) => fx.all,
@@ -464,17 +522,24 @@
     ] },
     dxms: { title: 'Báo cáo ĐXMS', bl: 'Báo cáo ĐXMS (STT 528–536)', list: [
       { key: 'dxms', title: 'Báo cáo tình hình ĐXMS', kinds: ['DXMS'], fund: true, rows: (fx) => fx.dx,
-        metrics: (rs) => [['Tổng số ĐXMS', rs.length, ty(sumV(rs), 2) + ' tỷ đồng — bản hiệu lực', () => true], ['Đã phê duyệt', rs.filter((x) => x.approved).length, 'gồm đang / đã được điều chỉnh', (r) => r.approved],
-          ['Đang xử lý', rs.filter((x) => x.grp === 'run').length, '', (r) => r.grp === 'run'],
-          ['Phát sinh điều chỉnh', new Set(rs.filter((x) => x.adjChain).map((x) => x.chain)).size, `ĐXMS gốc — ${rs.filter((x) => x.adj).length} lần điều chỉnh`, (r) => r.adjChain]],
+        /* T70 (SRS 31 V0.4): BR-BDX-01-01 "{tổng} đồng — bản tính vào tổng"; 01-03 Đang xử lý = Đang phê duyệt; 01-04 số lần điều chỉnh không tính ĐXMS điều chỉnh Chưa khởi tạo. */
+        metrics: (rs) => [['Tổng số ĐXMS', rs.length, DONG(sumV(rs)) + ' đồng — bản tính vào tổng', () => true], ['Đã phê duyệt', rs.filter((x) => x.approved).length, 'gồm đang / đã được điều chỉnh', (r) => r.approved],
+          ['Đang xử lý', rs.filter((x) => x.state === 'PD').length, '', (r) => r.state === 'PD'],
+          ['Phát sinh điều chỉnh', new Set(rs.filter((x) => x.adjChain).map((x) => x.chain)).size, `ĐXMS gốc — ${rs.filter((x) => x.adj && !x.draft).length} lần điều chỉnh`, (r) => r.adjChain]],
         /* T56 (review ChauNNM1 12/11 #34): bỏ khối Theo trạng thái — [T56 bỏ] ['Theo trạng thái', 'st'], */
         /* T59 #52: Top 5 điểm nghẽn quy trình ĐXMS (MS01 / MS02) đặt đầu tiên. */
-        groups: [['Top 5 điểm nghẽn quy trình ĐXMS', null, null, null, 'neck', { fams: ['MS01', 'MS02'], top: 5 }], ['Theo đơn vị đề xuất', 'unit'], ['Theo lĩnh vực', 'field', (k) => K().cat('linh-vuc', k)], ['Theo khoảng giá trị', (r) => (r.value < 20 ? '< 20 tỷ' : r.value < 100 ? '20 – 100 tỷ' : '≥ 100 tỷ'), null, ['< 20 tỷ', '20 – 100 tỷ', '≥ 100 tỷ']]], count: true,
-        cols: ['code', 'title', 'unit', 'field', 'st', 'value', col('Điều chỉnh từ', 160, '', (r) => (r.adjFrom ? `<a class="link" data-go="dxms/${encodeURIComponent(r.adjFrom)}">${esc(r.adjFrom)}</a>` : K().dash), (r) => r.adjFrom || '', (r) => r.adjFrom || ''), 'date'] },
+        groups: [['Top 5 điểm nghẽn quy trình ĐXMS', null, null, null, 'neck', { fams: ['MS01', 'MS02'], top: 5 }], ['Theo đơn vị đề xuất', 'unit'], ['Theo lĩnh vực', 'field', (k) => K().cat('linh-vuc', k)], ['Theo khoảng giá trị', (r) => DX_BIN[(r.value || 0) < 20 ? 0 : (r.value || 0) < 100 ? 1 : 2], null, DX_BIN]], count: true,
+        /* T70 (SRS 31 V0.4 BR-BDX-01-06): Bảng chi tiết 11 cột; sắp xếp theo thứ tự mặc định Ngày tạo giảm dần, cùng ngày Mã ĐXMS giảm dần; tệp xuất thêm cột Tính vào tổng (01-07). */
+        cols: [col('Mã ĐXMS', 160, '', lk, (r) => r.code), col('Tên đề xuất mua sắm', 320, '', (r) => cl(r.title), (r) => r.title), col('Đề tài / dự án', 280, '', (r) => (r.mission ? cl(r.mission) : K().dash), (r) => r.mission || ''),
+          col('Đơn vị đề xuất', 200, '', (r) => cl(r.unit), (r) => r.unit), 'field', 'fund', col('Trạng thái', 240, 'c', (r) => badge(dxStL(r), DX_TAG[r.state]), (r) => dxStL(r)), 'value',
+          col('Điều chỉnh từ', 160, '', (r) => (r.adjFrom ? `<a class="link" data-go="dxms/${encodeURIComponent(r.adjFrom)}">${esc(r.adjFrom)}</a>` : K().dash), (r) => r.adjFrom || '', (r) => r.adjFrom || ''),
+          col('Ngày tạo', 120, '', (r) => `<span class="num">${esc(r.date)}</span>`, (r) => dk(r.date), (r) => r.date)],
+        sort: (a, b) => dk(b.date).localeCompare(dk(a.date)) || b.code.localeCompare(a.code),
+        xcols: [col('Tính vào tổng', 120, 'c', (r) => (r.inV === false ? 'Không' : 'Có'), (r) => (r.inV === false ? 0 : 1), (r) => (r.inV === false ? 'Không' : 'Có'))] },
     ] },
     kdt: { title: 'Báo cáo khoản đầu tư', bl: 'Báo cáo Khoản đầu tư (STT 537–545)', list: [
       { key: 'kdt', title: 'Báo cáo tình hình khoản đầu tư', kinds: ['KDT'], fund: true, rows: (fx) => fx.kd,
-        metrics: (rs) => [['Tổng số khoản đầu tư', rs.length, '', () => true], ['Tổng mức vốn', ty(sumV(rs), 2), 'tỷ đồng', () => true], ['Đã phê duyệt chủ trương', rs.filter((x) => x.stage === 'CT_OK').length, 'chờ hồ sơ phê duyệt KĐT', (r) => r.stage === 'CT_OK'],
+        metrics: (rs) => [['Tổng số khoản đầu tư', rs.length, '', () => true], ['Tổng mức vốn', DONG(sumV(rs)), 'đồng', () => true], ['Đã phê duyệt chủ trương', rs.filter((x) => x.stage === 'CT_OK').length, 'chờ hồ sơ phê duyệt KĐT', (r) => r.stage === 'CT_OK'],
           ['Đã phê duyệt', rs.filter((x) => x.approved).length, '', (r) => r.approved]],
         /* T59 #53: bỏ khối Theo trạng thái — [T59 #53] ['Theo trạng thái', 'st'], — thay bằng Top 5 điểm nghẽn quy trình KĐT (MS13 / MS14) đặt đầu tiên. */
         groups: [['Top 5 điểm nghẽn quy trình KĐT', null, null, null, 'neck', { fams: ['MS13', 'MS14'], top: 5 }], ['Theo loại hồ sơ đang chạy', 'hsKind', (k) => HS_KDT[k], Object.keys(HS_KDT)], ['Theo đơn vị', 'unit'], ['Theo lĩnh vực', 'field', (k) => K().cat('linh-vuc', k)], ['Theo loại khoản đầu tư', 'type', (k) => K().cat('loai-kdt', k)],
@@ -483,19 +548,19 @@
     ] },
     lcnt: { title: 'Báo cáo lựa chọn nhà thầu', bl: 'Báo cáo lựa chọn nhà thầu (STT 546–585)', list: [
       { key: 'khlcnt', title: 'Báo cáo KHLCNT', kinds: ['KHLCNT'], rows: (fx) => fx.kh,
-        metrics: (rs) => [['Tổng số KHLCNT', rs.length, '', () => true], ['Tổng số gói thầu', rs.reduce((s, x) => s + x.n, 0), '', () => true], ['Tổng giá trị KHLCNT', ty(r2(rs.reduce((s, x) => s + x.value, 0)), 2), 'tỷ đồng', () => true], ['Phát sinh điều chỉnh', rs.filter((x) => x.adj).length, 'so với KHLCNT ban đầu', (r) => r.adj]],
+        metrics: (rs) => [['Tổng số KHLCNT', rs.length, '', () => true], ['Tổng số gói thầu', rs.reduce((s, x) => s + x.n, 0), '', () => true], ['Tổng giá trị KHLCNT', DONG(r2(rs.reduce((s, x) => s + x.value, 0))), 'đồng', () => true], ['Phát sinh điều chỉnh', rs.filter((x) => x.adj).length, 'so với KHLCNT ban đầu', (r) => r.adj]],
         groups: [['Theo trạng thái', 'st'], ['Theo đơn vị', 'unit']], count: true,
         cols: ['code', 'title', 'unit', col('Số gói thầu', 110, 'r', (r) => r.n, (r) => r.n), 'st', 'value', col('Điều chỉnh', 110, 'c', (r) => (r.adj ? 'Có' : 'Không'), (r) => (r.adj ? 1 : 0), (r) => (r.adj ? 'Có' : 'Không')), 'date'] },
       { key: 'to-chuc', title: 'Báo cáo tình hình tổ chức LCNT', kinds: ['GOI'], rows: (fx) => fx.gt,
-        metrics: (rs) => [['Tổng số gói thầu', rs.length, ty(r2(rs.reduce((s, x) => s + x.value, 0)), 2) + ' tỷ đồng', () => true], ['Qua mạng', rs.filter((x) => x.online).length, '', (r) => r.online], ['Không qua mạng', rs.filter((x) => !x.online).length, '', (r) => !r.online],
+        metrics: (rs) => [['Tổng số gói thầu', rs.length, DONG(r2(rs.reduce((s, x) => s + x.value, 0))) + ' đồng', () => true], ['Qua mạng', rs.filter((x) => x.online).length, '', (r) => r.online], ['Không qua mạng', rs.filter((x) => !x.online).length, '', (r) => !r.online],
           ['Chậm tiến độ', rs.filter((x) => x.late).length, 'so với KHLCNT', (r) => r.late]],
         groups: [['Theo trạng thái', 'st'], ['Theo loại gói thầu', 'type', (k) => K().cat('loai-goi-thau', k)], ['Theo hình thức LCNT', 'form', (k) => K().cat('hinh-thuc-lcnt', k)], ['Theo phương thức LCNT', 'method', (k) => K().cat('phuong-thuc-lcnt', k)]], count: true,
         cols: ['code', 'title', col('Hình thức LCNT', 190, '', (r) => esc(K().cat('hinh-thuc-lcnt', r.form)), (r) => r.form, (r) => K().cat('hinh-thuc-lcnt', r.form)), col('Qua mạng', 100, 'c', (r) => (r.online ? 'Có' : 'Không'), (r) => (r.online ? 1 : 0), (r) => (r.online ? 'Có' : 'Không')), 'st', 'value'] },
       { key: 'kq', title: 'Báo cáo kết quả LCNT', kinds: ['GOI'], rows: (fx) => fx.gt.filter((g) => g.stx === 'KQ' || g.stx === 'HUY'),
-        metrics: (rs) => { const k = rs.filter((x) => x.stx === 'KQ'); return [['Gói đã có KQLCNT', k.length, '', (r) => r.stx === 'KQ'], ['Tổng giá gói thầu', ty(r2(k.reduce((s, x) => s + x.value, 0)), 2), 'tỷ đồng', (r) => r.stx === 'KQ'],
-          ['Tổng giá trúng thầu', ty(r2(k.reduce((s, x) => s + (x.win || x.value), 0)), 2), 'tỷ đồng', (r) => r.stx === 'KQ'], ['Gói thầu bị huỷ', rs.filter((x) => x.stx === 'HUY').length, '', (r) => r.stx === 'HUY']]; },
+        metrics: (rs) => { const k = rs.filter((x) => x.stx === 'KQ'); return [['Gói đã có KQLCNT', k.length, '', (r) => r.stx === 'KQ'], ['Tổng giá gói thầu', DONG(r2(k.reduce((s, x) => s + x.value, 0))), 'đồng', (r) => r.stx === 'KQ'],
+          ['Tổng giá trúng thầu', DONG(r2(k.reduce((s, x) => s + (x.win || x.value), 0))), 'đồng', (r) => r.stx === 'KQ'], ['Gói thầu bị huỷ', rs.filter((x) => x.stx === 'HUY').length, '', (r) => r.stx === 'HUY']]; },
         groups: [['Theo nhà thầu trúng thầu', (r) => (r.winner ? K().nccName(r.winner) : r.assignee || 'Huỷ thầu')]], count: true,
-        cols: ['code', 'title', 'st', 'value', col('Giá trúng thầu', 150, 'r', (r) => `<span class="num">${money(r.win)}</span>`, (r) => r.win || 0, (r) => r.win), col('Nhà thầu / đơn vị thực hiện', 260, '', (r) => cl(r.winner ? K().nccName(r.winner) : r.assignee), (r) => r.winner || '', (r) => (r.winner ? K().nccName(r.winner) : r.assignee))] },
+        cols: ['code', 'title', 'st', 'value', mcol('Giá trúng thầu', 170, (r) => r.win), col('Nhà thầu / đơn vị thực hiện', 260, '', (r) => cl(r.winner ? K().nccName(r.winner) : r.assignee), (r) => r.winner || '', (r) => (r.winner ? K().nccName(r.winner) : r.assignee))] },
       { key: 'hieu-qua', title: 'Báo cáo hiệu quả LCNT', kinds: ['GOI'], noStatus: true, rows: (fx) => fx.gt.filter((g) => g.kq && g.srcDate).map((g) => Object.assign({}, g, { dur: Math.abs(HD().days(g.srcDate, g.kq[1])) })),
         metrics: (rs) => [['Thời gian trung bình tổ chức LCNT', (rs.length ? Math.round(rs.reduce((s, x) => s + x.dur, 0) / rs.length) : 0) + ' ngày', 'từ lập đối tượng nguồn đến KQLCNT', () => true], ['Số gói cấu thành chỉ tiêu', rs.length, '', () => true]],
         groups: [['Thời gian theo hình thức LCNT (ngày, trung bình)', 'form', (k) => K().cat('hinh-thuc-lcnt', k), null, 'dur']],
@@ -512,10 +577,10 @@
           return out; },
         metrics: (rs) => [['Số nhà thầu', rs.length, '', () => true], ['Lượt tham gia', rs.reduce((s, x) => s + x.join, 0), '', (r) => r.join], ['Lượt trúng thầu', rs.reduce((s, x) => s + x.won, 0), '', (r) => r.won],
           ['Số hợp đồng', rs.reduce((s, x) => s + x.hd, 0), '', (r) => r.hd]],
-        groups: [['Giá trị trúng thầu theo nhà thầu', 'title', null, null, 'value', { money: true, unit: 'tỷ đồng' }], ['Số gói tham gia theo nhà thầu', 'title', null, null, 'join', { unit: 'gói' }],
+        groups: [['Giá trị trúng thầu theo nhà thầu', 'title', null, null, 'value', { money: true, unit: 'đồng' }], ['Số gói tham gia theo nhà thầu', 'title', null, null, 'join', { unit: 'gói' }],
           ['Số gói trúng theo nhà thầu', 'title', null, null, 'won', { unit: 'gói' }], ['Số hợp đồng theo nhà thầu', 'title', null, null, 'hd', { unit: 'hợp đồng' }]], money: true,
         cols: [col('Mã nhà thầu', 140, '', (r) => `<a class="link" data-rp-ncc="${esc(r.code)}">${esc(r.code)}</a>`, (r) => r.code), 'title', col('Số gói tham gia', 130, 'r', (r) => r.join, (r) => r.join), col('Số gói trúng', 120, 'r', (r) => r.won, (r) => r.won),
-          col('Giá trị trúng thầu', 150, 'r', (r) => `<span class="num">${money(r.wonV)}</span>`, (r) => r.wonV), col('Số hợp đồng', 110, 'r', (r) => r.hd, (r) => r.hd),
+          mcol('Giá trị trúng thầu', 180, (r) => r.wonV), col('Số hợp đồng', 110, 'r', (r) => r.hd, (r) => r.hd),
           col('Lịch sử tham gia', 300, '', (r) => cl(r.hist.map((h) => h.code + (h.won ? ' (trúng)' : '')).join(', ')), (r) => r.hist.length, (r) => r.hist.map((h) => h.code + (h.won ? ' (trúng)' : '')).join(', '))] },
       /* T49 R9: KPI 1 tính đến ngày ký hợp đồng của gói (đã ký), chưa ký thì đến KQLCNT. R10 (STT 584): mỗi KPI có danh sách đối tượng cấu thành (nút Xem). */
       { key: 'kpi', title: 'Báo cáo KPI hoạt động LCNT', noStatus: true, rows: (fx) => {
@@ -528,7 +593,7 @@
             ['Tỷ lệ gói thầu thực hiện qua mạng', pct(g.filter((x) => x.online).length, g.length) + '%', `${g.filter((x) => x.online).length}/${g.length} gói`, g.map((x) => it(x, x.online ? 'Qua mạng' : 'Không qua mạng'))],
             ['Tỷ lệ hợp đồng ký điện tử', pct(sg.filter((x) => x.esign).length, sg.length) + '%', `${sg.filter((x) => x.esign).length}/${sg.length} hợp đồng đã ký`, sg.map((x) => it(x, x.esign ? 'Ký điện tử (VContract)' : 'Ký giấy'))],
             ['Tỷ lệ gói thầu phát sinh kiến nghị / khiếu nại', pct(g.filter((x) => x.kn).length, g.length) + '%', `${g.filter((x) => x.kn).length}/${g.length} gói`, g.map((x) => it(x, x.kn ? `${x.kn} kiến nghị / khiếu nại` : 'Không'))],
-            ['Tỷ lệ thanh toán thực tế / giá gói thầu', pct(pd, cap) + '%', `${ty(pd, 2)} / ${ty(cap, 2)} tỷ đồng — phụ thuộc MS24 / SAP`, sg.map((x) => it(x, `${ty(x.paid, 2)} / ${ty(x.cap, 2)} tỷ đồng (${pct(x.paid, x.cap)}%)`))],
+            ['Tỷ lệ thanh toán thực tế / giá gói thầu', pct(pd, cap) + '%', `${DONG(pd)} / ${DONG(cap)} đồng — phụ thuộc MS24 / SAP`, sg.map((x) => it(x, `${DONG(x.paid)} / ${DONG(x.cap)} đồng (${pct(x.paid, x.cap)}%)`))],
             ['Tỷ lệ gói thầu điều chỉnh so với KHLCNT ban đầu', pct(g.filter((x) => x.adj).length, g.length) + '%', `${g.filter((x) => x.adj).length}/${g.length} gói`, g.map((x) => it(x, x.adj ? 'Có điều chỉnh' : 'Không'))]]
             .map(([title, v, sub, items], i) => ({ kind: 'KPI', code: 'KPI-0' + (i + 1), title, v, sub, items, href: 'bao-cao/lcnt', date: '01/01/2026' })); },
         metrics: null, groups: [],
@@ -537,16 +602,16 @@
     ] },
     'hop-dong': { title: 'Báo cáo hợp đồng', bl: 'Báo cáo hợp đồng (STT 586–603)', list: [
       { key: 'tinh-hinh', title: 'Báo cáo tình hình hợp đồng', kinds: ['HD'], rows: (fx) => fx.hd,
-        metrics: (rs) => [['Tổng số hợp đồng', rs.length, ty(r2(rs.reduce((s, x) => s + x.value, 0)), 2) + ' tỷ đồng', () => true], ['Đúng tiến độ', rs.filter((x) => x.prog === 'Đúng tiến độ').length, '', (r) => r.prog === 'Đúng tiến độ'],
+        metrics: (rs) => [['Tổng số hợp đồng', rs.length, DONG(r2(rs.reduce((s, x) => s + x.value, 0))) + ' đồng', () => true], ['Đúng tiến độ', rs.filter((x) => x.prog === 'Đúng tiến độ').length, '', (r) => r.prog === 'Đúng tiến độ'],
           ['Chậm tiến độ', rs.filter((x) => x.prog === 'Chậm tiến độ').length, '', (r) => r.prog === 'Chậm tiến độ'], [`Sắp hết hạn (≤ ${HD().warnDays('hd')} ngày)`, rs.filter((x) => x.soon).length, 'ngưỡng theo Trigger thông báo', (r) => r.soon]],
         groups: [['Theo trạng thái', 'st'], ['Theo loại hợp đồng', 'type', (k) => K().cat('loai-hop-dong', k)], ['Theo nhà thầu', (r) => K().nccName(r.ncc)], ['Theo đơn vị', 'unit']], count: true,
         cols: ['code', 'title', col('Nhà thầu', 240, '', (r) => cl(K().nccName(r.ncc)), (r) => r.ncc, (r) => K().nccName(r.ncc)), 'unit', 'st', col('Tiến độ', 140, 'c', (r) => esc(r.prog), (r) => r.prog), 'value', col('Ngày hết hạn', 120, '', (r) => esc(r.end || '-'), (r) => dk(r.end), (r) => r.end)] },
       /* T49 R12 (STT 602): bảng chi tiết có 2 chế độ — Theo hợp đồng / Theo đợt thanh toán (một dòng / đợt). */
       { key: 'thanh-toan', title: 'Báo cáo thanh toán hợp đồng', kinds: ['HD'], noStatus: true, views: true, rows: (fx) => fx.hd,
-        metrics: (rs) => { const v = r2(rs.reduce((s, x) => s + x.value, 0)), pd = r2(rs.reduce((s, x) => s + x.paid, 0)); return [['Tổng giá trị hợp đồng', ty(v, 2), 'tỷ đồng', () => true], ['Đã tạm ứng', ty(r2(rs.reduce((s, x) => s + x.adv, 0)), 2), 'tỷ đồng', (r) => r.adv > 0],
-          ['Đã thanh toán', ty(pd, 2), 'tỷ đồng', (r) => r.paid > 0], ['Còn phải thanh toán', ty(r2(rs.reduce((s, x) => s + x.remain, 0)), 2), 'tỷ đồng', (r) => r.remain > 0], ['Tỷ lệ thanh toán', pct(pd, v) + '%', '', () => true]]; },
+        metrics: (rs) => { const v = r2(rs.reduce((s, x) => s + x.value, 0)), pd = r2(rs.reduce((s, x) => s + x.paid, 0)); return [['Tổng giá trị hợp đồng', DONG(v), 'đồng', () => true], ['Đã tạm ứng', DONG(r2(rs.reduce((s, x) => s + x.adv, 0))), 'đồng', (r) => r.adv > 0],
+          ['Đã thanh toán', DONG(pd), 'đồng', (r) => r.paid > 0], ['Còn phải thanh toán', DONG(r2(rs.reduce((s, x) => s + x.remain, 0))), 'đồng', (r) => r.remain > 0], ['Tỷ lệ thanh toán', pct(pd, v) + '%', '', () => true]]; },
         groups: [['Thanh toán theo thời gian (tháng)', null, null, null, 'pays'], ['Đã thanh toán theo đơn vị', 'unit', null, null, 'paid']], money: true,
-        cols: ['code', 'title', 'unit', 'value', col('Đã tạm ứng', 120, 'r', (r) => money(r.adv), (r) => r.adv), col('Đã thanh toán', 130, 'r', (r) => money(r.paid), (r) => r.paid), col('Còn phải thanh toán', 150, 'r', (r) => money(r.remain), (r) => r.remain),
+        cols: ['code', 'title', 'unit', 'value', mcol('Đã tạm ứng', 160, (r) => r.adv), mcol('Đã thanh toán', 170, (r) => r.paid), mcol('Còn phải thanh toán', 190, (r) => r.remain),
           col('Tỷ lệ', 90, 'r', (r) => pct(r.paid, r.value) + '%', (r) => pct(r.paid, r.value)), col('Số đợt thanh toán', 130, 'r', (r) => r.pays.length, (r) => r.pays.length)] },
     ] },
     'tien-do': { title: 'Báo cáo tiến độ & tồn đọng', bl: 'Báo cáo tiến độ & tồn đọng (STT 604–616) + KPI xử lý theo bước (ngoài WBS-0211, comment Figma #11, #16, #20)', list: [
@@ -604,6 +669,8 @@
     const byDot = cfg.views && R.view === 'dot';
     if (byDot) det = det.flatMap((h) => h.pays.map((p) => ({ kind: 'TT', code: p[0], hd: h.code, href: h.href, title: p[1], unit: h.unit, gross: p[3], ded: r2(p[4] + p[5] + p[6]), value: r2(p[3] - p[4] - p[5] - p[6]), pst: p[7], date: p[8] })));
     const cols = (byDot ? PAY_COLS() : cfg.cols).map(colOf);
+    /* T70 (SRS 30 BR-BCC-02-05): chưa bấm tiêu đề cột thì dòng sắp xếp theo thứ tự mặc định của định nghĩa báo cáo (`default_sort`). */
+    if (R.sort == null && cfg.sort && !byDot) det.sort(cfg.sort);
     if (R.sort != null && cols[R.sort]) { const c = cols[R.sort]; det.sort((a, b) => { const x = c[4](a), y = c[4](b); return (x > y ? 1 : x < y ? -1 : 0) * R.dir; }); }
     const lst = K().LST[id] = K().LST[id] || { page: 1, size: 10, psOpen: false };
     const pages = Math.max(1, Math.ceil(det.length / lst.size)); if (lst.page > pages) lst.page = pages;
@@ -617,8 +684,8 @@
         const m = new Map();
         rows.forEach((h) => h.pays.filter((p) => p[7] === 'PAID').forEach((p) => { const k2 = p[8].slice(3); m.set(k2, r2((m.get(k2) || 0) + r2(p[3] - p[4] - p[5] - p[6]))); }));
         items = [...m.entries()].sort((a, b) => dk('01/' + a[0]).localeCompare(dk('01/' + b[0]))).map(([k2, v]) => ({ label: k2, value: v }));
-        GI.push({ title, items, fn: null, unit: 'tỷ đồng' });
-        return vbars(title, items, { money: true, unit: 'tỷ đồng', legend: 'Đã thanh toán' });
+        GI.push({ title, items, fn: null, unit: 'đồng', money: true });
+        return vbars(title, items, { money: true, unit: 'đồng', legend: 'Đã thanh toán' });
       }
       /* T59 #52 #53 (D-114 Q6) — GIẢ LẬP: điểm nghẽn = bước của quy trình có nhiều hồ sơ đang quá hạn nhất (cùng nguồn Báo cáo hồ sơ quá hạn),
          bằng nhau thì theo tổng số ngày quá hạn; lấy opt.top bước đầu. Bấm thanh lọc bảng chi tiết theo đối tượng có hồ sơ quá hạn tại bước. */
@@ -638,12 +705,16 @@
       if (val) {
         const m = new Map(), n = new Map();
         rows.forEach((r) => { const k2 = kf(r); m.set(k2, (m.get(k2) || 0) + (r[val] || 0)); n.set(k2, (n.get(k2) || 0) + 1); });
-        items = [...m.entries()].map(([k2, v]) => ({ key: k2, label: lab ? lab(k2) : k2, value: r2(val === 'dur' || val === 'avg' ? v / n.get(k2) : v) })).sort((a, b) => b.value - a.value);
-      } else items = cfg.count ? countBy(rows, kf, lab, order) : sumBy(rows, typeof key === 'string' ? key : kf, lab);
+        items = [...m.entries()].map(([k2, v]) => ({ key: k2, label: lab ? lab(k2) : k2, value: r2(val === 'dur' || val === 'avg' ? v / n.get(k2) : v) })).sort(byVal);
+      } else {
+        /* T70: thẻ Theo trạng thái là nhóm cố định theo vòng đời của đối tượng (SRS 30 BR-BCC-02-03). */
+        const ord = order || (key === 'st' && cfg.kinds && cfg.kinds.length === 1 ? stOrder(cfg.kinds[0]) : null);
+        items = cfg.count ? countBy(rows, kf, lab, ord) : sumBy(rows, typeof key === 'string' ? key : kf, lab);
+      }
       const isMoney = !cfg.count && !(val === 'dur' || val === 'avg');
-      const o = opt || (isMoney ? { money: true, unit: 'tỷ đồng' } : val ? { unit: 'ngày' } : null);
+      const o = opt || (isMoney ? { money: true, unit: 'đồng' } : val ? { unit: 'ngày' } : null);
       const fn = key === 'fund' ? (x) => (r) => r.fund === x.key || (r.fundParts || []).some((q) => q.fund === x.key) : (x) => (r) => kf(r) === x.key;
-      GI.push({ title, items, fn, unit: o && o.unit });
+      GI.push({ title, items, fn, unit: o && o.unit, money: !!(o && o.money) });
       return hbars(title, items.map((x, xi) => Object.assign(x, { drill: `${id}|${gi}|${xi}` })), o);
     });
     /* Ghi lại bộ lọc drill-down để bấm thanh / ô chỉ tiêu lọc bảng chi tiết. */
@@ -654,6 +725,8 @@
         'Khuôn chung cho mọi báo cáo (report-dashboard của repo-khcn-hr-tools-fe): khối lọc (thời gian năm / khoảng ngày, đơn vị theo phạm vi quyền, lĩnh vực, nguồn kinh phí khi báo cáo hỗ trợ, trạng thái tuỳ báo cáo; Làm mới / Tìm kiếm) → chỉ tiêu tổng hợp → biểu đồ theo chiều nhóm → bảng chi tiết có sắp xếp, phân trang.',
         '<b>Xuất báo cáo</b> (STT 510): tệp Excel theo bộ lọc đang áp — sheet Bộ lọc, Chỉ tiêu, mỗi chiều nhóm một sheet, sheet Chi tiết. <b>Xuất bảng chi tiết</b> (STT 511 "Xuất dữ liệu chi tiết"; T65 #70 đổi nhãn + tooltip cho rõ): chỉ các dòng của bảng chi tiết đang xem (kể cả drill-down). GIẢ LẬP: prototype tải .csv, BE xuất .xlsx.',
         '<b>T65 (kho comment #69–#74, phuctd7 12/11)</b>: khuôn chung cho mọi báo cáo — Từ ngày, Đến ngày là hai trường riêng có nhãn (#74); ô ngày mở popover chọn ngày theo design system cmm-datepicker (#72, #73 — áp chung cho mọi ô ngày của prototype); drill-down: icon ← ở tiêu đề "Chi tiết — …" quay lại danh sách đầy đủ, thay nút "Bỏ lọc chi tiết" (#69, #71), kèm câu hướng dẫn dưới tiêu đề.',
+        '<b>T70 (SRS 30 / 31 V0.4)</b>: khuôn chung — ô Quý, Tháng (chọn được khi đã chọn Năm; chọn Tháng xoá Quý và ngược lại); mọi số tiền hiện / xuất theo đồng; thẻ theo dữ liệu sắp giảm dần (bằng nhau theo tên), thẻ Theo trạng thái theo vòng đời và hiện cả trạng thái 0; ô lọc Trạng thái theo vòng đời; Lĩnh vực: bản ghi không có lĩnh vực tính vào "Lĩnh vực khác" (D-120).',
+        group === 'dxms' ? '<b>Báo cáo tình hình ĐXMS (SRS 31 V0.4)</b>: phụ đề Tổng số "… đồng — bản tính vào tổng"; Đang xử lý = Đang phê duyệt; khoảng giá trị Dưới 20 / Từ 20 đến dưới 100 / Từ 100 tỷ đồng; Bảng chi tiết 11 cột (thêm Đề tài / dự án, Nguồn kinh phí), sắp xếp mặc định Ngày tạo giảm dần, cùng ngày Mã giảm dần; tệp xuất thêm cột Tính vào tổng. Nguồn kinh phí = nguồn vốn của ĐXMS, mặc định theo đề tài.' : '',
         '<b>Drill-down</b>: bấm ô chỉ tiêu hoặc thanh biểu đồ để lọc bảng chi tiết; bấm mã để mở đối tượng nghiệp vụ (ĐXMS / KĐT / KHLCNT / gói thầu / hợp đồng).',
         'Mỗi báo cáo = một cấu hình (chỉ tiêu, chiều nhóm, cột chi tiết) trên cùng khuôn; BE cung cấp API báo cáo theo bộ lọc. Số liệu tính từ cùng dữ liệu với các danh sách và màn Tổng quan.',
         group === 'dxms' || cfg.key === 'dtms' ? '<b>ĐXMS</b> (T34): Đã phê duyệt gồm ĐXMS Đang điều chỉnh / Đã được điều chỉnh; giá trị mỗi chuỗi điều chỉnh chỉ cộng bản còn hiệu lực (giá trị không cộng có dấu *). Phát sinh điều chỉnh = số ĐXMS gốc có ĐXMS điều chỉnh; drill hiện cả chuỗi. ĐXMS Chưa khởi tạo chỉ hiện khi lọc Trạng thái = Chưa khởi tạo.' : '',
@@ -668,11 +741,11 @@
       q: cfg.key === 'tinh-hinh' ? ['P-80'] : [], src: 'hr-tools reporting/report-dashboard · /reporting',
     };
     const out = det;
-    EX[id] = { title: cfg.title, cols, rows: out, ms, groups: GI, filter: filterTxt(f, cfg) };
+    EX[id] = { title: cfg.title, cols: cols.concat(byDot ? [] : (cfg.xcols || []).map(colOf)), rows: out, ms, groups: GI, filter: filterTxt(f, cfg) };
     const kpiSel = cfg.key === 'kpi' && R.kpi ? rows.find((r) => r.code === R.kpi) : null;
     return `<div class="pg">${head({ title: G.title, info })}
       ${G.list.length > 1 ? `<nav class="tabs dx-tabs" role="tablist">${G.list.map((x) => `<button type="button" class="tab ${R.tab === x.key ? 'on' : ''}" role="tab" aria-selected="${R.tab === x.key}" data-rptab="${group}:${x.key}">${esc(x.title)}</button>`).join('')}</nav>` : ''}
-      ${filterBar(id, fx, { kinds: cfg.kinds || [], kindSel: cfg.kindSel, fund: cfg.fund, noStatus: cfg.noStatus || !cfg.kinds && !cfg.kindSel })}
+      ${filterBar(id, fx, { qm: true, kinds: cfg.kinds || [], kindSel: cfg.kindSel, fund: cfg.fund, noStatus: cfg.noStatus || !cfg.kinds && !cfg.kindSel })}
       ${ms ? `<h2 class="rp-h2">${esc(cfg.title)}</h2><div class="rp-tiles">${ms.map((m, i) => `<button type="button" class="ov-tile rp-tile ${drill && drill.label === m[0] ? 'on' : ''}" data-drill="${id}|m|${i}"><span class="ov-tx"><span class="t">${esc(m[0])}</span>${m[2] ? `<span class="d">${esc(m[2])}</span>` : ''}</span><span class="ov-n"><span class="n num">${m[1]}</span></span></button>`).join('')}</div>` : `<h2 class="rp-h2">${esc(cfg.title)}</h2>`}
       ${charts.length ? `<div class="rp-g2">${charts.join('')}</div>` : ''}
       <section class="flex vcard rp-det"><div class="vcard-h"><h3 class="${drill ? 'rp-back-h' : ''}">${drill ? `<button type="button" class="rp-back" data-drill-clear="${id}" title="Quay lại danh sách chi tiết đầy đủ" aria-label="Quay lại danh sách chi tiết đầy đủ">${icon('back')}</button>Chi tiết — ${esc(drill.label)}` : byDot ? 'Danh sách đợt thanh toán' : 'Danh sách chi tiết'}</h3>
@@ -687,13 +760,13 @@
   }
   /* T49 R12: cột chế độ Theo đợt thanh toán. */
   const PAY_COLS = () => [col('Mã đợt', 140, '', (r) => esc(r.code), (r) => r.code), col('Hợp đồng', 150, '', (r) => `<a class="link" data-go="${r.href}">${esc(r.hd)}</a>`, (r) => r.hd),
-    col('Nội dung đợt', 260, '', (r) => cl(r.title), (r) => r.title), 'unit', col('Giá trị đề nghị', 140, 'r', (r) => money(r.gross), (r) => r.gross), col('Thu hồi / khấu trừ', 150, 'r', (r) => money(r.ded), (r) => r.ded),
-    col('Thực thanh toán', 140, 'r', (r) => money(r.value), (r) => r.value), col('Trạng thái', 170, 'c', (r) => badge(...HD().PAY_ST[r.pst]), (r) => r.pst, (r) => HD().PAY_ST[r.pst][0]),
+    col('Nội dung đợt', 260, '', (r) => cl(r.title), (r) => r.title), 'unit', mcol('Giá trị đề nghị', 170, (r) => r.gross), mcol('Thu hồi / khấu trừ', 180, (r) => r.ded),
+    mcol('Thực thanh toán', 170, (r) => r.value), col('Trạng thái', 170, 'c', (r) => badge(...HD().PAY_ST[r.pst]), (r) => r.pst, (r) => HD().PAY_ST[r.pst][0]),
     col('Ngày thanh toán', 130, '', (r) => esc(r.date || '-'), (r) => dk(r.date), (r) => r.date || '')];
   /* Mô tả bộ lọc đang áp cho sheet Bộ lọc khi Xuất báo cáo (STT 510). */
   function filterTxt(f, cfg) {
     const c = K().cat, a = [];
-    a.push(['Năm', f.year || 'Tất cả']); a.push(['Từ ngày', f.from || '-']); a.push(['Đến ngày', f.to || '-']); a.push(['Đơn vị', f.unit || 'Tất cả']);
+    a.push(['Năm', f.year || 'Tất cả']); a.push(['Quý', f.q ? 'Quý ' + QUY[f.q - 1] : 'Tất cả']); a.push(['Tháng', f.m ? 'Tháng ' + f.m : 'Tất cả']); a.push(['Từ ngày', f.from || '-']); a.push(['Đến ngày', f.to || '-']); a.push(['Đơn vị', f.unit || 'Tất cả']);
     a.push(['Lĩnh vực', f.field ? c('linh-vuc', f.field) : 'Tất cả']);
     if (cfg.fund) a.push(['Nguồn kinh phí', f.fund ? c('nguon-von', f.fund) : 'Tất cả']);
     if (cfg.kindSel) a.push(['Loại nghiệp vụ', f.kind.length ? f.kind.map((k) => KIND[k]).join('; ') : 'Tất cả']);
@@ -753,10 +826,10 @@
       const x = NCC[nc.dataset.rpNcc]; if (!x) return;
       const T2 = (h, rows, fn) => K().table(h, rows, fn);
       const m = window.UI.vModal({ title: `Nhà thầu ${x.code} — ${x.title}`, size: 'lg', body: `
-        <div class="rp-tiles">${tile('Số gói tham gia', x.join)}${tile('Số gói trúng', x.won)}${tile('Giá trị trúng thầu', ty(x.wonV, 2), 'tỷ đồng')}${tile('Số hợp đồng', x.hd)}</div>
-        ${K().card('Lịch sử tham gia / trúng thầu', T2([['Gói thầu', 150], ['Tên gói thầu', 300], ['Giá dự thầu (tỷ đồng)', 160, 'r'], ['Kết quả', 120, 'c'], ['Trạng thái gói', 180]], x.hist,
+        <div class="rp-tiles">${tile('Số gói tham gia', x.join)}${tile('Số gói trúng', x.won)}${tile('Giá trị trúng thầu', DONG(x.wonV), 'đồng')}${tile('Số hợp đồng', x.hd)}</div>
+        ${K().card('Lịch sử tham gia / trúng thầu', T2([['Gói thầu', 150], ['Tên gói thầu', 300], ['Giá dự thầu (đồng)', 160, 'r'], ['Kết quả', 120, 'c'], ['Trạng thái gói', 180]], x.hist,
           (h) => `<td><a class="link" data-go="${h.href}" data-close>${esc(h.code)}</a></td><td>${cl(h.title)}</td><td class="r num">${money(h.bid)}</td><td class="c">${h.won ? badge('Trúng thầu', 'success') : badge('Tham gia', 'default')}</td><td>${esc(h.st)}</td>`))}
-        ${K().card('Hợp đồng', T2([['Mã hợp đồng', 150], ['Tên hợp đồng', 300], ['Giá trị (tỷ đồng)', 150, 'r'], ['Trạng thái', 180]], x.hds,
+        ${K().card('Hợp đồng', T2([['Mã hợp đồng', 150], ['Tên hợp đồng', 300], ['Giá trị (đồng)', 150, 'r'], ['Trạng thái', 180]], x.hds,
           (h) => `<td><a class="link" data-go="${h.href}" data-close>${esc(h.code)}</a></td><td>${cl(h.title)}</td><td class="r num">${money(h.value)}</td><td>${esc(h.st)}</td>`))}`,
         actions: '<button type="button" class="vbtn secondary" data-close>Đóng</button>' });
       m.el.dataset.rpNccDlg = x.code;
@@ -777,16 +850,16 @@
       const plain = (v) => String(v == null ? '' : v).replace(/<[^>]+>/g, '');
       const lines = [['[Bộ lọc]']].concat(x.filter, [[]]);
       if (x.ms) lines.push(['[Chỉ tiêu]'], ['Chỉ tiêu', 'Giá trị', 'Ghi chú'], ...x.ms.map((m) => [m[0], plain(m[1]), m[2]]), []);
-      x.groups.forEach((g) => lines.push([`[${g.title}]`], ['Nhóm', 'Giá trị' + (g.unit ? ` (${g.unit})` : '')], ...g.items.map((it) => [it.label, it.value]), []));
+      x.groups.forEach((g) => lines.push([`[${g.title}]`], ['Nhóm', 'Giá trị' + (g.unit ? ` (${g.unit})` : '')], ...g.items.map((it) => [it.label, g.money ? dongN(it.value) : it.value]), []));
       lines.push(['[Chi tiết]'], ['STT'].concat(x.cols.map((c) => c[0])), ...x.rows.map((r, i) => [i + 1].concat(x.cols.map((c) => (c[5] || c[4])(r)))));
       const name = download(x.title, lines);
       toast(`<b>Thành công</b><br>Xuất báo cáo theo bộ lọc thành công (${x.ms ? x.ms.length + ' chỉ tiêu, ' : ''}${x.groups.length} chiều nhóm, ${x.rows.length} dòng chi tiết) — ${esc(name)}`);
     }
   });
-  function download(title, lines) {
+  function download(title, lines, fname) {
     const strip = (v) => String(v == null ? '' : v).replace(/"/g, '""');
     const csv = '﻿' + lines.map((l) => l.map((v) => `"${strip(v)}"`).join(',')).join('\n');
-    const name = title.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/đ/g, 'd').replace(/Đ/g, 'D').replace(/[^A-Za-z0-9]+/g, '-') + '.csv';
+    const name = fname || title.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/đ/g, 'd').replace(/Đ/g, 'D').replace(/[^A-Za-z0-9]+/g, '-') + '.csv';
     try { const u = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' })); const l = document.createElement('a'); l.href = u; l.download = name; document.body.appendChild(l); l.click(); l.remove(); setTimeout(() => URL.revokeObjectURL(u), 1000); } catch (err) { /* bỏ qua */ }
     return name;
   }

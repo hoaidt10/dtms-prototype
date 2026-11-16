@@ -5,6 +5,7 @@ import { readFileSync, writeFileSync } from 'node:fs';
 
 /* D-31 (T18): nguồn theo trang — MS13 đọc bản 12/10 (ĐTMS-121026.drawio, 78 bước); MS01 vẫn ĐTMS.drawio (C7). */
 const BPMN = '../../../project-knowledge/03. Thiết kế (Tài liệu BA)/BPMN/';
+const PK = '../../../project-knowledge/', T1611 = '02. VHT gửi/Thầu 161126/';
 /* D-38 (T21): MS02 đọc trang "MS02 ver1.1" bản 12/10 (bản 12/10 không đổi trang này so với 28/09). */
 const PAGES = { MS13: { key: 'MS13', src: 'ĐTMS-121026.drawio', out: 'bpmn-tasks-ms13.js', count: 78 },
   'MS02 ver1.1': { key: 'MS02', src: 'ĐTMS-121026.drawio', out: 'bpmn-tasks-ms02.js', count: 61 },
@@ -15,7 +16,11 @@ const PAGES = { MS13: { key: 'MS13', src: 'ĐTMS-121026.drawio', out: 'bpmn-task
   'MS23.02': { key: 'MS23.02', hd: true, src: 'ĐTMS-121026.drawio', out: 'bpmn-tasks-ms23-02.js', count: 22 },
   'MS23.03': { key: 'MS23.03', hd: true, src: 'ĐTMS-121026.drawio', out: 'bpmn-tasks-ms23-03.js', count: 14 },
   'MS23.04': { key: 'MS23.04', hd: true, src: 'ĐTMS-121026.drawio', out: 'bpmn-tasks-ms23-04.js', count: 14 },
-  MS24: { key: 'MS24', hd: true, src: 'ĐTMS-121026.drawio', out: 'bpmn-tasks-ms24.js', count: 20 } };
+  MS24: { key: 'MS24', hd: true, src: 'ĐTMS-121026.drawio', out: 'bpmn-tasks-ms24.js', count: 20 },
+  /* T67 T1 (D-118): MS18 / MS19 TO-BE trong ĐTMS.drawio 16/11 (BPMN-DTMS-1611). Trang không dùng taskMarker: service task = nền xanh lá
+     (hệ thống) hoặc tím (tích hợp) theo chú giải của trang; subprocess MS19 = khung bo góc nền SUB, có số đầu nhãn. */
+  MS18: { key: 'MS18', dir: T1611, src: 'ĐTMS.drawio', out: 'bpmn-tasks-ms18.js', count: 23, svc: ['#EEF6F0', '#F2EEFA'] },
+  MS19: { key: 'MS19', dir: T1611, src: 'ĐTMS.drawio', out: 'bpmn-tasks-ms19.js', count: 24, svc: ['#EEF6F0', '#F2EEFA'], sub: '#F7FAFC' } };
 const files = {};
 let x = '';
 const xmlDec = (s) => s.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&#xa;/gi, '\n').replace(/&amp;/g, '&');
@@ -26,7 +31,9 @@ const lines = (h) => plain(h || '').split('\n').map((s) => s.replace(/\s+/g, ' '
 const one = (h) => lines(h).join(' ');
 
 function extract(PAGE, conf) {
-  x = files[conf.src] = files[conf.src] || readFileSync(new URL(BPMN + conf.src, import.meta.url), 'utf8');
+  /* Khoá cache theo đường dẫn đầy đủ: ĐTMS.drawio của bộ 16/11 (conf.dir) trùng tên tệp 28/09. */
+  const srcPath = conf.dir ? PK + conf.dir + conf.src : BPMN + conf.src;
+  x = files[srcPath] = files[srcPath] || readFileSync(new URL(srcPath, import.meta.url), 'utf8');
   const i = x.indexOf(`name="${PAGE}"`);
   if (i < 0) throw new Error(`Không thấy trang ${PAGE}`);
   const body = x.slice(i, x.indexOf('</diagram>', i));
@@ -85,7 +92,8 @@ function extract(PAGE, conf) {
   const ordered = Object.values(cells).filter((c) => c.vertex && !hidden.has(c.id)).sort((a, b) => center(a.id).x - center(b.id).x || center(a.id).y - center(b.id).y);
   for (const c of ordered) {
     const s = c.style;
-    if (s.shape === 'mxgraph.bpmn.task') {
+    const isSub = conf.sub && s.rounded === '1' && (s.fillColor || '') === conf.sub && /^\d{1,2}\.\s/.test(one(c.label));
+    if (s.shape === 'mxgraph.bpmn.task' || isSub) {
       /* Nhãn viết liền một dòng (task 64) → tách trước các từ khoá như nhãn nhiều dòng. */
       const ls = lines(c.label).flatMap((v) => v.split(/\s(?=(?:User Task|Service Task|Quy trình con) ·|Tác nhân:|Thực hiện:|Biểu mẫu(?:\/Hồ sơ)?:)/));
       const m = /^(\d{1,2}[ab]?)\.\s*(.*)$/.exec(ls[0] || '');
@@ -99,7 +107,7 @@ function extract(PAGE, conf) {
       const form = pick(/^Biểu mẫu(?:\/Hồ sơ)?:\s*/) || (/BM|Checklist/.test(kind) ? kind.split('·')[1].trim() : '');
       const note = pick(/^Thực hiện:\s*/) || ls.slice(1).filter((v) => v !== kind && !/^(Tác nhân|Biểu mẫu)/.test(v) && !/^[A-Z0-9_]+$/.test(v)).join(' ')
         || (who.length > 40 ? who : '');
-      const type = /^Quy trình con/.test(kind) ? 'sub' : s.taskMarker === 'service' ? 'service' : 'user';
+      const type = isSub || /^Quy trình con/.test(kind) ? 'sub' : s.taskMarker === 'service' || (conf.svc || []).includes(s.fillColor) ? 'service' : 'user';
       tasks[n] = { name: m[2].trim(), actor, type, form: form.replace(/\.$/, '') || 'Không có', note, lane: laneOf(c.id) };
       ref[c.id] = n;
     } else if (s.rhombus) {
@@ -144,7 +152,7 @@ function extract(PAGE, conf) {
   edges.sort((a, b) => String(a[0]).localeCompare(String(b[0]), 'en', { numeric: true }));
 
   const data = { page: PAGE, count: conf.count, tasks, gateways: gws, events: evs, edges };
-  writeFileSync(new URL('../js/' + conf.out, import.meta.url), `/* SINH TỰ ĐỘNG từ project-knowledge/03. Thiết kế (Tài liệu BA)/BPMN/${conf.src}, trang "${PAGE}".
+  writeFileSync(new URL('../js/' + conf.out, import.meta.url), `/* SINH TỰ ĐỘNG từ project-knowledge/${conf.dir || '03. Thiết kế (Tài liệu BA)/BPMN/'}${conf.src}, trang "${PAGE}".
    Không sửa tay — chạy lại: node tools/bpmn-flow-extract.mjs. tasks: số task → tên, tác nhân, loại (user/service/sub = quy trình con);
    gateways: G1… (xor/and, câu hỏi = ô chữ cạnh hình thoi); events: S bắt đầu, E1… kết thúc; edges: [nguồn, đích, nhãn]. */
 (window.BPMN_FLOWS = window.BPMN_FLOWS || {})[${JSON.stringify(conf.key)}] = ${JSON.stringify(data, null, 1)};

@@ -171,7 +171,8 @@ test('SCR-97 (tab chuyển từ SCR-29): ĐXMS đã phê duyệt có điều ch�
   await tab(page, 'Tài liệu & văn bản');
   const kq = page.locator('[data-dx-docs] tbody tr').first();
   await expect(kq).toContainText('BM-08 Quyết định phê duyệt ĐXMS');
-  await expect(kq).toContainText('Đang hiệu lực');
+  // T72 #80 (D-122 Q3): bỏ cột Trạng thái / Ký duyệt — trước: kq chứa 'Đang hiệu lực'.
+  await expect(page.locator('[data-dx-docs] thead')).not.toContainText('Trạng thái');
   // T37 #3: không theo dõi / so sánh phiên bản — không còn cột Phiên bản.
   await expect(page.locator('[data-dx-docs] thead')).not.toContainText('Phiên bản');
   await expect(page.locator('[data-dx-docs] [data-dx-ver]')).toHaveCount(0);

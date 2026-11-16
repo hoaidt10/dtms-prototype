@@ -110,10 +110,10 @@ test('D #28, #35, #38, #29: Nhóm KĐT ghi Đơn giản / Thông thường, nhá
   await page.locator('.sb-nav [data-go="tai-lieu-ct-kdt"]').click();
   await expect(page.locator('[data-ktl] h1')).toContainText('Tài liệu chủ trương KĐT');
   await expect(page.locator('[data-ktl] tbody tr').first()).toContainText('BM-01');
-  // Yêu cầu báo giá nằm trong Quản lý thầu; các mục thầu khác vẫn ẩn (D-76).
+  // Yêu cầu báo giá nằm trong Quản lý thầu; T67 (D-118 Q2) hiện lại KHLCNT.
   await page.locator('.sb-nav [data-toggle="Quản lý thầu"]').click();
   await expect(page.locator('.sb-nav [data-go="ycbg"]')).toBeVisible();
-  await expect(page.locator('.sb-nav [data-go="khlcnt"]')).toHaveCount(0);
+  await expect(page.locator('.sb-nav [data-go="khlcnt"]')).toHaveCount(1);
 });
 
 test('E #21, #34: Báo cáo quá hạn có khối Theo người xử lý; Báo cáo ĐXMS bỏ khối Theo trạng thái', async ({ page }) => {

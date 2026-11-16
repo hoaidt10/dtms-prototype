@@ -33,6 +33,8 @@ test('SCR-96 S8: bóc tách từ dự toán vào ĐXMS → bước 01 có dòng 
   await pick(page, 'lf-nv', DT);
   await expect(page.locator('[data-lf-cost] .vcard-h')).not.toContainText('Dự toán tham khảo');
   // Chỉ Loại chi phí có khoản mục Chi mua sắm: PL3 (quản lý), PL6 (dự phòng) không có.
+  // T72 #83 (D-122 Q4): hệ thống đã bóc tách sẵn khi chọn đề tài — xoá các dòng đó để test tự thêm.
+  while (await page.locator('[data-lf-cdel]').count()) await page.locator('[data-lf-cdel]').first().click();
   expect((await opts(page, 'lf-ctype')).sort()).toEqual(['PL2', 'PL4', 'PL5']);
   await pick(page, 'lf-ctype', 'PL5');
   expect(await opts(page, 'lf-cline')).toEqual([`${DT}-4`]);
@@ -55,7 +57,7 @@ test('SCR-96 S8: bóc tách từ dự toán vào ĐXMS → bước 01 có dòng 
   await expect(page.locator('[data-lf-rev]')).toHaveCount(0);
 
   // T45 — SRS 12 BR-LDX-C-03, BR-LDX-02-04 V0.3 (review khách 10/11): vượt phần còn lại báo tại dòng và CHẶN Lưu nháp (trước T45: cảnh báo, không chặn).
-  await expect(page.locator('[data-lf-cwarn]')).toHaveText('Vượt khối lượng còn lại (8 Chiếc).');
+  await expect(page.locator('[data-lf-cwarn]')).toHaveText('Vượt số lượng còn được mua (8 Chiếc).');
   const up = (names) => page.locator('#lf-file').setInputFiles(names.map((name) => ({ name, mimeType: 'application/pdf', buffer: Buffer.alloc(16) })));
   await up(['QD-1482-VHT.pdf', 'KH-mua-sam-2026.pdf']);
   await pick(page, 'lf-type-1', 'QD_NV');
@@ -63,7 +65,7 @@ test('SCR-96 S8: bóc tách từ dự toán vào ĐXMS → bước 01 có dòng 
   // Lưu đổi hash sang màn việc; không chờ điều hướng của trình duyệt (Playwright chờ mãi sau click ở kịch bản có cảnh báo).
   await page.locator('#lf-draft').click({ noWaitAfter: true });
   await expect(page).toHaveURL(/#\/luong\/create$/);
-  await expect(page.locator('[data-lf-cwarn]')).toHaveText('Vượt khối lượng còn lại (8 Chiếc).');
+  await expect(page.locator('[data-lf-cwarn]')).toHaveText('Vượt số lượng còn được mua (8 Chiếc).');
   await page.locator('[data-lf-cqty]').nth(0).fill('8');
   await page.locator('#lf-draft').click({ noWaitAfter: true });
   await expect(page).toHaveURL(/#\/task\/k\d+$/);

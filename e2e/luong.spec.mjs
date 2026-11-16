@@ -311,15 +311,10 @@ test('D-29 (3): thay người đã ký — văn bản đã ký giữ nguyên; ta
   expect(await runTo(page, 48)).toBe(true);
   await openTab(page, code, 'tai-lieu');
   // T54 (SRS 21 V0.4): Chỉ huy ĐVĐX trình ký BM-03 ở bước 16.1 — TTMS không là người ký BM-03.
-  const bm03 = page.locator('[data-dx-docs] tbody tr', { hasText: 'BM-03' }).first();
-  const signer = await page.evaluate(() => D.personas.find((p) => p.id === Flow.state.history.find((h) => String(h.task) === '16.1' && h.who).who).name);
-  await expect(bm03).toContainText(signer);
-  await expect(bm03).not.toContainText('Đinh Thị Mai');
-  await expect(bm03).toContainText('Đã ký');
-  const bm05 = page.locator('[data-dx-docs] tbody tr', { hasText: 'BM-05' }).first();
-  await expect(bm05).toContainText('Đinh Thị Mai');
-  await expect(bm05).toContainText('Đã ký');
-  await expect(page.locator('[data-dx-docs] tbody tr', { hasText: 'Đang trình ký' })).toHaveCount(0);
+  // T72 #80 (D-122 Q3): Văn bản đầu ra bỏ cột Trạng thái / Ký duyệt (người ký xem ở menu Trình ký) — trước: kiểm người ký, "Đã ký" trên dòng BM-03 / BM-05.
+  await expect(page.locator('[data-dx-docs] tbody tr', { hasText: 'BM-03' })).not.toHaveCount(0);
+  await expect(page.locator('[data-dx-docs] tbody tr', { hasText: 'BM-05' })).not.toHaveCount(0);
+  await expect(page.locator('[data-dx-docs] thead')).not.toContainText('Ký duyệt');
   // Bước 43 đã xong → không chọn được. Bước 48 (vai trò Chuyên viên TTMS đã chỉ định Mai, D-75) thay bằng Lan.
   await page.evaluate((c) => Luong.membersDialog(c, null), code);
   const r48 = await roleOf(page, '48');
@@ -332,8 +327,7 @@ test('D-29 (3): thay người đã ký — văn bản đã ký giữ nguyên; ta
   await expect(page.locator('[data-um-impact]')).toContainText('BM-05 (Đinh Thị Mai');
   await expect(page.locator('[data-um-impact]')).toContainText('giữ nguyên');
   await page.locator('#um-ok').click();
-  await expect(bm05).toContainText('Đinh Thị Mai');
-  await expect(bm05).toContainText('Đã ký');
+  await expect(page.locator('[data-dx-docs] tbody tr', { hasText: 'BM-05' })).not.toHaveCount(0); // T72 #80: văn bản giữ nguyên, người ký xem ở Trình ký
   expect(await page.evaluate(() => Flow.state.tokens.find((t) => String(t.task) === '48').who)).toBe('lan');
   expect(page.errors).toEqual([]);
 });

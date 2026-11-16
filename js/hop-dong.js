@@ -22,7 +22,7 @@
   /* ---------- Dữ liệu mẫu ----------
      Tiền: tỷ đồng (đã gồm thuế GTGT). items: [tên, ĐVT, số lượng, đơn giá (tỷ đồng), hạng mục gói thầu tương ứng]. */
   const H0 = [
-    { code: 'HĐ-2026-0052', src: 'KQ', pkg: 'GT-2026-0021', title: 'Hợp đồng cung cấp dây chuyền lắp ráp bo mạch trạm thu phát', ncc: 'NCC-000009',
+    { code: 'HĐ-2026-0052', src: 'KQ', pkg: 'GT-2026-0021', mau: '1.6', title: 'Hợp đồng cung cấp dây chuyền lắp ráp bo mạch trạm thu phát', ncc: 'NCC-000009',
       jv: [['NCC-000009', 'Thành viên đứng đầu — cung cấp thiết bị', 82], ['NCC-000011', 'Thành viên — lắp đặt, chuyển giao', 18]],
       type: 'TRON_GOI', form: 'DTRR', value: 191.2, cap: 195.0, cur: 'VND', vat: 10, unit: 'Nhà máy sản xuất thử nghiệm', owner: 'Phan Văn Lộc', st: 'TT', held: 'Tạm dừng ký hợp đồng đến khi có văn bản giải quyết kiến nghị về KQLCNT (07/10/2026).',
       created: '05/10/2026', updated: '07/10/2026', exec: '210 ngày kể từ ngày hợp đồng có hiệu lực',
@@ -35,7 +35,7 @@
         versions: [['v1', '06/10/2026', 'Dự thảo theo mẫu hợp đồng mua sắm thiết bị (theo loại HĐ Trọn gói)', 'Phòng Hợp đồng'], ['v2', '07/10/2026', 'Cập nhật sau thương thảo vòng 2', 'Phòng Hợp đồng']],
         diff: [['Điều 5 — Tiến độ giao hàng đợt 2', '240 ngày kể từ ngày hợp đồng có hiệu lực', '210 ngày kể từ ngày hợp đồng có hiệu lực'], ['Điều 9 — Bảo hành lò hàn đối lưu', '24 tháng kể từ ngày nghiệm thu', '18 tháng kể từ ngày nghiệm thu']],
         sign: [] } },
-    { code: 'HĐ-2025-0187', src: 'IMPORT', pkgText: 'GT-2025-0161', khText: 'KHLCNT-2025-0044', originText: 'ĐXMS-2025-0213', title: 'Hợp đồng cung cấp máy phân tích phổ và máy phân tích mạng vector', ncc: 'NCC-000008',
+    { code: 'HĐ-2025-0187', mau: '10', src: 'IMPORT', pkgText: 'GT-2025-0161', khText: 'KHLCNT-2025-0044', originText: 'ĐXMS-2025-0213', title: 'Hợp đồng cung cấp máy phân tích phổ và máy phân tích mạng vector', ncc: 'NCC-000008',
       type: 'TRON_GOI', form: 'DTRR', value: 45.6, cap: 47.0, cur: 'EUR', fx: 27450, vat: 10, unit: 'Phòng Chất lượng', owner: 'Bùi Minh Quang', st: 'TH', esign: false, no: '187/2025/HĐMB-VHT',
       sign: '15/12/2025', eff: '22/12/2025', end: '30/11/2026', created: '12/12/2025', updated: '05/09/2026', exec: '11 tháng kể từ ngày hợp đồng có hiệu lực',
       items: [['Máy phân tích phổ 50 GHz', 'Máy', 3, 6.2], ['Máy phân tích mạng vector 4 cổng', 'Máy', 2, 9.8], ['Bộ hiệu chuẩn điện tử', 'Bộ', 2, 1.5], ['Lắp đặt, đào tạo vận hành', 'Gói', 1, 4.4]],
@@ -49,7 +49,7 @@
       docs: [['Biên bản làm việc', 'BBLV-HĐ0187-02', '05/09/2026', 'Làm việc với nhà thầu về chậm giao đợt 2: nhà thầu nêu lý do chờ giấy phép xuất khẩu, cam kết giao trước 15/10/2026', null, 'Đã ký'],
         ['Biên bản phạt', 'BBP-HĐ0187-01', '07/10/2026', 'Phạt chậm giao đợt 2: 0,1%/ngày × 38 ngày × 22,60 tỷ đồng (tối đa 8% giá trị phần chậm)', -0.859, 'Dự thảo']],
       penalty: [['Phạt chậm tiến độ giao đợt 2', 0.859, 'Khấu trừ khi thanh toán đợt 2', 'Chưa khấu trừ']] },
-    { code: 'HĐ-2026-0012', src: 'IMPORT', pkgText: 'GT-2026-0007', khText: 'KHLCNT-2026-0003', originText: 'ĐXMS-2025-0198', title: 'Hợp đồng cung cấp thiết bị mạng cho phòng lab kiểm thử 5G', ncc: 'NCC-000003',
+    { code: 'HĐ-2026-0012', mau: '1.1', src: 'IMPORT', pkgText: 'GT-2026-0007', khText: 'KHLCNT-2026-0003', originText: 'ĐXMS-2025-0198', title: 'Hợp đồng cung cấp thiết bị mạng cho phòng lab kiểm thử 5G', ncc: 'NCC-000003',
       type: 'DG_DC', form: 'DTHC', value: 30.5, value0: 28.4, cap: 32.0, cur: 'VND', vat: 10, unit: 'Trung tâm Mạng lõi', owner: 'Đặng Thu Trang', st: 'TH', esign: true, no: '012/2026/HĐMB-VHT',
       sign: '20/03/2026', eff: '20/03/2026', end: '31/01/2027', end0: '31/12/2026', created: '16/03/2026', updated: '03/10/2026', exec: '10 tháng 11 ngày (sau Phụ lục 01)',
       items: [['Switch lõi 400G', 'Bộ', 5, 2.1], ['Router biên 100G', 'Bộ', 2, 4.5], ['Bộ phát lưu lượng kiểm thử', 'Bộ', 2, 5.5]],
@@ -62,6 +62,24 @@
       docs: [['Phụ lục hợp đồng', 'PL01/012/2026', '05/08/2026', 'Bổ sung 01 switch lõi 400G cho mở rộng phòng lab; gia hạn thời gian thực hiện 31 ngày', 2.1, 'Đã ký'],
         ['Biên bản làm việc', 'BBLV-HĐ0012-01', '03/10/2026', 'Thống nhất phương án thay thế bộ phát lưu lượng lỗi cổng 100G', null, 'Đã ký']],
       annex: [['Giá trị hợp đồng', '28,40 tỷ đồng', '30,50 tỷ đồng'], ['Switch lõi 400G — số lượng', '4 bộ', '5 bộ'], ['Ngày kết thúc hợp đồng', '31/12/2026', '31/01/2027']] },
+    /* T67 dữ liệu demo: hợp đồng theo mẫu 1.8 (10 / 90, có tạm ứng — đã nghiệm thu chưa lập hồ sơ thanh toán) và 7.2 (100, không tạm ứng — giao hàng chậm). */
+    { code: 'HĐ-2026-0058', src: 'IMPORT', mau: '1.8', pkgText: 'GT-2026-0019', khText: 'KHLCNT-2026-0008', originText: 'ĐXMS-2026-0061', title: 'Hợp đồng mở rộng bản quyền phần mềm điều khiển đo', ncc: 'NCC-000001',
+      type: 'DG_CD', form: 'MSTT', value: 12.3, cap: 12.5, cur: 'VND', vat: 10, unit: 'Trung tâm Vô tuyến', owner: 'Trần Đức Hải', st: 'TH', esign: true, no: '058/2026/HĐMB-VHT',
+      sign: '05/09/2026', eff: '05/09/2026', end: '05/12/2026', created: '28/08/2026', updated: '01/10/2026', exec: '30 ngày kể từ ngày hợp đồng có hiệu lực',
+      items: [['Bản quyền mô-đun đo trường xa', 'Bản quyền', 6, 2.05]],
+      ms: [['Bàn giao bản quyền, kích hoạt', '20/09/2026', '18/09/2026', 90], ['Nghiệm thu', '30/09/2026', '29/09/2026', 10]],
+      dl: [['BG-01', 'Đợt 1', '20/09/2026', '18/09/2026', 'Phòng đo kiểm — Trung tâm Vô tuyến', 'Bản quyền mô-đun đo trường xa × 6', 'Đạt']],
+      acc: [['NT-01', 'Tổng thể', '29/09/2026', 'Toàn bộ bản quyền đã kích hoạt', 12.3, 'Đạt', '']],
+      guar: [['BL_NH', 0.37, 3, '04/09/2026', '05/01/2027', 'Ngân hàng TMCP Quân đội']], adv: [['BL_NH', 1.23, '04/09/2026', '31/12/2026', 'Ngân hàng TMCP Quân đội', 'Bảo lãnh tạm ứng 10% giá trị hợp đồng']],
+      warr: [['Bản quyền phần mềm (hỗ trợ, cập nhật)', '12 tháng', '29/09/2026', '29/09/2027', 'Cập nhật bản vá trong 30 ngày']],
+      pays: [['TT-2026-0231', 'Tạm ứng', null, 1.23, 0, 0, 0, 'PAID', '12/09/2026']], docs: [] },
+    { code: 'HĐ-2026-0035', src: 'IMPORT', mau: '7.2', pkgText: 'GT-2026-0015', khText: 'KHLCNT-2026-0006', originText: 'ĐXMS-2026-0058', title: 'Hợp đồng cung cấp bộ nguồn, phụ kiện đo kiểm hiện trường', ncc: 'NCC-000010',
+      type: 'TRON_GOI', form: 'CGTT', value: 2.4, cap: 2.6, cur: 'VND', vat: 10, unit: 'Phòng Chất lượng', owner: 'Bùi Minh Quang', st: 'TH', esign: false, no: '035/2026/HĐMB-VHT',
+      sign: '20/07/2026', eff: '20/07/2026', end: '30/11/2026', created: '15/07/2026', updated: '05/10/2026', exec: '60 ngày kể từ ngày hợp đồng có hiệu lực',
+      items: [['Bộ nguồn di động 2 kW', 'Bộ', 8, 0.18], ['Phụ kiện cáp, giá đỡ', 'Bộ', 8, 0.12]],
+      ms: [['Giao hàng đợt 1', '20/08/2026', '18/08/2026', 50], ['Giao hàng đợt 2', '30/09/2026', null, 50]],
+      dl: [['BG-01', 'Đợt 1', '20/08/2026', '18/08/2026', 'Kho Phòng Chất lượng', 'Bộ nguồn × 4; phụ kiện × 4', 'Đạt'], ['BG-02', 'Đợt 2', '30/09/2026', null, 'Kho Phòng Chất lượng', 'Bộ nguồn × 4; phụ kiện × 4', null]],
+      acc: [], guar: [], warr: [['Bộ nguồn di động', '12 tháng', '18/08/2026', '18/08/2027', 'Đổi mới trong 15 ngày nếu lỗi kỹ thuật']], pays: [], docs: [] },
     { code: 'HĐ-2026-0021', src: 'IMPORT', pkgText: 'GT-2026-0011', khText: 'KHLCNT-2026-0004', originText: 'ĐXMS-2026-0031', title: 'Hợp đồng cung cấp máy chủ, lưu trữ cho phòng lab AI giai đoạn 1', ncc: 'NCC-000001',
       type: 'TRON_GOI', form: 'CGTT', value: 9.6, cap: 10.0, cur: 'VND', vat: 10, unit: 'Trung tâm Phần mềm', owner: 'Lương Thị Hạnh', st: 'TL', esign: true, no: '021/2026/HĐMB-VHT',
       sign: '15/04/2026', eff: '15/04/2026', end: '15/09/2026', created: '10/04/2026', updated: '02/10/2026', exec: '5 tháng',
@@ -107,6 +125,15 @@
     'HĐ-2026-0021': { 'BG-01': [[0, 2], [1, 1]], 'NT-01': [[0, 2], [1, 1]] },
     'HĐ-2025-0152': { 'NT-01': [[0, 1]], 'NT-02': [[0, 1], [1, 1]], 'NT-03': [[0, 1]], 'NT-04': [[0, 1]] },
   };
+  /* T67 H4 (T66 L4): mẫu hợp đồng của hợp đồng = mẫu đính kèm HSMT của gói (hoặc gợi ý theo gói); hợp đồng nhập từ dữ liệu cũ không có mẫu.
+     Kế hoạch thanh toán sinh theo phương thức của mẫu khi hợp đồng chưa có kế hoạch riêng; kế hoạch đã ký (dữ liệu cũ) giữ nguyên. */
+  const mauHd = (h) => { if (h.mau) return D.mauOf(h.mau); const g = h.pkg && T().pkOf(h.pkg); return g ? D.mauOf(g.mau || T().mauGoiY(g)) : null; };
+  const TT_PLAN = { '10 / 30 / 60': [['Tạm ứng', 'Sau ký hợp đồng và nộp bảo lãnh tạm ứng', 10], ['Thanh toán đợt 1', 'Sau Biên bản bàn giao — 40% giá trị hợp đồng, trừ tạm ứng', 40], ['Thanh toán đợt 2', 'Sau nghiệm thu', 60]],
+    '10 / 90': [['Tạm ứng', 'Sau ký hợp đồng và nộp bảo lãnh tạm ứng', 10], ['Thanh toán', 'Sau bàn giao và nghiệm thu — 90% giá trị hợp đồng, trừ tạm ứng', 90]],
+    '100': [['Thanh toán', 'Sau bàn giao và nghiệm thu', 100]] };
+  const planOf = (h) => { if ((h.plan || []).length) return { rows: h.plan, own: true }; const m = mauHd(h);
+    return { rows: m ? TT_PLAN[m.tt].map(([a, b, r]) => [a, b, r, Math.round(h.value * r) / 100]) : [], own: false }; };
+  const hasAdv = (h) => { const m = mauHd(h); return !m || m.tt !== '100'; };
   const qtyOf = (h, doc, i) => ((h.qty || QTY[h.code] || {})[doc] || []).filter((x) => x[0] === i).reduce((s0, x) => s0 + x[1], 0);
 
   /* Bản ghi tạo trên prototype (localStorage riêng). */
@@ -245,7 +272,12 @@
     const g = T().pkOf(h.pkg), k = g && T().khAll().find((x) => x.code === g.kh);
     return { g, kh: g && g.kh, origin: k ? k.src[1] : '', originHref: k ? T().srcHref(k.src[0], k.src[1]) : null };
   }
-  const row = (h) => Object.assign({}, h, { eff: eff(h)[0], prog: prog(h)[0], nccN: nccName(h.ncc) });
+  /* T67 H5 (T66 L5, H-Q4 = A): cột / lọc theo màn Hợp đồng của hệ thống cũ (HT-HD-IMG), chỉ thứ đã có nguồn. Thanh toán chậm GIẢ LẬP = có biên bản nghiệm thu Đạt
+     chưa lập hồ sơ thanh toán; Giao hàng chậm = mốc quá hạn chưa có ngày thực tế (lateMs). */
+  const signForm = (h) => (!h.sign ? '' : h.esign ? 'Ký điện tử' : 'Ký giấy');
+  const row = (h) => { const pre = Math.round((h.value / (1 + (h.vat || 10) / 100)) * 1000) / 1000;
+    return Object.assign({}, h, { eff: eff(h)[0], prog: prog(h)[0], nccN: nccName(h.ncc), signF: signForm(h), pre, paid: paidSum(h), left: remain(h),
+      rate: h.value ? Math.round(paidSum(h) / h.value * 100) : 0, payLate: payable(h).length > 0, dlLate: lateMs(h).length > 0 }); };
 
   /* ---------- SCR-84 Danh sách hợp đồng ---------- */
   const hdHref = (h) => 'hop-dong/' + encodeURIComponent(h.code);
@@ -257,21 +289,29 @@
       id: 'hdl', title: 'Danh sách hợp đồng', ph: 'Tìm kiếm theo mã, tên hợp đồng, nhà thầu',
       right: `<button class="vbtn secondary" data-hd-import>${icon('upload')} Nhập hợp đồng</button><button class="vbtn primary" data-go="hop-dong/create">${icon('add')} Thêm mới</button>`,
       rows: () => all().map(row), kwText: (h) => `${h.code} ${h.title} ${h.nccN}`,
-      empty: () => ({ code: '', title: '', pkg: '', ncc: null, type: null, st: [], eff: null, prog: null, unit: null }),
+      empty: () => ({ code: '', title: '', pkg: '', ncc: null, type: null, st: [], eff: null, prog: null, unit: null, signF: null, from: '', to: '', payLate: null, dlLate: null }),
       match: (h, f) => k.has(f.code, h.code) && k.has(f.title, h.title) && k.has(f.pkg, h.pkg || h.pkgText) && (!f.ncc || h.ncc === f.ncc) && (!f.type || h.type === f.type)
-        && k.inSet(f.st, h.st) && (!f.eff || h.eff === f.eff) && (!f.prog || h.prog === f.prog) && (!f.unit || h.unit === f.unit),
-      adv: (txt, sel) => `${txt('code', 'Mã hợp đồng')}${txt('title', 'Tên hợp đồng')}${txt('pkg', 'Mã gói thầu')}
+        && k.inSet(f.st, h.st) && (!f.eff || h.eff === f.eff) && (!f.prog || h.prog === f.prog) && (!f.unit || h.unit === f.unit)
+        && (!f.signF || h.signF === f.signF) && (!f.from || (h.sign && k.dkey(h.sign) >= k.dkey(f.from))) && (!f.to || (h.sign && k.dkey(h.sign) <= k.dkey(f.to)))
+        && (!f.payLate || (f.payLate === 'CO') === h.payLate) && (!f.dlLate || (f.dlLate === 'CO') === h.dlLate),
+      adv: (txt, sel, range) => `${txt('code', 'Mã hợp đồng')}${txt('title', 'Tên hợp đồng')}${txt('pkg', 'Mã gói thầu')}
         ${sel('ncc', 'Nhà thầu', { options: [...new Set(all().map((h) => h.ncc))].map((c) => ({ value: c, label: nccName(c) })) })}
         ${sel('type', 'Loại hợp đồng', { options: k.catOpts('loai-hop-dong') })}
         ${sel('st', 'Trạng thái', { multi: true, searchable: false, options: Object.entries(HD_ST).map(([value, [label]]) => ({ value, label })) })}
         ${sel('eff', 'Hiệu lực', { searchable: false, options: ['Chưa hiệu lực', 'Đang hiệu lực', 'Hết hiệu lực', 'Chấm dứt'].map((x) => ({ value: x, label: x })) })}
         ${sel('prog', 'Tiến độ', { searchable: false, options: ['Chưa thực hiện', 'Đúng tiến độ', 'Chậm tiến độ', 'Hoàn thành'].map((x) => ({ value: x, label: x })) })}
-        ${sel('unit', 'Đơn vị quản lý', { options: units.map((u) => ({ value: u, label: u })) })}`,
+        ${sel('unit', 'Đơn vị quản lý', { options: units.map((u) => ({ value: u, label: u })) })}
+        ${sel('signF', 'Hình thức ký', { searchable: false, options: ['Ký điện tử', 'Ký giấy'].map((x) => ({ value: x, label: x })) })}
+        ${sel('payLate', 'Thanh toán chậm', { searchable: false, options: [{ value: 'CO', label: 'Có' }, { value: 'KHONG', label: 'Không' }] })}
+        ${sel('dlLate', 'Giao hàng chậm', { searchable: false, options: [{ value: 'CO', label: 'Có' }, { value: 'KHONG', label: 'Không' }] })}
+        ${range('from', 'to', 'Ngày ký')}`,
       cols: [['Trạng thái', 170, 'c'], ['Mã hợp đồng', 150], ['Tên hợp đồng', 320], ['Nhà thầu', 240], ['Gói thầu', 140], ['Loại hợp đồng', 180],
-        ['Giá trị (tỷ đồng)', 140, 'r'], ['Ngày ký', 120], ['Hiệu lực', 150, 'c'], ['Tiến độ', 150, 'c'], ['Đơn vị quản lý', 200]],
+        ['Giá trị (tỷ đồng)', 140, 'r'], ['Giá trị trước thuế (tỷ đồng)', 190, 'r'], ['Ngày ký', 120], ['Hình thức ký', 130], ['Hiệu lực', 150, 'c'], ['Tiến độ', 150, 'c'],
+        ['Đã thanh toán (tỷ đồng)', 170, 'r'], ['Còn phải thanh toán (tỷ đồng)', 200, 'r'], ['Tỷ lệ thanh toán', 130, 'r'], ['Đơn vị quản lý', 200]],
       href: hdHref,
       cell: (h) => `<td class="c">${badge(...HD_ST[h.st])}</td><td><a class="link" data-go="${hdHref(h)}">${esc(h.code)}</a></td><td>${k.clamp(h.title)}</td><td>${k.clamp(h.nccN)}</td><td>${h.pkg ? pkgLink(h) : esc(h.pkgText)}</td>
-        <td>${k.clamp(k.cat('loai-hop-dong', h.type))}</td><td class="r num">${m3(h.value)}</td><td class="num">${h.sign ? esc(h.sign) : k.dash}</td><td class="c">${badge(...eff(h))}</td><td class="c">${badge(...prog(h))}</td><td>${k.clamp(h.unit)}</td>`,
+        <td>${k.clamp(k.cat('loai-hop-dong', h.type))}</td><td class="r num">${m3(h.value)}</td><td class="r num">${m3(h.pre)}</td><td class="num">${h.sign ? esc(h.sign) : k.dash}</td><td>${h.signF ? esc(h.signF) : k.dash}</td><td class="c">${badge(...eff(h))}</td><td class="c">${badge(...prog(h))}</td>
+        <td class="r num">${m3(h.paid)}</td><td class="r num">${m3(h.left)}</td><td class="r num">${h.rate}%</td><td>${k.clamp(h.unit)}</td>`,
       info: {
         scr: 'SCR-84', name: 'Danh sách hợp đồng', uc: 'Backlog W1_T10 › Quản lý hợp đồng › Thông tin hợp đồng (dòng 422–429)', bpmn: 'MS22 → MS23 → MS24 (BPMN-DTMS 07/10)',
         notes: [
@@ -279,6 +319,7 @@
           'Trạng thái theo BPMN: Đang thương thảo (MS22) → Đang trình ký (MS22 ký nháy, Thủ trưởng ký, VContract) → Đang thực hiện (MS23 / MS24) → Đang thanh lý (MS23.04) → Đã thanh lý. <b>Hiệu lực</b> và <b>Tiến độ</b> là chỉ số suy ra: hiệu lực theo ngày hiệu lực / hết hạn; chậm tiến độ khi có mốc quá ngày kế hoạch chưa hoàn thành (job quét mốc, sự kiện CONTRACT_MILESTONE_LATE).',
           'Hợp đồng mẫu xem tĩnh; HĐ-2026-0052 chạy luồng (T25, D-48): Tạo hồ sơ ở tab Thương thảo & ký kết; ký xong tự có hồ sơ theo dõi MS23 ở tab Tiến độ thực hiện, tạo hồ sơ thanh toán MS24 ở tab Thanh toán; đến hạn nghiệm thu thì tạo hồ sơ MS23.03 ở tab Tiến độ, hồ sơ MS23.04 tự sinh từ G1. văn bản phát sinh MS23.01 tạo hồ sơ ở tab Văn bản phát sinh; hồ sơ bàn giao MS23.02 tự sinh khi ghi nhận thông báo giao hàng của nhà thầu (MS23 bước 3, 4).',
           'Không có cột Thao tác (D-43, team BA 30/10/2026: chưa có thao tác trên dòng).',
+          '<b>T67 H5</b> (T66 L5): thêm cột theo màn Hợp đồng của hệ thống cũ (HT-HD-IMG) — Giá trị trước thuế, Hình thức ký, Đã thanh toán, Còn phải thanh toán, Tỷ lệ thanh toán; lọc Ngày ký, Hình thức ký, Thanh toán chậm (GIẢ LẬP: có biên bản nghiệm thu Đạt chưa lập hồ sơ thanh toán), Giao hàng chậm (mốc quá hạn chưa có ngày thực tế). Không làm HOC / FAC, Cập nhật mã tài sản, Hóa đơn, Xuất nhập khẩu, SAP — hệ thống cũ có, chưa có quy trình mới.',
         ],
         q: ['P-80'], src: 'task-management/task-management.component · /task-management',
       },
@@ -342,7 +383,7 @@
     const n = Math.max(...all().filter((h) => h.code.startsWith('HĐ-2026')).map((h) => Number(h.code.slice(-4)))) + 1;
     const code = 'HĐ-2026-' + String(n).padStart(4, '0'), now = Flow.dateOf(Flow.state.clock);
     const q = (g.items || []).reduce((s, r) => s + r[2], 0) || 1;
-    U.hd.unshift({ code, src: 'KQ', pkg: g.code, title: v.title.trim(), ncc: g.winner, type: g.contract, form: g.form, value: win[1], cap: g.price, cur: v.cur, vat: 10, unit: v.unit,
+    U.hd.unshift({ code, src: 'KQ', pkg: g.code, mau: g.mau || T().mauGoiY(g), title: v.title.trim(), ncc: g.winner, type: g.contract, form: g.form, value: win[1], cap: g.price, cur: v.cur, vat: 10, unit: v.unit,
       owner: persona(Flow.state.persona).name, st: 'TT', created: now, updated: now, exec: g.execTime,
       items: (g.items || []).map((r) => [r[0], r[1], r[2], r2(win[1] / q)]), neg: { rounds: [], check: [], versions: [], diff: [], sign: [] } });
     persist();
@@ -387,7 +428,8 @@
         ${k.kv('Số hợp đồng', h.no ? esc(h.no) : null)}${k.kv('Trạng thái', badge(...HD_ST[h.st]))}${k.kv('Bước hiện tại', esc(h.stepName || HD_STEP[h.st]))}
         ${k.kv('Nguồn hình thành', esc(SRC_HD[h.src]))}${k.kv('Gói thầu', pkgLink(h))}${k.kv('KHLCNT', h.pkg && s.kh ? `<a class="link-red" href="#/khlcnt/${encodeURIComponent(s.kh)}">${esc(s.kh)}</a>` : esc(s.kh || '-'))}
         ${k.kv('Đối tượng nguồn (ĐXMS / KĐT)', s.originHref ? `<a class="link-red" href="#/${s.originHref}">${esc(s.origin)}</a>` : esc(s.origin || '-'))}${k.kv('Hình thức lựa chọn nhà thầu', esc(k.cat('hinh-thuc-lcnt', h.form)))}${k.kv('Loại hợp đồng', esc(k.cat('loai-hop-dong', h.type)))}
-        ${k.kv('Đơn vị quản lý hợp đồng', esc(h.unit))}${k.kv('Đầu mối theo dõi', esc(h.owner))}${k.kv('Hình thức ký', h.sign ? (h.esign ? 'Ký điện tử (VContract)' : 'Ký giấy') : null)}</div>`)
+        ${k.kv('Đơn vị quản lý hợp đồng', esc(h.unit))}${k.kv('Đầu mối theo dõi', esc(h.owner))}${k.kv('Hình thức ký', h.sign ? (h.esign ? 'Ký điện tử (VContract)' : 'Ký giấy') : null)}
+        ${((m) => k.kv('Mẫu hợp đồng', m ? `<a class="link-red" href="#" data-dl="${esc(m.file || m.code + '.docx')}">${esc(m.code)} — ${esc(m.name)}</a>` : null, 'span2') + k.kv('Phương thức thanh toán', m ? esc(m.tt) : null))(mauHd(h))}</div>`)
       + k.card('Giá trị hợp đồng', `<div class="ginfo c3">
         ${k.kv('Giá trị hợp đồng (đã gồm thuế GTGT)', ty(h.value, 2) + ' tỷ đồng')}${k.kv('Thuế GTGT', h.vat + '%')}${k.kv('Tiền tệ', esc(k.cat('tien-te', h.cur)))}
         ${k.kv('Giá trị theo nguyên tệ', fx ? `${Math.round(h.value * 1e9 / h.fx).toLocaleString('vi-VN')} ${esc(h.cur)}` : null)}${k.kv('Tỷ giá quy đổi', fx ? `${h.fx.toLocaleString('vi-VN')} VNĐ/${esc(h.cur)} (ngày ký)` : null)}
@@ -434,7 +476,7 @@
         (g) => { const left = days(TODAY, g[4]); return `<td>${esc(k.cat('hinh-thuc-bao-dam', g[0]))}</td><td class="r num">${ty(g[1], 3)}</td><td class="r num">${g[2]}%</td><td class="num">${esc(g[3])}</td><td class="num">${esc(g[4])}</td><td>${k.clamp(g[5])}</td>
           <td class="c">${h.st === 'DONG' ? badge('Đã giải toả', 'default') : left < 0 ? badge('Hết hiệu lực', 'default') : left <= warnDays('guar') && ['TH', 'TL'].includes(h.st) ? badge(`Sắp hết hạn (${left} ngày)`, 'warning') : badge('Còn hiệu lực', 'success')}</td>`; }),
         h.guar ? 'Tỷ lệ theo Quy chế, tính trên giá trị hợp đồng' : 'Lập khi ký hợp đồng')
-      + (h.adv ? k.card('Bảo lãnh tạm ứng', k.table([['Hình thức', 260], ['Giá trị (tỷ đồng)', 150, 'r'], ['Hiệu lực từ', 120], ['Hiệu lực đến', 120], ['Tổ chức phát hành', 280], ['Ghi chú', 260]], h.adv,
+      + (h.adv && hasAdv(h) ? k.card('Bảo lãnh tạm ứng', k.table([['Hình thức', 260], ['Giá trị (tỷ đồng)', 150, 'r'], ['Hiệu lực từ', 120], ['Hiệu lực đến', 120], ['Tổ chức phát hành', 280], ['Ghi chú', 260]], h.adv,
         (g) => `<td>${esc(k.cat('hinh-thuc-bao-dam', g[0]))}</td><td class="r num">${ty(g[1], 3)}</td><td class="num">${esc(g[2])}</td><td class="num">${esc(g[3])}</td><td>${k.clamp(g[4])}</td><td>${k.clamp(g[5])}</td>`)) : '')
       + k.card('Bảo hành', k.table([['Hạng mục', 300], ['Thời gian bảo hành', 150], ['Từ ngày', 120], ['Đến ngày', 120], ['Điều kiện', 300], ['Trạng thái', 160, 'c']], h.warr || [],
         (w) => `<td>${k.clamp(w[0])}</td><td>${esc(w[1])}</td><td class="num">${esc(w[2])}</td><td class="num">${esc(w[3])}</td><td>${k.clamp(w[4])}</td><td class="c">${dk(w[3]) >= dk(TODAY) ? badge('Đang bảo hành', 'info') : badge('Hết bảo hành', 'default')}</td>`), 'Nghĩa vụ kéo dài sau nghiệm thu');
@@ -483,8 +525,9 @@
       const pid = Flow.state.persona, can = h.code === RUN ? ['TH', 'TL'].includes(h.st) && (pid === 'phd' || D.allAccess(pid)) && nextPays(h).length : ['TH', 'TL'].includes(h.st) && payable(h).length;
       return k.card('Tổng hợp thanh toán', `<div class="ginfo c3">${k.kv('Giá trị hợp đồng', ty(h.value, 2) + ' tỷ đồng')}${k.kv('Đã tạm ứng', ty(advOf(h), 2) + ' tỷ đồng')}${k.kv('Đã thu hồi tạm ứng', ty(advBack(h), 2) + ' tỷ đồng')}
           ${k.kv('Đã thanh toán (lũy kế, ròng)', ty(paidSum(h), 2) + ' tỷ đồng')}${k.kv('Còn phải thanh toán', ty(remain(h), 2) + ' tỷ đồng')}${k.kv('Tỷ lệ thanh toán', (h.value ? Math.round(paidSum(h) / h.value * 100) : 0) + '%')}</div>`)
-        + k.card('Kế hoạch thanh toán', k.table([['Mốc', 220], ['Điều kiện thanh toán', 380], ['Tỷ lệ', 90, 'r'], ['Giá trị (tỷ đồng)', 150, 'r']], h.plan || [],
-          (p) => `<td>${esc(p[0])}</td><td>${k.clamp(p[1])}</td><td class="r num">${p[2]}%</td><td class="r num">${m3(p[3])}</td>`))
+        + ((pl) => k.card('Kế hoạch thanh toán', k.table([['Mốc', 220], ['Điều kiện thanh toán', 380], ['Tỷ lệ', 90, 'r'], ['Giá trị (tỷ đồng)', 150, 'r']], pl.rows,
+          (p) => `<td>${esc(p[0])}</td><td>${k.clamp(p[1])}</td><td class="r num">${p[2]}%</td><td class="r num">${m3(p[3])}</td>`),
+          !mauHd(h) ? '' : pl.own && h.code !== RUN ? 'Kế hoạch theo hợp đồng đã ký' : 'Theo phương thức thanh toán của mẫu hợp đồng'))(planOf(h))
         + `<section class="vcard pad24"><div class="vcard-h"><h3>Hồ sơ thanh toán</h3>${can ? `<button type="button" class="vbtn primary" data-hd-pay="${esc(h.code)}">${icon('add')} Tạo hồ sơ thanh toán</button>` : ''}</div>
           ${k.table([['Trạng thái', 160, 'c'], ['Đồng bộ SAP', 190, 'c'], ['Mã hồ sơ', 180], ['Đợt', 200], ['Căn cứ nghiệm thu', 130], ['Đề nghị (tỷ đồng)', 130, 'r'], ['Khấu trừ tạm ứng', 130, 'r'], ['Phạt', 100, 'r'], ['Giữ lại', 100, 'r'], ['Thanh toán ròng', 130, 'r']], h.pays || [],
             (p) => `<td class="c">${badge(...PAY_ST[p[7]])}</td><td class="c">${p[9] ? badge(...p[9]) : p[7] === 'PAID' ? badge('Đã đồng bộ ' + p[8], 'success') : badge('Chưa đồng bộ', 'default')}</td><td>${p[10] ? `<a class="link" data-go="ho-so-hd/${esc(p[0])}">${esc(p[0])}</a>` : esc(p[0])}</td><td>${k.clamp(p[1])}</td><td>${p[2] ? esc(p[2]) : k.dash}</td><td class="r num">${ty(p[3], 3)}</td><td class="r num">${ty(p[4], 3)}</td><td class="r num">${ty(p[5], 3)}</td><td class="r num">${ty(p[6], 3)}</td>
@@ -742,5 +785,5 @@
   /* Mở một tab của Chi tiết hợp đồng (công cụ demo). */
   const setTab = (code, tab) => K().setTab('hd:' + code, tab);
   const openTab = (code, tab) => { setTab(code, tab); location.hash = '#/hop-dong/' + encodeURIComponent(code); };
-  window.HopDong = { find: hdOf, kit: K, pkgOf: (h) => (h.pkg ? T().pkOf(h.pkg) : null), checkRows, setTab, openTab, route, enter, reset, byPkg, all, eff, prog, paidSum, remain, advOf, accSum, lateMs, guarWarn, doneRate, HD_ST, PAY_ST, FW, called, ordersOf, hdSoon, warnDays, TODAY, days, dk };
+  window.HopDong = { mauHd, planOf, find: hdOf, kit: K, pkgOf: (h) => (h.pkg ? T().pkOf(h.pkg) : null), checkRows, setTab, openTab, route, enter, reset, byPkg, all, eff, prog, paidSum, remain, advOf, accSum, lateMs, guarWarn, doneRate, HD_ST, PAY_ST, FW, called, ordersOf, hdSoon, warnDays, TODAY, days, dk };
 })();

@@ -471,7 +471,7 @@
     return `<section class="vcard" data-dt-pk><div class="vcard-h"><h3>Gói thầu</h3><span class="cap">Đơn vị tiền: tỷ đồng</span></div>
       ${table([['Trạng thái', 190, 'c'], ['Số gói thầu', 150], ['Tên gói thầu', 300], ['Nguồn', 170], ['Lĩnh vực', 170], ['Hình thức LCNT', 190], ['Giá gói thầu', 120, 'r'], ['Giá trị phân bổ', 130, 'r'],
       ['Giá trúng thầu', 130, 'r'], ['Người phụ trách', 170], ['KHLCNT', 160], ['Số / ngày QĐ phê duyệt KHLCNT', 230]], pk,
-    (p) => `<td class="c">${badge(...T.PK_ST[p.g.stx])}</td><td><a class="link" data-go="goi-thau/${encodeURIComponent(p.g.code)}">${esc(p.g.code)}</a></td><td>${clamp(p.g.name)}</td>
+    (p) => `<td class="c">${badge(...T.pkStLabel(p.g))}</td><td><a class="link" data-go="goi-thau/${encodeURIComponent(p.g.code)}">${esc(p.g.code)}</a></td><td>${clamp(p.g.name)}</td>
         <td>${p.hits.map(srcLink).join(', ')}</td><td>${clamp(k.cat('loai-goi-thau', p.g.type))}</td><td>${clamp(k.cat('hinh-thuc-lcnt', p.g.form))}</td><td class="r num">${num(p.g.price)}</td>
         <td class="r num">${num(p.alloc)}</td><td class="r num">${win(p.g) == null ? dash : num(win(p.g))}</td><td>${clamp(p.k.owner || p.k.creator)}</td>
         <td><a class="link" data-go="khlcnt/${encodeURIComponent(p.k.code)}">${esc(p.k.code)}</a></td><td>${qd(p.k)[0] ? `${esc(qd(p.k)[0])} ngày ${esc(qd(p.k)[1])}` : dash}</td>`, 'Chưa có gói thầu')}</section>

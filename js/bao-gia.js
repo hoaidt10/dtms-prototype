@@ -44,7 +44,10 @@
     });
     const rows = items().map((i) => {
       const opts = nccs.filter((n) => n.live && n.conv(i.n) != null).sort((a, b) => a.conv(i.n) - b.conv(i.n) || dkey(a.date).localeCompare(dkey(b.date)));
-      const low = opts[0] || null, b = (ed.base || {})[i.n] || {};
+      /* [T72 #85, D-122 Q6] mặc định theo Mức giá làm cơ sở của bước 8 (Flow.ui.mucGia): Thấp nhất (mặc định) / Cao nhất / Trung bình (báo giá gần giá trung bình nhất);
+         chọn khác mức đó vẫn bắt lý do. Biến low giữ tên cũ, nghĩa = cơ sở giá mặc định. */
+      const mg = (Flow.ui || {}).mucGia, avg = opts.length ? opts.reduce((s, n) => s + n.conv(i.n), 0) / opts.length : 0;
+      const low = (mg === 'Cao nhất' ? opts[opts.length - 1] : mg === 'Trung bình' ? opts.slice().sort((a, c) => Math.abs(a.conv(i.n) - avg) - Math.abs(c.conv(i.n) - avg))[0] : opts[0]) || null, b = (ed.base || {})[i.n] || {};
       const pick = (b.ncc && opts.find((n) => n.code === b.ncc)) || low;
       const amount = pick ? Math.round(pick.conv(i.n) * i.buy * 100) / 100 : null;
       return { i, opts, low, pick, reason: pick && low && pick !== low ? b.reason || '' : '', other: !!(pick && low && pick !== low), amount };

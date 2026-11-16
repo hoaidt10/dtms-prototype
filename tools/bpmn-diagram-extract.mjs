@@ -6,6 +6,7 @@ import { readFileSync, writeFileSync } from 'node:fs';
 /* D-31 (T18): nguồn theo trang — MS13 / MS14 đọc bản 12/10 (ĐTMS-121026.drawio); MS01 v1.1 đọc bản 12/10 từ T29 B1 (D-54: một quy trình, không có 10a/10b); MS02 đọc bản 12/10 từ T21 (D-38). */
 const BPMN = '../../../project-knowledge/03. Thiết kế (Tài liệu BA)/BPMN/';
 const OLD = 'ĐTMS.drawio', NEW = 'ĐTMS-121026.drawio';
+const PK = '../../../project-knowledge/', T1611 = '02. VHT gửi/Thầu 161126/';
 /* Trang → file. MS01 v1.1 giữ tên cũ bpmn-diagram.js (màn Xem BPMN của hồ sơ dùng BPMN_DIAGRAM). */
 const PAGES = {
   'MS01 v1.1': { src: NEW, out: 'bpmn-diagram.js', tasks: Array.from({ length: 61 }, (_, k) => String(k + 1)) },
@@ -22,6 +23,10 @@ const PAGES = {
   'MS23.03': { src: NEW, hd: true, out: 'bpmn-diagram-ms23-03.js', tasks: Array.from({ length: 14 }, (_, k) => String(k + 1)) },
   'MS23.04': { src: NEW, hd: true, out: 'bpmn-diagram-ms23-04.js', tasks: Array.from({ length: 14 }, (_, k) => String(k + 1)) },
   MS24: { src: NEW, hd: true, out: 'bpmn-diagram-ms24.js', tasks: Array.from({ length: 20 }, (_, k) => String(k + 1)) },
+  /* T67 T1 (D-118): MS18 / MS19 TO-BE 16/11 — trang trong ĐTMS.drawio người dùng gửi 16/11 (BPMN-DTMS-1611). Subprocess của MS19 vẽ
+     bằng khung bo góc nền SUB (không phải hình task) → coi là task có số. */
+  MS18: { dir: T1611, src: 'ĐTMS.drawio', svc: ['#EEF6F0', '#F2EEFA'], out: 'bpmn-diagram-ms18.js', tasks: Array.from({ length: 23 }, (_, k) => String(k + 1)) },
+  MS19: { dir: T1611, src: 'ĐTMS.drawio', svc: ['#EEF6F0', '#F2EEFA'], out: 'bpmn-diagram-ms19.js', sub: '#F7FAFC', tasks: Array.from({ length: 24 }, (_, k) => String(k + 1)) },
 };
 
 const files = {};
@@ -36,7 +41,9 @@ const plain = (h) => h.replace(/<br\s*\/?>|<\/div>/gi, '\n').replace(/<[^>]+>/g,
 const lines = (h) => plain(h).split('\n').map((s) => s.replace(/\s+/g, ' ').trim()).filter(Boolean);
 
 function extract(PAGE, conf) {
-  x = files[conf.src] = files[conf.src] || readFileSync(new URL(BPMN + conf.src, import.meta.url), 'utf8');
+  /* Khoá cache theo đường dẫn đầy đủ: ĐTMS.drawio của bộ 16/11 (conf.dir) trùng tên tệp 28/09. */
+  const srcPath = conf.dir ? PK + conf.dir + conf.src : BPMN + conf.src;
+  x = files[srcPath] = files[srcPath] || readFileSync(new URL(srcPath, import.meta.url), 'utf8');
   const i = x.indexOf(`name="${PAGE}"`);
   if (i < 0) throw new Error(`Không thấy trang ${PAGE}`);
   const body = x.slice(i, x.indexOf('</diagram>', i));
@@ -82,7 +89,7 @@ function extract(PAGE, conf) {
     if (s.edgeLabel) continue;
     let k = 'box';
     if (s.swimlane) k = s.horizontal === '0' ? 'lane' : 'pool';
-    else if (s.shape === 'mxgraph.bpmn.task') k = 'task';
+    else if (s.shape === 'mxgraph.bpmn.task' || (conf.sub && s.rounded === '1' && color(s.fillColor) === conf.sub && /^\d{1,2}\.\s/.test(c.label.replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').trim()))) k = 'task';
     else if (s.rhombus) k = 'gw';
     else if (s.ellipse) k = s.shape === 'doubleEllipse' ? 'ev2' : 'ev';
     else if (s.text) k = 'text';
@@ -252,7 +259,8 @@ function extract(PAGE, conf) {
       el.doc = el.doc.replace(/\btask (\d)/gi, 'bước $1');
       const kind = ls.find((s) => /^(User|Service) Task ·/.test(s));
       if (!el.form && kind && /BM/.test(kind)) el.form = kind.replace(/^(User|Service) Task ·\s*/, '');
-      el.type = n.mk === 'service' || /Hệ thống/.test(el.actor) || (kind && /^Service/.test(kind)) ? 'serviceTask' : 'userTask';
+      /* MS18 / MS19 (T67): nền tím = tích hợp (VOffice / Cổng đấu thầu) cũng là service task; khung subprocess = callActivity. */
+      el.type = conf.sub && n.fill === conf.sub ? 'callActivity' : n.mk === 'service' || /Hệ thống/.test(el.actor) || (conf.svc || []).includes(n.fill) || (kind && /^Service/.test(kind)) ? 'serviceTask' : 'userTask';
       let id = 'Activity_' + (n.t || nodes.indexOf(n));
       while (taskIds.has(id)) id += '_';
       taskIds.add(id);
@@ -281,7 +289,7 @@ function extract(PAGE, conf) {
 
   const data = { page: PAGE, box: [X0, Y0, W - X0, H - Y0], nodes: keep, edges };
   const alias = PAGE === 'MS01 v1.1' ? `\nwindow.BPMN_DIAGRAM = window.BPMN_DIAGRAMS[${JSON.stringify(PAGE)}];` : '';
-  writeFileSync(new URL('../js/' + conf.out, import.meta.url), `/* SINH TỰ ĐỘNG từ project-knowledge/03. Thiết kế (Tài liệu BA)/BPMN/${conf.src}, trang "${PAGE}".
+  writeFileSync(new URL('../js/' + conf.out, import.meta.url), `/* SINH TỰ ĐỘNG từ project-knowledge/${conf.dir || '03. Thiết kế (Tài liệu BA)/BPMN/'}${conf.src}, trang "${PAGE}".
    Không sửa tay — chạy lại: node tools/bpmn-diagram-extract.mjs. k: pool/lane/task/gw/ev/ev2/text/box; t = số task; el = phần tử bấm được. */
 (window.BPMN_DIAGRAMS = window.BPMN_DIAGRAMS || {})[${JSON.stringify(PAGE)}] = ${JSON.stringify(data)};${alias}
 `);

@@ -630,6 +630,13 @@
       return;
     }
 
+    /* Multi-instance (T67 MS18 bước 7 → 8): service task tạo một việc cho mỗi người trong danh sách (Camunda: multiInstanceLoopCharacteristics trên collection);
+       các việc cùng group, điểm join sau bước đích chờ đủ. */
+    if (f.multi) {
+      if (isTask(key)) log(key, { system: true, action: T()[key].name });
+      f.multi(S.vars, S.ui || (S.ui = {})).forEach((w) => addToken(f.to, { group: f.group }, w));
+      return;
+    }
     /* Service task lỗi giả lập (MS24 bước 20, P-125): token dừng ở bước này cho người phụ trách, nút Gửi lại chạy lại bước — như VOffice P-94. */
     if (f.retry && S.ui && S.ui[f.retry.flag]) {
       S.ui[f.retry.flag] = false;
@@ -893,6 +900,28 @@
     },
     /* Tạo hồ sơ có tham số trong D.hdProcesses.start (MS23.03, MS23.01 từ Chi tiết hợp đồng). vars: biến thêm lúc tạo. Trả về mã hồ sơ. */
     startHd(process, hd, vars) { const o = hdOpts(process, hd); Object.assign(o.vars, vars); return startCase(process, o); },
+    /* T67 T2: Khởi tạo KHLCNT (SCR-80) = hồ sơ con MS18 của KHLCNT. Bước 1–2 đã làm ở SCR-79 nên ghi nhận ngay, mở bước 3; cấp phê duyệt khoá vào vars.level.
+       o = { level, name, target (chạy mẫu: tua theo nhánh chính tới bước), ui }. Chạy lại thì thay hồ sơ cũ. Trả về mã hồ sơ, S là hồ sơ vừa tạo. */
+    startKh(kh, o) {
+      toMain();
+      const code = D.hdCaseCode(kh, 'MS18');
+      delete CASES[code];
+      openNew('MS18', { code, parent: kh, name: o.name, vars: { kh, level: o.level === 'TD' ? 'TD' : 'TCT' }, ui: o.ui });
+      advanceTo(3);
+      if (o.target) advanceTo(o.target);
+      emit();
+      return code;
+    },
+    /* T67 T5: khởi tạo tổ chức LCNT cho một gói (MS19, hồ sơ con HSLC- của gói thầu) — mở bước 1; o.target tua theo nhánh chính (luồng mẫu). */
+    startLc(goi, o) {
+      toMain();
+      const code = D.hdCaseCode(goi, 'MS19'), g = window.Thau.pkOf(goi);
+      delete CASES[code];
+      openNew('MS19', { code, parent: goi, name: o.name, vars: { goi, route: D.lcRoute(g.form, g.method) }, ui: o.ui });
+      if (o.target) advanceTo(o.target);
+      emit();
+      return code;
+    },
     /* Sự kiện của hồ sơ theo dõi hợp đồng (D-49): chạy trên hồ sơ MS23 rồi trả về hồ sơ đang nạp. Chưa có hồ sơ (hợp đồng chưa ký xong) thì trả về false. */
     hdEvent(hd, key, data) {
       const code = D.hdCaseCode(hd, 'MS23'), back = MAIN ? S.code : null;
@@ -1215,9 +1244,10 @@
     ci() {
       /* Hồ sơ con của hợp đồng: dữ liệu lấy từ hợp đồng cha (hop-dong.js). */
       if (S.parent) {
-        const h = (window.HopDong && window.HopDong.find(S.parent)) || {};
+        /* Đối tượng cha theo quy trình (D.caseObj): hợp đồng, hoặc KHLCNT với MS18 (T67). */
+        const h = D.caseObj(S.vars.process).find(S.parent) || {};
         return Object.assign({}, D.caseInfo, { code: S.code, dxms: S.parent, hd: S.parent, isHd: true, kind: 'HD', title: h.title, name: S.name || h.title, flow: S.vars.process,
-          unit: h.unit, total: h.value, owner: h.owner, ncc: h.ncc, secret: false });
+          unit: h.unit, total: h.value, owner: h.owner, ncc: h.ncc, levelText: h.levelText, secret: false });
       }
       if (S.kdt) {
         const k = Flow.findKdt(S.kdt) || {};

@@ -30,6 +30,13 @@
     { code: 'MS14', id: 'DTMS_MS14', name: 'Dự án đầu tư', versions: [
       { key: '2251799813691536', version: 1, modeler: 'v1.0', deploy: 1, status: 'ACTIVE', page: 'MS14', at: '04/08/2026' }],
       history: [{ version: 'v1.0', at: '2026-08-04T08:45', current: true, desc: 'Quy trình TO-BE lập, thẩm định, phê duyệt dự án đầu tư.' }] },
+    /* T67 T1 (D-118): MS18 / MS19 TO-BE — trang MS18, MS19 của ĐTMS.drawio 16/11 (BPMN-DTMS-1611). Ngày deploy GIẢ LẬP 01/10/2026 (mốc dữ liệu mẫu Thầu / Hợp đồng). */
+    { code: 'MS18', id: 'DTMS_MS18', name: 'Lập và phê duyệt kế hoạch lựa chọn nhà thầu', versions: [
+      { key: '2251799813692410', version: 1, modeler: 'v1.0', deploy: 1, status: 'ACTIVE', page: 'MS18', at: '01/10/2026' }],
+      history: [{ version: 'v1.0', at: '2026-10-01T08:00', current: true, desc: 'Quy trình TO-BE 23 bước: tuyến VHT (kiểm tra BM02) và tuyến Tập đoàn (thẩm định, ý kiến Ban ĐTXD, Phiếu trình GQCV), trình ký VOffice / ký cứng, công khai KHLCNT, mở gói cho tổ chức LCNT.' }] },
+    { code: 'MS19', id: 'DTMS_MS19', name: 'Tổ chức lựa chọn nhà thầu', versions: [
+      { key: '2251799813692482', version: 1, modeler: 'v1.0', deploy: 1, status: 'ACTIVE', page: 'MS19', at: '01/10/2026' }],
+      history: [{ version: 'v1.0', at: '2026-10-01T08:15', current: true, desc: 'Quy trình TO-BE 24 bước cho từng gói thầu: quy trình con theo 10 hình thức lựa chọn nhà thầu, thẩm định và phê duyệt KQLCNT, công khai, chuyển sang ký hợp đồng.' }] },
   ];
   /* T24 Q2: Đồng bộ từ Camunda (SRS-QTQT 3.1.1.5, P-117). Thay đổi mẫu đang chờ trên Camunda — áp một lần: phiên bản mới (MS13 chạy song song với bản cũ),
      MS14 v1 bị xoá trên Camunda → Dừng hoạt động, MS01 phiên bản mới (bản chuẩn 12/10) — luật đã đủ, không sinh thêm. */
@@ -184,6 +191,8 @@
     const assignee = Number(task) === 1 ? '=initiator' : '', need = def && def.who ? window.MaTran.roleLabels(def.who).join(', ') : '';
     const base = [{ key: 'common', label: 'Chung', fields: [f('Tên', el.name), f('ID', el.id)] },
       { key: 'documentation', label: 'Tài liệu mô tả', fields: [f('Mô tả', el.doc)] }];
+    /* T67 T1: subprocess MS19 (callActivity) — trình tự theo hình thức LCNT, sơ đồ con chưa có (GIẢ LẬP, P-77): chỉ Chung + Tài liệu mô tả. */
+    if (el.type === 'callActivity') return base;
     if (el.type === 'serviceTask') return base.concat([{ key: 'integration', label: 'Tích hợp', fields: [f('Job type (Worker xử lý)', el.job),
       f('Mô tả Job Type', 'Worker backend nhận job theo type này — chọn từ danh mục để tránh gõ sai.')] }]);
     return base.concat([

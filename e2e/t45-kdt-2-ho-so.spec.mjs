@@ -269,6 +269,8 @@ test('KĐT nhiều đề tài / dự án: SCR-55 chọn nhiều + bóc tách the
   await pickT(page, 'k-nature', 'Cần tích hợp');
   await page.locator('#k-est').fill('45');
   // Bóc tách theo dòng dự toán của từng đề tài (khoản mục ghi mã đề tài).
+  // T72b (D-123): hệ thống đã bóc tách sẵn khi chọn đề tài — xoá các dòng đó để test tự thêm.
+  while (await page.locator('[data-kc-cdel]').count()) await page.locator('[data-kc-cdel]').first().click();
   await pick(page, 'kc-ctype', 'PL2');
   await pick(page, 'kc-cline', `${A}-1`);
   await page.locator('[data-kc-cadd]').click();
@@ -372,6 +374,8 @@ test('Thêm mới từ hai danh sách hồ sơ: Loại hồ sơ cố định the
 
 // Người dùng 10/11: Thêm mới hồ sơ chủ trương / phê duyệt KĐT theo khuôn Lập đề xuất mua sắm (SCR-96) — chọn KĐT có sẵn, điền sẵn, Lưu nháp / Gửi.
 const addCost = async (page) => {
+  // T72b (D-123): hệ thống đã bóc tách sẵn khi chọn đề tài — xoá các dòng đó để test tự thêm.
+  while (await page.locator('[data-kc-cdel]').count()) await page.locator('[data-kc-cdel]').first().click();
   await page.locator('[data-vsel="kc-ctype"]').click();
   await page.locator('.vsel-panel .vsel-opt').first().click();
   await page.locator('[data-vsel="kc-cline"]').click();
@@ -395,6 +399,9 @@ test('Thêm mới hồ sơ chủ trương KĐT (khuôn SCR-96): chọn KĐT-2026
   for (const c of ['data-kc-chung', 'data-kc-cost', 'data-kc-basis', 'data-kc-plcard', 'data-kc-members', 'data-kc-docs']) await expect(page.locator(`[${c}]`)).toHaveCount(1);
   await expect(page.locator('[data-kc-bm03]')).toHaveCount(0);
   expect(await mainText(page)).not.toMatch(BA);
+  // T72b (D-123): KĐT chưa bóc tách → hệ thống bóc tách sẵn; xoá hết dòng để kiểm lỗi thiếu bóc tách.
+  await expect(page.locator('[data-kc-cdel]')).not.toHaveCount(0);
+  while (await page.locator('[data-kc-cdel]').count()) await page.locator('[data-kc-cdel]').first().click();
   // Gửi khi chưa bóc tách, phụ lục Có chưa có tệp: báo lỗi, chưa tạo hồ sơ.
   const n = await page.evaluate(() => Flow.kdtCases().length);
   await page.locator('[data-kcp-pl="plDm|Có"]').click();

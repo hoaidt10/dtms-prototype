@@ -97,7 +97,8 @@
         '<b>Tồn khả dụng</b> = SL tồn kho − Đang giữ cho ĐXMS khác, không âm (BR-DXMS-03-02); SL xuất kho không vượt Tồn khả dụng và Số lượng yêu cầu. Bỏ trống Mã hàng = hạng mục không quản lý tồn (dịch vụ). Bước 7 của ĐVĐX chỉ xác nhận được khi Kho đã nhập kết quả.',
         '<b>Biên bản rà soát vật tư, linh kiện tồn kho</b> (C1, D-56): hệ thống sinh theo mẫu BM-RSTK từ kết quả (số …/BBRS-MS, thành phần TTMS + đơn vị đề xuất, căn cứ phiếu yêu cầu, câu hiệu lực giữ hàng 30 ngày), đưa vào Danh sách tài liệu của hồ sơ. Chân ký <b>GIẢ LẬP P-187</b> (Thủ kho → Chỉ huy bộ phận QLTS → GĐ TTMS, theo đề xuất trong ghi âm; biên bản thật chỉ có NV QLTS và GĐ TTMS); bước ký chờ DX-07. <b>Phiếu yêu cầu rà soát</b> (C2): hệ thống sinh khi gửi yêu cầu ở bước 6 — GIẢ LẬP P-186.',
         '<b>T37 (RV-PROTO-0911 #5):</b> tệp kết quả chỉ đính kèm, hệ thống <b>không đọc Excel</b> để điền bảng (trước: tải .xlsx theo mẫu BM-RSTK thì điền sẵn); vẫn có link Tải mẫu Excel.',
-        '<b>Tệp kết quả</b> (biên bản kiểm đếm có ký) bắt buộc. <b>GIẢ LẬP P-196:</b> số tồn do Kho nhập tay (BM-RSTK cho thấy kho dùng sổ Excel); khi có tích hợp WMS / QLTS thì điền sẵn (DTMS_Q_0080).',
+        '<b>T72 (kho comment #78, #79; D-122 Q2):</b> bỏ ô <b>Biên bản kiểm đếm có ký</b> và luật bắt buộc — biên bản (nếu có) đính kèm ở Danh sách tài liệu; nhãn ô là <b>Tệp kết quả</b>, mẫu BM-RSTK ghi ở chữ gợi ý dưới ô.',
+        '<b>Tệp kết quả</b> bắt buộc. <b>GIẢ LẬP P-196:</b> số tồn do Kho nhập tay (BM-RSTK cho thấy kho dùng sổ Excel); khi có tích hợp WMS / QLTS thì điền sẵn (DTMS_Q_0080).',
         '<b>T29 B19 (góp ý 06/11):</b> hộp thoại Cập nhật kết quả có nút <b>Toàn màn hình</b> (bảng 16 cột); <b>Hợp đồng đầu vào</b> là nhóm con của <b>Kết quả rà soát</b> (tiêu đề ba tầng). Ô <b>Tệp kết quả</b> đặt trên bảng: tải tệp Excel theo mẫu BM-RSTK thì hệ thống đọc và điền bảng, người nhập sửa lại trước khi Lưu. <b>GIẢ LẬP</b>: prototype điền số mẫu khi tệp là .xlsx / .xls / .csv; thật — BE đọc theo cột cố định của mẫu, khớp dòng theo STT, trả lỗi từng ô; tệp PDF / ảnh chỉ đính kèm.',
       ],
       q: ['P-196', 'P-186', 'P-187'], src: 'my-task-detail (khung) · hộp thoại nhập bảng · BM-RSTK · SRS-DXMS 3.1.3.1',
@@ -172,17 +173,14 @@
     /* T59 Q8 (D-114, mở lại T37 #5): hai ô — Tệp kết quả Excel (đọc, điền bảng) và Biên bản kiểm đếm có ký (chỉ đính kèm).
        [T37] trước: một ô "Tệp kết quả (biên bản kiểm đếm có ký)", câu "Tệp chỉ đính kèm làm căn cứ, hệ thống không đọc nội dung". */
     return `<div class="rsk-dlg"><div class="rsk-ups">
-      <div class="vfield rsk-up ${DL.err.file ? 'invalid' : ''}"><div class="lr"><label>Tệp kết quả (Excel theo mẫu BM-RSTK)</label><span class="req" aria-hidden="true">*</span></div>
+      <div class="vfield rsk-up ${DL.err.file ? 'invalid' : ''}"><div class="lr"><label>Tệp kết quả</label><span class="req" aria-hidden="true">*</span></div>
         <div class="row"><button type="button" class="vbtn secondary" data-rsk-up>${icon('upload')} Tải tệp lên</button><input type="file" id="rsk-file" accept=".xlsx,.xls,.csv" hidden>
           <a class="link-red" href="#" data-dl="Mau-ket-qua-ra-soat-ton-kho_BM-RSTK.xlsx">Tải mẫu Excel</a>
           ${DL.file ? `<span class="rsk-file">${esc(DL.file)}</span>` : ''}</div>
-        <p class="cap">${DL.imported ? `<span data-rsk-imported>Đã đọc ${DL.imported} dòng từ tệp — kiểm tra, sửa lại bảng bên dưới trước khi gửi.</span>` : 'Tải tệp theo mẫu: hệ thống đọc và điền sẵn bảng bên dưới, sửa được mọi ô trước khi gửi.'}</p>
-        ${DL.err.file ? `<p class="msg" role="alert">${esc(DL.err.file)}</p>` : ''}</div>
-      <div class="vfield rsk-up ${DL.err.sign ? 'invalid' : ''}" data-rsk-signf><div class="lr"><label>Biên bản kiểm đếm có ký</label><span class="req" aria-hidden="true">*</span></div>
-        <div class="row"><button type="button" class="vbtn secondary" data-rsk-up2>${icon('upload')} Tải tệp lên</button><input type="file" id="rsk-sign" accept=".pdf,.jpg,.jpeg,.png" hidden>
-          ${DL.sign ? `<span class="rsk-sign">${esc(DL.sign)}</span>` : ''}</div>
-        <p class="cap">Bản PDF / ảnh chụp có chữ ký, đính kèm làm căn cứ.</p>
-        ${DL.err.sign ? `<p class="msg" role="alert">${esc(DL.err.sign)}</p>` : ''}</div></div>
+        <p class="cap">${DL.imported ? `<span data-rsk-imported>Đã đọc ${DL.imported} dòng từ tệp — kiểm tra, sửa lại bảng bên dưới trước khi gửi.</span>` : 'Tải tệp Excel theo mẫu BM-RSTK: hệ thống đọc và điền sẵn bảng bên dưới, sửa được mọi ô trước khi gửi.'}</p>
+        ${DL.err.file ? `<p class="msg" role="alert">${esc(DL.err.file)}</p>` : ''}</div></div>
+      ${'' /* [T72 #78, D-122 Q2] bỏ ô Biên bản kiểm đếm có ký (data-rsk-signf, nút data-rsk-up2, input #rsk-sign) và luật bắt buộc; cần thì đính kèm ở Danh sách tài liệu.
+             [T72 #79] nhãn "Tệp kết quả" (trước "Tệp kết quả (Excel theo mẫu BM-RSTK)"), mẫu BM-RSTK chuyển xuống chữ gợi ý. */}
       ${table2(GROUPS, COLS, R, (r) => { const v = DL.vals[r.n], m = !!(v.code || '').trim(), c = (k, ph, w) => `<td><div class="vfield">${inp(r.n, k, ph, !m, w)}</div></td>`;
         const out = numOf(v.out);
         return `<td>${clamp(r.name)}</td><td>${esc(r.uom)}</td><td class="r num">${num(r.prop)}</td><td>${r.held ? esc(`${r.held} — ${r.heldFor}`) : dash}</td>
@@ -231,7 +229,7 @@
       out.push(r);
     });
     if (!DL.file) DL.err.file = 'Vui lòng tải lên Tệp kết quả.';
-    if (!DL.sign) DL.err.sign = 'Vui lòng tải lên Biên bản kiểm đếm có ký.';
+    /* [T72 #78] trước: if (!DL.sign) DL.err.sign = 'Vui lòng tải lên Biên bản kiểm đếm có ký.'; */
     if (Object.keys(DL.err).length) {
       /* T59: bấm Gửi Chỉ huy Kho khi đang ở tab khác → mở tab Rà soát tồn kho để thấy lỗi. */
       if (!document.querySelector('[data-rsk-ed]') && window.Luong) { window.Luong.setTab('ton-kho'); window.App.render(); } else draw();
@@ -310,7 +308,7 @@
     const f = resultFile(Flow.state.dxms);
     const link = (n) => (n ? `<a class="link-red" href="#" data-dl="${esc(n)}">${esc(n)}</a>` : dash);
     return `<div class="ginfo c3">${kv('Trạng thái', badge(...stateText()))}${kv('Kết quả rà soát', done() ? `${esc(Flow.dateOf(d.kq.t))} · ${esc((persona(d.kq.by) || {}).name || '')}` : 'Chưa có')}
-        ${kv('Phiếu yêu cầu rà soát', `Số ${esc(pycNo())}`)}${kv('Tệp kết quả', done() && f ? link(f.name) : dash)}${kv('Biên bản kiểm đếm có ký', done() && d.sign ? link(d.sign) : dash)}</div>
+        ${kv('Phiếu yêu cầu rà soát', `Số ${esc(pycNo())}`)}${kv('Tệp kết quả', done() && f ? link(f.name) : dash)}${'' /* [T72 #78] bỏ kv('Biên bản kiểm đếm có ký', …) */}</div>
       ${table2(GROUPS, COLS, R, (r) => `<td>${clamp(r.name)}</td><td>${esc(r.uom)}</td><td class="r num">${num(r.prop)}</td><td>${r.held ? esc(`${r.held} — ${r.heldFor}`) : dash}</td>
           <td>${r.code ? esc(r.code) : dash}</td><td>${clamp(r.maker)}</td><td class="r num">${r.managed ? num(r.stock) : dash}</td>
           <td class="r num">${r.managed ? num(r.out) : dash}</td><td class="r num">${r.managed ? num(r.transfer) : dash}</td><td class="r num">${r.buy == null ? dash : `<b>${num(r.buy)}</b>`}</td>

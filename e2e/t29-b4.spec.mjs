@@ -1,7 +1,7 @@
 // T29 B4 — P1 chặn Báo giá đạt khi vượt phần căn cứ (BR-DXMS-04-11 sửa 04/11) và P2 điều khoản phiếu YCBG ở bước 8 (BR-DXMS-04-06, DTMS_CN_0145 mục 7a–7d).
 // Plan docs/dtms/prototype-T29-dxms-khao-sat-0411-chuan-bi.md §3.5, §3.6.
 import { test, expect } from '@playwright/test';
-import { fresh, openForm, lastToast } from './helpers.mjs';
+import { fresh, openForm, lastToast, aiFill } from './helpers.mjs';
 
 const bg = (page) => page.locator('[data-bg-card]');
 
@@ -72,6 +72,9 @@ test('P2: bước 8 có nhóm Điều khoản trên phiếu (mẫu điền sẵn
   await page.evaluate((i) => { location.hash = '#/task/' + i; }, id);
   const f = await openForm(page);
   await expect(f).toContainText('Điều khoản trên phiếu yêu cầu báo giá');
+  // T72 #86: điều khoản để trống tới khi bấm ✦ Gợi ý từ AI (P-250).
+  await expect(f.locator('[data-ef="dkThanhToan"]')).toHaveValue('');
+  await aiFill(page);
   await expect(f.locator('[data-ef="dkThanhToan"]')).toHaveValue(/40 %.*60 %/);
   await expect(f.locator('[data-ef="diaDiemGiao"]')).toHaveValue(/Kho Viettel Hòa Lạc/);
   await expect(f.locator('[data-ef="yeuCauKhac"]')).toHaveValue(/07 ngày/);

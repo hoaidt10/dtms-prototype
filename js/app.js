@@ -5,16 +5,19 @@
 
   let collapsed = false;
   let demoOpen = false;
-  const openGroups = new Set(D.menu.concat(D.dmdcMenu).filter((m) => m.open).map((m) => m.label));
+  const openGroups = new Set(D.menu.concat(D.dmdcMenu, D.sxMenu || []).filter((m) => m.open).map((m) => m.label));
   try { collapsed = localStorage.getItem('dtms-proto-sb') === '1'; } catch (e) { /* bỏ qua */ }
 
   const route = () => (location.hash.replace(/^#\/?/, '') || 'viec-cua-toi');
   /* D-42: khung theo phân hệ — Danh sách Phân hệ (không sidebar), Danh mục dùng chung (sidebar riêng), còn lại Đầu tư mua sắm. */
+  /* T71 S0 (D-121): phân hệ Quản lý sản xuất — route #/sx/…, sidebar D.sxMenu. */
   const appOf = (r) => (r === 'phan-he' || r.startsWith('ph/he-') ? 'picker'
+    : r === 'sx' || r.startsWith('sx/') ? 'sx'
     : r === 'dmdc' || r.startsWith('dmdc/') || r === 'eform' || r.startsWith('eform/') || r.startsWith('ph/dm-') ? 'dmdc' : 'dtms');
 
   /* Mục menu đang được chọn theo route. */
   function activePath(r) {
+    if (r.startsWith('sx/')) return window.Sx.activePath(r);
     if (r.startsWith('task/') || r.startsWith('viec-cua-toi')) return 'viec-cua-toi';
     /* T17 phương án Gộp: luồng, ĐXMS, hồ sơ ĐXMS cùng thuộc mục Luồng mua sắm. */
     if (r === 'luong' || r.startsWith('luong/')) return 'luong';
@@ -26,6 +29,10 @@
     if (r.startsWith('khlcnt')) return 'khlcnt';
     if (r.startsWith('goi-thau')) return 'goi-thau';
     if (r.startsWith('cong-khai-thau')) return 'cong-khai-thau';
+    /* T67: hồ sơ con MS18 (mã HSKH-) thuộc menu KHLCNT. */
+    if (r.startsWith('ho-so-hd/HSKH-')) return 'khlcnt';
+    /* T67 T5: hồ sơ con MS19 (mã HSLC-) thuộc menu Gói thầu. */
+    if (r.startsWith('ho-so-hd/HSLC-')) return 'goi-thau';
     if (r.startsWith('hop-dong') || r.startsWith('ho-so-hd')) return 'hop-dong';
     if (r.startsWith('thoa-thuan-khung')) return 'thoa-thuan-khung';
     if (r.startsWith('mau-thong-bao')) return 'mau-thong-bao';
@@ -42,15 +49,15 @@
   }
 
   function topbar(app) {
-    const prod = app === 'dmdc' ? { code: 'DMDC', name: 'Danh mục dùng chung' } : D.product;
+    const prod = app === 'dmdc' ? { code: 'DMDC', name: 'Danh mục dùng chung' } : app === 'sx' ? D.sxProduct : D.product;
     const p = persona(Flow.state.persona);
-    const n = Flow.pendingCount(p.id);
+    const n = app === 'sx' ? window.SxFlow.pending(p.id) : Flow.pendingCount(p.id);
     return `<header class="topbar">
       <a class="brand" href="#/phan-he" aria-label="Về Danh sách Phân hệ"><span class="brand-logo">VHT</span>
         <span class="brand-text"><span>${prod.code}</span><span>${prod.name}</span></span></a>
       <div class="topbar-right">
         ${window.Tour ? window.Tour.topBtn() : ''}
-        <button class="bell" aria-label="Thông báo" data-go="viec-cua-toi">${icon('bell')}${n ? `<span class="count">${n}</span>` : ''}</button>
+        <button class="bell" aria-label="Thông báo" data-go="${app === 'sx' ? 'sx/viec-cua-toi' : 'viec-cua-toi'}">${icon('bell')}${n ? `<span class="count">${n}</span>` : ''}</button>
         <span class="rule"></span>
         <button class="who" id="who">${avatar(p.id)}<span class="who-text"><span>${esc(p.name)}</span><span class="r">${esc(p.role)}</span></span></button></div></header>`;
   }
@@ -61,7 +68,7 @@
     const childActive = kids.some((k) => k.path === act);
     const isActive = m.path && m.path === act;
     const open = openGroups.has(m.label) || childActive;
-    const badge = m.badge === 'tasks' ? Flow.pendingCount(Flow.state.persona) : 0;
+    const badge = m.badge === 'tasks' ? Flow.pendingCount(Flow.state.persona) : m.badge === 'sx-tasks' ? window.SxFlow.pending(Flow.state.persona) : 0;
     const cls = ['nav', level ? 'child' : '', isActive ? 'active' : '', childActive ? 'has-active' : '', open ? 'open' : ''].join(' ');
     const btn = `<button class="${cls}" ${m.path ? `data-go="${m.path}"` : `data-toggle="${esc(m.label)}"`} title="${esc(m.label)}">
       ${m.icon ? `<span class="i">${icon(m.icon)}</span>` : ''}<span class="l">${esc(m.label)}</span>
@@ -70,12 +77,14 @@
   }
 
   function sidebar(act, app) {
-    const dm = app === 'dmdc';
+    const dm = app === 'dmdc', sx = app === 'sx';
     /* Danh mục dùng chung: mục phẳng và nhóm Đầu tư mua sắm cùng lọc theo vai (P-36). */
     const items = dm ? D.dmdcMenu.filter((m) => (m.dmdc ? window.Catalog.canSee(m.dmdc) : !m.dmdcGroup || m.children.some((k) => window.Catalog.canSee(k.dmdc))))
-      : window.Luong.menu().filter((m) => !m.hidden && !(m.show && !D.show[m.show]));
+      : sx ? D.sxMenu
+        : window.Luong.menu().filter((m) => !m.hidden && !(m.show && !D.show[m.show]));
+    const head = dm ? ['danh_muc_dung_chung', 'Danh mục dùng chung'] : sx ? ['phan_he_hang_hoa', 'Quản lý sản xuất'] : ['phan_he_mua_sam', 'Đầu tư mua sắm'];
     return `<aside class="sidebar ${collapsed ? 'collapsed' : ''}">
-      <div class="sb-head"><span class="ic">${icon(dm ? 'danh_muc_dung_chung' : 'phan_he_mua_sam')}</span><span class="t">${dm ? 'Danh mục dùng chung' : 'Đầu tư mua sắm'}</span></div>
+      <div class="sb-head"><span class="ic">${icon(head[0])}</span><span class="t">${head[1]}</span></div>
       <div class="sb-rule"></div>
       <nav class="sb-nav">${items.map((m) => navItem(m, 0, act)).join('')}</nav>
       <div class="sb-foot">v1.0 - © 2026</div>
@@ -106,6 +115,8 @@
   function content(r) {
     const [a, b, c] = r.split('/');
     if (a === 'phan-he') return window.PhanHe.page();
+    /* T71 (D-121): phân hệ Quản lý sản xuất (sx.js). */
+    if (a === 'sx') return b ? window.Sx.route(r.split('/').slice(1)) : redirect('#/sx/tong-quan');
     if (a === 'giam-sat-tien-trinh') return window.QuyTrinh.monitor();
     if (a === 'quy-trinh') return b ? window.QuyTrinh.detail(b) : window.QuyTrinh.list();
     if (a === 'ma-tran') return window.MaTran.route(r.split('/').slice(1));
@@ -251,7 +262,7 @@
     Flow.focus(r);
     const base = r.split('/').slice(0, 2).join('/');
     if (((r.startsWith('ho-so-dxms/') && !r.startsWith('ho-so-dxms/create')) || r.startsWith('ho-so-kdt/')) && !(lastRoute || '').startsWith(base)) detailFrom = lastRoute;
-    if (r !== lastRoute) { S.enter(r); if (r.split('/')[0] === 'kdt') window.Kdt.enter(r.split('/').slice(1)); if (/^ho-so-(ct|pd)-kdt\/create$/.test(r)) window.Kdt.enterFrom(r.startsWith('ho-so-pd') ? 'KDT' : 'CT'); window.Thau.enter(r.split('/')); window.Luong.enter(r.split('/')); window.HopDong.enter(r.split('/')); window.ThongBao.enter(r.split('/')); }
+    if (r !== lastRoute) { S.enter(r); if (r.split('/')[0] === 'kdt') window.Kdt.enter(r.split('/').slice(1)); if (/^ho-so-(ct|pd)-kdt\/create$/.test(r)) window.Kdt.enterFrom(r.startsWith('ho-so-pd') ? 'KDT' : 'CT'); window.Thau.enter(r.split('/')); window.Luong.enter(r.split('/')); window.HopDong.enter(r.split('/')); window.ThongBao.enter(r.split('/')); window.Sx.enter(r.split('/')); }
     lastRoute = r;
     const act = activePath(r);
     const main = document.querySelector('.main');
@@ -278,7 +289,7 @@
     }
     window.scrollTo(0, 0);
     if (window.BpmnView) window.BpmnView.mount();
-    document.title = 'ĐTMS';
+    document.title = app === 'sx' ? 'QLSX' : 'ĐTMS';
   }
 
   /* Trang Thêm mới (rule B6) luôn mở với form trống: 'dxms' = SCR-28 Thêm mới ĐXMS, 'hs' = SCR-25 Thêm mới hồ sơ. */
@@ -297,7 +308,8 @@
   function switchTo(id, stay) {
     Flow.setPersona(id);
     toast(`Đã chuyển tài khoản: <b>${esc(persona(id).name)}</b> — ${esc(persona(id).role)}`, 'info');
-    if (!stay) location.hash = '#/viec-cua-toi'; else render();
+    /* T71: đang ở phân hệ Quản lý sản xuất thì về trang đầu của phân hệ, không sang Việc của tôi của ĐTMS. */
+    if (!stay) location.hash = appOf(route()) === 'sx' ? '#/sx/viec-cua-toi' : '#/viec-cua-toi'; else render();
   }
 
   async function act(tokenId, idx) {
@@ -339,6 +351,8 @@
       if (Flow.state.status !== 'running') {
         const pr = D.hdProcesses[Flow.state.vars.process];
         ok(Flow.state.vars.endText || pr.done);
+        /* T67: đối tượng cha khác hợp đồng (KHLCNT của MS18) → Chi tiết đối tượng đó. */
+        if (pr.obj) { location.hash = '#/' + pr.obj.href(Flow.state.parent); return; }
         if (pr.tab) window.HopDong.setTab(Flow.state.parent, pr.tab);
         location.hash = '#/hop-dong/' + encodeURIComponent(Flow.state.parent);
         return;
@@ -418,8 +432,12 @@
     el.className = 'menu-pop';
     el.style.top = (r.bottom + 8) + 'px';
     el.style.right = (window.innerWidth - r.right) + 'px';
+    /* T71: vai Sản xuất (cờ sx) chỉ hiện khi đang ở phân hệ Quản lý sản xuất; ở đó chỉ có vai Sản xuất + Quản trị hệ thống + toàn quyền.
+       Danh mục dùng chung là phân hệ chung nên hiện mọi vai. */
+    const app = appOf(route());
+    const list = D.personas.filter((p) => (app === 'dmdc' ? true : app === 'sx' ? p.sx || p.all || p.id === 'qt' : !p.sx));
     el.innerHTML = `<div class="hd"><b>Chuyển tài khoản</b></div>`
-      + D.personas.map((p) => { const n = Flow.pendingCount(p.id); return `<button data-persona="${p.id}" class="${p.id === Flow.state.persona ? 'on' : ''}">${avatar(p.id, 'sm')}<span style="flex:1">${esc(p.name)}<br><span class="faint" style="font-size:12px">${esc(p.role)}</span></span>${n ? `<span class="tag red">${n}</span>` : ''}</button>`; }).join('');
+      + list.map((p) => { const n = Flow.pendingCount(p.id); return `<button data-persona="${p.id}" class="${p.id === Flow.state.persona ? 'on' : ''}">${avatar(p.id, 'sm')}<span style="flex:1">${esc(p.name)}<br><span class="faint" style="font-size:12px">${esc(p.role)}</span></span>${n ? `<span class="tag red">${n}</span>` : ''}</button>`; }).join('');
     document.body.appendChild(el);
     setTimeout(() => document.addEventListener('click', function off() { el.remove(); document.removeEventListener('click', off); }), 0);
   }
@@ -496,7 +514,7 @@
     if (t.closest('#reset')) {
       const m = modal(`<div class="modal-h"><h3>Reset luồng?</h3></div><div class="modal-b">Xoá hồ sơ đang chạy và các ĐXMS, hồ sơ đã tạo trên prototype, đưa quy trình và luật hiển thị về mẫu, quay về trước bước Thêm mới ĐXMS (SCR-28). Ý kiến ❓ đã ghi được giữ lại.</div>
         <div class="modal-f"><button class="btn secondary" data-close>Huỷ</button><button class="btn primary" id="rs">Reset</button></div>`);
-      m.el.querySelector('#rs').onclick = () => { m.close(); Flow.reset(); Flow.setPersona('minh'); demoOpen = false; location.hash = '#/viec-cua-toi'; toast('Đã reset luồng.'); };
+      m.el.querySelector('#rs').onclick = () => { m.close(); Flow.reset(); if (window.SxFlow) { window.SxFlow.reset(); window.SxDuAn.reset(); window.SxCg.reset(); } Flow.setPersona('minh'); demoOpen = false; location.hash = '#/viec-cua-toi'; toast('Đã reset luồng.'); };
       return;
     }
     /* Reset luồng không đụng dữ liệu DMDC, E-Form, thầu, hợp đồng, thông báo; khôi phục riêng ở đây. */

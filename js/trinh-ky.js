@@ -303,7 +303,7 @@
   function askPw(title) {
     return new Promise((res) => {
       const me = Flow.state.persona;
-      const m = vModal({ title, body: `<div class="grid2"><div class="vfield"><div class="lr"><label>Tên người dùng</label><span class="req">*</span></div><input class="vctl" value="${esc(account(me))}" disabled></div>
+      const m = vModal({ title, body: `<div class="grid2"><div class="vfield"><div class="lr"><label>Tên đăng nhập</label><span class="req">*</span></div><input class="vctl" value="${esc(account(me))}" disabled></div>
         <div class="vfield"><div class="lr"><label>Mật khẩu</label><span class="req">*</span></div><input class="vctl" id="tk-pw2" type="password" autocomplete="off" placeholder="Nhập mật khẩu"></div></div>`,
         actions: '<button class="vbtn secondary" data-close>Hủy</button><button class="vbtn primary" id="tk-pw-ok">Tiếp tục</button>' });
       m.el.addEventListener('click', (e) => {
@@ -502,6 +502,7 @@
     const info = {
       scr: 'SCR-113', name: 'Trình ký', uc: 'SRS 32 · DTMS_CN_0273, DTMS_CN_0274',
       notes: [
+        '<b>T72 (kho comment #90):</b> hộp nhập mật khẩu VOffice ghi <b>Tên đăng nhập</b> (tự điền theo tài khoản, khoá) + Mật khẩu. Nút <b>Lấy bản đã ký</b> / <b>Cập nhật trạng thái</b> luôn bấm được: có chọn dòng → áp cho dòng đã chọn; chưa chọn → áp cho mọi lần trình đủ điều kiện trong danh sách đang xem; không có lần trình nào đủ điều kiện → báo, không mở hộp mật khẩu.',
         '<b>T54</b> (người dùng 11/11): màn theo SRS 32 Trình ký VOffice (<code>docs/SRS/32-srs-trinh-ky-voffice</code>). Mỗi dòng là <b>một lần trình</b>.',
         '<b>T56</b> (review Nhi 12/11): <b>bỏ tab</b> Tôi trình / Tôi ký (#26) — một danh sách, lọc <b>Người trình ký</b>, <b>Người ký</b>; người không trình / không ký vẫn xem được lần trình của ĐXMS / KĐT mình có quyền xem (GIẢ LẬP: mọi vai demo xem được mọi lần trình mẫu). Lệch SRS 32 DTMS_CN_0274. <b>Trạng thái</b> (#31, Q4) chỉ còn 5 giá trị VOffice trả về (<code>be/vops-office</code> <code>VOfficeStatusEnum.fromVOfficeState</code> 0–4): Chưa trình ký, Đang xử lý, Bị từ chối, Đã ký duyệt, Đã ban hành (Đã ký duyệt + có Số văn bản). Đã hủy / Đã thu hồi / Đã hủy ban hành / Lỗi gửi hiện là Chưa trình ký, chi tiết ở <b>Lịch sử cập nhật</b> của hộp thoại (đổi tên từ Nhật ký, #22; thời điểm hh:mm:ss - dd/mm/yyyy, mới nhất trước, #23, #24; tải tệp, #25).',
         'Thao tác theo trạng thái (BR-TKV-04-03): Chờ ký — Cập nhật trạng thái, Thu hồi (người trình); Đã ký — Tải bản ký, Lấy bản đã ký khi Chưa lấy; Từ chối — chỉ Xem (quy trình đã đi nhánh không đồng ý); Lỗi gửi — Gửi lại (Đã hủy / Đã thu hồi: trình lại từ công việc, T60); Chờ nhập kết quả — Nhập kết quả ký. Chọn nhiều dòng để Lấy bản đã ký / Cập nhật trạng thái, nhập mật khẩu VOffice một lần.',
@@ -515,8 +516,8 @@
     return `<div class="pg" data-tkl>
       ${window.Screens.head({ title: 'Trình ký', info })}
       <div class="vcard">
-        <div class="pg-head"><div class="l"><button type="button" class="vbtn secondary" data-tk-bulk="fetch" ${L.sel.length ? '' : 'disabled'}>${icon('sign')} Lấy bản đã ký</button>
-          <button type="button" class="vbtn secondary" data-tk-bulk="sync" ${L.sel.length ? '' : 'disabled'}>${icon('reload')} Cập nhật trạng thái</button></div><div class="r">
+        <div class="pg-head"><div class="l"><button type="button" class="vbtn secondary" data-tk-bulk="fetch">${icon('sign')} Lấy bản đã ký</button>
+          <button type="button" class="vbtn secondary" data-tk-bulk="sync">${icon('reload')} Cập nhật trạng thái</button></div><div class="r">
           ${L.adv ? '' : `<label class="vsearch" style="width:320px">${icon('search')}<input id="tk-kw" maxlength="255" placeholder="Tìm theo mã, tên đối tượng, trích yếu, số văn bản" value="${esc(L.kw)}"></label>`}
           <button type="button" class="vbtn ${L.adv ? 'active' : 'secondary'}" data-tk-adv>${L.adv ? 'Ẩn tìm kiếm nâng cao' : 'Tìm kiếm nâng cao'}</button></div></div>
         ${L.adv ? `<form class="adv" data-tkadv><div class="grid3">
@@ -546,7 +547,9 @@
     const a = t.closest('[data-tk-act]'); if (a) { const r = find(a.closest('[data-tk-id]').dataset.tkId); if (r) act(a.dataset.tkAct, r); return; }
     /* Khối Trình ký: bấm dòng mở Chi tiết lần trình. */
     const rv = t.closest('[data-tk-row-view]'); if (rv && !t.closest('a, button, input')) { const r = find(rv.dataset.tkId); if (r) view(r); return; }
-    const bk = t.closest('[data-tk-bulk]'); if (bk) { const list = L.sel.map(find).filter(Boolean); L.sel = []; (bk.dataset.tkBulk === 'fetch' ? fetchSigned : syncStatus)(list); return; }
+    /* [T72 #90] nút hàng loạt luôn bấm được: chưa chọn dòng → áp cho mọi lần trình đủ điều kiện trong danh sách đang xem; luôn hỏi Tên đăng nhập + Mật khẩu VOffice (askPw). */
+    const bk = t.closest('[data-tk-bulk]'); if (bk) { const f = bk.dataset.tkBulk === 'fetch', list = L.sel.length ? L.sel.map(find).filter(Boolean) : rows().filter((r) => (f ? r.st === 'SIGNED' && r.method === 'VOFFICE' && !r.fetched : r.st === 'PENDING_SIGN'));
+      if (!list.length) { toast(f ? 'Không có lần trình nào chờ lấy bản đã ký.' : 'Không có lần trình nào đang chờ ký.', 'warn'); return; } L.sel = []; (bk.dataset.tkBulk === 'fetch' ? fetchSigned : syncStatus)(list); return; }
     const pg = t.closest('[data-pager="tk"]');
     if (pg) {
       const b = t.closest('[data-pg]'), s = t.closest('[data-ps]');

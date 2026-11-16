@@ -22,6 +22,8 @@ const pick = async (page, id, value) => {
   if (await page.locator('.vsel-panel').count()) await page.keyboard.press('Escape');
 };
 const addCost = async (page) => {
+  // T72b (D-123): hệ thống đã bóc tách sẵn khi chọn đề tài — xoá các dòng đó để test tự thêm.
+  while (await page.locator('[data-kc-cdel]').count()) await page.locator('[data-kc-cdel]').first().click();
   await page.locator('[data-vsel="kc-ctype"]').click();
   await page.locator('.vsel-panel .vsel-opt').first().click();
   await page.locator('[data-vsel="kc-cline"]').click();

@@ -1,6 +1,6 @@
 /* Quản lý thầu theo Backlog W1_T10 (T16 B2, plan docs/dtms/prototype-W1T10-backlog-chuan-bi.md §2i) — màn tĩnh, không chạy luồng (D-17).
    KHLCNT là đối tượng cha (như ĐXMS / KĐT, D-12): lập từ một đối tượng nguồn đã phê duyệt (ĐXMS / KĐT), quy trình MS18 (BPMN-MS18, bản nháp).
-   Gói thầu là dòng gói của KHLCNT; tổ chức LCNT theo hình thức (QC-12869 Điều 12–21) — MS19 chưa có BPMN (P-77).
+   Gói thầu là dòng gói của KHLCNT; tổ chức LCNT theo hình thức (QC-12869 Điều 12–21) — MS19 theo BPMN-MS19 (T67 T5), quy trình con chi tiết treo P-235.
    SCR-78 #/khlcnt, SCR-79 #/khlcnt/create[/<loại>/<mã nguồn>], SCR-80 #/khlcnt/<mã>, SCR-81 #/goi-thau, SCR-82 #/goi-thau/<mã>, SCR-83 #/nha-thau. */
 (function () {
   const D = window.D, Flow = window.Flow, S = window.Screens;
@@ -56,11 +56,36 @@
 
   /* ---------- Dữ liệu mẫu ----------
      KH_ST theo 4 luồng con MS18: 18.1 lập thông tin gói → 18.2 Tờ trình (BM-01, VOffice) → 18.3 Báo cáo kiểm tra (Q02) → 18.4 Quyết định (BM-03) & đăng tải. */
-  const KH_ST = { DRAFT: ['Dự thảo', 'default'], SIGN: ['Đang trình ký tờ trình', 'info'], CHECK: ['Đang kiểm tra', 'info'], APPROVE: ['Chờ phê duyệt', 'warning'],
-    OK: ['Đã phê duyệt', 'success'], ADJ: ['Đang điều chỉnh', 'warning'] };
-  const KH_STEP = { DRAFT: 'MS18.1 · Lập thông tin gói thầu', SIGN: 'MS18.2 · Lập Tờ trình KHLCNT', CHECK: 'MS18.3 · Lập Báo cáo kiểm tra KHLCNT', APPROVE: 'MS18.4 · Quyết định phê duyệt & đăng tải',
-    OK: 'Hoàn tất MS18', ADJ: 'MS18.1 · Lập thông tin gói thầu (điều chỉnh)' };
+  const KH_ST = { FIX: ['Yêu cầu chỉnh sửa', 'warning'], OPINION: ['Chờ ý kiến', 'warning'], SIGNED: ['Đã ký, chờ đăng tải', 'success'], CANCEL: ['Đã huỷ', 'error'], DRAFT: ['Dự thảo', 'default'], SIGN: ['Đang trình ký tờ trình', 'info'], CHECK: ['Đang kiểm tra', 'info'], APPROVE: ['Chờ phê duyệt', 'warning'],
+    OK: ['Đã phê duyệt', 'success'], ADJ: ['Đang điều chỉnh', 'warning'], RUN: ['Đang xử lý', 'info'] };
+  /* T67 T4 — trạng thái hai lớp (THAU-TT-1311 §1.1, §3.4, §4.1): mã → [trạng thái hiển thị, màu, giai đoạn lớn]. KH_ST / PK_ST còn là khoá nội bộ
+     của dữ liệu mẫu (báo cáo, hợp đồng dùng); màn hiện KHL / LC. Giai đoạn lớn của KHLCNT GIẢ LẬP theo ví dụ §1.1 (tài liệu chỉ có cho gói thầu). */
+  const KHL = { 'KHL-01': ['Nháp KHLCNT', 'default', 'Chuẩn bị KHLCNT'], 'KHL-02': ['Đang lập KHLCNT', 'info', 'Đang lập KHLCNT'],
+    'KHL-03': ['Chờ Tổ thẩm định xác nhận', 'info', 'Đang kiểm tra/thẩm định'], 'KHL-04': ['Đang kiểm tra/thẩm định KHLCNT', 'info', 'Đang kiểm tra/thẩm định'],
+    'KHL-05': ['Yêu cầu chỉnh sửa KHLCNT', 'warning', 'Đang kiểm tra/thẩm định'], 'KHL-06': ['Chờ ý kiến/giải trình', 'warning', 'Đang kiểm tra/thẩm định'],
+    'KHL-07': ['Đang trình phê duyệt KHLCNT', 'warning', 'Đang trình phê duyệt'], 'KHL-08': ['KHLCNT đã phê duyệt', 'success', 'Đang công khai'],
+    'KHL-09': ['Đang công khai KHLCNT', 'info', 'Đang công khai'], 'KHL-10': ['Hoàn thành KHLCNT', 'success', 'Hoàn thành KHLCNT'], 'KHL-X': ['Đã hủy', 'error', 'Kết thúc'] };
+  /* Mẫu chưa chạy MS18: trạng thái cũ → [mã, bước đang ở] (§2 mapping hệ thống cũ → TO-BE; bước theo BPMN-MS18-TOBE, CHECK tuyến Tập đoàn ở 12). */
+  const KH_MAP = { DRAFT: ['KHL-01', null], SIGN: ['KHL-02', 5], CHECK: ['KHL-04', 10], APPROVE: ['KHL-07', 16], OK: ['KHL-10', null], ADJ: ['KHL-02', 3],
+    FIX: ['KHL-05', 9], OPINION: ['KHL-06', 13], SIGNED: ['KHL-08', 21], CANCEL: ['KHL-X', null] };
   const KH0 = [
+    /* T67 dữ liệu demo (16/11): phủ thêm KHL-05, KHL-06, KHL-08, KHL-X; mỗi KHLCNT một nguồn ĐXMS đã phê duyệt, tổng gói = giá trị được duyệt.
+       KĐT-2026-0015 để trống làm nguồn cho kịch bản Lập KHLCNT từ KĐT. */
+    { code: 'KHLCNT-2026-0020', src: ['DXMS', 'ĐXMS-2026-0142'], title: 'KHLCNT dịch vụ bảo trì hệ thống điều hoà phòng sạch năm 2028', st: 'SIGNED', owner: 'Ninh Thị Hồng', creator: 'Phan Văn Lộc', created: '14/09/2026', updated: '06/10/2026',
+      basis: 'Một gói: dịch vụ bảo trì định kỳ, nhiều nhà cung cấp trên thị trường đáp ứng — chào giá trực tuyến.',
+      parts: { done: [], na: [], pending: [] }, pkgs: ['GT-2026-0039'],
+      docs: { bm01: ['0917/TTr-MS-ĐT', '18/09/2026', 'Ninh Thị Hồng'], bm02: ['', '25/09/2026', 'Phạm Thị Lan'], bm03: ['0931/QĐ-VHT', '05/10/2026', 'Ngô Đình Khôi'] } },
+    { code: 'KHLCNT-2026-0019', src: ['DXMS', 'ĐXMS-2026-0141'], title: 'KHLCNT dịch vụ bảo trì hệ thống điều hoà phòng sạch năm 2027', st: 'OPINION', level: 'TD', owner: 'Ninh Thị Hồng', creator: 'Phan Văn Lộc', created: '01/09/2026', updated: '02/10/2026',
+      basis: 'Một gói: dịch vụ bảo trì định kỳ 12 tháng, đấu thầu rộng rãi trong nước qua mạng.',
+      parts: { done: [], na: [], pending: [] }, pkgs: ['GT-2026-0038'],
+      docs: { bm01: ['0905/TTr-MS-ĐT', '08/09/2026', 'Ninh Thị Hồng'], bm02: ['0906/BC-TTĐ', '22/09/2026', 'Hoàng Quốc Bình'] } },
+    { code: 'KHLCNT-2026-0018', src: ['DXMS', 'ĐXMS-2026-0112'], title: 'KHLCNT dịch vụ thuê hạ tầng điện toán đám mây giai đoạn 2', st: 'FIX', owner: 'Ninh Thị Hồng', creator: 'Lương Thị Hạnh', created: '24/09/2026', updated: '06/10/2026',
+      basis: 'Tách 2 gói: thuê máy chủ ảo, lưu trữ (chào giá trực tuyến) và sao lưu dữ liệu phụ thuộc hạ tầng đang dùng (chỉ định thầu rút gọn).',
+      parts: { done: [], na: [], pending: [] }, pkgs: ['GT-2026-0036', 'GT-2026-0037'], docs: { bm01: ['0921/TTr-MS-ĐT', '30/09/2026', 'Ninh Thị Hồng'] },
+      checkNok: { 'Giá gói thầu': 'Giá gói thuê máy chủ ảo lấy theo một báo giá; bổ sung tối thiểu 03 báo giá đối chứng.' } },
+    { code: 'KHLCNT-2026-0015', src: ['DXMS', 'ĐXMS-2026-0084'], title: 'KHLCNT thuê hạ tầng điện toán đám mây cho hệ thống OSS (huỷ)', st: 'CANCEL', level: 'TD', creator: 'Lương Thị Hạnh', created: '20/09/2026', updated: '28/09/2026',
+      basis: 'Một gói thuê hạ tầng 12 tháng.', cancelWhy: 'Chọn nhầm cấp phê duyệt Tập đoàn; huỷ và lập lại KHLCNT-2026-0017 cấp Tổng Công ty.',
+      parts: { done: [], na: [], pending: [] }, pkgs: [] },
     { code: 'KHLCNT-2026-0017', src: ['DXMS', 'ĐXMS-2026-0084'], title: 'KHLCNT thuê hạ tầng điện toán đám mây cho hệ thống OSS', st: 'DRAFT', creator: 'Lương Thị Hạnh', created: '29/09/2026', updated: '30/09/2026',
       basis: 'Một gói: dịch vụ thuê hạ tầng liên tục 12 tháng, một nhà cung cấp trong Tập đoàn đáp ứng.',
       parts: { done: [], na: [], pending: [] }, pkgs: ['GT-2026-0034'] },
@@ -68,7 +93,7 @@
       basis: 'Tách theo tính chất kỹ thuật: thiết bị mô phỏng (thị trường có nhiều nhà thầu), bản quyền phần mềm lõi độc quyền, phần tích hợp do Trung tâm Mạng lõi đủ năng lực tự thực hiện.',
       parts: { done: [], na: [{ name: 'Chi phí quản lý, giám sát nội bộ', value: 4.5, why: 'Chi phí của Chủ đầu tư, không hình thành gói thầu' }], pending: [] },
       pkgs: ['GT-2026-0032', 'GT-2026-0035', 'GT-2026-0033'], docs: { bm01: ['0981/TTr-TTMS', '28/09/2026', 'Hoàng Quốc Bình'] },
-      checkNok: { 'Hình thức lựa chọn nhà thầu': 'Gói bản quyền phần mềm lõi áp dụng trường hợp đặc biệt cần văn bản chấp thuận chủ trương của TGĐ Tập đoàn (Điều 21).' } },
+      checkNok: { 'Hình thức và phương thức lựa chọn nhà thầu': 'Gói bản quyền phần mềm lõi áp dụng trường hợp đặc biệt cần văn bản chấp thuận chủ trương của TGĐ Tập đoàn (Điều 21).' } },
     { code: 'KHLCNT-2026-0014', src: ['DXMS', 'ĐXMS-2026-0089'], title: 'KHLCNT thiết bị thử nghiệm môi trường', st: 'OK', owner: 'Phạm Thị Lan', creator: 'Bùi Minh Quang', created: '09/09/2026', updated: '24/09/2026', post: ['KH202609-071-00', '25/09/2026'], sap: '1000009871',
       basis: 'Tách 2 gói theo tính chất thị trường: buồng thử nhiệt ẩm (ít nhà thầu, cần đấu thầu) và thiết bị đo rung thông dụng (chào giá trực tuyến).',
       parts: { done: [], na: [], pending: [] }, pkgs: ['GT-2026-0029', 'GT-2026-0030'],
@@ -99,6 +124,19 @@
   const PK_ST = { KH: ['Chờ phê duyệt KHLCNT', 'default'], HS: ['Đang lập hồ sơ mời', 'info'], MOI: ['Đang mời thầu', 'info'], DG: ['Đang đánh giá', 'info'],
     TH: ['Đang xử lý tình huống', 'warning'], KQ_CHO: ['Chờ phê duyệt KQLCNT', 'warning'], KQ: ['Đã có KQLCNT', 'success'], HUY: ['Đã huỷ thầu', 'error'] };
   const LV = { KH: 0, HS: 1, MOI: 2, DG: 3, TH: 3, KQ_CHO: 4, KQ: 5, HUY: 3 };
+  /* Backbone gói thầu LC-01…11, LC-X (THAU-TT-1311 §4.1). CHO-KH không có trong §4.1: gói của KHLCNT chưa Hoàn thành (GIẢ LẬP, gói chỉ mở ở MS18 bước 23). */
+  const LC = { 'CHO-KH': ['Chờ hoàn thành KHLCNT', 'default', 'Lập KHLCNT'], 'LC-01': ['Đang chuẩn bị hồ sơ LCNT', 'info', 'Chuẩn bị hồ sơ LCNT'],
+    'LC-02': ['Đang thẩm định hồ sơ LCNT', 'info', 'Thẩm định/phê duyệt hồ sơ'], 'LC-03': ['Đang phát hành hồ sơ LCNT', 'info', 'Phát hành/gửi mời'],
+    'LC-04': ['Chờ nhà thầu phản hồi/nộp hồ sơ', 'info', 'Chờ hồ sơ nhà thầu'], 'LC-05': ['Đang mở/tiếp nhận hồ sơ', 'info', 'Mở/tiếp nhận hồ sơ'],
+    'LC-06': ['Đang đánh giá hồ sơ', 'info', 'Đánh giá'], 'LC-07': ['Đang thương thảo/đàm phán', 'info', 'Thương thảo/đàm phán'],
+    'LC-08': ['Đang trình KQLCNT', 'warning', 'Trình KQLCNT'], 'LC-09': ['Đang công khai KQLCNT', 'info', 'Công khai KQLCNT'],
+    'LC-10': ['Đang chuyển ký hợp đồng', 'warning', 'Chuyển ký hợp đồng'], 'LC-11': ['Hoàn thành lựa chọn nhà thầu', 'success', 'Hoàn thành LCNT'],
+    'LC-X': ['Đã hủy / Không thực hiện', 'error', 'Hủy/Không thực hiện'] };
+  /* Mẫu: trạng thái cũ → LC (§2): Phát thầu → chờ hồ sơ; tình huống 01 HSDT lúc đóng thầu → mở/tiếp nhận; có KQLCNT → chuyển ký HĐ, đã có hợp đồng → Hoàn thành. */
+  const LC_MAP = { KH: 'CHO-KH', HS: 'LC-01', MOI: 'LC-04', DG: 'LC-06', TH: 'LC-05', KQ_CHO: 'LC-08', KQ: 'LC-10', HUY: 'LC-X' };
+  /* Người xử lý theo giai đoạn gói (GIẢ LẬP tới khi MS19 chạy theo gói — T5). */
+  const LC_WHO = { 'LC-01': 'Tổ chuyên gia', 'LC-02': 'Tổ thẩm định', 'LC-03': 'Bên mời thầu — Bộ phận Thầu', 'LC-04': 'Bên mời thầu — Bộ phận Thầu', 'LC-05': 'Bên mời thầu — Bộ phận Thầu',
+    'LC-06': 'Tổ chuyên gia', 'LC-07': 'Tổ chuyên gia', 'LC-08': 'Tổ thẩm định', 'LC-09': 'Bên mời thầu — Bộ phận Thầu', 'LC-10': 'Phòng Pháp chế — Hợp đồng' };
   const PK = [
     { code: 'GT-2026-0021', kh: 'KHLCNT-2026-0009', name: 'Cung cấp dây chuyền lắp ráp bo mạch trạm thu phát', type: 'HH_LD', price: 195.0, priceBasis: 'Dự toán được duyệt sau KHLCNT', est: ['0905/QĐ-VHT', '25/09/2026', 195.0],
       form: 'DTRR', method: '1GD2T', intl: true, online: true, start: 'Quý IV/2026', selTime: '60 ngày', execTime: '240 ngày', contract: 'TRON_GOI', st: 'KQ',
@@ -144,11 +182,20 @@
       start: 'Quý I/2027', selTime: '30 ngày', execTime: '30 ngày', contract: 'TRON_GOI', st: 'KH', items: [['Bản quyền phần mềm mô phỏng giao thức 5GC', 'Bản quyền', 1]] },
     { code: 'GT-2026-0033', kh: 'KHLCNT-2026-0016', name: 'Tích hợp hệ thống mô phỏng vào phòng lab mạng lõi', type: 'PTV', price: 10.0, priceBasis: 'Dự toán', form: 'TU_TH', method: '1GD1T', intl: false, online: false,
       start: 'Quý II/2027', selTime: '10 ngày', execTime: '90 ngày', contract: 'TRON_GOI', st: 'KH', assignee: 'Trung tâm Mạng lõi', items: [['Tích hợp, kiểm thử hệ thống', 'Gói', 1]] },
-    { code: 'GT-2026-0034', kh: 'KHLCNT-2026-0017', name: 'Dịch vụ thuê hạ tầng điện toán đám mây 12 tháng', type: 'PTV', price: 11.2, priceBasis: 'Đơn giá dịch vụ của đơn vị thành viên', form: 'DAT_HANG', method: '1GD1T', intl: false, online: false,
+    { code: 'GT-2026-0034', kh: 'KHLCNT-2026-0017', name: 'Dịch vụ thuê hạ tầng điện toán đám mây 12 tháng', type: 'PTV', price: 9.6, priceBasis: 'Đơn giá dịch vụ của đơn vị thành viên', form: 'DAT_HANG', method: '1GD1T', intl: false, online: false,
       start: 'Tháng 11/2026', selTime: '15 ngày', execTime: '365 ngày', contract: 'DG_CD', st: 'KH', assignee: 'Viettel IDC (đơn vị thành viên)', items: [['Thuê máy chủ ảo, lưu trữ', 'Tháng', 12]] },
+    /* T67 dữ liệu demo: gói của KHLCNT-2026-0018…0020 (chào giá, chỉ định thầu rút gọn, rộng rãi). */
+    { code: 'GT-2026-0036', kh: 'KHLCNT-2026-0018', name: 'Dịch vụ thuê máy chủ ảo, lưu trữ 12 tháng (giai đoạn 2)', type: 'PTV', price: 8.4, priceBasis: 'Báo giá của 3 nhà cung cấp', form: 'CGTT', method: '1GD1T', intl: false, online: true,
+      start: 'Quý IV/2026', selTime: '15 ngày', execTime: '365 ngày', contract: 'DG_CD', st: 'KH', items: [['Máy chủ ảo 32 vCPU / 128 GB', 'Máy-tháng', 96], ['Lưu trữ khối 200 TB', 'Tháng', 12]] },
+    { code: 'GT-2026-0037', kh: 'KHLCNT-2026-0018', name: 'Dịch vụ sao lưu, khôi phục dữ liệu hệ thống OSS', type: 'PTV', price: 2.8, priceBasis: 'Đơn giá hợp đồng đang thực hiện', form: 'CDT_RG', method: '1GD1T', intl: false, online: false,
+      start: 'Quý IV/2026', selTime: '10 ngày', execTime: '365 ngày', contract: 'TRON_GOI', st: 'KH', items: [['Sao lưu hằng ngày, lưu 90 ngày', 'Tháng', 12]] },
+    { code: 'GT-2026-0038', kh: 'KHLCNT-2026-0019', name: 'Bảo trì hệ thống điều hoà phòng sạch năm 2027', type: 'PTV', price: 6.5, priceBasis: 'Báo giá', form: 'DTRR', method: '1GD1T', intl: false, online: true,
+      start: 'Quý IV/2026', selTime: '45 ngày', execTime: '365 ngày', contract: 'TRON_GOI', st: 'KH', items: [['Bảo trì định kỳ AHU, chiller', 'Quý', 4], ['Thay lọc HEPA', 'Lần', 2]] },
+    { code: 'GT-2026-0039', kh: 'KHLCNT-2026-0020', name: 'Bảo trì hệ thống điều hoà phòng sạch năm 2028', type: 'PTV', price: 7.9, priceBasis: 'Báo giá', form: 'CGTT', method: '1GD1T', intl: false, online: true,
+      start: 'Quý III/2027', selTime: '15 ngày', execTime: '365 ngày', contract: 'TRON_GOI', st: 'KH', items: [['Bảo trì định kỳ AHU, chiller', 'Quý', 4], ['Thay lọc HEPA, kiểm định phòng sạch', 'Lần', 2]] },
   ];
 
-  /* Trường gói theo form hệ thống cũ (HT-THAU-IMG 7213–7221) — thật là trường eForm MS18.1; mẫu suy từ dữ liệu gói. */
+  /* Trường gói theo form hệ thống cũ (HT-THAU-IMG 7213–7221) — thật là trường eForm MS18 bước 3–4; mẫu suy từ dữ liệu gói. */
   const FIELD_LB = { HANG_HOA: 'Hàng hóa', XAY_LAP: 'Xây lắp', TU_VAN: 'Tư vấn', PHI_TU_VAN: 'Phi tư vấn', HON_HOP: 'Hỗn hợp' };
   const COST = { MS_HH: 'Chi phí thiết bị', HH_LD: 'Chi phí thiết bị, lắp đặt', PM: 'Chi phí bản quyền phần mềm', PTV: 'Chi phí dịch vụ', TV: 'Chi phí tư vấn', XL: 'Chi phí xây lắp' };
   function pkExtra(g, k) {
@@ -161,13 +208,72 @@
 
   /* Bản ghi tạo trên prototype + điều chỉnh (localStorage riêng, như E-Form). */
   const KEY = 'dtms-proto-thau';
-  let U = { kh: [], adj: {} };
+  let U = { kh: [], adj: {}, pk: {} };
   try { U = Object.assign(U, JSON.parse(localStorage.getItem(KEY) || '{}')); } catch (e) { /* bỏ qua */ }
   const persist = () => { try { localStorage.setItem(KEY, JSON.stringify(U)); } catch (e) { /* bỏ qua */ } };
-  const khAll = () => U.kh.concat(KH0).map((k) => Object.assign({}, k, U.adj[k.code] || {}));
+  /* T67 T2: KHLCNT đã khởi tạo MS18 (hồ sơ con HSKH-…) — đang chạy thì trạng thái Đang xử lý, bước hiện tại theo việc đang mở; xong thì khFlowDone ghi kết quả vào U.adj. */
+  const khCaseOf = (code) => Flow.caseOf(D.hdCaseCode(code, 'MS18'));
+  const khLive = (k) => { const c = khCaseOf(k.code); return c && c.status === 'running' ? { st: 'RUN' } : {}; };
+  const khAll = () => U.kh.concat(KH0).map((k) => Object.assign({}, k, U.adj[k.code] || {})).map((k) => Object.assign(k, khLive(k))).map((k) => Object.assign(k, { prog: khProg(k) }));
+  /* T67 T4 — tiến độ (THAU-TT-1311 §1.2, §7): trạng thái + giai đoạn + bước hiện tại + người xử lý + bắt đầu / hạn / thời gian tại bước + vướng mắc.
+     Hồ sơ MS18 đang chạy: lấy từ việc đang mở (khl của bước, người được giao, since); hạn = định mức bước × 2 như Việc của tôi; vướng mắc từ biến quy trình
+     (lý do trả sửa / từ chối ký, chờ Ban ĐTXD, thành viên chưa cam kết). Mẫu chưa chạy: theo KH_MAP, bắt đầu bước = Ngày cập nhật. Ngày hiện tại = ngày dữ liệu mẫu. */
+  const due = (task, since) => since + Math.max(1, Math.ceil(((D.flows.MS18[task] || {}).nlv || 0.5) * 2));
+  const tname = (n) => ((window.BPMN_FLOWS.MS18 || { tasks: {} }).tasks[n] || {}).name || '';
+  const nowNlv = (c) => Math.max(c ? c.clock : 0, Flow.clockOf(window.HopDong ? window.HopDong.TODAY : '07/10/2026'));
+  function khProg(k) {
+    const c = khCaseOf(k.code), P = (khl, o) => Object.assign({ khl, gd: KHL[khl][2], step: '', who: '', since: null, due: null, days: null, issue: '' }, o);
+    if (c && c.status === 'approved') return P('KHL-10', { step: 'Hoàn thành KHLCNT' });
+    if (c && c.status === 'stopped') return P('KHL-X');
+    if (c && c.status === 'running') {
+      const ts = c.tokens.filter((t) => D.flows.MS18[t.task] && !D.flows.MS18[t.task].gw);
+      if (!ts.length) return P('KHL-02');
+      const t0 = ts[0], f = D.flows.MS18[t0.task], since = Math.min(...ts.map((t) => t.since)), now = nowNlv(c), dl = due(t0.task, since);
+      const names = [...new Set(ts.map((t) => persona(t.who).name))], unit = persona(t0.who).unit;
+      const back = [...c.history].reverse().find((h) => h.reason && [10, 12, 19].includes(Number(h.task)));
+      const issue = [9, 19].includes(Number(t0.task)) && back ? (Number(t0.task) === 19 ? 'Người ký từ chối: ' : 'Trả sửa: ') + back.reason
+        : f.external ? `Chờ Phiếu nhận xét của ${f.external}`
+        : String(t0.task) === '8' ? `Chờ ${ts.length} thành viên Tổ thẩm định cam kết` : '';
+      return P(f.khl || 'KHL-02', { step: [...new Set(ts.map((t) => `${t.task}. ${tname(t.task)}`))].join(', '), who: `${unit} / ${names.join(', ')}`,
+        since: Flow.dateOf(since), due: Flow.dateOf(dl), late: dl < now, days: Math.max(0, Math.floor(now - since)), issue });
+    }
+    const [khl, n0] = KH_MAP[k.st] || ['KHL-02', null], n = k.st === 'CHECK' && levelOf(k) === 'TD' ? 12 : n0;
+    if (!n) return P(khl, { step: khl === 'KHL-01' ? 'Chưa khởi tạo quy trình' : '', issue: k.cancelWhy || '' });
+    const since = Flow.clockOf(k.updated), now = nowNlv(null), dl = due(n, since), p = persona(D.flows.MS18[n].who);
+    const nok = Object.entries(k.checkNok || {})[0];
+    return P(khl, { step: `${n}. ${tname(n)}`, who: `${p.unit} / ${p.name}`, since: k.updated, due: Flow.dateOf(dl), late: dl < now, days: Math.max(0, now - since),
+      issue: k.st === 'ADJ' ? 'Điều chỉnh: ' + (k.adjWhy || '') : k.st === 'OPINION' ? 'Chờ Phiếu nhận xét của Ban ĐTXD Tập đoàn' : nok ? `${nok[0]}: ${nok[1]}` : '' });
+  }
   const khOf = (code) => khAll().find((k) => k.code === code) || null;
-  const pkOf = (code) => PK.find((p) => p.code === code) || null;
+  /* T67 T5: kết quả MS19 (U.pk — KQLCNT, nhà thầu, mẫu hợp đồng) phủ lên dữ liệu mẫu của gói. */
+  const pkM = (g) => (g && U.pk && U.pk[g.code] ? Object.assign({}, g, U.pk[g.code]) : g);
+  const pkOf = (code) => pkM(PK.find((p) => p.code === code)) || null;
   const pkgsOf = (k) => (k.pkgs || []).map(pkOf).filter(Boolean);
+  /* Đối tượng cha của hồ sơ MS18 (D.hdProcesses.MS18.obj.find → Flow.ci): tên, đơn vị lập, tổng giá gói, người phụ trách, cấp phê duyệt. */
+  function khCase(code) {
+    const k = khOf(code);
+    if (!k) return null;
+    /* Không gọi srcInfo: srcInfo đọc Screens.allCases() → Flow.ci() → khCase (đệ quy). Đơn vị lập lấy thẳng từ ĐXMS / KĐT nguồn. */
+    const s = (k.src[0] === 'KDT' ? Flow.findKdt(k.src[1]) : Flow.findDxms(k.src[1])) || {};
+    return { title: k.title, unit: s.unit, value: sum(pkgsOf(k).map((g) => g.price)), owner: ownerOf(k), levelText: LEVEL[levelOf(k)], kh: k };
+  }
+  /* MS18 bước 23 (service): KHLCNT Hoàn thành — số, ngày văn bản lấy theo bước của hồ sơ (Checklist hệ thống cũ IMG 7211; số GIẢ LẬP theo mã KHLCNT).
+     BM02 cấp VHT (Báo cáo kiểm tra) không có ô Số (BM-KHLCNT). */
+  /* Số văn bản của KHLCNT chạy MS18 — GIẢ LẬP theo mã KHLCNT (thật: số do VOffice / văn thư cấp, mã đăng tải do Cổng đấu thầu trả về). */
+  const khNos = (code) => { const n = 900 + Number(code.slice(-2)); return { ttr: `0${n}/TTr-MS-ĐT`, bc: `0${n + 1}/BC-TTĐ`, qdV: `0${n + 2}/QĐ-VHT`, qdT: `${n + 2}/QĐ-CNVTQĐ`,
+    ptr: `0${n + 3}/PTr-VHT`, post: `KH202610-${String(n).slice(-3)}-00` }; };
+  function khFlowDone(code) {
+    const S0 = Flow.state, k = khOf(code);
+    if (!k) return;
+    const at = (n) => { const h = S0.history.filter((x) => String(x.task) === String(n)).pop(); return h ? Flow.dateOf(h.t) : ''; };
+    const by = (n) => { const h = S0.history.filter((x) => String(x.task) === String(n) && x.who).pop(); return h ? persona(h.who).name : ''; };
+    const no = khNos(code), td = S0.vars.level === 'TD', u = S0.ui || {}, kyAt = u.khQdNgay || at(S0.vars.khKy === 'CUNG' ? 20 : 17), post = at(22);
+    U.adj[code] = Object.assign({}, U.adj[code], { st: 'OK', updated: post,
+      docs: { bm01: [no.ttr, at(5), by(5)], bm02: td ? [no.bc, at(12), by(12)] : ['', at(10), by(10)],
+        bm03: [u.khQdSo || (td ? no.qdT : no.qdV), kyAt, td ? 'TGĐ Tập đoàn' : persona('tgd').name] },
+      post: [no.post, post] });
+    persist();
+  }
   /* Tổng các phần công việc (Điều 23 khoản 2 điểm e): a đã thực hiện + b không áp dụng + c thuộc KHLCNT (giá gói) + d chưa đủ điều kiện. */
   function totals(k) {
     const p = k.parts || {}, a = sum((p.done || []).map((x) => x.value)), b = sum((p.na || []).map((x) => x.value)), c = sum(pkgsOf(k).map((g) => g.price)), d = sum((p.pending || []).map((x) => x.value));
@@ -215,35 +321,42 @@
   const khRow = (k) => { const t = totals(k), qd = (k.docs || {}).bm03 || []; return Object.assign({}, k, { kind: k.src[0], srcCode: k.src[1], unit: t.s ? t.s.unit : '', n: pkgsOf(k).length, total: t.c,
     qc: qcOf(k), lv: levelOf(k), owner: ownerOf(k), fund: t.s ? t.s.fund : '', qdNo: qd[0], qdDate: qd[1], postDate: (k.post || [])[1] }); };
   const inRange = (d, from, to) => (!from || (d && dkey(d) >= dkey(from))) && (!to || (d && dkey(d) <= dkey(to)));
+  /* Cột tiến độ dùng chung SCR-78 / SCR-81 (THAU-TT-1311 §7). Hạn quá ngày hiện tại tô đỏ như Việc của tôi. */
+  const PROG_COLS = [['Giai đoạn', 190], ['Bước hiện tại', 260], ['Đơn vị / người xử lý', 260], ['Bắt đầu bước', 120], ['Hạn xử lý', 110], ['Thời gian tại bước', 140, 'c'], ['Vướng mắc', 280]];
+  const progCells = (p) => `<td>${clamp(p.gd)}</td><td>${clamp(p.step)}</td><td>${clamp(p.who)}</td><td class="num">${p.since ? esc(p.since) : dash}</td>
+    <td class="num${p.late ? ' due-over' : ''}">${p.due ? esc(p.due) : dash}</td><td class="c">${p.days != null ? esc(p.days + ' ngày') : dash}</td><td>${clamp(p.issue)}</td>`;
+  const stBadge = (cat0, code) => `<span title="${esc(code)}">${badge(cat0[code][0], cat0[code][1])}</span>`;
   function khList() {
     // Theo: fe/repo-khcn-bpmn-fe/src/app/features/task-management/task-management.component.html (KHLCNT = đối tượng cha như ĐXMS / KĐT)
     return listPage({
       id: 'khl', title: 'Danh sách kế hoạch lựa chọn nhà thầu', ph: 'Tìm kiếm theo mã, tên KHLCNT, mã đối tượng nguồn',
       right: `<button class="vbtn primary" data-go="khlcnt/create">${icon('add')} Thêm mới</button>`,
       rows: () => khAll().map(khRow), kwText: (k) => `${k.code} ${k.title} ${k.srcCode}`,
-      empty: () => ({ code: '', title: '', src: '', kind: [], unit: null, st: [], qc: null, lv: null, fund: null, owner: [], from: '', to: '' }),
-      match: (k, f) => has(f.code, k.code) && has(f.title, k.title) && has(f.src, k.srcCode) && inSet(f.kind, k.kind) && (!f.unit || k.unit === f.unit) && inSet(f.st, k.st)
+      empty: () => ({ code: '', title: '', src: '', kind: [], unit: null, st: [], gd: null, qc: null, lv: null, fund: null, owner: [], from: '', to: '' }),
+      match: (k, f) => has(f.code, k.code) && has(f.title, k.title) && has(f.src, k.srcCode) && inSet(f.kind, k.kind) && (!f.unit || k.unit === f.unit) && inSet(f.st, k.prog.khl) && (!f.gd || k.prog.gd === f.gd)
         && (!f.qc || k.qc === f.qc) && (!f.lv || k.lv === f.lv) && (!f.fund || k.fund === f.fund) && inSet(f.owner, k.owner) && inRange(k.qdDate, f.from, f.to),
       adv: (txt, sel, range) => `${txt('code', 'Mã KHLCNT')}${txt('title', 'Tên KHLCNT')}${txt('src', 'Mã đối tượng nguồn')}
         ${sel('kind', 'Loại đối tượng nguồn', { multi: true, searchable: false, options: [['DXMS', SRC.DXMS], ['KDT', SRC.KDT]].map(([value, label]) => ({ value, label })) })}
         ${sel('unit', 'Đơn vị lập', { options: [...new Set(khAll().map(khRow).map((k) => k.unit))].map((u) => ({ value: u, label: u })) })}
-        ${sel('st', 'Trạng thái', { multi: true, searchable: false, options: Object.entries(KH_ST).map(([value, [label]]) => ({ value, label })) })}
+        ${sel('st', 'Trạng thái', { multi: true, searchable: false, options: Object.entries(KHL).map(([value, [label]]) => ({ value, label })) })}
+        ${sel('gd', 'Giai đoạn', { searchable: false, options: [...new Set(Object.values(KHL).map((x) => x[2]))].map((u) => ({ value: u, label: u })) })}
         ${sel('qc', 'Quy chế áp dụng', { searchable: false, options: Object.entries(QC).map(([value, label]) => ({ value, label })) })}
         ${sel('lv', 'Cấp phê duyệt', { searchable: false, options: Object.entries(LEVEL).map(([value, label]) => ({ value, label })) })}
         ${sel('fund', 'Nguồn vốn', { options: catOpts('nguon-von') })}
         ${sel('owner', 'Người phụ trách', { multi: true, options: [...new Set(khAll().map(ownerOf))].map((u) => ({ value: u, label: u })) })}
         ${range('from', 'to', 'Ngày QĐ KHLCNT')}`,
-      cols: [['Trạng thái', 190, 'c'], ['Mã KHLCNT', 170], ['Tên KHLCNT', 320], ['Quy chế áp dụng', 170], ['Cấp phê duyệt', 130], ['Người phụ trách', 170], ['Loại đối tượng nguồn', 170], ['Mã đối tượng nguồn', 160], ['Đơn vị lập', 200],
+      cols: [['Trạng thái', 220, 'c'], ['Mã KHLCNT', 170], ['Tên KHLCNT', 320], ...PROG_COLS, ['Quy chế áp dụng', 170], ['Cấp phê duyệt', 130], ['Người phụ trách', 170], ['Loại đối tượng nguồn', 170], ['Mã đối tượng nguồn', 160], ['Đơn vị lập', 200],
         ['Số QĐ KHLCNT', 140], ['Ngày QĐ KHLCNT', 130], ['Ngày đăng tải KHLCNT', 160], ['Số gói thầu', 100, 'c'], ['Tổng giá gói thầu (tỷ đồng)', 190, 'r'], ['Ngày cập nhật', 130]],
       href: khHref,
-      cell: (k) => `<td class="c">${badge(...KH_ST[k.st])}</td><td><a class="link" data-go="${khHref(k)}">${esc(k.code)}</a></td><td>${clamp(k.title)}</td><td>${esc(QC[k.qc])}</td><td>${esc(LEVEL[k.lv])}</td><td>${clamp(k.owner)}</td><td>${esc(SRC[k.kind])}</td>
+      cell: (k) => `<td class="c">${stBadge(KHL, k.prog.khl)}</td><td><a class="link" data-go="${khHref(k)}">${esc(k.code)}</a></td><td>${clamp(k.title)}</td>${progCells(k.prog)}<td>${esc(QC[k.qc])}</td><td>${esc(LEVEL[k.lv])}</td><td>${clamp(k.owner)}</td><td>${esc(SRC[k.kind])}</td>
         <td><a class="link" data-go="${srcHref(k.kind, k.srcCode)}">${esc(k.srcCode)}</a></td><td>${clamp(k.unit)}</td><td>${k.qdNo ? esc(k.qdNo) : dash}</td><td class="num">${k.qdDate ? esc(k.qdDate) : dash}</td><td class="num">${k.postDate ? esc(k.postDate) : dash}</td><td class="c">${k.n}</td><td class="r num">${money(k.total)}</td><td class="num">${esc(k.updated)}</td>`,
       info: {
-        scr: 'SCR-78', name: 'Danh sách kế hoạch lựa chọn nhà thầu', uc: 'UC-08-01 · Backlog W1_T10 › Quản lý thầu › KHLCNT (dòng 314–318)', bpmn: 'MS18 Lập KHLCNT (BPMN-MS18, bản nháp — nguồn MS18 duy nhất)',
+        scr: 'SCR-78', name: 'Danh sách kế hoạch lựa chọn nhà thầu', uc: 'UC-08-01 · Backlog W1_T10 › Quản lý thầu › KHLCNT (dòng 314–318)', bpmn: 'MS18 Lập và phê duyệt KHLCNT (BPMN-MS18-TOBE, 23 bước); trạng thái THAU-TT-1311',
         notes: [
           'KHLCNT là <b>đối tượng cha</b> như ĐXMS / KĐT (D-12): lập trên cơ sở một ĐXMS / KĐT đã phê duyệt (QC-12869 Điều 22 khoản 1a); Dự án đầu tư chưa có phân hệ. Bố cục task-management.',
-          'Trạng thái theo 4 luồng con MS18: Dự thảo (18.1 lập thông tin gói) → Đang trình ký tờ trình (18.2) → Đang kiểm tra (18.3) → Chờ phê duyệt (18.4) → Đã phê duyệt; Đang điều chỉnh khi lập phiên bản mới (không ghi đè bản đã duyệt).',
-          'Màn tĩnh (D-17): luồng MS18 chưa chạy trên prototype; dữ liệu mẫu nối với các ĐXMS / KĐT đã phê duyệt.',
+          '<b>T67 T4 — trạng thái hai lớp</b> (THAU-TT-1311 §1, §3.4): Trạng thái KHL-01 Nháp … KHL-10 Hoàn thành, KHL-X Đã hủy (mã hiện khi rê chuột) + Giai đoạn lớn + Bước hiện tại. Trạng thái do quy trình đặt: mỗi dòng cấu hình bước MS18 có thuộc tính trạng thái, việc của bước mở thì KHLCNT nhận trạng thái đó; người dùng không chọn trạng thái như hệ thống cũ. Giai đoạn lớn của KHLCNT GIẢ LẬP theo ví dụ §1.1.',
+          'Cột tiến độ theo §7: Giai đoạn · Bước hiện tại · Đơn vị / người xử lý · Bắt đầu bước · Hạn xử lý (định mức bước × 2, như Việc của tôi; quá hạn tô đỏ) · Thời gian tại bước (ngày làm việc tới ngày hiện tại) · Vướng mắc (lý do trả sửa / người ký từ chối, chờ Phiếu nhận xét Ban ĐTXD, thành viên Tổ thẩm định chưa cam kết — đều là biến quy trình). Bước tiếp theo / Cập nhật gần nhất của §7 không thêm (Ngày cập nhật đã có).',
+          'KHLCNT chạy MS18 lấy tiến độ từ hồ sơ xử lý; KHLCNT mẫu chưa chạy quy đổi trạng thái cũ theo §2 (Dự thảo → KHL-01, Đang kiểm tra → KHL-04 ở bước 10 / 12, Đã phê duyệt → KHL-10, Đang điều chỉnh → KHL-02), bắt đầu bước = Ngày cập nhật (GIẢ LẬP).',
           'Không có cột Thao tác (D-43, team BA 30/10/2026: chưa có thao tác trên dòng).',
           'Cột và bộ lọc Quy chế áp dụng, Cấp phê duyệt, Nguồn vốn, Người phụ trách, Số / Ngày QĐ, Ngày đăng tải theo màn KHLCNT của hệ thống cũ (HT-THAU-IMG, T24). Số / Ngày QĐ lấy từ BM-03 đã ký; Ngày đăng tải từ tích hợp đăng tải (bước 59).',
         ],
@@ -266,7 +379,7 @@
     const info = {
       scr: 'SCR-79', name: 'Thêm mới kế hoạch lựa chọn nhà thầu', uc: 'Backlog W1_T10 › KHLCNT › Tạo KHLCNT từ DADT/KĐT/ĐXMS; Lấy giá trị được phê duyệt (dòng 317–318)', bpmn: 'MS18 bước 1 "Khởi tạo lập KHLCNT", bước 2 kiểm tra căn cứ, bước 2–4 (mua sắm thường xuyên, Luật Đấu thầu)',
       notes: [
-        'Theo task-create (mode create). Lưu = tạo KHLCNT ở trạng thái Dự thảo và khởi tạo MS18 (prototype không chạy luồng, D-17); mở Chi tiết KHLCNT.',
+        'Theo task-create (mode create). Lưu = tạo KHLCNT ở trạng thái Dự thảo (Nháp, chưa chạy quy trình — THAU-TT-1311 §3.1); mở Chi tiết KHLCNT. Form này là bước 1–2 của MS18 (BPMN-MS18-TOBE); nút <b>Khởi tạo KHLCNT</b> ở Chi tiết khởi tạo quy trình, khoá Cấp phê duyệt, mở bước 3 (T67 T2, D-118). Chọn nhiều hồ sơ nguồn (BPMN bước 2) chưa dựng.',
         '<b>Đối tượng nguồn</b> chỉ liệt kê ĐXMS / KĐT đã phê duyệt (MS18 bước 2 "Kiểm tra căn cứ" — chặn ngay ở ô chọn). <b>Giá trị được duyệt</b> và văn bản phê duyệt lấy từ hồ sơ Hoàn thành gần nhất, chỉ xem; tổng giá trị các phần công việc phải khớp giá trị này (Điều 23 khoản 2e).',
         'Mỗi đối tượng nguồn chỉ có một KHLCNT đang hiệu lực; thay đổi sau phê duyệt làm bằng <b>Điều chỉnh KHLCNT</b>.',
         '<b>Quy chế áp dụng</b> (thay hai ô Mua sắm thường xuyên / Áp dụng Luật Đấu thầu, theo hệ thống cũ — T24), không đổi sau khi tạo: Mua sắm thường xuyên → hệ thống kiểm tra nhu cầu 06–12 tháng và nguy cơ chia nhỏ gói (MS18 bước 2, Điều 22 khoản 1b); Theo luật → KHLCNT riêng kèm điều, khoản áp dụng (bước 4, Điều 22 khoản 3).',
@@ -330,23 +443,28 @@
     const vs = k.versions || (k.st === 'OK' || k.st === 'ADJ' ? [{ v: 'v1', at: (k.docs && k.docs.bm03 || [])[1] || k.updated, why: 'Phê duyệt lần đầu', no: (k.docs && k.docs.bm03 || [])[0] }] : []);
     const curV = vs.length ? vs[vs.length - 1].v : 'v1';
     const info = {
-      scr: 'SCR-80', name: 'Chi tiết kế hoạch lựa chọn nhà thầu', uc: 'Backlog W1_T10 › KHLCNT (dòng 316, 319–331)', bpmn: 'MS18.1–18.4 (BPMN-MS18)',
+      scr: 'SCR-80', name: 'Chi tiết kế hoạch lựa chọn nhà thầu', uc: 'Backlog W1_T10 › KHLCNT (dòng 316, 319–331)', bpmn: 'MS18 (BPMN-MS18-TOBE, 23 bước) — hồ sơ xử lý HSKH-… là hồ sơ con của KHLCNT (T67 T2, D-118)',
       notes: [
-        'Theo task-create (mode detail) + app-tabs như Chi tiết ĐXMS. Các tab chỉ xem — dữ liệu do các bước MS18 ghi (eForm bảng lặp phần công việc / gói thầu ở MS18.1, Tờ trình MS18.2, Báo cáo kiểm tra MS18.3, Quyết định MS18.4).',
+        'Theo task-create (mode detail) + app-tabs như Chi tiết ĐXMS. Các tab chỉ xem — dữ liệu do các bước MS18 ghi (eForm bảng lặp phần công việc / gói thầu ở bước 3–4, Tờ trình bước 5, Báo cáo kiểm tra / thẩm định bước 10 / 12, Quyết định bước 11 / 15 của BPMN-MS18-TOBE).',
         '<b>Phân bổ công việc</b> theo Tờ trình KHLCNT (QC-12869 Điều 23 khoản 2): a) đã thực hiện, b) không áp dụng LCNT, c) thuộc KHLCNT (các gói thầu), d) chưa đủ điều kiện lập KHLCNT; e) tổng a–d phải khớp giá trị được duyệt của đối tượng nguồn — service task MS18 bước 24 / 33 kiểm tra, lệch thì không chuyển bước.',
         '<b>Gói thầu</b>: cơ sở phân chia theo kỹ thuật, trình tự thực hiện, năng lực thị trường (Điều 22 khoản 1c); một gói / nhiều gói theo số dòng gói (biểu mẫu Tập đoàn khác nhau).',
         '<b>Phiên bản & điều chỉnh</b>: KHLCNT đã duyệt không ghi đè; Điều chỉnh tạo phiên bản mới chạy lại MS18 (giá, phạm vi, hình thức thay đổi trước đóng thầu). So sánh trước / sau = DEV-1 như ĐXMS.',
-        '<b>Tờ trình KHLCNT</b> (T24, theo tab TTr của hệ thống cũ và BM01.QCLCNT): Tổ thẩm định, giải trình a)–i), văn bản kèm theo, danh mục hạng mục — eForm MS18.2 (bảng lặp + ô nhập), giải trình gợi ý từ dữ liệu gói. Không chép ô soạn HTML tự do và nút Export rời: văn bản sinh ở Văn bản đầu ra của bước.',
-        '<b>Kết quả</b>: BM-01 Tờ trình (MS18.2, VOffice), BM-02 Báo cáo kiểm tra (MS18.3 — 16 tiêu chí 3 nhóm theo BM02.QCLCNT của hệ thống cũ, trả lời một phần Q02; kết quả là bảng lặp eForm, không mặc định Đáp ứng), BM-03 Quyết định phê duyệt (MS18.4). Số, ngày văn bản nhận từ VOffice, không nhập lại như tab Checklist cũ. Dòng Đăng tải lấy từ Công khai & tích hợp (bước 59); Mã KHLCNT trên SAP chỉ xem.',
+        '<b>Tờ trình KHLCNT</b> (T24, theo tab TTr của hệ thống cũ và BM01.QCLCNT): Tổ thẩm định, giải trình a)–i), văn bản kèm theo, danh mục hạng mục — eForm bước 5 (bảng lặp + ô nhập), giải trình gợi ý từ dữ liệu gói. Không chép ô soạn HTML tự do và nút Export rời: văn bản sinh ở Văn bản đầu ra của bước.',
+        '<b>Kết quả</b>: BM-01 Tờ trình (bước 5), BM-02 Báo cáo kiểm tra (bước 10 — 16 tiêu chí 3 nhóm theo BM02.QCLCNT của hệ thống cũ, trả lời một phần Q02; kết quả là bảng lặp eForm, không mặc định Đáp ứng), BM-03 Quyết định phê duyệt (bước 11 / 15, ký 16–20). Số, ngày văn bản nhận từ VOffice, không nhập lại như tab Checklist cũ. Dòng Đăng tải lấy từ Công khai & tích hợp (bước 59); Mã KHLCNT trên SAP chỉ xem.',
       ],
       q: ['P-76', 'P-116'], src: 'task-management/components/task-create (mode detail) · /task-management/detail/:id',
     };
-    const right = k.st === 'OK' ? `<button type="button" class="vbtn primary" data-kh-adj="${esc(k.code)}">Điều chỉnh KHLCNT</button>` : '';
+    /* T67 T2: Nháp → Khởi tạo KHLCNT (start MS18); KHLCNT mẫu đang xử lý → Chạy luồng mẫu tới bước của mẫu; đã có hồ sơ MS18 → Xem hồ sơ xử lý. */
+    const kc = khCaseOf(k.code), smp = KH_SAMPLE[k.code];
+    const right = (kc ? `<button type="button" class="vbtn secondary" data-go="ho-so-hd/${esc(kc.code)}">Xem hồ sơ xử lý</button>` : '')
+      + (!kc && k.st === 'DRAFT' ? `<button type="button" class="vbtn primary" data-kh-start="${esc(k.code)}">Khởi tạo KHLCNT</button>` : '')
+      + (!kc && smp ? `<button type="button" class="vbtn primary" data-kh-sample="${esc(k.code)}">Chạy luồng mẫu</button>` : '')
+      + (k.st === 'OK' ? `<button type="button" class="vbtn primary" data-kh-adj="${esc(k.code)}">Điều chỉnh KHLCNT</button>` : '');
     const infoCards = card('Thông tin chung KHLCNT', `<div class="ginfo c3">
         ${kv('Mã KHLCNT', esc(k.code))}${kv('Tên KHLCNT', esc(k.title), 'span2')}
         ${kv('Loại đối tượng nguồn', esc(SRC[k.src[0]]))}${kv('Đối tượng nguồn', `<a class="link-red" href="#/${srcHref(k.src[0], k.src[1])}">${esc(k.src[1])}</a> - ${esc(s.title || '')}`, 'span2')}
-        ${kv('Đơn vị lập', esc(s.unit))}${kv('Người lập', esc(k.creator))}${kv('Trạng thái', badge(...KH_ST[k.st]))}
-        ${kv('Bước hiện tại', esc(KH_STEP[k.st]))}${kv('Phiên bản hiện hành', esc(curV))}${kv('Ngày cập nhật', esc(k.updated))}
+        ${kv('Đơn vị lập', esc(s.unit))}${kv('Người lập', esc(k.creator))}${kv('Trạng thái', stBadge(KHL, k.prog.khl))}
+        ${kv('Bước hiện tại', esc(khStep(k)))}${kv('Phiên bản hiện hành', esc(curV))}${kv('Ngày cập nhật', esc(k.updated))}
         ${kv('Quy chế áp dụng', esc(QC[qcOf(k)]))}${kv('Cấp phê duyệt', esc(LEVEL[levelOf(k)]))}${kv('Người phụ trách', esc(ownerOf(k)))}
         ${kv('Số gói thầu', String(gs.length))}</div>`)
       + card('Kiểm soát giá trị', `<div class="ginfo c3">
@@ -372,30 +490,8 @@
       + card('Danh sách gói thầu', table([['Mã gói thầu', 140], ['Số gói thầu', 190], ['Tên gói thầu', 320], ['Loại gói thầu', 200], ['Giá gói thầu (tỷ đồng)', 170, 'r'], ['Hình thức LCNT', 190], ['Phương thức LCNT', 220],
         ['Loại hợp đồng', 170], ['Thời gian bắt đầu LCNT', 160], ['Thời gian thực hiện HĐ', 170], ['Thời gian thực hiện gói thầu', 190], ['Trạng thái', 200, 'c']], gs,
       (g) => `<td>${pkLink(g)}</td><td>${esc(pkExtra(g, k).no)}</td><td>${clamp(g.name)}</td><td>${clamp(cat('loai-goi-thau', g.type))}</td><td class="r num">${money(g.price)}</td><td>${clamp(cat('hinh-thuc-lcnt', g.form))}</td>
-        <td>${clamp(cat('phuong-thuc-lcnt', g.method))}</td><td>${clamp(cat('loai-hop-dong', g.contract))}</td><td>${esc(g.start)}</td><td>${esc(pkExtra(g, k).hdTime)}</td><td>${esc(g.execTime)}</td><td class="c">${badge(...(k.st === 'OK' ? PK_ST[g.st] : PK_ST.KH))}</td>`,
+        <td>${clamp(cat('phuong-thuc-lcnt', g.method))}</td><td>${clamp(cat('loai-hop-dong', g.contract))}</td><td>${esc(g.start)}</td><td>${esc(pkExtra(g, k).hdTime)}</td><td>${esc(g.execTime)}</td><td class="c">${stBadge(LC, pkRow(g).lc)}</td>`,
       gs.length ? `<tfoot><tr><td></td><td colspan="4"><b>Tổng</b></td><td class="r num"><b>${ty(t.c, 2)}</b></td><td colspan="7" data-kh-words>${esc(goiWords)}</td></tr></tfoot>` : ''));
-    /* Tờ trình KHLCNT (MS18.2): theo tab TTr của hệ thống cũ + BM01.QCLCNT; giá trị gợi ý từ dữ liệu gói, người lập sửa trên eForm. */
-    const toTrinh = () => {
-      if (!gs.length) return emptyCard('Tờ trình KHLCNT', 'Tờ trình được lập sau khi có thông tin gói thầu.');
-      const off = Number(k.code.slice(-2));
-      const P = (i) => PEOPLE[(off + i) % PEOPLE.length];
-      const team = [[P(0), 'Phó Tổng Giám đốc chuyên trách', 'Tổ trưởng', 'Chỉ đạo chung'], [P(1), 'Trưởng phòng Chiến lược - KHCN', 'Thành viên', 'Kỹ thuật'], [P(2), 'Trưởng phòng Tài chính Kế toán', 'Thành viên', 'Tài chính'],
-        [P(3), 'Bộ phận Bảo vệ An ninh', 'Thành viên', 'An ninh chính trị nội bộ'], [P(4), 'Giám đốc Trung tâm Mua sắm', 'Thành viên', 'Pháp lý']];
-      const perG = (fn) => gs.map((g) => `${pkExtra(g, k).no}: ${fn(g)}`).join('; ');
-      const why = [['a) Cơ sở phân chia các gói thầu', k.basis], ['b) Giá gói thầu', perG((g) => `${ty(g.price, 2)} tỷ đồng — ${g.priceBasis}`)], ['c) Nguồn vốn', cat('nguon-von', s.fund)],
-        ['d) Hình thức lựa chọn nhà thầu', perG((g) => `${cat('hinh-thuc-lcnt', g.form)} — ${COND[g.form] || ''}`)], ['đ) Phương thức lựa chọn nhà thầu', perG((g) => cat('phuong-thuc-lcnt', g.method))],
-        ['e) Thời gian bắt đầu tổ chức lựa chọn nhà thầu', perG((g) => g.start)], ['g) Thời gian lựa chọn nhà thầu', perG((g) => g.selTime)], ['h) Loại hợp đồng', perG((g) => cat('loai-hop-dong', g.contract))], ['i) Thời gian thực hiện gói thầu', perG((g) => g.execTime)]];
-      const attach = [[s.doc || 'Văn bản phê duyệt đối tượng nguồn', 'Bản chụp'], ['Báo giá, cơ sở xác định giá gói thầu', 'Bản chụp'], ['Tờ trình đề xuất / khoản đầu tư đã phê duyệt', 'Bản chụp']];
-      const lines = gs.flatMap((g) => (g.items || []).map((i) => [pkExtra(g, k).no, i[0], i[1], i[2]]));
-      return card('Thành viên Tổ thẩm định', table([['Họ và tên', 220], ['Chức vụ', 300], ['Vai trò trong Tổ thẩm định', 200], ['Phân công công việc', 240]], team,
-          (r) => `<td>${esc(r[0])}</td><td>${clamp(r[1])}</td><td>${esc(r[2])}</td><td>${esc(r[3])}</td>`))
-        + card('Mô tả tóm tắt', `<div class="ginfo c3">${kv('Đối tượng nguồn', esc(`${k.src[1]} - ${s.title || ''}`), 'span2')}${kv('Giá trị được duyệt', t.approved != null ? ty(t.approved, 2) + ' tỷ đồng' : null)}
-          ${kv('Nhiệm vụ / Đề tài, dự án', s.nvText ? esc(s.nvText) : null, 'span2')}${kv('Đơn vị đề xuất', esc(s.unit))}</div>`)
-        + card('Giải trình nội dung KHLCNT', table([['Nội dung', 320], ['Giải trình', 760]], why, (r) => `<td>${esc(r[0])}</td><td>${clamp(r[1])}</td>`))
-        + card('Văn bản kèm theo', table([['Nội dung', 620], ['Ghi chú', 160]], attach, (r) => `<td>${clamp(r[0])}</td><td>${esc(r[1])}</td>`))
-        + card('Chi tiết danh mục mua sắm thuộc gói thầu', table([['Số gói thầu', 200], ['Hạng mục', 460], ['Đơn vị tính', 130], ['Khối lượng', 110, 'r']], lines,
-          (r) => `<td>${esc(r[0])}</td><td>${clamp(r[1])}</td><td>${esc(r[2])}</td><td class="r num">${ty(r[3], 0)}</td>`));
-    };
     const phienBan = () => {
       if (!vs.length) return emptyCard('Lịch sử phiên bản', 'KHLCNT chưa được phê duyệt. Phiên bản đầu được ghi nhận khi có Quyết định phê duyệt KHLCNT.');
       const rows = vs.map((x, i) => Object.assign({ cur: i === vs.length - 1 && k.st !== 'ADJ' }, x)).concat(k.st === 'ADJ' ? [{ v: 'v' + (vs.length + 1), at: k.updated, why: k.adjWhy, no: '', draft: true }] : []);
@@ -404,28 +500,174 @@
         + (k.diff ? card('So sánh KHLCNT trước / sau điều chỉnh', table([['Nội dung', 300], ['Trước điều chỉnh (v1)', 360], ['Sau điều chỉnh (v2)', 360]], k.diff,
           (d) => `<td>${clamp(d[0])}</td><td><span class="diff-old">${esc(d[1])}</span></td><td><span class="diff-new">${esc(d[2])}</span></td>`), 'Chỉ liệt kê nội dung thay đổi') : '');
     };
-    const ketQua = () => {
-      const d = k.docs || {};
-      const rows = [['Tờ trình xin phê duyệt KHLCNT (BM-01)', d.bm01, 'MS18.2'], ['Báo cáo kiểm tra KHLCNT (BM-02)', d.bm02, 'MS18.3'], ['Quyết định phê duyệt KHLCNT (BM-03)', d.bm03, 'MS18.4']];
-      const docT = card('Văn bản của KHLCNT', table([['Văn bản', 320], ['Bước', 100], ['Số văn bản', 180], ['Ngày văn bản', 120], ['Người ký', 200], ['Trạng thái', 160, 'c'], ['Tệp', 80, 'c']], rows,
-        (r) => `<td>${esc(r[0])}</td><td>${esc(r[2])}</td><td>${r[1] ? esc(r[1][0]) : dash}</td><td class="num">${r[1] ? esc(r[1][1]) : dash}</td><td>${r[1] ? esc(r[1][2]) : dash}</td>
-          <td class="c">${r[1] ? badge('Đã ký', 'success') : badge('Chưa có', 'default')}</td><td class="c">${r[1] ? `<button type="button" class="vbtn icon ghost" aria-label="Tải xuống" data-dl="${esc(r[1][0].replace(/\//g, '-'))}.pdf">${icon('download')}</button>` : dash}</td>`,
-        `<tbody data-kh-ext><tr><td class="ord">4</td><td>Đăng tải KHLCNT</td><td>MS18.4</td><td>${k.post ? esc(k.post[0]) : dash}</td><td class="num">${k.post ? esc(k.post[1]) : dash}</td><td>${dash}</td><td class="c">${k.post ? badge('Đã đăng tải', 'success') : badge('Chưa có', 'default')}</td><td class="c">${dash}</td></tr>
-          <tr><td class="ord">5</td><td>Mã KHLCNT trên SAP</td><td>${dash}</td><td>${k.sap ? esc(k.sap) : dash}</td><td>${dash}</td><td>${dash}</td><td class="c">${k.sap ? badge('Đã đồng bộ', 'success') : badge('Chưa có', 'default')}</td><td class="c">${dash}</td></tr></tbody>`));
-      /* BM02.QCLCNT: 16 tiêu chí, 3 nhóm (Đáp ứng / Không đáp ứng). */
-      const CRIT = [['Căn cứ pháp lý', ['Đầy đủ hồ sơ', 'Phù hợp căn cứ', 'Tuân thủ cấu trúc và biểu mẫu', 'Chính xác thông tin']],
-        ['Phần công việc không thuộc KHLCNT', ['Phần công việc đã thực hiện', 'Phần công việc không áp dụng được hình thức lựa chọn nhà thầu', 'Phần công việc chưa đủ điều kiện lập KHLCNT']],
-        ['Phần công việc thuộc KHLCNT', ['Phân chia gói thầu', 'Tên gói thầu', 'Giá gói thầu', 'Hình thức lựa chọn nhà thầu', 'Phương thức lựa chọn nhà thầu', 'Thời gian tổ chức lựa chọn nhà thầu', 'Thời gian bắt đầu tổ chức lựa chọn nhà thầu', 'Loại hợp đồng', 'Thời gian thực hiện gói thầu']]];
-      const nok = k.checkNok || {};
-      const chk = d.bm02 || k.checkNok ? CRIT.flatMap(([grp, list]) => list.map((c) => [grp, c, nok[c]])) : [];
-      return docT + card('Kết quả kiểm tra KHLCNT', table([['Nhóm', 280], ['Tiêu chí', 360], ['Kết quả', 140, 'c'], ['Nội dung không đáp ứng / gợi ý sửa', 420]], chk,
-        (c) => `<td>${clamp(c[0])}</td><td>${clamp(c[1])}</td><td class="c">${c[2] ? badge('Không đáp ứng', 'error') : badge('Đáp ứng', 'success')}</td><td>${clamp(c[2])}</td>`), 'Theo BM02.QCLCNT — 16 tiêu chí (MS18 bước 32–33)');
+    /* ---------- T67 T3 (D-118, yêu cầu BA): 8 tab như hệ thống cũ (HT-THAU-IMG 7210, HT-THAU-XLS mục 1.3.2.1–1.3.2.9) ----------
+       KHLCNT đã khởi tạo MS18: mỗi tab đọc dữ liệu hồ sơ xử lý (biến / eForm do bước ghi), bước chưa tới → "được cập nhật ở bước n".
+       KHLCNT mẫu chưa chạy luồng: giữ dữ liệu mẫu tĩnh. */
+    const C = khCaseOf(k.code), live = !!C, td = levelOf(k) === 'TD', ui = (C && C.ui) || {};
+    const hist = (n) => (C ? C.history.filter((h) => String(h.task) === String(n)) : []);
+    const doneAt = (n) => { const h = hist(n).filter((x) => x.who || x.system).pop(); return h ? Flow.dateOf(h.t) : null; };
+    const doneAny = (ns) => ns.map(doneAt).filter(Boolean).pop() || null;
+    const T18 = window.BPMN_FLOWS.MS18.tasks;
+    const waitCard = (title, steps) => emptyCard(title, `Chưa có dữ liệu — được cập nhật ở bước ${steps.map((n) => `${n}. ${T18[n].name}`).join(' / ')}.`);
+    const no = khNos(k.code);
+    /* Tờ trình KHLCNT (bước 5–6): theo tab TTr của hệ thống cũ + BM01; KHLCNT chạy luồng đọc Tổ thẩm định (bước 6) và giải trình (bước 5) từ hồ sơ. */
+    const GT = td ? [['khCoSo', 'a. Cơ sở phân chia các gói thầu'], ['khGtGia', 'b. Giá gói thầu'], ['khGtVon', 'c. Nguồn vốn'], ['khGtHinhThuc', 'd. Hình thức và phương thức lựa chọn nhà thầu'],
+      ['khGtBatDau', 'e. Thời gian bắt đầu tổ chức lựa chọn nhà thầu'], ['khGtLoaiHd', 'f. Loại hợp đồng'], ['khGtThoiGianTh', 'g. Thời gian thực hiện hợp đồng']]
+      : [['khCoSo', 'a) Cơ sở phân chia các gói thầu'], ['khGtGia', 'b) Giá gói thầu'], ['khGtVon', 'c) Nguồn vốn'], ['khGtHinhThuc', 'd) Hình thức lựa chọn nhà thầu'],
+        ['khGtPhuongThuc', 'đ) Phương thức lựa chọn nhà thầu'], ['khGtThoiGianLcnt', 'e) Thời gian lựa chọn nhà thầu'], ['khGtBatDau', 'g) Thời gian bắt đầu tổ chức lựa chọn nhà thầu'],
+        ['khGtLoaiHd', 'h) Loại hợp đồng'], ['khGtThoiGianTh', 'i) Thời gian thực hiện gói thầu']];
+    const liveTeam = () => (ui.khTtd || D.khTeam0.map(([nguoi, vaiTro, phanCong]) => ({ nguoi, vaiTro, phanCong })))
+      .map((r) => [persona(r.nguoi).name, persona(r.nguoi).role, r.vaiTro, r.phanCong, r.nguoi]);
+    const toTrinh = () => {
+      if (!gs.length) return emptyCard('Tờ trình KHLCNT', 'Tờ trình được lập sau khi có thông tin gói thầu.');
+      if (live && !doneAt(5)) return waitCard('Tờ trình KHLCNT', [5]);
+      const off = Number(k.code.slice(-2));
+      const P = (i) => PEOPLE[(off + i) % PEOPLE.length];
+      const team = live ? (doneAt(6) ? liveTeam() : []) : [[P(0), 'Phó Tổng Giám đốc chuyên trách', 'Tổ trưởng', 'Chỉ đạo chung'], [P(1), 'Trưởng phòng Chiến lược - KHCN', 'Thành viên', 'Kỹ thuật'], [P(2), 'Trưởng phòng Tài chính Kế toán', 'Thành viên', 'Tài chính'],
+        [P(3), 'Bộ phận Bảo vệ An ninh', 'Thành viên', 'An ninh chính trị nội bộ'], [P(4), 'Giám đốc Trung tâm Mua sắm', 'Thành viên', 'Pháp lý']];
+      const perG = (fn) => gs.map((g) => `${pkExtra(g, k).no}: ${fn(g)}`).join('; ');
+      const why = live ? GT.map(([key, l]) => [l, ui[key] || '']) : [['a) Cơ sở phân chia các gói thầu', k.basis], ['b) Giá gói thầu', perG((g) => `${ty(g.price, 2)} tỷ đồng — ${g.priceBasis}`)], ['c) Nguồn vốn', cat('nguon-von', s.fund)],
+        ['d) Hình thức lựa chọn nhà thầu', perG((g) => `${cat('hinh-thuc-lcnt', g.form)} — ${COND[g.form] || ''}`)], ['đ) Phương thức lựa chọn nhà thầu', perG((g) => cat('phuong-thuc-lcnt', g.method))],
+        ['e) Thời gian bắt đầu tổ chức lựa chọn nhà thầu', perG((g) => g.start)], ['g) Thời gian lựa chọn nhà thầu', perG((g) => g.selTime)], ['h) Loại hợp đồng', perG((g) => cat('loai-hop-dong', g.contract))], ['i) Thời gian thực hiện gói thầu', perG((g) => g.execTime)]];
+      const attach = [[s.doc || 'Văn bản phê duyệt đối tượng nguồn', 'Bản chụp'], ['Báo giá, cơ sở xác định giá gói thầu', 'Bản chụp'], ['Tờ trình đề xuất / khoản đầu tư đã phê duyệt', 'Bản chụp']];
+      const lines = gs.flatMap((g) => (g.items || []).map((i) => [pkExtra(g, k).no, i[0], i[1], i[2]]));
+      return (team.length ? card('Thành viên Tổ thẩm định', table([['Họ và tên', 220], ['Chức vụ', 300], ['Vai trò trong Tổ thẩm định', 200], ['Phân công công việc', 240]], team,
+          (r) => `<td>${esc(r[0])}</td><td>${clamp(r[1])}</td><td>${esc(r[2])}</td><td>${esc(r[3])}</td>`)) : waitCard('Thành viên Tổ thẩm định', [6]))
+        + card('Mô tả tóm tắt', `<div class="ginfo c3">${kv('Đối tượng nguồn', esc(`${k.src[1]} - ${s.title || ''}`), 'span2')}${kv('Giá trị được duyệt', t.approved != null ? ty(t.approved, 2) + ' tỷ đồng' : null)}
+          ${kv('Nhiệm vụ / Đề tài, dự án', s.nvText ? esc(s.nvText) : null, 'span2')}${kv('Đơn vị đề xuất', esc(s.unit))}${live ? kv('Số / ngày Tờ trình', esc(`${no.ttr} ngày ${doneAt(5)}`)) : ''}</div>`)
+        + phanBo()
+        + card('Giải trình nội dung KHLCNT', table([['Nội dung', 320], ['Giải trình', 760]], why, (r) => `<td>${esc(r[0])}</td><td>${clamp(r[1])}</td>`))
+        + card('Văn bản kèm theo', table([['Nội dung', 620], ['Ghi chú', 160]], attach, (r) => `<td>${clamp(r[0])}</td><td>${esc(r[1])}</td>`))
+        + card('Chi tiết danh mục mua sắm thuộc gói thầu', table([['Số gói thầu', 200], ['Hạng mục', 460], ['Đơn vị tính', 130], ['Khối lượng', 110, 'r']], lines,
+          (r) => `<td>${esc(r[0])}</td><td>${clamp(r[1])}</td><td>${esc(r[2])}</td><td class="r num">${ty(r[3], 0)}</td>`));
     };
+    /* Checklist (IMG 7211, HT-THAU-XLS 1.3.2.2): số / ngày văn bản hệ thống tự ghi theo kết quả bước (không nhập tay như hệ thống cũ); dòng 5–6 chỉ cấp Tập đoàn. */
+    const checklist = () => {
+      const d = k.docs || {}, at17 = doneAny([17, 20]);
+      const qd = live ? (at17 ? [ui.khQdSo || (td ? no.qdT : no.qdV), ui.khQdNgay || at17] : null) : d.bm03;
+      const rows = [
+        ['TTr KHLCNT', live ? (doneAt(5) ? [no.ttr, doneAt(5)] : null) : d.bm01, 5],
+        [td ? 'BC thẩm định KHLCNT' : 'BC kiểm tra KHLCNT', live ? (doneAny([10, 12]) ? [td ? no.bc : '', doneAny([10, 12])] : null) : d.bm02, td ? 12 : 10],
+        ['QĐ phê duyệt KHLCNT', qd, td ? 15 : 11],
+        ['Đăng tải KHLCNT', live ? (doneAt(22) ? [no.post, doneAt(22)] : null) : k.post, 22],
+        ['Nhận xét của Ban Đầu tư XD', !td ? 'NA' : live ? (doneAt(13) ? [ui.khPnxSo, ui.khPnxNgay || doneAt(13)] : null) : null, 13],
+        ['Phiếu trình GQCV', !td ? 'NA' : live ? (doneAt(14) ? [no.ptr, doneAt(14)] : null) : null, 14],
+        ['Mã KHLCNT trên SAP', k.sap ? [k.sap, ''] : null, null]];
+      return card('Checklist kế hoạch lựa chọn nhà thầu', table([['Nội dung', 260], ['Ngày văn bản', 130], ['Số văn bản', 200], ['Ngày soạn thảo', 170], ['Tệp', 90, 'c'], ['Bước', 260]], rows,
+        (r) => (r[1] === 'NA' ? `<td>${esc(r[0])}</td><td colspan="4"><span class="faint">Không áp dụng với cấp phê duyệt Tổng Công ty</span></td><td>${dash}</td>`
+          : `<td>${esc(r[0])}</td><td class="num">${r[1] && r[1][1] ? esc(r[1][1]) : dash}</td><td>${r[1] && r[1][0] ? esc(r[1][0]) : r[1] ? '<span class="faint">Không đánh số</span>' : dash}</td>
+          <td class="num">${r[1] && r[2] && live && doneAt(r[2]) ? esc(doneAt(r[2])) : r[1] && r[1][1] ? esc(r[1][1]) : dash}</td>
+          <td class="c">${r[1] && r[1][0] ? `<button type="button" class="vbtn icon ghost" aria-label="Tải xuống" data-dl="${esc(String(r[1][0]).replace(/\//g, '-'))}.pdf">${icon('download')}</button>` : dash}</td>
+          <td>${r[2] ? esc(`${r[2]}. ${T18[r[2]].name}`) : '<span class="faint">Đồng bộ SAP</span>'}</td>`)),
+      'Số, ngày văn bản lấy theo kết quả ký và đăng tải');
+    };
+    /* TĐ KHLCNT: VHT = Báo cáo kiểm tra (16 tiêu chí, bước 10); Tập đoàn = Báo cáo thẩm định (7 nội dung + ý kiến, bước 12). Có lịch sử các vòng trả sửa. */
+    const thamDinh = () => {
+      const [ok, nok] = D.khCrit.ok[td ? 'TD' : 'VHT'], stepN = td ? 12 : 10, title = td ? 'Báo cáo thẩm định KHLCNT' : 'Báo cáo kiểm tra KHLCNT';
+      const nokS = k.checkNok || {};
+      /* Bước đã xong mà biến chưa có (tua theo nhánh chính, không qua eForm) → giá trị mặc định của form: mọi tiêu chí đạt. */
+      const dflt = () => (td ? D.khCrit.TD.map((tieuChi) => ({ tieuChi, kq: ok, nhanXet: '' })) : D.khCrit.VHT.flatMap(([nhom, list]) => list.map((tieuChi) => ({ nhom, tieuChi, kq: ok, nhanXet: '' }))));
+      const rows = live ? ((td ? ui.khThamDinh : ui.khKiemTra) || (doneAt(stepN) ? dflt() : [])).map((r) => [r.nhom || '', r.tieuChi, r.kq, r.nhanXet])
+        : (k.docs && k.docs.bm02) || k.checkNok ? (td ? D.khCrit.TD.map((c) => ['', c, nokS[c] ? nok : ok, nokS[c] || ''])
+          : D.khCrit.VHT.flatMap(([grp, list]) => list.map((c) => [grp, c, nokS[c] ? nok : ok, nokS[c] || '']))) : [];
+      if (!rows.length) return waitCard(title, [stepN]);
+      const rounds = hist(stepN).filter((h) => h.who).map((h) => [Flow.dateOf(h.t), persona(h.who).name, h.action, h.reason || '']);
+      return card(title, table(td ? [['Nội dung thẩm định', 360], ['Kết quả thẩm định', 220, 'c'], ['Ý kiến thẩm định', 460]] : [['Nhóm', 260], ['Tiêu chí', 380], ['Kết quả', 150, 'c'], ['Nội dung không đáp ứng', 380]], rows,
+        (r) => `${td ? '' : `<td>${clamp(r[0])}</td>`}<td>${clamp(r[1])}</td><td class="c">${r[2] === nok ? badge(nok, 'error') : badge(ok, 'success')}</td><td>${clamp(r[3])}</td>`),
+      td ? 'BM02 cấp Tập đoàn — Bảng số 2' : 'BM02 cấp VHT — 16 tiêu chí')
+        + (ui.khNhanXet ? card('Nhận xét và kiến nghị', `<p>${esc(ui.khNhanXet)}</p>`) : '')
+        + (rounds.length ? card(td ? 'Các lần thẩm định' : 'Các lần kiểm tra', table([['Ngày', 130], ['Người thực hiện', 220], ['Kết quả', 260], ['Nội dung trả sửa', 460]], rounds,
+          (r) => `<td class="num">${esc(r[0])}</td><td>${esc(r[1])}</td><td>${esc(r[2])}</td><td>${clamp(r[3])}</td>`)) : '');
+    };
+    /* Cam kết TTĐ (IMG 7243, HT-THAU-XLS 1.3.2.7): mỗi thành viên một Bản cam kết — bước 8 (multi-instance). */
+    const camKet = () => {
+      if (live) {
+        if (!doneAt(6)) return waitCard('Bản cam kết thành viên Tổ thẩm định', [6, 8]);
+        const ck = ui.khCamKet || {}, wait = new Set(C.tokens.filter((x) => String(x.task) === '8').map((x) => x.who));
+        return card('Bản cam kết thành viên Tổ thẩm định', table([['Họ và tên', 220], ['Vai trò trong Tổ thẩm định', 180], ['Số CCCD', 160], ['Nơi cấp', 220], ['Trạng thái', 160, 'c'], ['Thời điểm cam kết', 150], ['Tệp', 80, 'c']], liveTeam(),
+          (r) => { const h8 = hist(8).filter((h) => h.who === r[4]).pop(), x = ck[r[4]] || (h8 ? { soCccd: '', noiCap: '', at: Flow.dateOf(h8.t) } : null); return `<td>${esc(r[0])}</td><td>${esc(r[2])}</td><td>${x ? esc(x.soCccd) : dash}</td><td>${x ? clamp(x.noiCap) : dash}</td>
+            <td class="c">${x ? badge('Đã cam kết', 'success') : wait.has(r[4]) ? badge('Chờ cam kết', 'warning') : badge('Chưa giao', 'default')}</td><td class="num">${x ? esc(x.at) : dash}</td>
+            <td class="c">${x ? `<button type="button" class="vbtn icon ghost" aria-label="Tải xuống" data-dl="Ban-cam-ket-${esc(r[4])}.pdf">${icon('download')}</button>` : dash}</td>`; }),
+        'Căn cứ Điều 66 Quy định mua sắm thường xuyên 1340/QĐ-CNVTQĐ');
+      }
+      if (!(k.docs && k.docs.bm01)) return waitCard('Bản cam kết thành viên Tổ thẩm định', [6, 8]);
+      const off = Number(k.code.slice(-2)), at = k.docs.bm01[1];
+      return card('Bản cam kết thành viên Tổ thẩm định', table([['Họ và tên', 260], ['Vai trò trong Tổ thẩm định', 220], ['Trạng thái', 160, 'c'], ['Thời điểm cam kết', 160]],
+        [0, 1, 2, 3, 4].map((i) => [PEOPLE[(off + i) % PEOPLE.length], i ? 'Thành viên' : 'Tổ trưởng']),
+        (r) => `<td>${esc(r[0])}</td><td>${esc(r[1])}</td><td class="c">${badge('Đã cam kết', 'success')}</td><td class="num">${esc(at)}</td>`));
+    };
+    /* QĐ KHLCNT (IMG 7245): dự thảo BM03 (bước 11 / 15), phương thức ký, kết quả ký (16–20). */
+    const quyetDinh = () => {
+      const draftN = td ? 15 : 11;
+      if (live) {
+        if (!doneAt(draftN)) return waitCard('Quyết định phê duyệt KHLCNT', [draftN]);
+        const at17 = doneAny([17, 20]), hard = C.vars.khKy === 'CUNG';
+        const signs = C.history.filter((h) => ['16', '17', '18', '19', '20'].includes(String(h.task))).map((h) => [Flow.dateOf(h.t), `${h.task}. ${T18[h.task].name}`, h.who ? persona(h.who).name : 'Hệ thống', h.reason || h.action || '']);
+        return card('Quyết định phê duyệt KHLCNT', `<div class="ginfo c3">${kv('Biểu mẫu', td ? 'BM03 cấp Tập đoàn' : 'BM03 cấp VHT')}${kv('Số quyết định', at17 ? esc(ui.khQdSo || (td ? no.qdT : no.qdV)) : null)}${kv('Ngày ký', at17 ? esc(ui.khQdNgay || at17) : null)}
+          ${kv('Người ký', esc(td ? 'Tổng Giám đốc Tập đoàn' : persona('tgd').name + ' — Tổng Giám đốc Tổng Công ty'))}${kv('Phương thức ký', hard ? 'Ký cứng' : 'VOffice')}${kv('Trạng thái', at17 ? badge('Đã ký', 'success') : C.status === 'running' ? badge('Đang trình ký', 'info') : badge('Chưa ký', 'default'))}
+          ${kv('Ghi chú rà soát dự thảo', ui.khQdGhiChu ? esc(ui.khQdGhiChu) : null, 'span2')}</div>`)
+          + (signs.length ? card('Lịch sử trình ký', table([['Ngày', 130], ['Bước', 300], ['Người / hệ thống', 200], ['Nội dung', 420]], signs,
+            (r) => `<td class="num">${esc(r[0])}</td><td>${esc(r[1])}</td><td>${esc(r[2])}</td><td>${clamp(r[3])}</td>`)) : '');
+      }
+      const d = (k.docs || {}).bm03;
+      if (!d) return waitCard('Quyết định phê duyệt KHLCNT', [draftN]);
+      return card('Quyết định phê duyệt KHLCNT', `<div class="ginfo c3">${kv('Biểu mẫu', td ? 'BM03 cấp Tập đoàn' : 'BM03 cấp VHT')}${kv('Số quyết định', esc(d[0]))}${kv('Ngày ký', esc(d[1]))}${kv('Người ký', esc(d[2]))}${kv('Trạng thái', badge('Đã ký', 'success'))}</div>`);
+    };
+    /* Phiếu trình GQCV (IMG 7249, HT-THAU-XLS 1.3.2.9): chỉ cấp Tập đoàn — ý kiến Ban ĐTXD (bước 13), giải trình + mục đích + lý do (bước 14). */
+    const phieuTrinh = () => {
+      if (!td) return emptyCard('Phiếu trình giải quyết công việc', 'Không áp dụng với cấp phê duyệt Tổng Công ty — Phiếu trình GQCV chỉ lập khi KHLCNT trình Tổng Giám đốc Tập đoàn phê duyệt.');
+      if (!live || !doneAt(13)) return waitCard('Phiếu trình giải quyết công việc', [13, 14]);
+      const yk = ui.khYKien || [];
+      return card('Phiếu nhận xét của Ban Đầu tư — Xây dựng Tập đoàn', `<div class="ginfo c3">${kv('Số phiếu', esc(ui.khPnxSo))}${kv('Ngày phiếu', esc(ui.khPnxNgay))}${kv('Số ý kiến', String(yk.length))}</div>`)
+        + card('Ý kiến Ban ĐTXD và giải trình của VHT', table([['Ý kiến', 460], ['Giải trình của VHT', 520]], yk, (r) => `<td>${clamp(r.noiDung)}</td><td>${r.giaiTrinh ? clamp(r.giaiTrinh) : dash}</td>`))
+        + (doneAt(14) ? card('Phiếu trình giải quyết công việc', `<div class="ginfo c3">${kv('Mẫu', gs.length > 1 ? 'Phiếu trình KHLCNT nhiều gói' : 'Phiếu trình KHLCNT một gói')}${kv('Ngày lập', esc(doneAt(14)))}
+          ${kv('Mục đích', esc(ui.khMucDich), 'span3')}${kv('Lý do lựa chọn hình thức đấu thầu', esc(ui.khLyDoHinhThuc), 'span3')}</div>`) : waitCard('Phiếu trình giải quyết công việc', [14]));
+    };
+    /* Gói thầu: KHLCNT chạy luồng — sau bước 3 (tạo gói) mới có danh sách gói. */
+    const goiTab = () => (live && !doneAt(3) ? waitCard('Danh sách gói thầu', [3]) : goi());
+    const TABS = [['info', 'Thông tin chung'], ['checklist', 'Checklist'], ['goi', 'Gói thầu/ Công việc thuộc KHLCNT'], ['to-trinh', 'TTr KHLCNT'], ['tham-dinh', 'TĐ KHLCNT'],
+      ['cam-ket', 'Cam kết TTĐ'], ['quyet-dinh', 'QĐ KHLCNT'], ['phieu-trinh', 'Phiếu trình GQCV']].concat(vs.length || k.st === 'ADJ' ? [['phien-ban', 'Phiên bản & điều chỉnh']] : []);
     return `<div class="pg">
       ${head({ title: 'Xem chi tiết kế hoạch lựa chọn nhà thầu', back: 'khlcnt', lg: true, info, right })}
-      ${tabs('kh:' + k.code, [['info', 'Thông tin chung'], ['phan-bo', 'Phân bổ công việc'], ['goi', 'Gói thầu'], ['to-trinh', 'Tờ trình KHLCNT'], ['phien-ban', 'Phiên bản & điều chỉnh'], ['ket-qua', 'Kết quả KHLCNT']],
-        { info: () => infoCards, 'phan-bo': phanBo, goi, 'to-trinh': toTrinh, 'phien-ban': phienBan, 'ket-qua': ketQua })}</div>`;
+      ${tabs('kh:' + k.code, TABS, { info: () => infoCards, checklist, goi: goiTab, 'to-trinh': toTrinh, 'tham-dinh': thamDinh, 'cam-ket': camKet, 'quyet-dinh': quyetDinh, 'phieu-trinh': phieuTrinh, 'phien-ban': phienBan })}</div>`;
   }
+  /* Bước hiện tại: hồ sơ MS18 đang chạy → tên các việc đang mở (BPMN-MS18-TOBE); không thì theo trạng thái mẫu. */
+  function khStep(k) { return (k.prog || khProg(k)).step; }
+  /* KHLCNT mẫu chạy được trên MS18 (T67 T2): tua theo nhánh chính tới bước của mẫu. 0016 cấp Tập đoàn đang thẩm định (bước 12). */
+  const KH_SAMPLE = { 'KHLCNT-2026-0016': { target: 12 }, 'KHLCNT-2026-0019': { target: 13 }, 'KHLCNT-2026-0020': { target: 21 } };
+  /* Gói mẫu chạy được trên MS19 (T67 T5): rộng rãi 1 túi GT-2026-0029 đang ở đánh giá HSDT; chỉ định thầu GT-2026-0022 đang đánh giá HSĐX. */
+  const PK_SAMPLE = { 'GT-2026-0029': { target: '3.5' }, 'GT-2026-0022': { target: '7.3' }, 'GT-2026-0031': { target: '7.2' }, 'GT-2026-0024': { target: 5 }, 'GT-2026-0026': { target: 14 } };
+  function lcStart(code, target) {
+    const g = pkOf(code), c = Flow.startLc(code, { name: g.name, target });
+    const tok = Flow.caseTokens(Flow.state.persona).find((t) => t.caseCode === c);
+    toast(`<b>Thành công</b><br>Đã khởi tạo tổ chức lựa chọn nhà thầu ${esc(code)}, hồ sơ xử lý ${esc(c)}.`);
+    location.hash = tok ? '#/task/' + tok.id : '#/ho-so-hd/' + encodeURIComponent(c);
+  }
+  document.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-lc-start]');
+    if (b) { lcStart(b.dataset.lcStart); return; }
+    const s = e.target.closest('[data-lc-sample]');
+    if (s) lcStart(s.dataset.lcSample, PK_SAMPLE[s.dataset.lcSample].target);
+  });
+  function khStart(code, target) {
+    const k = khOf(code);
+    const c = Flow.startKh(code, { level: levelOf(k), name: k.title, target });
+    const tok = Flow.caseTokens(Flow.state.persona).find((t) => t.caseCode === c);
+    toast(`<b>Thành công</b><br>Đã khởi tạo ${esc(code)}, hồ sơ xử lý ${esc(c)}.`);
+    location.hash = tok ? '#/task/' + tok.id : '#/ho-so-hd/' + encodeURIComponent(c);
+  }
+  document.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-kh-start]');
+    if (b) {
+      const code = b.dataset.khStart, k = khOf(code);
+      const m = modal(`<div class="modal-h"><h3>Khởi tạo kế hoạch lựa chọn nhà thầu</h3></div><div class="modal-b"><p>Khởi tạo ${esc(code)} theo cấp phê duyệt <b>${esc(LEVEL[levelOf(k)])}</b>. Sau khi khởi tạo, cấp phê duyệt không đổi được; cần đổi thì huỷ hồ sơ và tạo KHLCNT mới.</p></div>
+        <div class="modal-f"><button class="btn secondary" data-close>Huỷ</button><button class="btn primary" id="kh-start-ok">Khởi tạo</button></div>`);
+      m.el.querySelector('#kh-start-ok').onclick = () => { m.close(); khStart(code); };
+      return;
+    }
+    const s = e.target.closest('[data-kh-sample]');
+    if (s) khStart(s.dataset.khSample, KH_SAMPLE[s.dataset.khSample].target);
+  });
   /* Điều chỉnh KHLCNT: lý do bắt buộc → phiên bản mới ở trạng thái Đang điều chỉnh (chạy lại MS18), bản đã duyệt giữ nguyên. */
   document.addEventListener('click', (e) => {
     const b = e.target.closest('[data-kh-adj]');
@@ -446,29 +688,86 @@
 
 
   /* ---------- SCR-81 Danh sách gói thầu ---------- */
-  const pkRow = (g) => { const k = khOf(g.kh); return Object.assign({}, g, { stx: k && k.st === 'OK' ? g.st : 'KH', unit: k ? (totals(k).s || {}).unit : '' }); };
+  const pkRow = (g0) => { const g = pkM(g0), k = khOf(g.kh), stx = k && k.st === 'OK' ? g.st : 'KH'; return Object.assign({}, g, { stx, unit: k ? (totals(k).s || {}).unit : '', lc: pkLc(g, stx, k), prog: pkProg(g, stx, k) }); };
+  /* T67 T5: hồ sơ MS19 của gói (HSLC-…) đang chạy → trạng thái theo thuộc tính lc của bước; KHLCNT đã Hoàn thành mà gói chưa khởi tạo → LC-01 chờ bước 1. */
+  const lcCaseOf = (code) => Flow.caseOf(D.hdCaseCode(code, 'MS19'));
+  const lcRun = (g) => { const c = lcCaseOf(g.code); return c && c.status === 'running' ? c : null; };
+  const lcTok = (c) => c.tokens.find((t) => D.flows.MS19[t.task] && !D.flows.MS19[t.task].gw);
+  const pkLc = (g, stx, k) => { const c = lcRun(g), t = c && lcTok(c);
+    if (c) return t ? D.flows.MS19[t.task].lc : 'LC-01';
+    if (stx === 'KH' && k && k.st === 'OK') return 'LC-01';
+    return stx === 'KQ' && window.HopDong && window.HopDong.byPkg(g.code) ? 'LC-11' : LC_MAP[stx]; };
+  /* Gợi ý mẫu hợp đồng (H-Q2, GIẢ LẬP — nguồn không ghi quy tắc): theo Loại gói thầu; nhà thầu nước ngoài → mẫu quốc tế; xây lắp chưa có mẫu → 1.6 (H-Q6). */
+  const mauGoiY = (g) => { if (g.mau) return g.mau; const nn = g.winner && D.nccOf(g.winner).kind === 'NN';
+    if (nn) return ['PTV', 'TV'].includes(g.type) ? '9' : '10';
+    return { MS_HH: '1.0', HH_LD: '1.6', PM: '1.8', PTV: '3.0', TV: '5', XL: '1.6' }[g.type] || '1.6'; };
+  /* MS19 bước 24 (service): đóng tổ chức LCNT — gói có KQLCNT (nhà thầu, giá, QĐ), mẫu hợp đồng của HSMT; số QĐ GIẢ LẬP theo mã gói khi ký VOffice. */
+  function lcFlowDone(code) {
+    const S0 = Flow.state, u = S0.ui || {}, g = pkOf(code);
+    if (!g) return;
+    const at = (n) => { const h = S0.history.filter((x) => String(x.task) === String(n)).pop(); return h ? Flow.dateOf(h.t) : ''; };
+    const dg = u.lcDanhGia || [], win = u.lcNhaThau || (dg[0] || {}).ma || (g.bidders && g.bidders[0] ? g.bidders[0][0] : 'NCC-000001');
+    const price = u.lcGiaTT != null && u.lcGiaTT !== '' ? Number(u.lcGiaTT) : ((dg.find((r) => r.ma === win) || {}).giaSo || g.price);
+    const bid = dg.length ? dg.map((r) => [r.ma, r.ma === win ? price : r.giaSo, r.hopLe, r.hopLe, null]) : [[win, price, 'Đạt', 'Đạt', null]];
+    const kqForm = ['GIAO_NV', 'TU_TH', 'DAT_HANG'].includes(g.form);
+    U.pk[code] = Object.assign({}, U.pk[code], { st: 'KQ', winner: win, bidders: bid, mau: u.lcMauHd || mauGoiY(g),
+      kq: [u.lcQdSo || `0${950 + Number(code.slice(-2))}/QĐ-VHT`, u.lcQdNgay || at(S0.vars.lcKy === 'CUNG' ? 18 : 17) || at(24)],
+      /* Tình huống mẫu chưa xử lý được xử lý trong quá trình tổ chức LCNT. */
+      events: (g.events || []).map((x) => (/^Đã/.test(x[3]) ? x : [x[0], x[1], x[2], 'Đã xử lý trong tổ chức LCNT'])) }, kqForm ? { assignee: D.nccOf(win).name || win } : {});
+    persist();
+  }
+  /* Tiến độ gói đang chạy MS19: việc đang mở; vướng mắc = lý do trả sửa HSMT / KQLCNT, người ký từ chối. */
+  function lcProg(c, g) {
+    const ts = c.tokens.filter((t) => D.flows.MS19[t.task] && !D.flows.MS19[t.task].gw), t0 = ts[0];
+    const lc = t0 ? D.flows.MS19[t0.task].lc : 'LC-01', P = (o) => Object.assign({ gd: LC[lc][2], step: '', who: '', since: null, due: null, days: null, issue: '' }, o);
+    if (!t0) return P({});
+    const tn = (n) => ((window.BPMN_FLOWS.MS19 || { tasks: {} }).tasks[n] || {}).name || '';
+    const since = Math.min(...ts.map((t) => t.since)), now = nowNlv(c), dl = since + Math.max(1, Math.ceil((D.flows.MS19[t0.task].nlv || 0.5) * 2));
+    const back = [...c.history].reverse().find((h) => h.reason && ['3.2', '14'].includes(String(h.task)));
+    const n = String(t0.task), issue = n === '3.1' && back && String(back.task) === '3.2' ? 'Trả sửa HSMT: ' + back.reason : n === '15' && back ? 'Trả sửa: ' + back.reason
+      : n === '21' ? 'Người ký từ chối Quyết định phê duyệt KQLCNT' : '';
+    return P({ step: [...new Set(ts.map((t) => `${t.task}. ${tn(t.task)}`))].join(', '), who: `${persona(t0.who).unit} / ${[...new Set(ts.map((t) => persona(t.who).name))].join(', ')}`,
+      since: Flow.dateOf(since), due: Flow.dateOf(dl), late: dl < now, days: Math.max(0, Math.floor(now - since)), issue });
+  }
+  /* Tiến độ gói (§7): bước hiện tại = bước đầu chưa xong của trình tự theo hình thức (như bảng Trình tự ở Chi tiết gói); vướng mắc = tình huống / kiến nghị chưa xong.
+     Bắt đầu bước, hạn GIẢ LẬP theo mã gói tới khi MS19 chạy theo gói (T5). */
+  function pkProg(g, stx, k) {
+    const c = lcRun(g);
+    if (c) return lcProg(c, g);
+    if (stx === 'KH' && k && k.st === 'OK') { const since = Flow.clockOf(k.updated), now = nowNlv(null), p = persona('thau');
+      return { gd: LC['LC-01'][2], step: `1. ${((window.BPMN_FLOWS.MS19 || { tasks: {} }).tasks[1] || {}).name || ''}`, who: `${p.unit} / ${p.name}`, since: k.updated, due: Flow.dateOf(since + 1), late: since + 1 < now, days: Math.max(0, now - since), issue: '' }; }
+    const lc = pkLc(g, stx, k), P = (o) => Object.assign({ gd: LC[lc][2], step: '', who: '', since: null, due: null, days: null, issue: '' }, o);
+    if (lc === 'CHO-KH') return P({ step: k ? `${k.code}: ${k.prog.step || KHL[k.prog.khl][0]}` : '' });
+    const open = (g.events || []).filter((x) => !/^Đã/.test(x[3])).pop(), issue = open ? `${open[0]} — ${open[3]}` : '';
+    if (['LC-11', 'LC-X'].includes(lc)) return P({ issue });
+    const steps = STEPS[g.form === 'DTRR' && g.method === '1GD2T' ? 'DTRR2' : g.form] || [], cur = lc === 'LC-10' ? ['Chuyển ký hợp đồng'] : steps.find((r) => r[1] >= LV[stx]);
+    const now = nowNlv(null), d = 1 + (Number(g.code.slice(-2)) % 5), since = now - d, dl = since + 5;
+    return P({ step: cur ? cur[0] : '', who: LC_WHO[lc] || '', since: Flow.dateOf(since), due: Flow.dateOf(dl), late: dl < now, days: d, issue });
+  }
   function pkList() {
     // Theo: fe/repo-khcn-bpmn-fe/src/app/features/profile-management/profile-list/profile-list.component.html
     return listPage({
       id: 'gtl', title: 'Danh sách gói thầu', ph: 'Tìm kiếm theo mã, tên gói thầu, mã KHLCNT',
       rows: () => PK.map(pkRow), kwText: (g) => `${g.code} ${g.name} ${g.kh}`,
-      empty: () => ({ code: '', name: '', kh: '', type: null, form: [], method: null, st: [] }),
-      match: (g, f) => has(f.code, g.code) && has(f.name, g.name) && has(f.kh, g.kh) && (!f.type || g.type === f.type) && inSet(f.form, g.form) && (!f.method || g.method === f.method) && inSet(f.st, g.stx),
+      empty: () => ({ code: '', name: '', kh: '', type: null, form: [], method: null, st: [], gd: null }),
+      match: (g, f) => has(f.code, g.code) && has(f.name, g.name) && has(f.kh, g.kh) && (!f.type || g.type === f.type) && inSet(f.form, g.form) && (!f.method || g.method === f.method) && inSet(f.st, g.lc) && (!f.gd || g.prog.gd === f.gd),
       adv: (txt, sel) => `${txt('code', 'Mã gói thầu')}${txt('name', 'Tên gói thầu')}${txt('kh', 'Mã KHLCNT')}
         ${sel('type', 'Loại gói thầu', { options: catOpts('loai-goi-thau') })}${sel('form', 'Hình thức LCNT', { multi: true, options: catOpts('hinh-thuc-lcnt') })}
         ${sel('method', 'Phương thức LCNT', { searchable: false, options: catOpts('phuong-thuc-lcnt') })}
-        ${sel('st', 'Trạng thái', { multi: true, searchable: false, options: Object.entries(PK_ST).map(([value, [label]]) => ({ value, label })) })}`,
-      cols: [['Trạng thái', 200, 'c'], ['Mã gói thầu', 150], ['Tên gói thầu', 320], ['Mã KHLCNT', 170], ['Loại gói thầu', 200], ['Giá gói thầu (tỷ đồng)', 170, 'r'],
+        ${sel('st', 'Trạng thái', { multi: true, searchable: false, options: Object.entries(LC).map(([value, [label]]) => ({ value, label })) })}
+        ${sel('gd', 'Giai đoạn', { searchable: false, options: [...new Set(Object.values(LC).map((x) => x[2]))].map((u) => ({ value: u, label: u })) })}`,
+      cols: [['Trạng thái', 230, 'c'], ['Mã gói thầu', 150], ['Tên gói thầu', 320], ...PROG_COLS, ['Mã KHLCNT', 170], ['Loại gói thầu', 200], ['Giá gói thầu (tỷ đồng)', 170, 'r'],
         ['Hình thức LCNT', 190], ['Phương thức LCNT', 210], ['Thời gian bắt đầu LCNT', 160], ['Đơn vị', 200]],
       href: pkHref,
-      cell: (g) => `<td class="c">${badge(...PK_ST[g.stx])}</td><td>${pkLink(g)}</td><td>${clamp(g.name)}</td><td><a class="link" data-go="khlcnt/${encodeURIComponent(g.kh)}">${esc(g.kh)}</a></td>
+      cell: (g) => `<td class="c">${stBadge(LC, g.lc)}</td><td>${pkLink(g)}</td><td>${clamp(g.name)}</td>${progCells(g.prog)}<td><a class="link" data-go="khlcnt/${encodeURIComponent(g.kh)}">${esc(g.kh)}</a></td>
         <td>${clamp(cat('loai-goi-thau', g.type))}</td><td class="r num">${money(g.price)}</td><td>${clamp(cat('hinh-thuc-lcnt', g.form))}</td><td>${clamp(cat('phuong-thuc-lcnt', g.method))}</td>
         <td>${esc(g.start)}</td><td>${clamp(g.unit)}</td>`,
       info: {
         scr: 'SCR-81', name: 'Danh sách gói thầu', uc: 'Backlog W1_T10 › Quản lý gói thầu › Tra cứu gói thầu (dòng 334–335)',
         notes: [
-          'Khuôn profile-list. Gói thầu là dòng gói của KHLCNT (tạo ở MS18.1, không thêm mới ở đây); trạng thái theo giai đoạn tổ chức LCNT. Gói của KHLCNT chưa phê duyệt hiện "Chờ phê duyệt KHLCNT".',
-          'Trạng thái: Đang lập hồ sơ mời → Đang mời thầu → Đang đánh giá / Đang xử lý tình huống → Chờ phê duyệt KQLCNT → Đã có KQLCNT; Đã huỷ thầu. Luồng tổ chức LCNT (MS19) chưa có BPMN — P-77.',
+          'Khuôn profile-list. Gói thầu là dòng gói của KHLCNT (tạo ở MS18 bước 3, không thêm mới ở đây); trạng thái theo giai đoạn tổ chức LCNT. Gói của KHLCNT chưa phê duyệt hiện "Chờ phê duyệt KHLCNT".',
+          '<b>T67 T4</b>: trạng thái theo backbone LC-01 Đang chuẩn bị hồ sơ LCNT … LC-11 Hoàn thành lựa chọn nhà thầu, LC-X Đã hủy / Không thực hiện (THAU-TT-1311 §4.1; mã hiện khi rê chuột) + Giai đoạn lớn. Gói của KHLCNT chưa Hoàn thành: "Chờ hoàn thành KHLCNT" (GIẢ LẬP — §4.1 không có mã; Bước hiện tại ghi bước của KHLCNT). Mẫu quy đổi trạng thái cũ theo §2: Đang mời thầu → LC-04, Đang đánh giá → LC-06, tình huống 01 HSDT lúc đóng thầu → LC-05, Chờ phê duyệt KQLCNT → LC-08, Đã có KQLCNT → LC-10 (đã tạo hợp đồng → LC-11), Đã huỷ thầu → LC-X.',
+          'Cột tiến độ như Danh sách KHLCNT (§7). Bước hiện tại = bước đầu chưa xong trong Trình tự theo hình thức LCNT; Vướng mắc = tình huống / kiến nghị chưa xử lý xong. Người xử lý, Bắt đầu bước, Hạn xử lý GIẢ LẬP theo giai đoạn tới khi tổ chức LCNT (MS19) chạy theo từng gói (T5).',
         ],
         q: ['P-77'], src: 'profile-management/profile-list · /khcn-profile-management',
       },
@@ -514,9 +813,11 @@
     const hasBid = !!docKind && !['DAT_HANG', 'GIAO_NV', 'TU_TH'].includes(g.form);
     const info = {
       scr: 'SCR-82', name: 'Chi tiết gói thầu', uc: 'Backlog W1_T10 › Quản lý gói thầu, Lựa chọn nhà thầu, Hồ sơ LCNT, Tổ chức LCNT, Đánh giá & KQLCNT, Tình huống & Kiến nghị (dòng 336–402)',
-      bpmn: 'MS18.1 (thông tin gói); tổ chức LCNT MS19 — chưa có BPMN',
+      bpmn: 'MS18 bước 3–4 (thông tin gói); MS19 Tổ chức LCNT (BPMN-MS19, 24 bước) — hồ sơ xử lý HSLC-<mã gói>',
       notes: [
         'Màn tổng hợp xuyên suốt từ KHLCNT đến KQLCNT (Backlog dòng 336). Khuôn profile-detail + app-tabs; các tab chỉ xem.',
+        '<b>T67 T5 — MS19 theo từng gói</b> (BPMN-MS19, D-118): KHLCNT Hoàn thành → nút <b>Khởi tạo tổ chức LCNT</b> (bước 1; thật: MS18 bước 23 khởi tạo một process instance cho mỗi gói, task 1 chờ người phụ trách). Bước 2 đọc hình thức / phương thức → cổng G1 chọn quy trình con: rộng rãi 1 túi 3.1–3.6, chỉ định thầu 7.1–7.4; hình thức khác một bước gộp (GIẢ LẬP P-235). Bước 24 ghi KQLCNT → gói Đang chuyển ký hợp đồng, nút Tạo hợp đồng. Gói mẫu GT-2026-0029 / GT-2026-0022: <b>Chạy luồng mẫu</b> tới bước của mẫu. Thẻ <b>Theo dõi lựa chọn nhà thầu</b> = trạng thái hai lớp (THAU-TT-1311 §1, §7); tab Hồ sơ mời thầu, Đánh giá & KQLCNT đọc eForm của hồ sơ, bước chưa tới thì ghi bước sẽ cập nhật.',
+        '<b>T67 H2</b>: Mẫu hợp đồng và Phương thức thanh toán là trường của HSMT / HSYC (QT-10.2.4 §5.2) — gói chạy MS19 lấy từ eForm 3.1 / 7.1; gói mẫu theo gợi ý Loại gói thầu (GIẢ LẬP P-236).',
         'Trường theo form Cập nhật gói thầu của hệ thống cũ (HT-THAU-IMG 7213–7221, T24): Số gói thầu, Tóm tắt công việc, Ký hợp đồng, Mật, Người phụ trách, Tiền tệ + tỷ giá, Phạm vi chia phần, Đơn vị sử dụng / giám sát, Sơ tuyển, qua mạng, Danh sách ngắn, Lĩnh vực, Thời gian thực hiện HĐ, Chủ đầu tư / Bên mời thầu / Người có thẩm quyền — trường eForm MS18.1. Trạng thái do quy trình cập nhật, không chọn tay như hệ thống cũ. <b>Nguồn gói thầu</b> n-n có Giá trị phân bổ; TTr kinh phí của hệ thống cũ tương ứng ĐXMS / KĐT.',
         '<b>Thông tin chung</b>: nội dung bắt buộc của KHLCNT (Điều 22 khoản 2) — loại gói (DMDC Loại gói thầu), nguồn 1..n ĐXMS / KĐT, phạm vi + chia phần, giá gói + cơ sở xác định giá + giá từng phần, dự toán được duyệt sau KHLCNT thay giá gói, nguồn vốn, tiến độ, loại hợp đồng.',
         '<b>Phương án LCNT</b>: hình thức (DMDC Hình thức LCNT, 11 dòng) là khoá chọn <b>quy trình Camunda</b> tổ chức LCNT — mỗi hình thức một trình tự (Điều 12–21); điều kiện áp dụng do service task MS18 bước 11 kiểm tra.',
@@ -524,21 +825,34 @@
         '<b>Hồ sơ mời</b>: loại hồ sơ theo hình thức (HSMT / HSYC / HSMCG); bảo đảm dự thầu ≤ 3% giá gói (Điều 27) = validate; phiên bản khi sửa đổi sau phát hành. <b>Đánh giá & KQLCNT</b>: kết quả theo nhà thầu là bảng lặp eForm của Tổ chuyên gia; cảnh báo giá thấp bất thường theo ngưỡng cấu hình (P-79).',
         '<b>Tình huống & kiến nghị</b>: huỷ thầu (Điều 34), tình huống (Điều 36), kiến nghị (Điều 37–38), tạm dừng ký hợp đồng. KQLCNT chuyển sang Quản lý hợp đồng bằng nút Tạo hợp đồng (phân hệ dựng ở B3).',
       ],
-      q: ['P-77', 'P-78', 'P-79', 'P-114'], src: 'profile-management/profile-detail · /khcn-profile-management/:id/view',
+      q: ['P-77', 'P-235', 'P-236', 'P-78', 'P-79', 'P-114'], src: 'profile-management/profile-detail · /khcn-profile-management/:id/view',
     };
     /* KQLCNT → Quản lý hợp đồng (T16 B3): gói đã có hợp đồng thì mở hợp đồng; tạm dừng ký thì không tạo. */
     const hd = window.HopDong && window.HopDong.byPkg(g.code);
-    const right = hd ? `<button type="button" class="vbtn secondary" data-go="hop-dong/${encodeURIComponent(hd.code)}">Xem hợp đồng</button>`
+    /* T67 T5: KHLCNT Hoàn thành → Khởi tạo tổ chức LCNT (MS19 bước 1); gói mẫu đang tổ chức → Chạy luồng mẫu tới bước của mẫu; đã có hồ sơ → Xem hồ sơ xử lý. */
+    const C = lcCaseOf(g.code), live = !!C, cu = (C && C.ui) || {};
+    const lcBtn = C ? `<button type="button" class="vbtn secondary" data-go="ho-so-hd/${esc(C.code)}">Xem hồ sơ xử lý</button>`
+      : g.stx === 'KH' && k.st === 'OK' ? `<button type="button" class="vbtn primary" data-lc-start="${esc(g.code)}">Khởi tạo tổ chức LCNT</button>`
+      : PK_SAMPLE[g.code] && g.stx !== 'KQ' ? `<button type="button" class="vbtn primary" data-lc-sample="${esc(g.code)}">Chạy luồng mẫu</button>` : '';
+    const doneAt = (n) => !!C && C.history.some((h) => String(h.task) === String(n) && h.who);
+    const T19 = (window.BPMN_FLOWS.MS19 || { tasks: {} }).tasks;
+    const waitCard = (title, ns) => emptyCard(title, `Chưa có dữ liệu — được cập nhật ở bước ${ns.map((n) => `${n}. ${(T19[n] || {}).name || ''}`).join(' / ')}.`);
+    const route = C ? C.vars.route : D.lcRoute(g.form, g.method), hsStep = route === '7' ? '7.1' : '3.1', dgStep = route === '7' ? '7.3' : route === '3' ? '3.5' : route;
+    const mau = D.mauOf(cu.lcMauHd || g.mau || mauGoiY(g));
+    const progCard = () => { const p = g.prog; return card('Theo dõi lựa chọn nhà thầu', `<div class="ginfo c3">${kv('Trạng thái', stBadge(LC, g.lc))}${kv('Giai đoạn', esc(p.gd))}${kv('Bước hiện tại', esc(p.step || '-'))}
+      ${kv('Đơn vị / người xử lý', esc(p.who || '-'))}${kv('Hạn xử lý', p.due ? `<span class="${p.late ? 'due-over' : ''}">${esc(p.due)}</span>` : '-')}${kv('Vướng mắc', esc(p.issue || '-'))}</div>`); };
+    const right0 = hd ? `<button type="button" class="vbtn secondary" data-go="hop-dong/${encodeURIComponent(hd.code)}">Xem hợp đồng</button>`
       : g.stx === 'KQ' && hasBid && !(g.events || []).some((e) => /Tạm dừng/.test(e[0]) && /hiệu lực/.test(e[3])) ? `<button type="button" class="vbtn primary" data-go="hop-dong/create/${encodeURIComponent(g.code)}">Tạo hợp đồng</button>` : '';
+    const right = lcBtn + right0;
     const srcs = (g0.srcs || [[k.src ? k.src[0] : 'DXMS', k.src ? k.src[1] : '', g.price]]);
     const x = pkExtra(g0, k);
-    const tInfo = () => card('Thông tin chung gói thầu', `<div class="ginfo c3">
+    const tInfo = () => progCard() + card('Thông tin chung gói thầu', `<div class="ginfo c3">
         ${kv('Mã gói thầu', esc(g.code))}${kv('Tên gói thầu', esc(g.name), 'span2')}
         ${kv('Số gói thầu', esc(x.no))}${kv('Ký hợp đồng', x.sign ? 'Có' : 'Không')}${kv('Mật', g.secret ? 'Mật' : 'Không mật')}
         ${kv('Lĩnh vực', esc(x.field))}${kv('Người phụ trách', esc(ownerOf(k)))}${kv('Đơn vị sử dụng', esc(s.unit))}
         ${kv('Đơn vị giám sát', 'Trung tâm Mua sắm')}${kv('Chủ đầu tư', OWNER_ORG)}${kv('Bên mời thầu', OWNER_ORG)}
         ${kv('Người có thẩm quyền', esc(x.authority))}${kv('Tóm tắt công việc chính', esc(x.summary), 'span2')}
-        ${kv('Loại gói thầu', esc(cat('loai-goi-thau', g.type)))}${kv('KHLCNT', `<a class="link-red" href="#/khlcnt/${encodeURIComponent(g.kh)}">${esc(g.kh)}</a>`)}${kv('Trạng thái', badge(...PK_ST[g.stx]))}
+        ${kv('Loại gói thầu', esc(cat('loai-goi-thau', g.type)))}${kv('KHLCNT', `<a class="link-red" href="#/khlcnt/${encodeURIComponent(g.kh)}">${esc(g.kh)}</a>`)}${kv('Trạng thái', stBadge(LC, g.lc))}
         ${kv('Loại hợp đồng dự kiến', esc(cat('loai-hop-dong', g.contract)))}${kv('Nguồn vốn', esc(cat('nguon-von', s.fund)))}${kv('Đơn vị', esc(s.unit))}</div>`)
       + card('Nguồn gói thầu', table([['Loại đối tượng', 170], ['Mã', 160], ['Tên', 340], ['Nhiệm vụ / Đề tài, dự án', 280], ['Nguồn vốn', 200], ['Khoản mục chi phí', 200], ['Giá trị phân bổ (tỷ đồng)', 180, 'r']], srcs,
         (r) => { const o = srcInfo(r[0], r[1]) || {}; return `<td>${esc(SRC[r[0]])}</td><td><a class="link" data-go="${srcHref(r[0], r[1])}">${esc(r[1])}</a></td><td>${clamp(o.title)}</td><td>${clamp(o.nvText)}</td><td>${clamp(cat('nguon-von', o.fund))}</td><td>${esc(x.cost)}</td><td class="r num">${money(r[2])}</td>`; },
@@ -577,7 +891,17 @@
     const bidders = (g.bidders || []).map((b, i) => ({ ncc: b[0], price: b[1], valid: b[2], cap: b[3], tech: b[4], note: b[5], i }));
     const ranked = bidders.filter((b) => b.valid === 'Đạt' && b.cap === 'Đạt' && (b.tech == null || b.tech >= 70)).sort((a, b) => a.price - b.price);
     const low = (b) => b.price < g.price * 0.8;
+    /* Gói chạy MS19: Hồ sơ mời đọc eForm bước lập HSMT / HSYC (3.1 / 7.1) và phát hành (3.3 / 7.2); chưa tới bước thì chờ. */
+    const tHsLive = () => {
+      if (!doneAt(hsStep)) return waitCard('Hồ sơ mời', [hsStep]);
+      const pub = route === '7' ? '7.2' : '3.3', bd = cu.lcBaoDam != null ? Number(cu.lcBaoDam) : 1.5;
+      return card('Thông tin ' + (docKind || 'hồ sơ mời'), `<div class="ginfo c3">${kv('Loại hồ sơ', esc(docKind || 'HSYC'))}${kv('Trạng thái phát hành', doneAt(pub) ? badge('Đã phát hành', 'success') : badge('Đang lập', 'info'))}
+          ${kv('Phương pháp đánh giá', esc(cu.lcPpDanhGia || 'Giá thấp nhất'))}${kv('Bảo đảm dự thầu', `${ty(bd, 1)}% giá gói · ${ty(Math.round(g.price * bd * 10) / 1000, 3)} tỷ đồng`)}
+          ${kv(route === '7' ? 'Hạn nộp HSĐX' : 'Thời điểm đóng thầu', esc(cu.lcNgayDong || '-'))}${kv(route === '7' ? 'Nhà thầu dự kiến' : 'Số thông báo mời thầu', esc(route === '7' ? nccName(cu.lcNhaThauDk || (g.bidders && g.bidders[0] ? g.bidders[0][0] : '')) : cu.lcTbmt || (doneAt(pub) ? `IB26${g.code.slice(-4)}-00` : '-')))}
+          ${kv('Mẫu hợp đồng', mau ? `${esc(mau.code)} — ${esc(mau.name)}` : '-', 'span2')}${kv('Phương thức thanh toán', mau ? esc(mau.tt) : '-')}</div>`);
+    };
     const tHs = () => {
+      if (live && hasBid) return tHsLive();
       if (!hasBid) return emptyCard('Hồ sơ mời', `Hình thức ${esc(cat('hinh-thuc-lcnt', g.form))} không phát hành hồ sơ mời thầu.`);
       if (lv < 1) return emptyCard('Hồ sơ mời', 'Hồ sơ mời được lập sau khi KHLCNT được phê duyệt.');
       const pp = g.form === 'CGTT' || ['MSTT', 'CDT_TT', 'CDT_RG'].includes(g.form) ? 'GIA_THAP_NHAT' : g.method === '1GD2T' ? 'GIA_DANH_GIA' : 'GIA_THAP_NHAT';
@@ -587,7 +911,7 @@
       const clar = g.code === 'GT-2026-0024' ? [['Iota Electronics Co., Ltd.', '20/09/2026', 'Làm rõ dải quét chùm tia yêu cầu', 'Đã trả lời — sửa đổi HSMT v2']] : lv >= 2 && guar ? [[nccName((bidders[0] || {}).ncc || 'NCC-000001'), '18/09/2026', 'Làm rõ điều kiện bảo hành', 'Đã trả lời']] : [];
       return card('Thông tin ' + docKind, `<div class="ginfo c3">${kv('Loại hồ sơ', esc(docKind))}${kv('Phiên bản hiện hành', esc(vs[vs.length - 1][0]))}${kv('Trạng thái phát hành', issued ? badge('Đã phát hành', 'success') : badge('Đang lập', 'info'))}
           ${kv('Phương pháp đánh giá', esc(cat('phuong-phap-danh-gia', pp)))}${kv('Bảo đảm dự thầu', guar ? `${esc(cat('hinh-thuc-bao-dam', 'BL_NH'))} · ${ty(Math.round(g.price * 0.015 * 1000) / 1000, 3)} tỷ đồng (1,5% giá gói)` : 'Không yêu cầu')}
-          ${kv('Thời điểm đóng thầu', issued ? '30/09/2026 09:00' : null)}</div>`)
+          ${kv('Thời điểm đóng thầu', issued ? '30/09/2026 09:00' : null)}${kv('Mẫu hợp đồng', mau ? `${esc(mau.code)} — ${esc(mau.name)}` : '-', 'span2')}${kv('Phương thức thanh toán', mau ? esc(mau.tt) : '-')}</div>`)
         + card('Tiêu chuẩn đánh giá', table([['Nội dung', 260], ['Phương pháp', 260], ['Yêu cầu', 420]],
           [['Tính hợp lệ', 'Đạt / Không đạt', 'Tư cách hợp lệ (Điều 24), không thuộc danh sách cấm, bảo đảm dự thầu hợp lệ'], ['Năng lực, kinh nghiệm', cat('phuong-phap-danh-gia', 'DAT_KHONG_DAT'), 'Tối thiểu 02 hợp đồng tương tự trong 03 năm'],
             ['Kỹ thuật', g.method === '1GD2T' ? cat('phuong-phap-danh-gia', 'CHAM_DIEM') + ' (tối thiểu 70/100)' : cat('phuong-phap-danh-gia', 'DAT_KHONG_DAT'), 'Đáp ứng thông số kỹ thuật, tiến độ, bảo hành'], ['Tài chính', cat('phuong-phap-danh-gia', pp), 'Xếp hạng theo ' + cat('phuong-phap-danh-gia', pp).toLowerCase()]],
@@ -598,7 +922,19 @@
           (b) => `<td>${clamp(nccName(b.ncc))}</td><td class="num">29/09/2026 ${String(10 + b.i).padStart(2, '0')}:15</td><td class="r num">${money(b.price)}</td><td class="c">${guar ? badge('Hợp lệ', 'success') : dash}</td>`), lv >= 3 ? `${bidders.length} hồ sơ` : 'Chưa đến thời điểm đóng thầu')
         + card('Biên bản mở thầu', lv >= 3 && bidders.length ? `<div class="ginfo c3">${kv('Thời điểm mở thầu', '30/09/2026 09:30')}${kv('Số hồ sơ', String(bidders.length))}${kv('Tệp', `<a class="link-red" href="#" data-dl="Bien-ban-mo-thau-${esc(g.code)}.pdf">Bien-ban-mo-thau-${esc(g.code)}.pdf</a>`)}</div>` : '<div class="empty-t">Chưa mở thầu.</div>');
     };
+    /* Gói chạy MS19: kết quả đánh giá đọc bảng lặp eForm bước đánh giá; KQLCNT sau bước 13. */
+    const tDgLive = () => {
+      if (!doneAt(dgStep)) return waitCard('Đánh giá hồ sơ', [dgStep]);
+      const rows = cu.lcDanhGia || [];
+      const res = (v) => (v === 'Đạt' ? badge('Đạt', 'success') : v ? badge(v, 'error') : dash);
+      return (rows.length ? card('Kết quả đánh giá nhà thầu', table([['Nhà thầu', 300], ['Hợp lệ', 110, 'c'], ['Kỹ thuật', 110, 'c'], ['Giá dự thầu (tỷ đồng)', 160, 'r'], ['Nhận xét', 300]], rows,
+          (r) => `<td>${clamp(r.ten)}</td><td class="c">${res(r.hopLe)}</td><td class="c">${res(r.kyThuat)}</td><td class="r num">${money(r.giaSo)}</td><td>${clamp(r.ghiChu)}</td>`), `Giá gói thầu ${ty(g.price, 2)} tỷ đồng`) : '')
+        + (doneAt(13) ? card('Kết quả lựa chọn nhà thầu', `<div class="ginfo c3">${kv('Nhà thầu đề nghị trúng thầu', esc(nccName(cu.lcNhaThau || (rows[0] || {}).ma || '')))}${kv('Giá đề nghị trúng thầu', cu.lcGiaTT != null ? ty(Number(cu.lcGiaTT), 2) + ' tỷ đồng' : '-')}
+            ${kv('Ngày biên bản thương thảo', esc(cu.lcNgayTT || '-'))}${kv('Quyết định phê duyệt KQLCNT', g.kq ? `${esc(g.kq[0])} ngày ${esc(g.kq[1])}` : badge('Chờ phê duyệt', 'warning'))}</div>`)
+          : waitCard('Kết quả lựa chọn nhà thầu', [13]));
+    };
     const tDg = () => {
+      if (live && C.status === 'running') return tDgLive();
       if (!bidders.length || lv < 3) return emptyCard('Đánh giá hồ sơ', 'Chưa có hồ sơ tham dự để đánh giá.');
       const rk = (b) => { const r = ranked.indexOf(b); return r < 0 ? dash : String(r + 1); };
       const res = (v) => (v == null ? dash : v === 'Đạt' ? badge('Đạt', 'success') : typeof v === 'number' ? (v >= 70 ? badge(v + ' điểm', 'success') : badge(v + ' điểm', 'error')) : badge(v, 'error'));
@@ -617,7 +953,7 @@
     const tTh = () => card('Tình huống & kiến nghị', table([['Loại', 220], ['Ngày', 120], ['Nội dung', 520], ['Trạng thái', 220]], g.events || [],
       (r) => `<td>${esc(r[0])}</td><td class="num">${esc(r[1])}</td><td>${clamp(r[2])}</td><td>${clamp(r[3])}</td>`), 'Huỷ thầu, xử lý tình huống, kiến nghị, tạm dừng ký hợp đồng');
     const kq = g.form === 'GIAO_NV' || g.form === 'TU_TH' || g.form === 'DAT_HANG';
-    const kqCard = () => (g.kq ? card('Kết quả', `<div class="ginfo c3">${kv('Đơn vị thực hiện', esc(g.assignee))}${kv('Văn bản', `${esc(g.kq[0])} ngày ${esc(g.kq[1])}`)}${kv('Giá trị', ty(g.price, 2) + ' tỷ đồng')}</div>`) : emptyCard('Kết quả', 'Chưa có văn bản giao thực hiện.'));
+    const kqCard = () => (live && C.status === 'running' ? waitCard('Kết quả', [route]) : g.kq ? card('Kết quả', `<div class="ginfo c3">${kv('Đơn vị thực hiện', esc(g.assignee))}${kv('Văn bản', `${esc(g.kq[0])} ngày ${esc(g.kq[1])}`)}${kv('Giá trị', ty(g.price, 2) + ' tỷ đồng')}</div>`) : emptyCard('Kết quả', 'Chưa có văn bản giao thực hiện.'));
     return `<div class="pg">
       ${head({ title: 'Xem chi tiết gói thầu', back: 'goi-thau', lg: true, info, right })}
       ${tabs('gt:' + g.code, [['info', 'Thông tin chung'], ['pa', 'Phương án LCNT'], ['tp', 'Thành phần tham gia'], ['hs', 'Hồ sơ mời thầu'], ['dg', kq ? 'Kết quả' : 'Đánh giá & KQLCNT'], ['th', 'Tình huống & kiến nghị']],
@@ -711,10 +1047,17 @@
   function enter(parts) {
     if (parts[0] === 'khlcnt' && parts[1] === 'create') resetForm(parts[2], parts[3] && decodeURIComponent(parts[3]));
   }
-  function reset() { U = { kh: [], adj: {} }; persist(); }
+  function reset() { U = { kh: [], adj: {}, pk: {} }; persist(); }
 
   /* Khuôn dùng chung cho các phân hệ B3 (hop-dong.js, thong-bao.js, bao-cao.js): danh sách, bảng, card, tab, trường. */
   const setTab = (key, tab) => { TB.key = key; TB.tab = tab; };
   const kit = { listPage, table, card, emptyCard, tabs, setTab, kv, field, money, clamp, dash, has, inSet, catOpts, cat, nccName, sum, dkey, LST };
-  window.Thau = { route, enter, reset, khBy, srcInfo, khAll, pkgsOf, pkOf, PK, KH_ST, PK_ST, pkRow, srcHref, kit };
+  /* Nhãn trạng thái cho màn khác (Chi tiết KĐT / ĐXMS, đề tài, biến eForm): theo KHL / LC. */
+  const khStLabel = (k) => { const x = (khOf(k.code) || k).prog || khProg(k); return [KHL[x.khl][0], KHL[x.khl][1]]; };
+  const pkStLabel = (g) => { const r = pkRow(g); return [LC[r.lc][0], LC[r.lc][1]]; };
+  /* Đối tượng cha của hồ sơ MS19 (D.hdProcesses.MS19.obj): gói thầu. */
+  const lcCase = (code) => { const g = pkOf(code); if (!g) return null; const k = khOf(g.kh) || {};
+    const s = k.src ? ((k.src[0] === 'KDT' ? Flow.findKdt(k.src[1]) : Flow.findDxms(k.src[1])) || {}) : {};
+    return { title: g.name, unit: s.unit, value: g.price, owner: k.code ? ownerOf(k) : '', levelText: cat('hinh-thuc-lcnt', g.form), g }; };
+  window.Thau = { KH_SAMPLE, PK_SAMPLE, route, enter, reset, khBy, srcInfo, khAll, khOf, khCase, khFlowDone, lcCase, lcFlowDone, mauGoiY, totals, pkgsOf, pkOf, get PK() { return PK.map(pkM); }, KH_ST, PK_ST, KHL, LC, khStLabel, pkStLabel, khProg, pkRow, srcHref, kit, LEVEL, levelOf };
 })();

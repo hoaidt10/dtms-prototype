@@ -93,8 +93,10 @@ test('#54, C0–C2 (Q4, Q8, Q9): bước 7 mở màn việc ở tab Rà soát t�
   await expect(page.locator('[data-ltab="ton-kho"]')).toHaveClass(/on/);
   await expect(page.locator('[data-rsk-input] [data-rsk-ed]')).toBeVisible();
   await expect(page.locator('.task-acts [data-act]')).toHaveText(['Gửi Chỉ huy Kho']);
-  await expect(page.locator('[data-rsk-ed]')).toContainText('Tệp kết quả (Excel theo mẫu BM-RSTK)');
-  await expect(page.locator('[data-rsk-ed]')).toContainText('Biên bản kiểm đếm có ký');
+  // T72 #78, #79: nhãn Tệp kết quả, mẫu BM-RSTK ở chữ gợi ý; không còn Biên bản kiểm đếm.
+  await expect(page.locator('[data-rsk-ed] .rsk-up label')).toHaveText('Tệp kết quả');
+  await expect(page.locator('[data-rsk-ed]')).toContainText('BM-RSTK');
+  await expect(page.locator('[data-rsk-ed]')).not.toContainText('Biên bản kiểm đếm');
   await expect(page.locator('[data-rsk-ed] [data-dl="Mau-ket-qua-ra-soat-ton-kho_BM-RSTK.xlsx"]')).toHaveText('Tải mẫu Excel');
   // Tệp không phải Excel → lỗi; Excel → hệ thống đọc, điền sẵn bảng (GIẢ LẬP), sửa được.
   await page.locator('#rsk-file').setInputFiles({ name: 'anh.pdf', mimeType: 'application/pdf', buffer: Buffer.alloc(8) });
@@ -104,23 +106,19 @@ test('#54, C0–C2 (Q4, Q8, Q9): bước 7 mở màn việc ở tab Rà soát t�
   const out4 = page.locator('[data-rsk-in="4:out"]');
   await expect(out4).toHaveValue('6');
   await out4.fill('5');
-  // Gửi (thanh trạng thái) khi thiếu biên bản → báo lỗi, giữ bước 7.
-  await page.locator('.task-acts [data-act]', { hasText: 'Gửi Chỉ huy Kho' }).click();
-  await expect(page.locator('[data-rsk-ed] .msg')).toHaveText(['Vui lòng tải lên Biên bản kiểm đếm có ký.']);
-  expect(await page.evaluate(() => Flow.state.tokens.map((t) => String(t.task)))).toEqual(['7']);
+  // T72 #78: không còn biên bản bắt buộc — Gửi đi tiếp.
   await expect(out4).toHaveValue('5');
-  await page.locator('#rsk-sign').setInputFiles({ name: 'Bien-ban-kiem-dem.pdf', mimeType: 'application/pdf', buffer: Buffer.alloc(16) });
   await page.locator('.task-acts [data-act]', { hasText: 'Gửi Chỉ huy Kho' }).click();
   await expect(page).toHaveURL(/#\/viec-cua-toi$/);
   expect(await lastToast(page)).not.toContain('biên bản');
   expect(await page.evaluate(() => Flow.state.tokens.map((t) => String(t.task)))).toEqual(['7.1']);
-  expect(await page.evaluate(() => RaSoatKho.resultFile(Flow.state.dxms, { code: 'X', cur: true }))).toEqual({ name: 'Ket-qua-ra-soat.xlsx', sign: 'Bien-ban-kiem-dem.pdf' });
+  expect(await page.evaluate(() => RaSoatKho.resultFile(Flow.state.dxms, { code: 'X', cur: true }))).toMatchObject({ name: 'Ket-qua-ra-soat.xlsx' }); // T72 #78: không còn biên bản
   // 7.1: Chỉ huy Kho xem (không nhập), có tệp kết quả + biên bản, không có Biên bản rà soát sinh.
   const t71 = await page.evaluate(() => { Flow.setPersona('khoch'); return Flow.state.tokens[0].id; });
   await go(page, '#/task/' + t71);
   await expect(page.locator('[data-ltab="ton-kho"]')).toHaveClass(/on/);
   await expect(page.locator('[data-rsk-view]')).toContainText('Ket-qua-ra-soat.xlsx');
-  await expect(page.locator('[data-rsk-view]')).toContainText('Bien-ban-kiem-dem.pdf');
+  await expect(page.locator('[data-rsk-view]')).not.toContainText('Biên bản kiểm đếm'); // T72 #78
   await expect(page.locator('[data-rsk-ed]')).toHaveCount(0);
   await expect(page.locator('main')).not.toContainText('BBRS');
   await page.locator('[data-ltab="tai-lieu"]').click();

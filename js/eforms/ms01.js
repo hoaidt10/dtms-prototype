@@ -170,16 +170,20 @@
 
     /* T29 B12 (Huylx4 #26, RV-PROTO-0511 #10): hộp thoại theo màn Thêm mới yêu cầu báo giá của hệ thống cũ (HT-DXMS-IMG; cùng bố cục SCR-106):
        Thông tin chung → Nhà cung cấp nhận yêu cầu → Danh mục hàng hoá (Model, ĐVT, Số lượng, Yêu cầu kỹ thuật) → Tài liệu kỹ thuật → Điều khoản. */
-    8: { id: 'dtms-ms01-t08-ycbg', title: 'Yêu cầu báo giá', q: ['P-33', 'P-72', 'P-73', 'P-213', 'P-214', 'P-215', 'P-221'],
+    8: { id: 'dtms-ms01-t08-ycbg', title: 'Yêu cầu báo giá', q: ['P-33', 'P-72', 'P-73', 'P-213', 'P-214', 'P-215', 'P-221', 'P-250'],
       schema: () => ({ components: [
         /* T29 B18 (màn Cập nhật YCBG cũ HT-DXMS-IMG 3 ảnh, BM-YCKT): lưu ý bảo mật; Thông tin dự án có Nguồn vốn; chọn đối tác → bảng có Email; Thời hạn tiếp nhận báo giá;
            tải mẫu Yêu cầu kỹ thuật; bảo hành / năm sản xuất (P-214); Đầu mối tiếp nhận báo giá nhiều người → bảng Họ tên, Đơn vị. */
         B.banner('<b>Lưu ý:</b> Khi Xác nhận, hệ thống tự động gửi yêu cầu báo giá cho nhà cung cấp, nên người soạn thảo chú ý đáp ứng yêu cầu bảo mật — nội dung cần bảo mật theo yêu cầu của VHT không nêu tên cụ thể.', null, 'info'),
-        txt('### Thông tin chung'),
-        tf('maYcbg', 'Mã yêu cầu báo giá', { disabled: true, layout: { columns: 5 } }),
-        tf('tenYcbg', 'Tên yêu cầu báo giá', req({ validate: { required: true, maxLength: 500 }, layout: { columns: 11 }, description: 'Tiêu đề email gửi nhà cung cấp' })),
-        dt('ngayYcbg', 'Ngày YCBG', req({ layout: { columns: 5 } })),
-        dt('hanTraLoi', 'Thời hạn tiếp nhận báo giá', req({ layout: { columns: 5 }, description: 'Quá hạn mà nhà cung cấp chưa gửi báo giá → Không phản hồi' })),
+        /* [T72 #86, D-122] nhóm Thông tin chung có nút ✦ Gợi ý từ AI (khuôn aiFill như Tờ trình, P-216): AI điền các ô đang trống của phiếu (điều khoản…) từ ĐXMS — biến aiYcbg (GIẢ LẬP P-250).
+           [T72 #85, Q6] Mức giá làm cơ sở: mặc định Thấp nhất; quyết định cơ sở giá mặc định ở bước 10 / Phụ lục chi phí của Tờ trình (bước 12). */
+        Object.assign(grp('Thông tin chung', [
+          tf('maYcbg', 'Mã yêu cầu báo giá', { disabled: true, layout: { columns: 5 } }),
+          tf('tenYcbg', 'Tên yêu cầu báo giá', req({ validate: { required: true, maxLength: 500 }, layout: { columns: 11 }, description: 'Tiêu đề email gửi nhà cung cấp' })),
+          dt('ngayYcbg', 'Ngày YCBG', req({ layout: { columns: 5 } })),
+          dt('hanTraLoi', 'Thời hạn tiếp nhận báo giá', req({ layout: { columns: 5 }, description: 'Quá hạn mà nhà cung cấp chưa gửi báo giá → Không phản hồi' })),
+          sel('mucGia', 'Mức giá làm cơ sở', req({ values: opts(['Thấp nhất', 'Trung bình', 'Cao nhất']), layout: { columns: 6 }, description: 'Cơ sở giá mặc định của từng hạng mục khi chốt báo giá và lập Tờ trình' }))]),
+        { properties: { aiFill: { source: 'aiYcbg', title: 'Yêu cầu báo giá' } } }),
         tbl('Thông tin dự án / đề tài', 'duAnRows', [['ma', 'Mã dự án / đề tài'], ['ten', 'Tên dự án / đề tài'], ['loai', 'Loại'], ['nguonVon', 'Nguồn vốn']], '=count(duAnRows) = 0'),
         txt('### Nhà cung cấp nhận yêu cầu'),
         tags('nccSel', 'Đối tác nhận YCBG', req({ valuesKey: 'nccOptions', searchable: true, description: 'Danh mục Nhà cung cấp lọc theo ngành hàng của các hạng mục; nhà cung cấp dừng hoạt động hoặc đang bị cấm không có trong danh sách.' })),
@@ -214,7 +218,8 @@
         tags('dauMoiBg', 'Đầu mối tiếp nhận báo giá', req({ valuesKey: 'dauMoiBgOptions', searchable: true,
           description: 'Người thuộc danh sách xử lý của hồ sơ; phiếu ghi Họ tên, Số điện thoại, Email theo hồ sơ người dùng.' })),
         tbl('', 'dauMoiList[list contains(dauMoiBg, item.id)]', [['ten', 'Họ và tên'], ['donVi', 'Đơn vị'], ['dienThoai', 'Điện thoại'], ['email', 'Email']])] }),
-      notes: () => ['<b>Review nhi 06/11 #22–24:</b> nút mở form đổi tên <b>Tạo yêu cầu báo giá</b>. Danh mục hàng hoá: Thầu sửa tên, ĐVT, số lượng, xoá dòng, thêm dòng trên phiếu (<b>GIẢ LẬP P-221</b> — phiếu YCBG có thể khác danh mục ĐXMS đã xác nhận; danh mục hồ sơ dùng cho Tờ trình không đổi). Bỏ bảng Đối soát ĐXMS (biến <code>doiSoat</code> giữ trong vars, không hiện).', 'G1/E1: BE nạp <code>nccOptions</code> từ danh mục Nhà cung cấp — lọc theo ngành hàng của các hạng mục, bỏ NCC dừng hoạt động (P-33) và NCC đang bị cấm; NCC bị hạn chế vẫn chọn được. Bảng tình trạng chỉ xem để người dùng thấy lý do.',
+      notes: () => ['<b>T72 (kho comment #85, #86; D-122 Q6):</b> nhóm <b>Thông tin chung</b> có nút <b>✦ Gợi ý từ AI</b> (khuôn aiFill như Tờ trình): AI điền các ô đang trống — Điều kiện thanh toán, Địa điểm giao hàng, Các yêu cầu khác — mỗi ô ghi nguồn (<b>GIẢ LẬP P-250</b>); ba ô này để trống khi mở phiếu như SRS. Ô <b>Mức giá làm cơ sở</b> (Thấp nhất mặc định / Trung bình / Cao nhất, biến <code>mucGia</code>): quyết định cơ sở giá mặc định của từng hạng mục ở bước 10 và Phụ lục chi phí của Tờ trình bước 12; chọn khác mức đó ở bước 10 vẫn bắt lý do.',
+        '<b>Review nhi 06/11 #22–24:</b> nút mở form đổi tên <b>Tạo yêu cầu báo giá</b>. Danh mục hàng hoá: Thầu sửa tên, ĐVT, số lượng, xoá dòng, thêm dòng trên phiếu (<b>GIẢ LẬP P-221</b> — phiếu YCBG có thể khác danh mục ĐXMS đã xác nhận; danh mục hồ sơ dùng cho Tờ trình không đổi). Bỏ bảng Đối soát ĐXMS (biến <code>doiSoat</code> giữ trong vars, không hiện).', 'G1/E1: BE nạp <code>nccOptions</code> từ danh mục Nhà cung cấp — lọc theo ngành hàng của các hạng mục, bỏ NCC dừng hoạt động (P-33) và NCC đang bị cấm; NCC bị hạn chế vẫn chọn được. Bảng tình trạng chỉ xem để người dùng thấy lý do.',
         'Người dùng tạo YCBG, hệ thống gửi email thay TTMS (task 09); không có cổng nhà cung cấp, không có bước ký báo giá (BBLV 22/09, chốt 28/09/2026).',
         'Comment #3: bảng lặp "Nhà cung cấp mới" (thêm / xoá dòng). Xác nhận → BE thêm NCC vào danh mục Nhà cung cấp (ghi nguồn = mã hồ sơ) rồi gửi YCBG cùng các NCC đã chọn.',
         '<b>Điều khoản trên phiếu</b> (T29 B4 P2, BR-DXMS-04-06): Điều kiện thanh toán, Địa điểm giao hàng, Các yêu cầu khác, Đầu mối tiếp nhận báo giá (mặc định người xử lý bước, chọn trong danh sách xử lý của hồ sơ) — in trên phiếu YCBG (mẫu BM-YCBG) và email gửi NCC ở task 09, hiện ở Chi tiết YCBG (SCR-74). Mapping <code>quotation.payment_terms</code>, <code>delivery_place</code>, <code>other_requirements</code>, <code>contact_user_id</code>. SRS mặc định rỗng; hồ sơ demo điền sẵn giá trị mẫu theo HT-DXMS-IMG. Số điện thoại, email của đầu mối: GIẢ LẬP.',
@@ -222,7 +227,7 @@
         '<b>T29 B18</b> (màn Cập nhật YCBG cũ đủ 3 ảnh HT-DXMS-IMG, BM-YCKT): lưu ý bảo mật đầu form; Thông tin dự án / đề tài có <b>Nguồn vốn</b> (SCR-104); Chọn đối tác (taglist) → bảng <b>Danh sách đối tác nhận yêu cầu báo giá</b> có Email (biểu thức lọc <code>nccList[list contains(nccSel, item.ma)]</code>); <b>Thời hạn tiếp nhận báo giá</b> (biến <code>hanTraLoi</code>); Model → Model / Mã NSX tham khảo; link mẫu BM-YCKT (cũng ở Chọn mẫu tài liệu của bước 8, cùng BM-YCBG); Bảo hành tối thiểu, Năm sản xuất từ (P-214); <b>Đầu mối tiếp nhận báo giá chọn nhiều người</b> → bảng Họ tên, Đơn vị, Điện thoại, Email. Không đưa vào eForm (không phải loại trường form-js): Đặt giá trị mặc định (P-213 — giá trị điền sẵn khi mở phiếu), Soạn thảo công văn (P-215), Xem Logs (= Lịch sử xử lý của màn việc), Nhập danh mục hàng hoá từ Excel (cần dev riêng). Danh mục hàng hoá giữ bảng theo dòng (cần cho so sánh báo giá, BR-DXMS-04-09) thay cho ô soạn văn bản của hệ thống cũ.',
         'P-188: BM-YCBG đề nghị NCC báo đơn giá <b>chưa thuế</b>, thuế GTGT ở dòng tổng; SRS BR-DXMS-04-09 nhập đơn giá <b>gồm VAT</b> — prototype theo SRS, lệch chờ BA.',
         ],
-      write: (v) => pick(v, ['nccSel', 'hanTraLoi', 'nccMoi', 'dkThanhToan', 'diaDiemGiao', 'baoHanh', 'namSx', 'dauMoiBg', 'yeuCauKhac', 'tenYcbg', 'ngayYcbg', 'ycbgHang', 'tepKyThuat', 'tepBanVe', 'tepKhac']) },
+      write: (v) => pick(v, ['mucGia', 'nccSel', 'hanTraLoi', 'nccMoi', 'dkThanhToan', 'diaDiemGiao', 'baoHanh', 'namSx', 'dauMoiBg', 'yeuCauKhac', 'tenYcbg', 'ngayYcbg', 'ycbgHang', 'tepKyThuat', 'tepBanVe', 'tepKhac']) },
 
     /* Review nhi 06/11 #3 (D.quoteManual): popup Báo giá đạt chỉ còn tệp báo giá của các NCC (mục Tài liệu đính kèm) và giá trị báo giá cuối cùng;
        bảng so sánh, kết quả AI kiểm tra báo giá, dòng luồng gợi ý bỏ (Thầu so sánh, đánh giá ngoài hệ thống). Không đạt mở dialog lý do, không mở form. */
@@ -490,7 +495,10 @@
             num('sl', 'SL mua', { validate: { required: true, min: 0 }, layout: { columns: 2 } }),
             num('donGia', 'Đơn giá (tỷ)', { validate: { required: true, min: 0 }, layout: { columns: 3 } }),
             txt('Thành tiền (tỷ)\n**{{decimal(this.thanhTien, 2)}}**', 2),
-            tf('coSo', 'Cơ sở giá', { layout: { columns: 4 } })]),
+            /* [T72 #88, #89] Cơ sở giá: dropdown các báo giá của hạng mục + Giá trung bình (this.coSoOpts, biến do hệ thống ghi từ báo giá YCBG); chọn thì Đơn giá tự điền (option.fill — mở rộng E2 của eform-run). */
+            sel('coSo', 'Cơ sở giá', { valuesExpression: '=this.coSoOpts', layout: { columns: 4 } }),
+            /* [T72 #87] chú thích giá thấp nhất / trung bình của các báo giá. */
+            txt('*{{this.giaNote}}*', 16, '=this.giaNote = ""')]),
           ta('phuongPhap', 'Phương pháp tính toán, cơ sở xác định đơn giá'),
           ta('quanDiem', 'Quan điểm thực hiện (nếu có)', { rows: 2 }),
           ta('phuongAn', 'Phương án kỹ thuật – công nghệ (hàng hóa), giải pháp triển khai (dịch vụ)')]),
@@ -514,6 +522,7 @@
     preview: (h) => [h.tt()],
     outputs: (h) => [h.tt(), 'BM-02'],
     notes: (h) => ['<b>Review nhi 06/11 #26, #27, #34–36:</b> nút và tiêu đề <b>Soạn thảo tờ trình ĐXMS</b>. Nút <b>✦ Gợi ý từ AI</b> ở đầu Tờ trình: hộp thoại tiến trình đóng được, AI chạy nền (GIẢ LẬP: chờ 2 giây, nội dung mẫu; thật: service task AI bất đồng bộ + thông báo); xong <b>AI tự điền</b> các ô đang trống, ô đã nhập giữ nguyên, mỗi ô ghi nguồn; bỏ bảng Chấp nhận / Từ chối. Đã đóng form thì kết quả vào bản nháp, mở lại thấy ngay.',
+      '<b>T72 (kho comment #87–#89):</b> Phụ lục chi phí — <b>Cơ sở giá</b> là dropdown các báo giá của hạng mục (kèm thấp nhất / cao nhất) và Giá trung bình, mặc định theo Mức giá làm cơ sở của bước 8; chọn thì <b>Đơn giá tự điền</b> theo báo giá đó, vẫn sửa được (mở rộng E2 của vht-e-form: option có <code>fill</code> — cần dev nhỏ). Dưới mỗi dòng ghi <b>Thấp nhất · Trung bình</b> của các báo giá. Đơn giá NCC quy cùng tỷ lệ với đơn giá mẫu của hồ sơ — GIẢ LẬP.',
       '<b>Mục 3 sửa được (GIẢ LẬP P-222):</b> SL mua, Đơn giá, Cơ sở giá của Phụ lục chi phí; Thành tiền, Tổng, Bằng chữ tự tính. Lệch giá đã duyệt ở 10.1: cảnh báo, không chặn. Qua ngưỡng: gửi thì hồ sơ đổi sang biểu mẫu và Checklist theo giá trị mới, ở lại để kiểm tra (<code>Flow.applyDraftTotal</code>).',
       '<b>Checklist:</b> Yêu cầu, Tình trạng Có / Không, tệp tải về được. Dòng Bắt buộc phải chọn Có và có tệp mới gửi được. Dòng hệ thống sinh (Tờ trình, BM-02) luôn Có.',
       `G4: tab của bản cũ tách thành nội dung từng mục (trường form), Phụ lục chi phí và ${h.clName()} (khối chỉ xem, BE tính theo tài liệu đã có trên hồ sơ), văn bản hoàn chỉnh ở Văn bản đầu ra, tệp ở Danh sách tài liệu.`,

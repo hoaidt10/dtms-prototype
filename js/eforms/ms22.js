@@ -11,8 +11,8 @@
   const hd = () => window.HopDong.find(Flow.state.parent) || {};
   const warranty = () => { const u = Flow.ui, v = Flow.state.vars; return u.hdWarranty != null ? u.hdWarranty : v.hdFixed ? D.hdWarrantyMin : 18; };
   const version = () => 1 + Flow.doneCount(6) + Flow.doneCount(7);
-  /* Giả lập P-119: danh sách mẫu tự đặt. */
-  const MAU = opts(['Mẫu hợp đồng mua sắm thiết bị — một lô', 'Mẫu hợp đồng mua sắm thiết bị — nhiều lô', 'Mẫu hợp đồng dịch vụ']);
+  /* T67 H3 (T66 L3, H-Q1 = A): mẫu hợp đồng đính kèm HSMT / HSYC của gói thầu (QT-10.2.4 §5.2) — MS22 chỉ đọc lại, không chọn tự do. */
+  const mauOf = (h) => { const g = window.HopDong.pkgOf(h); return D.mauOf(h.mau || (g && (g.mau || window.Thau.mauGoiY(g))) || '1.6'); };
 
   const head = () => txt('**{{hd.code}}** — {{hd.ten}} · nhà thầu {{hd.ncc}} · giá trị **{{hd.gia}} tỷ đồng** (gồm thuế GTGT)');
   const aiResult = () => aiBox('kết quả kiểm tra trước phê duyệt', '{{ai.tomTat}}');
@@ -37,19 +37,21 @@
       write: (v) => Object.assign(pick(v, ['hdRows', 'hdYeuCau', 'hdNghiemThu', 'hdSla', 'hdTienDo']), { hdMissingCode: (v.hdRows || []).some((r) => !r.maHang) }) },
     3: { id: 'dtms-ms22-t03-body-phu-luc-gia', q: ['P-119', 'P-126'], outputs: () => ['HD-BODY', 'HD-PL1'],
       schema: () => ({ components: [head(),
-        sel('hdMau', 'Mẫu dự thảo hợp đồng', req({ values: MAU })),
+        txt('Mẫu hợp đồng theo hồ sơ mời thầu của gói **{{hd.goi}}**: **{{mau.ten}}** · phương thức thanh toán **{{mau.tt}}**.'),
+        tbl('Thông tin điền vào mẫu', 'tron', [['truong', 'Trường'], ['giaTri', 'Giá trị'], ['nguon', 'Nguồn']]),
         tbl('Phụ lục 1 — Giá, danh mục hàng hoá', 'items', [['ten', 'Hàng hoá / dịch vụ'], ['dvt', 'Đơn vị tính'], ['sl', 'Số lượng'], ['gia', 'Đơn giá (tỷ đồng)'], ['tien', 'Thành tiền (tỷ đồng)']]),
         ta('hdGhiChuBody', 'Ghi chú body hợp đồng')] }),
-      notes: () => ['<b>Giả lập P-119</b>: chọn mẫu tay từ danh sách, không dùng ngưỡng giá trị (DG-MS22 §D 2: 45 tỷ chỉ là ví dụ). <b>Giả lập P-126</b>: mã văn bản tạm.'],
-      write: (v) => pick(v, ['hdMau', 'hdGhiChuBody']) },
+      notes: () => ['<b>T67 H3</b>: mẫu lấy từ HSMT / HSYC của gói thầu (danh mục Mẫu hợp đồng, BM-HD-2026), chỉ xem — bỏ ô chọn 3 mẫu tự đặt (P-119 phần nguồn mẫu đã có). Bảng Thông tin điền vào mẫu = trường trộn của mẫu và nguồn dữ liệu (T66 §3); trường chưa có giá trị ghi "Chưa có dữ liệu", hồ sơ vẫn đi tiếp. Thư trao hợp đồng: MS19 chưa có bước phát hành (❓ P-236). <b>Giả lập P-126</b>: mã văn bản tạm.'],
+      write: (v) => pick(v, ['hdGhiChuBody']) },
     4: { id: 'dtms-ms22-t04-thuong-thao', outputs: () => ['HD-DT'],
       schema: () => ({ components: [head(),
         txt('Gửi dự thảo và phụ lục cho nhà thầu qua email, thương thảo rồi ghi lại kết quả.'),
         ta('hdThongNhat', 'Nội dung đã thống nhất', req()),
+        tf('hdDaiDien', 'Người đại diện nhà thầu', req({ layout: { columns: 8 } })), tf('hdChucVu', 'Chức vụ người đại diện', req({ layout: { columns: 8 } })),
         num('hdBaoHanh', 'Bảo hành lò hàn đối lưu theo kết quả thương thảo (tháng)', req({ validate: { required: true, min: 1, max: 120 } })),
         txt('HSMT yêu cầu tối thiểu **{{baoHanhMin}} tháng**.')] }),
       notes: () => ['Biên bản thương thảo ký, đóng dấu tải lên ở Danh sách tài liệu (bắt buộc). Hoàn thành → service task 5: AI đối chiếu dự thảo với HSMT.'],
-      write: (v) => Object.assign(pick(v, ['hdThongNhat']), { hdWarranty: Number(v.hdBaoHanh) }) },
+      write: (v) => Object.assign(pick(v, ['hdThongNhat', 'hdDaiDien', 'hdChucVu']), { hdWarranty: Number(v.hdBaoHanh) }) },
     6: { id: 'dtms-ms22-t06-lam-viec-lai', q: ['P-127', 'P-128'], outputs: () => ['HD-DT'],
       schema: () => ({ components: [head(), aiResult(), issues(),
         ta('hdThongNhatLai', 'Nội dung đã thống nhất lại qua email', req()),
@@ -107,8 +109,19 @@
   function vars(tok) {
     const h = hd(), u = Flow.ui, k = window.HopDong.kit(), g = window.HopDong.pkgOf(h), ai = Flow.state.vars.aiHd;
     const rows = u.hdRows || (h.items || []).map((r, i) => ({ ten: r[0], dvt: r[1], sl: r[2], maHang: 'VT-' + String(10201 + i) }));
-    const w = warranty();
-    return Object.assign({}, u, { hdRows: rows, baoHanhMin: D.hdWarrantyMin, hdBaoHanh: w,
+    const w = warranty(), m = mauOf(h) || {}, n = D.nccOf(h.ncc) || {}, none = 'Chưa có dữ liệu', vat = h.vat || 10;
+    const pre = Math.round((h.value / (1 + vat / 100)) * 1000) / 1000, tax = Math.round((h.value - pre) * 1000) / 1000, inW = window.UI.inWords;
+    /* Trường trộn của mẫu (T66 §3) → nguồn dữ liệu. Người đại diện / chức vụ nhà thầu nhập ở bước 4 (H-Q5 = B). */
+    const tron = [['so_hop_dong', at(13) ? (u.hdSo || '') : 'Chưa cấp số (cấp ở bước 13)', 'Hợp đồng — bước 13'], ['so_goi_thau, ten_goi_thau', `${h.pkg || ''} — ${(g && g.name) || ''}`, 'Gói thầu'],
+      ['so_qd_phe_duyet_kqlcnt', g && g.kq ? `${g.kq[0]} ngày ${g.kq[1]}` : none, 'Gói thầu — KQLCNT'], ['so_thu_trao_hd', none, 'Thư trao hợp đồng (MS19 chưa có bước)'],
+      ['ngay_bb_thuong_thao_hd_short', at(4) || none, 'Bước 4 — biên bản thương thảo'], ['ten_doi_tac_viet_hoa', (n.name || k.nccName(h.ncc) || '').toUpperCase(), 'Danh mục Nhà cung cấp'],
+      ['dia_chi_doi_tac', n.address || none, 'Danh mục Nhà cung cấp'], ['ma_so_thue_doi_tac', n.tax || n.taxCode || none, 'Danh mục Nhà cung cấp'],
+      ['nguoi_dai_dien_doi_tac, chuc_vu', u.hdDaiDien ? `${u.hdDaiDien} — ${u.hdChucVu || ''}` : none, 'Bước 4 — thương thảo'], ['loai_hop_dong', k.cat('loai-hop-dong', h.type), 'Gói thầu'],
+      ['gia_tri_hd_chua_thue_bang_so', window.UI.ty(pre, 3) + ' tỷ đồng', 'Hợp đồng'], ['thue_bang_so', window.UI.ty(tax, 3) + ' tỷ đồng', 'Hợp đồng — thuế GTGT ' + vat + '%'],
+      ['gia_tri_hd_bao_gom_thue_bang_chu', inW ? inW(h.value) : '', 'Hợp đồng (:words_vn)'], ['thoi_gian_bao_hanh', w + ' tháng', 'Bước 4 — thương thảo']]
+      .map(([truong, giaTri, nguon]) => ({ truong, giaTri, nguon }));
+    return Object.assign({}, u, { hdRows: rows, baoHanhMin: D.hdWarrantyMin, hdBaoHanh: w, tron, mau: { ten: m.code ? `${m.code} — ${m.name}` : '-', tt: m.tt || '-' },
+      hdDaiDien: u.hdDaiDien || 'Giám đốc theo đăng ký kinh doanh', hdChucVu: u.hdChucVu || 'Giám đốc',
       hdSo: u.hdSo || `${h.code.slice(-3)}/2026/HĐMB-VHT`, hdNgayKy: u.hdNgayKy || Flow.dateOf(Flow.state.clock),
       hd: { code: h.code, ten: h.title, ncc: k.nccName(h.ncc), gia: h.value, goi: h.pkg, kq: g && g.kq ? `${g.kq[0]} ngày ${g.kq[1]}` : '', loai: k.cat('loai-hop-dong', h.type), thoiGian: h.exec,
         tamDung: h.held || '', dangTamDung: !!h.held, hinhThuc: Flow.state.vars.hdSign === 'GIAY' ? 'Ký cứng, gửi lại bản giấy đã đóng dấu' : 'VContract' },
@@ -133,7 +146,9 @@
     if (!d) return null;
     const h = hd(), u = Flow.ui, esc = window.UI.esc, k = window.HopDong.kit();
     const body = { 'HD-PLKT': `<p>Yêu cầu kỹ thuật: ${esc(u.hdYeuCau || '')}</p><p>Tiêu chuẩn nghiệm thu: ${esc(u.hdNghiemThu || '')}</p><p>SLA: ${esc(u.hdSla || '-')}</p><p>Tiến độ bàn giao: ${esc(u.hdTienDo || '')}</p>`,
-      'HD-BODY': `<p>Mẫu: ${esc(u.hdMau || '')}</p><p>Bên mua: Tổng công ty Công nghiệp Công nghệ cao Viettel. Bên bán: ${esc(k.nccName(h.ncc))}.</p>`,
+      'HD-BODY': ((v) => `<p><i>Mẫu ${esc(v.mau.ten)} — phương thức thanh toán ${esc(v.mau.tt)}</i></p>`
+        + v.tron.map((r) => `<p><b>${esc(r.truong)}:</b> ${esc(r.giaTri)}</p>`).join('')
+        + '<p>Bên Mua: Viettel High Tech – Chi nhánh Tập đoàn Công nghiệp – Viễn thông Quân đội (theo mẫu, đại diện theo Giấy ủy quyền 1419/GUQ-CNVTQĐ).</p><p>… (các điều còn lại theo mẫu)</p>')(vars(null)),
       'HD-PL1': `<p>Giá trị hợp đồng ${window.UI.ty(h.value, 2)} tỷ đồng, gồm thuế GTGT ${h.vat}%.</p>`,
       'HD-DT': `<p>Phiên bản v${version()}. Bảo hành lò hàn đối lưu ${warranty()} tháng kể từ ngày nghiệm thu.</p><p>Thời gian thực hiện: ${esc(h.exec || '')}.</p>`,
       'HD-KY': `<p>Số hợp đồng: ${esc(u.hdSo || '')}. Ngày ký: ${esc(u.hdNgayKy || '')}.</p>` }[code];

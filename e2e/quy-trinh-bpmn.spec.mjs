@@ -43,16 +43,16 @@ test('SCR-41: bố cục theo workflow-management — nút đồng bộ, lọc, 
   await expect(page.locator('[data-vsel="wf-st"]')).toContainText('Trạng thái');
   await expect(page.locator('#wf-kw')).toHaveAttribute('placeholder', 'Tìm kiếm theo mã, tên quy trình');
   await expect(page.locator('.vtt th')).toHaveText(['STT', 'Mã quy trình', 'Mã Camunda', 'Tên quy trình', 'Trạng thái', 'Phiên bản', 'SL hồ sơ đang xử lý']);
-  // T29 B1 (D-54, thay P-37): MS01 một quy trình.
-  await expect(rows(page)).toHaveCount(4);
-  await expect(rows(page).locator('td:nth-child(3)')).toHaveText(['DTMS_MS01', 'DTMS_MS02', 'DTMS_MS13', 'DTMS_MS14']);
+  // T29 B1 (D-54, thay P-37): MS01 một quy trình. T67 T1 (D-118): thêm MS18, MS19.
+  await expect(rows(page)).toHaveCount(6);
+  await expect(rows(page).locator('td:nth-child(3)')).toHaveText(['DTMS_MS01', 'DTMS_MS02', 'DTMS_MS13', 'DTMS_MS14', 'DTMS_MS18', 'DTMS_MS19']);
   await expect(rows(page).first().locator('td:nth-child(4)')).toHaveText('Phê duyệt đề xuất mua sắm');
   // Dòng cha: Mã quy trình "-", không badge, không liên kết.
   await expect(rows(page).first().locator('td:nth-child(2) .vtt-c')).toHaveText('-');
   await expect(page.locator('.vtt tbody .vbadge, .vtt tbody a.link')).toHaveCount(0);
   await page.locator('[data-vtt-key="DTMS_MS01"]').click();
-  await expect(rows(page)).toHaveCount(6);
-  await expect(rows(page).locator('td.ord')).toHaveText(['1', '1.1', '1.2', '2', '3', '4']);
+  await expect(rows(page)).toHaveCount(8);
+  await expect(rows(page).locator('td.ord')).toHaveText(['1', '1.1', '1.2', '2', '3', '4', '5', '6']);
   const kids = page.locator('.vtt tbody tr.child');
   await expect(kids.locator('.vbadge')).toHaveText(['Hoạt động', 'Dừng hoạt động']);
   await expect(kids.locator('a.link')).toHaveText(['MS01', 'MS01']);
@@ -62,7 +62,7 @@ test('SCR-41: bố cục theo workflow-management — nút đồng bộ, lọc, 
   expect(n).toBeGreaterThan(0);
   await expect(kids.first().locator('td:nth-child(7)')).toHaveText(String(n));
   await page.locator('[data-vtt-key="DTMS_MS01"]').click();
-  await expect(rows(page)).toHaveCount(4);
+  await expect(rows(page)).toHaveCount(6);
   expect(await mainText(page)).not.toMatch(BA);
   expect(page.errors).toEqual([]);
 });

@@ -38,55 +38,22 @@ test('B19: mỗi khối có nút Gợi ý từ AI riêng → popup chỉ trả t
   await expect(page.locator('[data-lf-basic]')).toHaveCount(0);
   await expect(page.locator('[data-lf-ai-sec]')).toHaveCount(0);
   await step1(page, false);
-  // Chọn đề tài: AI chưa chạy — mỗi khối một nút Gợi ý từ AI.
-  await expect(page.locator('[data-lf-cost] [data-lf-ai-sec="boc"]')).toHaveText('✦ Gợi ý từ AI');
+  // T72 #83 (D-122 Q4): khối Căn cứ không còn nút AI — chọn đề tài thì hệ thống bóc tách và điền bảng ngay.
+  await expect(page.locator('[data-lf-cost] [data-lf-ai-sec="boc"]')).toHaveCount(0);
   await expect(page.locator('[data-lf-ai-sec="basic"]')).toHaveCount(0);
   // Nhóm mục đích, Nguồn vốn điền sẵn theo đề tài / dự án (Loại KHCN, nguồn vốn của đề tài).
   await expect(page.locator('[data-lf-chung] [data-vsel="lf-purpose"]')).toContainText('Triển khai các hoạt động KHCN');
   await expect(page.locator('[data-lf-chung] [data-lf-ai-sec="chung"]')).toHaveCount(1);
   await expect(page.locator('[data-lf-basis] [data-lf-ai-sec="legal"]')).toHaveCount(1);
-  // Bóc tách và đối chiếu nằm trong khối Căn cứ (bước 1).
-  await expect(page.locator('[data-lf-cost] [data-lf-boc] h4')).toContainText('Bóc tách và đối chiếu');
-  await expect(page.locator('[data-lf-boc] .lf-empty')).toContainText('Gợi ý từ AI');
-  await page.locator('#lf-save').click();
-  await expect(page.locator('[data-lf-boc] .lf-err')).toContainText('khối Căn cứ và nội dung mua sắm');
-  // Khối Căn cứ → popup chỉ có bước 2 + bảng Bóc tách và đối chiếu; Hủy thì màn giữ nguyên.
-  const pop = page.locator('[data-lf-ai-pop]');
-  await page.locator('[data-lf-ai-sec="boc"]').click();
-  await expect(pop).toContainText('Bước 2 · AI đã lấy dữ liệu căn cứ');
-  await expect(pop).toContainText('Dự toán NV-KHCN-2026-014');
-  await expect(pop.locator('[data-lf-pop-item]')).toHaveCount(5);
-  await expect(pop.locator('[data-lf-pop-row]')).toHaveCount(0);
-  await page.locator('.vmodal [data-close]').last().click();
-  await expect(pop).toHaveCount(0);
-  await expect(page.locator('[data-lf-boc] .lf-empty')).toContainText('Gợi ý từ AI');
-  await page.locator('[data-lf-ai-sec="boc"]').click();
-  // Góp ý 06/11: AI ghép hàng hoá vào khoản mục dự toán → điền vào bảng Loại chi phí khi Áp dụng.
-  await expect(pop.locator('[data-lf-pop-line="1"]')).toContainText('Thiết bị, máy đo chuyên dụng');
-  await expect(pop.locator('[data-lf-pop-line="5"]')).toContainText('Đào tạo, chuyển giao công nghệ');
-  await expect(pop.locator('[data-lf-pop-cost]')).toHaveCount(2);
-  await expect(page.locator('[data-lf-citem]')).toHaveCount(0);
-  await pop.locator('[data-lf-pop-ion="5"]').uncheck();
-  await page.locator('[data-lf-ai-apply]').click();
-  expect(await lastToast(page)).toContain('Bóc tách và đối chiếu: 4 / 5 hạng mục, 1 khoản mục vào bảng Loại chi phí');
-  await expect(page.locator('[data-lf-citem]')).toHaveCount(1);
+  await expect(page.locator('[data-lf-cost] [data-lf-boc] h4')).toContainText('Đối chiếu căn cứ');
+  await expect(page.locator('[data-lf-boc-sum]')).toContainText('Hệ thống đã đối chiếu 5 / 5 hạng mục');
+  await expect(page.locator('[data-lf-citem]')).toHaveCount(2);
   await expect(page.locator('[data-lf-citem]').first()).toContainText('Thiết bị, máy đo chuyên dụng');
   await expect(page.locator('[data-lf-cqty]').first()).not.toHaveValue('');
   await expect(page.locator('[data-lf-cval]').first()).not.toHaveValue('');
-  // Gợi ý lại có hạng mục 5 → thêm khoản mục Đào tạo, giữ dòng Thiết bị (không nhân đôi).
-  await page.locator('[data-lf-ai-sec="boc"]').click();
-  await pop.locator('[data-lf-pop-ion="5"]').check();
-  await page.locator('[data-lf-ai-apply]').click();
-  await expect(page.locator('[data-lf-citem]')).toHaveCount(2);
-  await page.locator('[data-lf-ai-sec="boc"]').click();
-  await pop.locator('[data-lf-pop-ion="5"]').uncheck();
-  await page.locator('[data-lf-ai-apply]').click();
-  await expect(page.locator('[data-lf-citem]')).toHaveCount(1);
-  await expect(page.locator('[data-lf-boc] [data-lf-ai2]')).toContainText('AI đã lấy dữ liệu căn cứ');
-  // Màn không còn bảng bóc tách — chỉ dòng tóm tắt; kết quả nằm ở bảng Loại chi phí.
-  await expect(page.locator('[data-lf-boc-sum]')).toContainText('Đã áp dụng 4 / 5 hạng mục');
   await expect(page.locator('[data-lf-boc] table')).toHaveCount(0);
-  await expect(page.locator('[data-lf-ai-sec="boc"]')).toHaveText('✦ Gợi ý lại');
+  await expect(page.locator('[data-lf-boc] [data-lf-ai2]')).toHaveCount(0);
+  const pop = page.locator('[data-lf-ai-pop]');
   // Khối Thông tin chung → Tên luồng, Giá trị dự kiến, Thời gian thực hiện, Nhóm mục đích, Nguồn vốn (review nhi 06/11 #1).
   await page.locator('[data-lf-ai-sec="chung"]').click();
   await expect(pop.locator('[data-lf-pop-row]')).toHaveCount(5);
@@ -106,41 +73,22 @@ test('B19: mỗi khối có nút Gợi ý từ AI riêng → popup chỉ trả t
   expect(page.errors).toEqual([]);
 });
 
-test('B19: đổi đề tài sau khi đã gợi ý → khối Căn cứ báo đã đổi, chặn Gửi; Gợi ý lại thì gửi được', async ({ page }) => {
+test('B19 + T72 #83: đổi đề tài → hệ thống bóc tách lại theo đề tài mới, không chặn Gửi vì AI', async ({ page }) => {
   await gop(page, '#/luong/create');
   await step1(page);
   await page.locator('[data-vsel="lf-nv"]').click();
   await page.locator('.vsel-panel [data-opt]:not([data-opt="NV-KHCN-2026-014"])').first().click();
-  await expect(page.locator('[data-lf-boc]')).toContainText('Đề tài / dự án đã đổi');
+  await expect(page.locator('[data-lf-boc]')).not.toContainText('Đề tài / dự án đã đổi');
+  await expect(page.locator('[data-lf-boc-sum]')).toContainText('Hệ thống đã đối chiếu');
   await page.locator('#lf-save').click();
-  await expect(page.locator('[data-lf-boc] .lf-err')).toContainText('bấm Gợi ý lại ở khối Căn cứ');
-  await page.locator('[data-lf-ai-sec="boc"]').click();
-  await page.locator('[data-lf-ai-apply]').click();
-  await expect(page.locator('[data-lf-boc] [data-lf-ai2]')).toContainText('AI đã lấy dữ liệu căn cứ');
   await expect(page.locator('[data-lf-boc] .lf-err')).toHaveCount(0);
   expect(page.errors).toEqual([]);
 });
 
-test('B19: AI bước 6 đối chiếu từng dòng bóc tách trong popup; vượt số còn được dùng không Áp dụng được; Gửi xong bước 01–05 → 5.1', async ({ page }) => {
+test('B19 + T72 #83: hệ thống bóc tách đủ hạng mục của căn cứ; Gửi xong bước 01–05 → 5.1', async ({ page }) => {
   await gop(page, '#/luong/create');
   await step1(page, false);
-  await page.locator('[data-lf-ai-sec="boc"]').click();
-  const pop = page.locator('[data-lf-ai-pop]');
-  await expect(pop.locator('[data-lf-pop-item]')).toHaveCount(5);
-  // Dòng 1: SL gốc 24, đã dùng 4 → còn được dùng 20; dòng 4 có tồn kho sổ sách 8, đang giữ 2.
-  await expect(pop.locator('[data-lf-pop-item="1"]')).toContainText('ĐXMS-2026-0042');
-  await expect(pop.locator('[data-lf-pop-item="4"]')).toContainText('Có tồn kho sổ sách 8');
-  await expect(pop.locator('[data-lf-pop-item="4"]')).toContainText('2 (ĐXMS-2026-0098)');
-  await expect(pop.locator('[data-lf-pop-item="5"]')).toContainText('không có trong dự toán');
-  await pop.locator('[data-lf-pop-q="1"]').fill('25');
-  await page.locator('[data-lf-ai-apply]').click();
-  await expect(pop.locator('[data-lf-pop-err="1"]')).toHaveText('Vượt số còn được dùng (20).');
-  await expect(pop.locator('[data-lf-pop-msg]')).toContainText('Còn 1 hạng mục chưa hợp lệ');
-  await pop.locator('[data-lf-pop-q="1"]').fill('20');
-  await pop.locator('[data-lf-pop-ion="5"]').uncheck();
-  await page.locator('[data-lf-ai-apply]').click();
-  await expect(pop).toHaveCount(0);
-  await expect(page.locator('[data-lf-boc-sum]')).toContainText('4 / 5');
+  await expect(page.locator('[data-lf-boc-sum]')).toContainText('5 / 5');
   await expect(page.locator('[data-lf-boc-sum]')).toContainText('1 hạng mục có tồn kho sổ sách');
   await aiApply(page, ['basic']);
   await page.locator('#lf-save').click();
@@ -148,13 +96,12 @@ test('B19: AI bước 6 đối chiếu từng dòng bóc tách trong popup; vư�
   expect(await lastToast(page)).toContain('xong bước 01–05');
   const st = await page.evaluate(() => ({
     hist: Flow.state.history.map((h) => String(h.task)), tok: Flow.state.tokens.map((t) => String(t.task)),
-    ai: Flow.ui.aiGoiY.map((r) => r.quyetDinh), drop: Flow.ui.bocTachEdit.drop, items: D.items.map((i) => i.n), proc: Flow.state.vars.process,
+    ai: Flow.ui.aiGoiY.map((r) => r.quyetDinh), items: D.items.map((i) => i.n),
   }));
   for (const k of ['1', '2', '3', '4', '5']) expect(st.hist).toContain(k);
   expect(st.tok).toEqual(['5.1']);
   expect(st.ai.every((d) => d === 'Chấp nhận')).toBe(true);
-  expect(st.drop).toEqual([5]);
-  expect(st.items).toEqual([1, 2, 3, 4]);
+  expect(st.items).toEqual([1, 2, 3, 4, 5]);
   expect(page.errors).toEqual([]);
 });
 

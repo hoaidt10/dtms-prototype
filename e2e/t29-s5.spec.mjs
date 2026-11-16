@@ -160,6 +160,8 @@ test('SCR-96 cách 1 + T29 B12: Loại biểu mẫu / Cấp phê duyệt trống
   await page.locator('#lf-est').blur();
   // [T56 ẩn Loại biểu mẫu] #lf-d-form = 'ĐXMS có giá trị nhóm B trở lên'
   await expect(page.locator('#lf-d-level')).toHaveValue('Tập đoàn');
+  // T72 #83 (D-122 Q4): hệ thống đã bóc tách sẵn khi chọn đề tài — xoá các dòng đó để test tự thêm.
+  while (await page.locator('[data-lf-cdel]').count()) await page.locator('[data-lf-cdel]').first().click();
   await pick(page, 'lf-ctype', 'PL2');
   await pick(page, 'lf-cline', 'NV-KHCN-2026-014-1');
   await page.locator('[data-lf-cadd]').click();

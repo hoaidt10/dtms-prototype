@@ -36,7 +36,8 @@ test('MS24 đủ hai tuyến ký 4 cấp qua eForm; tab Thanh toán, SAP, tổng
   await pickSet(page);
   const main = page.locator('.main');
   await expect(main).toContainText('Kế hoạch thanh toán');
-  await expect(main).toContainText('Giữ lại bảo hành');
+  // T67 H4: kế hoạch theo phương thức thanh toán của mẫu 1.6 (10 / 30 / 60).
+  await expect(main).toContainText('Theo phương thức thanh toán của mẫu hợp đồng');
   expect(await main.innerText()).not.toMatch(BA);
   await create(page);
   expect(await main.innerText()).not.toMatch(BA);
@@ -55,7 +56,7 @@ test('MS24 đủ hai tuyến ký 4 cấp qua eForm; tab Thanh toán, SAP, tổng
   // Bước 2
   await openTask(page, 'phd', 2);
   await act(page, 'Đủ căn cứ thanh toán');
-  await expect(page.locator('.vmodal')).toContainText('38,24');
+  await expect(page.locator('.vmodal')).toContainText('19,12');
   await ok(page);
   await done(page);
   // Bước 5 → AI lập bảng tổng hợp
@@ -109,7 +110,7 @@ test('MS24 đủ hai tuyến ký 4 cấp qua eForm; tab Thanh toán, SAP, tổng
   const row = page.locator('.vtable tbody tr', { hasText: CASE });
   await expect(row).toContainText('Đã thanh toán');
   await expect(row).toContainText('Đã đồng bộ');
-  await expect(main).toContainText('38,24');
+  await expect(main).toContainText('19,12');
   expect(await main.innerText()).not.toMatch(BA);
   // Hết đợt đủ điều kiện: nút biến mất cho tới khi có mốc
   await as(page, 'phd');
@@ -141,7 +142,7 @@ test('MS24: đợt theo điều kiện mốc — có biên bản bàn giao mới
   await page.locator('[data-hd-pay]').click();
   await page.locator('[data-vsel="pay-dot"]').click();
   await page.locator('.vsel-panel [data-opt]', { hasText: 'Thanh toán đợt 1' }).click();
-  await expect(page.locator('.vmodal input.vctl').nth(1)).toHaveValue(/^116,6/);
+  await expect(page.locator('.vmodal input.vctl').nth(1)).toHaveValue(/^76,48/);
   await page.locator('.vmodal #pay-ok').click();
   await expect(page).toHaveURL(/#\/task\/HSTT-2026-0052-01:k/);
   const r = await page.evaluate(() => [Flow.state.name, Flow.dateOf(Flow.state.clock), Flow.caseOf('HSTD-2026-0052').vars.track.ms[0].actual]);

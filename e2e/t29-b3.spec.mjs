@@ -6,7 +6,8 @@ import { fresh, openForm, lastToast, aiApply } from './helpers.mjs';
 const ed = (page) => page.locator('[data-rsk-ed]');
 const cell = (page, n, k) => ed(page).locator(`[data-rsk-in="${n}:${k}"]`);
 // T59 Q8: biên bản kiểm đếm có ký là ô riêng (#rsk-sign); Tệp kết quả Excel ở #rsk-file.
-const upload = (page) => page.locator('#rsk-sign').setInputFiles({ name: 'Bien-ban-kiem-dem.pdf', mimeType: 'application/pdf', buffer: Buffer.alloc(16) });
+// T72 #78 (D-122 Q2): bỏ ô Biên bản kiểm đếm có ký — trước: tải #rsk-sign.
+const upload = async () => {};
 const asPersona = (page, pid, hash) => page.evaluate(([p, h]) => { Flow.setPersona(p); location.hash = h; }, [pid, hash]);
 
 // T59 (D-114 Q4, Q8, Q9): không còn màn riêng SCR-105 — Kho nhập trên tab Rà soát tồn kho của màn việc bước 7; Gửi Chỉ huy Kho là nút đóng việc
@@ -40,7 +41,7 @@ test('Kho (T59 Q4): việc bước 7 mở tab Rà soát tồn kho chế độ nh
   const send = () => page.locator('.task-acts [data-act]', { hasText: 'Gửi Chỉ huy Kho' }).click();
   await send();
   // Khả dụng dòng 4 = 8 − 2 (đang giữ cho ĐXMS-2026-0098) → xuất 7 bị chặn; thiếu hai tệp.
-  await expect(ed(page).locator('.msg')).toHaveText(['Vui lòng tải lên Tệp kết quả.', 'Vui lòng tải lên Biên bản kiểm đếm có ký.', 'SL xuất kho không được lớn hơn tồn khả dụng (6).']);
+  await expect(ed(page).locator('.msg')).toHaveText(['Vui lòng tải lên Tệp kết quả.', 'SL xuất kho không được lớn hơn tồn khả dụng (6).']);
   expect(await page.evaluate(() => Flow.state.tokens.map((t) => String(t.task)))).toEqual(['7']);
   await cell(page, 4, 'out').fill('6');
   await cell(page, 4, 'out').blur();
@@ -208,8 +209,8 @@ test('Rà soát tồn kho: Hợp đồng đầu vào là nhóm con của Kết q
   await expect(rowsH.nth(0)).not.toContainText('Hợp đồng đầu vào');
   await expect(rowsH.nth(1).locator('th', { hasText: 'Hợp đồng đầu vào' })).toHaveAttribute('colspan', '5');
   await expect(rowsH.nth(2).locator('th')).toHaveText(['Nguyên giá (VNĐ)', 'Thuế GTGT', 'Số hợp đồng', 'Nguồn gốc Đề tài / Dự án', 'Đơn giá nhận (VNĐ)']);
-  // Hai ô tệp nằm trên bảng.
-  await expect(box.locator('.rsk-up')).toHaveCount(2);
+  // Ô Tệp kết quả nằm trên bảng (T72 #78: bỏ ô Biên bản kiểm đếm).
+  await expect(box.locator('.rsk-up')).toHaveCount(1);
   const yUp = (await box.locator('.rsk-ups').boundingBox()).y, yTb = (await box.locator('table').boundingBox()).y;
   expect(yUp).toBeLessThan(yTb);
   await page.locator('#rsk-file').setInputFiles({ name: 'Ket-qua-ra-soat.xlsx', mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', buffer: Buffer.alloc(16) });

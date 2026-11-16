@@ -298,7 +298,7 @@
       + (stop ? card('Chỉ đạo dừng / bàn giao xử lý', `<div class="ginfo c3">${kv('Hồ sơ', `<a class="link-red" href="#/${caseHref(stop)}">${esc(stop.code)}</a>`)}${kv('Ngày', esc(stop.updated))}${kv('Người chỉ đạo', 'Thủ trưởng VHT')}
           ${kv('Nội dung chỉ đạo', 'Không ký chủ trương; dừng KĐT do nhu cầu đã được đáp ứng bằng thiết bị điều chuyển nội bộ. Bàn giao ' + esc(x.unit) + ' rà soát lại nhu cầu năm 2027.', 'span3')}</div>`) : '')
       + card('Triển khai mua sắm', Y.table([['Mã KHLCNT', 170], ['Tên KHLCNT', 360], ['Số gói thầu', 110, 'c'], ['Trạng thái', 200, 'c']], plans,
-        (k, i) => `${Y.ord(i)}<td><a class="link" data-go="khlcnt/${encodeURIComponent(k.code)}">${esc(k.code)}</a></td><td>${clamp(k.title)}</td><td class="c">${window.Thau.pkgsOf(k).length}</td><td class="c">${badge(...window.Thau.KH_ST[k.st])}</td>`),
+        (k, i) => `${Y.ord(i)}<td><a class="link" data-go="khlcnt/${encodeURIComponent(k.code)}">${esc(k.code)}</a></td><td>${clamp(k.title)}</td><td class="c">${window.Thau.pkgsOf(k).length}</td><td class="c">${badge(...window.Thau.khStLabel(k))}</td>`),
         kdDone ? 'BM-18 / BM-00 là căn cứ lập kế hoạch lựa chọn nhà thầu' : 'Lập KHLCNT sau khi KĐT được phê duyệt');
   }
 
@@ -324,10 +324,12 @@
     const dl = (name, label) => `<button type="button" class="vbtn icon ghost" aria-label="${label}" title="${label}" data-dl="${esc(name)}">${icon(label === 'Tải xuống PDF' ? 'file' : 'download')}</button>`;
     const pdf = (name) => String(name).replace(/\.(docx?|xlsx?|pdf)$/i, '') + '.pdf';
     const hsCells = (c) => `<td><a class="link" data-go="${caseHref(c)}">${esc(c.code)}</a></td><td>${esc(kindText(c))}</td>`;
-    return card('Văn bản đầu ra', Y.table([['Thao tác', 100, 'c'], ['Văn bản', 300], ['Hồ sơ', 150], ['Loại hồ sơ', 200], ['Trạng thái', 130, 'c'], ['Ngày', 110]], outs,
-        (r, i) => `${Y.ord(i)}<td class="c"><div class="acts">${dl(r.name, 'Tải xuống')}<span class="sep"></span>${dl(pdf(r.name), 'Tải xuống PDF')}</div></td>
+    /* [T72 #80, #81, D-122 Q3] như Chi tiết ĐXMS: bỏ cột Trạng thái và nút Tải xuống PDF (dl(pdf(r.name), …)); giữ Hồ sơ, Loại hồ sơ vì KĐT có hai hồ sơ. */
+    void pdf;
+    return card('Văn bản đầu ra', Y.table([['Thao tác', 100, 'c'], ['Văn bản', 300], ['Hồ sơ', 150], ['Loại hồ sơ', 200], ['Ngày', 110]], outs,
+        (r, i) => `${Y.ord(i)}<td class="c"><div class="acts">${dl(r.name, 'Tải xuống')}</div></td>
           <td><button type="button" class="link-btn" data-preview-doc="${esc(r.name)}|${esc(r.at)}|${esc(r.c.code)}">${esc(r.name)}</button></td>${hsCells(r.c)}
-          <td class="c">${badge(r.st || 'Hoàn thành', (r.st || 'Hoàn thành') === 'Hoàn thành' ? 'success' : 'info')}</td><td class="num">${esc(r.at || '')}</td>`))
+          <td class="num">${esc(r.at || '')}</td>`))
       + card('Danh sách tài liệu', Y.table([['Thao tác', 100, 'c'], ['Tên tài liệu', 300], ['Hồ sơ', 150], ['Loại hồ sơ', 200], ['Ngày tạo', 110]], files,
         (r, i) => `${Y.ord(i)}<td class="c">${dl(r.name, 'Tải xuống')}</td><td>${clamp(r.name)}</td>${hsCells(r.c)}<td class="num">${esc(r.at || '')}</td>`))
       + window.TrinhKy.block(x.code, { pad: true });

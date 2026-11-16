@@ -233,7 +233,7 @@
      (thay "cảnh báo, không chặn" của BR-DXMS-02-04 / T29 S8). */
   function costOver(r) {
     const l = costLine(r.line) || {}, a = availOf(l), q = estNum(r.qty), n = dongIn(r.value);
-    return { qty: q != null && !Number.isNaN(q) && a.qty != null && q > a.qty ? `Vượt khối lượng còn lại (${a.qty}${l.uom ? ' ' + l.uom : ''}).` : '',
+    return { qty: q != null && !Number.isNaN(q) && a.qty != null && q > a.qty ? `Vượt số lượng còn được mua (${a.qty}${l.uom ? ' ' + l.uom : ''}).` : '',
       val: n != null && !Number.isNaN(n) && n > a.value && n <= l.value ? `Vượt giá trị còn lại khả dụng (${dong(a.value)} đồng).` : '' };
   }
   function costWarn(r) { const o = costOver(r); return [o.qty, o.val].filter(Boolean).join(' '); }
@@ -242,33 +242,38 @@
     /* T29 B12 (RV-PROTO-0511 #11, Huylx4 #2, #10): Đề tài / dự án là trường đầu tiên của màn, khối bóc tách chi phí ngay sau, trước Thông tin chung. */
     const nvSel = `<div class="grid3">${field('Đề tài / dự án', vSelect({ id: 'lf-nv', value: nv, searchable: true, placeholder: 'Chọn đề tài / dự án', invalid: !!LF.err.nv, disabled: isAdj(),
       options: D.nhiemVu.map((n) => ({ value: n.code, label: `${n.code} — ${n.name} (${n.kind})` })),
-      onChange: upd((x) => { LF.v.nv = x; delete LF.err.nv; nvDefaults(x); if (!LF.dotTouched) LF.v.dot = S5().nextDot(x); LF.cost = []; LF.pick = { type: null, line: null }; delete LF.err.cost; LF.add = []; LF.addPick = { line: null }; }) }),
+      onChange: upd((x) => { LF.v.nv = x; delete LF.err.nv; nvDefaults(x); if (!LF.dotTouched) LF.v.dot = S5().nextDot(x); LF.cost = []; LF.pick = { type: null, line: null }; delete LF.err.cost; LF.add = []; LF.addPick = { line: null }; sysBoc(x); }) }),
     { req: true, err: LF.err.nv, cls: 'span3' })}</div>`;
     /* [T37 RV-PROTO-0911 #4] bỏ khối Văn bản căn cứ và giá trị còn khả dụng — trước: ${LF.edit && Flow.token(LF.edit.tok) ? window.Screens.basisAvail(Flow.token(LF.edit.tok)) : ''} sau grid Đề tài / dự án. */
-    const head = `<div class="vcard-h"><h3>${stepTag(1)}Căn cứ và nội dung mua sắm — Thông tin dự án / đề tài</h3><div class="row">${nv && ent.loai !== 'KHCN' ? `<span class="cap">Dự toán tham khảo — căn cứ của loại ${esc(ent.loai)} là tài liệu căn cứ đính kèm</span>` : ''}${nv ? aiBtn('boc', !!LF.aiBoc) : ''}</div></div>${nvSel}`;
+    /* [T72 #83, D-122 Q4] bỏ nút ✦ Gợi ý từ AI của khối (trước: ${nv ? aiBtn('boc', !!LF.aiBoc) : ''} cuối .row) — hệ thống tự bóc tách khi chọn Đề tài / dự án (sysBoc).
+       [T72 #75, Q9] tên khối "… — Bóc tách hạng mục" (trước "… — Thông tin dự án / đề tài"). */
+    const head = `<div class="vcard-h"><h3>${stepTag(1)}Căn cứ và nội dung mua sắm — Bóc tách hạng mục</h3><div class="row">${nv && ent.loai !== 'KHCN' ? `<span class="cap">Dự toán tham khảo — căn cứ của loại ${esc(ent.loai)} là tài liệu căn cứ đính kèm</span>` : ''}</div></div>${nvSel}`;
     if (!nv) return `<section class="vcard" data-lf-cost>${head}<div class="lf-empty">Chọn Đề tài / dự án để bóc tách chi phí từ dự toán.</div></section>`;
     /* YC-DXMS-PROTO §3.1: chỉ khoản mục TTMS đã tích Chi mua sắm và còn khả dụng. */
     /* Góp ý 05/11: khoản mục TTMS đặt Hoàn thành không bóc tách thêm (GIẢ LẬP P-203). */
     const lines = all.filter((l) => l.buy && l.status !== 'Hoàn thành' && availOf(l).value > 0);
     const types = [...new Set(lines.map((l) => l.type))];
     const avTxt = (l) => { const a = availOf(l); return `${a.qty == null ? '' : `${a.qty} ${l.uom || ''} · `}${dong(a.value)} đồng`; };
-    return `<section class="vcard" data-lf-cost>${head}
-      <div class="grid3">
+    /* [T72 #84, D-122 Q5] cột SL còn được mua = khối lượng dự toán − đã đăng ký − đang giữ (availOf.qty); cột Còn lại khả dụng chỉ còn giá trị. */
+    const qtyTxt = (l) => { const a = availOf(l); return a.qty == null ? dash : `${a.qty} ${esc(l.uom || '')}`; };
+    /* [T72 #76, Q8] hàng chọn Loại chi phí / Khoản mục xuống dưới bảng. */
+    const picker = `<div class="grid3 mt8" data-lf-pick>
         ${field('Loại chi phí', vSelect({ id: 'lf-ctype', value: p.type, placeholder: 'Chọn loại chi phí', options: types.map((t) => ({ value: t, label: typeName(t) })),
     onChange: upd((x) => { p.type = x; p.line = null; }) }))}
         ${field('Khoản mục chi phí', vSelect({ id: 'lf-cline', value: p.line, searchable: true, disabled: !p.type, placeholder: p.type ? 'Chọn khoản mục chi phí' : 'Chọn loại chi phí trước',
     options: lines.filter((l) => l.type === p.type).map((l) => ({ value: l.id, label: `${l.item} — còn ${avTxt(l)}` })), onChange: upd((x) => { p.line = x; }) }))}
         <div class="vfield"><div class="lr"><label>&nbsp;</label></div><div class="row"><button type="button" class="vbtn secondary" data-lf-cadd ${p.line ? '' : 'disabled'}>${icon('add')} Thêm vào ĐXMS</button></div></div>
-      </div>
-      ${table([['Thao tác', 80, 'c'], ['Nguồn vốn', 170], ['Loại chi phí', 200], ['Khoản mục chi phí', 220], ['ĐVT', 80], ['Còn lại khả dụng', 180, 'r'],
+      </div>`;
+    return `<section class="vcard" data-lf-cost>${head}
+      ${table([['Thao tác', 80, 'c'], ['Nguồn vốn', 170], ['Loại chi phí', 200], ['Khoản mục chi phí', 220], ['ĐVT', 80], ['Còn lại khả dụng', 180, 'r'], ['SL còn được mua', 140, 'r'],
     ['Số lượng đề xuất', 140], ['Giá trị dự tính (đồng)', 190], ['Hình thành gói thầu', 220]], LF.cost, (r) => {
     const l = costLine(r.line) || {}, e = err[r.id] || {}, warn = costWarn(r);
     const inp = (k, ph, max) => `<div class="vfield ${e[k] ? 'invalid' : ''}"><input class="vctl" data-lf-c${k}="${r.id}" maxlength="${max}" placeholder="${ph}" value="${esc(k === 'val' ? r.value : r[k])}" ${e[k] ? 'aria-invalid="true"' : ''}>${e[k] ? `<p class="msg" role="alert">${esc(e[k])}</p>` : ''}</div>`;
     return `<td class="c">${iconBtn('del', 'Xóa dòng', `data-lf-cdel="${r.id}"`)}</td><td>${clamp(l.fund)}</td>
-        <td>${clamp(typeName(l.type))}</td><td data-lf-citem="${r.id}">${clamp(l.item)}${warn ? `<div class="t-err" data-lf-cwarn>${esc(warn)}</div>` : ''}</td><td>${esc(l.uom || '')}</td><td class="r num">${avTxt(l)}</td>
+        <td>${clamp(typeName(l.type))}</td><td data-lf-citem="${r.id}">${clamp(l.item)}${warn ? `<div class="t-err" data-lf-cwarn>${esc(warn)}</div>` : ''}</td><td>${esc(l.uom || '')}</td><td class="r num">${dong(availOf(l).value)} đồng</td><td class="r num" data-lf-cqleft="${r.id}">${qtyTxt(l)}</td>
         <td>${inp('qty', 'Nhập số lượng', 10)}</td><td>${inp('val', 'Nhập giá trị (đồng)', 20)}</td>
         <td>${vSelect({ id: 'lf-cpkg-' + r.id, value: r.pkg || null, clear: true, placeholder: 'Chọn hình thành gói thầu', options: PKGS.map((p) => ({ value: p, label: p })), onChange: upd((x) => { r.pkg = x || ''; }) })}</td>`;
-  }, 'Chưa bóc tách chi phí — chọn Loại chi phí, Khoản mục chi phí rồi Thêm vào ĐXMS')}${bocCard()}</section>`;
+  }, 'Chưa bóc tách chi phí — chọn Loại chi phí, Khoản mục chi phí rồi Thêm vào ĐXMS')}${picker}${bocCard()}</section>`;
   }
   /* D-75 (RV-PROTO-0511 #14, câu hỏi 4; Huylx4 #3): bỏ Danh sách người thẩm định — CQCM chọn ở bước 16, DX-08 rút. */
   function readCost() {
@@ -521,6 +526,22 @@
       return `Đã áp dụng gợi ý AI vào Bóc tách và đối chiếu: ${items.filter((i) => !LF.boc[i.n].bo).length} / ${items.length} hạng mục, ${g.length} khoản mục vào bảng Loại chi phí`;
     });
   }
+  /* [T72 #83, D-122 Q4] Hệ thống bóc tách (không AI): chọn Đề tài / dự án → lấy hàng hoá của căn cứ theo số đề xuất, ghép vào khoản mục dự toán
+     Chi mua sắm còn khả dụng (cùng luật costGroups), điền bảng; người dùng sửa / xóa / thêm dòng ngay trên bảng. Thật: service task bước 2, 6
+     (tích hợp dự toán / eBOM / tồn kho) ghi biến quy trình, màn đọc kết quả. keep: giữ các dòng đã có (mở lại hồ sơ). popBoc giữ trong file, không còn nơi gọi. */
+  function sysBoc(nv, keep) {
+    if (!nv) { LF.aiBoc = null; return; }
+    const items = D.itemsBase();
+    items.forEach((i) => { LF.boc[i.n] = { prop: String(i.prop), bo: false }; });
+    if (!keep || !LF.cost.length) {
+      costGroups(nv, (i) => estNum(String(i.prop))).forEach((x) => {
+        LF.rseq += 1;
+        LF.cost.push({ id: 'c' + LF.rseq, line: x.l.id, pkg: '', qty: String(x.qty), value: dong(x.value), ai: true, man: false });
+      });
+    }
+    LF.aiBoc = { nv, fetch: aiFetch(nv), sys: true };
+    delete LF.err.boc;
+  }
   /* Khối Thông tin cơ bản → Nhóm mục đích, Nguồn vốn, 7 mục Tờ trình BM-01 / BM-09. */
   function popBasic() {
     const nv = LF.v.nv, old = LF.ai, same = !!(old && old.nv === nv), ent = D.nvOf(nv) || {}, fetch = aiFetch(nv);
@@ -657,17 +678,18 @@
   function bocCard() {
     const err = LF.err;
     /* Góp ý 06/11: bóc tách và đối chiếu nằm ngay trong khối Căn cứ (bước 1), không tách khối riêng phía dưới. */
-    const h = `<div class="lf-sub-h"><h4>${stepTag(5)}${D.bocHide ? 'Bóc tách' : 'Bóc tách và đối chiếu <span class="cap">· AI đối chiếu dự toán, eBOM / mBOM, tồn kho</span>'}</h4></div>`;
+    /* [T72 #83] hệ thống đối chiếu, không AI: bỏ dải "✦ Bước 2 · AI đã lấy dữ liệu căn cứ" và câu "Bấm ✦ Gợi ý lại…". */
+    const h = `<div class="lf-sub-h"><h4>${stepTag(5)}Đối chiếu căn cứ</h4></div>`;
     if (!LF.v.nv) return '';
     const em = err.boc ? `<p class="msg lf-err" role="alert">${esc(err.boc)}</p>` : '';
-    if (!LF.aiBoc || aiBocOld()) return `<div class="lf-sub ${err.boc ? 'invalid' : ''}" data-lf-boc>${h}${em}<div class="lf-empty">${LF.aiBoc ? `<span class="t-warn">Đề tài / dự án đã đổi</span> — bóc tách hiện tại theo ${esc(LF.aiBoc.nv)}. Bấm ✦ Gợi ý lại ở khối này để AI bóc tách và đối chiếu theo căn cứ mới.` : 'Chưa có dữ liệu'}</div></div>`;
+    if (!LF.aiBoc || aiBocOld()) return `<div class="lf-sub ${err.boc ? 'invalid' : ''}" data-lf-boc>${h}${em}<div class="lf-empty">Chưa có dữ liệu</div></div>`;
     const book = (i) => (i.book != null ? i.book : i.stock != null ? i.stock : null);
     /* Góp ý 06/11: kết quả bóc tách đã điền vào bảng Loại chi phí ở trên → màn chỉ còn dòng tóm tắt; xem / sửa danh mục bóc tách trong popup (✦ Gợi ý lại). */
     const its = D.itemsBase(), kept = its.filter((i) => !bocRow(i).bo), stock = kept.filter((i) => book(i)), warn = kept.filter((i) => i.warn), bad = its.filter((i) => bocIssue(i));
-    return `<div class="lf-sub ${err.boc ? 'invalid' : ''}" data-lf-boc>${h}${fetchStrip(LF.aiBoc.fetch)}
+    return `<div class="lf-sub ${err.boc ? 'invalid' : ''}" data-lf-boc>${h}
       ${em}
-      <p data-lf-boc-sum>Đã áp dụng <b>${kept.length} / ${its.length}</b> hạng mục hàng hoá vào bảng Loại chi phí ở trên${stock.length ? ` · ${stock.length} hạng mục có tồn kho sổ sách — Kho rà soát thực tế ở bước 7` : ''}${warn.length ? ` · <span class="t-warn">${warn.length} hạng mục không có trong dự toán / eBOM</span>` : ''}${bad.length ? ` · <span class="t-err">${bad.length} hạng mục chưa hợp lệ</span>` : ''}.
-        ${D.bocHide ? '' : '<span class="cap">Bấm ✦ Gợi ý lại để xem / sửa danh mục bóc tách.</span>'}</p></div>`;
+      <p data-lf-boc-sum>Hệ thống đã đối chiếu <b>${kept.length} / ${its.length}</b> hạng mục hàng hoá của căn cứ với dự toán, điền vào bảng ở trên${stock.length ? ` · ${stock.length} hạng mục có tồn kho sổ sách — Kho rà soát thực tế ở bước 7` : ''}${warn.length ? ` · <span class="t-warn">${warn.length} hạng mục không có trong dự toán / eBOM</span>` : ''}${bad.length ? ` · <span class="t-err">${bad.length} hạng mục chưa hợp lệ</span>` : ''}.
+</p></div>`;
   }
   /* Huylx4 #20: thêm hạng mục từ dự toán = khoản mục người dùng tự thêm vào bảng Loại chi phí (bocOut → hangMucThem); không còn ô thêm riêng. */
   /* Bản lưu của màn (Lưu nháp / mở lại) — Flow.ui.lapDxms của hồ sơ. */
@@ -685,6 +707,8 @@
     LF.seq = LF.files.length;
     LF.rows = (x.roleMembers || []).map((r, i) => ({ id: 'm' + i, role: r.role, person: r.person }));
     if (LF.v.nv) nvDefaults(LF.v.nv, true);
+    /* [T72 #83] ĐXMS đã có đề tài → hệ thống bóc tách sẵn (giữ dòng chi phí đã có). */
+    if (LF.v.nv) sysBoc(LF.v.nv, true);
   }
   const isAdj = () => !!(LF.base && LF.base.mode === 'adj');
   /* Giá trị hiệu lực (tỷ đồng) của ĐXMS cần điều chỉnh. */
@@ -713,7 +737,7 @@
   function loadEdit(tok) {
     resetForm();
     const x = Flow.findDxms(Flow.state.dxms) || {}, sv = (Flow.ui || {}).lapDxms;
-    if (sv) { Object.assign(LF, JSON.parse(JSON.stringify(sv))); if (!LF.aiBoc && LF.ai) LF.aiBoc = { nv: LF.ai.nv, fetch: LF.ai.fetch }; }
+    if (sv) { Object.assign(LF, JSON.parse(JSON.stringify(sv))); if (!LF.aiBoc && LF.ai) LF.aiBoc = { nv: LF.ai.nv, fetch: LF.ai.fetch }; if (LF.v.nv && !LF.aiBoc) sysBoc(LF.v.nv, true); }
     else {
       Object.assign(LF.v, { title: x.title || Flow.state.name || '', nv: x.nv || null, unit: x.unit || LF.v.unit, priority: x.priority || 'Thường', priReason: x.priReason || '',
         est: x.est != null ? dong(x.est) : '', period: x.period || '', secret: x.secret ? 'Có' : 'Không', sign: sgn(x.sign) || defSign(x.secret ? 'Có' : 'Không'),
@@ -727,6 +751,8 @@
       /* Hồ sơ đã có kết quả gợi ý (bước 4, 5 làm trước đó / demo) → hiện lại; chưa có thì chờ người dùng bấm Gợi ý từ AI. */
       const u0 = Flow.ui || {};
       if (u0.aiGoiY || u0.bocTach) { runAi(LF.v.nv); LF.aiBoc = LF.v.nv ? { nv: LF.v.nv, fetch: aiFetch(LF.v.nv) } : null; }
+      /* [T72 #83] hồ sơ đã có đề tài → hệ thống bóc tách sẵn (giữ dòng chi phí đã lưu). */
+      if (LF.v.nv && !LF.aiBoc) sysBoc(LF.v.nv, true);
       /* Giá trị đã ghi trên hồ sơ (bước 4, 5 đã làm trước đó, hoặc dữ liệu demo) → điền lại màn. */
       const u = Flow.ui || {};
       if (u.fund != null) LF.v.fund = u.fund;
@@ -772,6 +798,7 @@
     const info = {
       scr: 'SCR-96', name: 'Lập đề xuất mua sắm', uc: 'UC-07-01, UC-07-12 · UR-DX-01, 02, UR-DX-20', bpmn: 'MS01 v1.1 task 01–06 (DX-11)',
       notes: [
+        '<b>T72 (kho comment #75, #76, #83, #84; D-122 Q4, Q5, Q8, Q9):</b> khối <b>Căn cứ và nội dung mua sắm — Bóc tách hạng mục</b>: bỏ nút ✦ Gợi ý từ AI của khối — chọn Đề tài / dự án thì <b>hệ thống</b> bóc tách hàng hoá của căn cứ vào khoản mục dự toán Chi mua sắm còn khả dụng và điền bảng (service task bước 2, 6: tích hợp dự toán / eBOM / tồn kho, không AI); không còn luật phải bấm AI trước khi Gửi. Bảng ngay dưới ô Đề tài / dự án, hàng chọn Loại chi phí / Khoản mục xuống dưới bảng. Cột <b>SL còn được mua</b> = khối lượng dự toán − đã đăng ký − đang giữ; vượt thì cảnh báo, không chặn. Nút AI của khối Thông tin chung (P-216) giữ nguyên. Ô Giá trị dự tính theo đồng là số nguyên — dấu chấm là phân cách nghìn.',
         '<b>T56 (review Nhi 12/11):</b> khối <b>Thành phần tham gia</b> (đổi tên từ Nhân sự thực hiện, #9 — nội dung D-75 giữ nguyên); bỏ câu hướng dẫn Gợi ý từ AI ở các khối, chỉ còn ở tour Hướng dẫn (#13); ẩn <b>Loại biểu mẫu</b> (#15 — hệ thống vẫn suy theo giá trị báo giá, hiện ở Chi tiết đề xuất mua sắm). #14 đề nghị bỏ nút (i): giữ (Q5) — (i) chỉ có ở bản review, bản thật không có; bản cho khách dùng ?capture=1.',
         '<b>Review nhi 06/11 #1:</b> bỏ khối <b>Thông tin cơ bản</b> (bước 4). Nhóm mục đích mua sắm, Nguồn vốn chuyển vào khối Thông tin chung (AI bước 3 gợi ý ở popup ✦ Gợi ý từ AI của khối). Các mục nội dung Tờ trình (mục đích, phạm vi, biện pháp, kế hoạch…) không nhập ở màn này — AI gợi ý sẵn, người dùng nhập / sửa ở bước lập dự thảo Tờ trình (11 / 12) theo đúng mục của mẫu BM-01 / BM-09. Bước 4 BPMN vẫn hoàn thành khi Gửi.',
         '<b>Người dùng 09/11 (T34 v0.2):</b> bỏ nhãn "Bước n" ở các khối và dòng giải thích BPMN đầu màn (bước 1–5 / AI bước 2, 3, 6 / Gửi = hoàn thành 1–5, chuyển 5.1) — nội dung còn ở ghi chú này.',
@@ -877,8 +904,8 @@
       if (Object.keys(e).length) re[r.id] = e;
     });
     if (Object.keys(re).length) err.rows = re;
-    if (send && v.nv && !LF.aiBoc) err.boc = 'Bạn cần bấm Gợi ý từ AI ở khối Căn cứ và nội dung mua sắm, xem lại bóc tách rồi Áp dụng trước khi gửi.';
-    else if (send && aiBocOld()) err.boc = 'Đề tài / dự án đã đổi — bấm Gợi ý lại ở khối Căn cứ và nội dung mua sắm rồi Áp dụng trước khi gửi.';
+    /* [T72 #83] bỏ luật "phải bấm Gợi ý từ AI ở khối Căn cứ trước khi gửi" — hệ thống bóc tách ngay khi chọn Đề tài / dự án. */
+    if (v.nv && (!LF.aiBoc || aiBocOld())) sysBoc(v.nv, true);
     /* Review nhi 06/11 #1: Nhóm mục đích, Nguồn vốn ở Thông tin chung — bắt buộc khi Gửi (không còn bảng 7 mục phải xử lý ở màn này). */
     if (send) {
       if (!v.purposeCode) err.purposeCode = 'Bạn cần chọn Nhóm mục đích mua sắm.';
@@ -1071,7 +1098,8 @@
       ${kv('Đợt mua sắm', S5().dotOf(x) ? String(S5().dotOf(x)) : null)}${kv('Đơn vị đề xuất', esc(x.unit))}${kv('Khối đơn vị', esc(D.blockOf(x.unit) || ''))}
       ${kv('Người tạo', esc(x.creator))}${kv('Ngày tạo', esc(x.created || ''))}${kv('Mức ưu tiên', esc(x.priority))}
       ${x.priReason ? kv('Lý do ưu tiên', esc(x.priReason), 'span3') : ''}
-      ${kv('Giá trị đề xuất', m.value != null ? ty(m.value) + ' tỷ đồng' : null)}${kv('Giá trị dự kiến', x.est != null ? (x.luong ? dong(x.est) + ' đồng' : ty(x.est) + ' tỷ đồng') : null)}${kv('Thời gian thực hiện', esc(x.period))}
+      ${'' /* [T72 #77, D-122 Q1] bỏ ô Giá trị dự kiến (trước: kv('Giá trị dự kiến', x.est …) sau Giá trị đề xuất); Giá trị đề xuất = giá trị mới nhất (Screens.dxmsMeta). */}
+      ${kv('Giá trị đề xuất', m.value == null ? null : x.luong && m.value === x.est ? dong(x.est) + ' đồng' : ty(m.value) + ' tỷ đồng')}${kv('Thời gian thực hiện', esc(x.period))}
       ${kv('Trạng thái', badge(window.Screens.DXMS_STATUS[m.state][0] + (m.state === 'OK' && m.adjN ? ` (điều chỉnh lần ${m.adjN})` : ''), window.Screens.DXMS_STATUS[m.state][1]))}${kv('Mật', x.secret ? 'Có' : 'Không')}${kv('Hình thức trình ký', esc(sgn(x.sign) || (x.secret ? OFF : 'VOffice')))}
       ${kv('Ngày cập nhật', esc(x.updated))}${adjKv(x, m, kv)}</div></section>`;
   }
@@ -1209,10 +1237,11 @@
       : caseCode ? `<button type="button" class="link-btn" data-preview-doc="${esc(r.name)}|${esc(r.at)}|${esc(caseCode)}">${esc(r.name)}</button>`
         : `<button type="button" class="link-btn" data-preview="${r.i}">${esc(r.name)}</button>`);
     return `<section class="vcard pad24" data-dx-docs><h3>Văn bản đầu ra</h3>
-      ${table([['Thao tác', 100, 'c'], ['Văn bản', 250], ['Bước', 180], ['Trạng thái', 130, 'c'], ['Ký duyệt', 170], ['Ngày', 100]], rows, (r) =>
-        `<td class="c"><div class="acts">${iconBtn('download', 'Tải văn bản', `data-dl="${esc(r.res ? r.res.no.replace(/\//g, '-') + '.pdf' : r.name)}"`)}<span class="sep"></span>${dlPdf(r.name)}</div></td>
-        <td>${nameCell(r)}</td><td>${r.by != null && Flow.isTask(r.by) ? clamp(stepLabel(r.by)) : dash}</td>
-        <td class="c">${docState(r)}</td><td>${docSign(r)}</td><td class="num">${esc(last(r) || '')}</td>`,
+      ${'' /* [T72 #80, #81, D-122 Q3 — thay phần trạng thái ký của D-95] bỏ cột Bước (stepLabel), Trạng thái (docState), Ký duyệt (docSign) và nút Tải PDF (dlPdf);
+             thông tin ký xem ở menu Trình ký. */}
+      ${table([['Thao tác', 100, 'c'], ['Văn bản', 400], ['Ngày', 120]], rows, (r) =>
+        `<td class="c"><div class="acts">${iconBtn('download', 'Tải xuống', `data-dl="${esc(r.res ? r.res.no.replace(/\//g, '-') + '.pdf' : r.name)}"`)}</div></td>
+        <td>${nameCell(r)}</td><td class="num">${esc(last(r) || '')}</td>`,
       'Chưa có văn bản đầu ra')}</section>`;
   }
   function versionDialog(code) {
@@ -1265,6 +1294,7 @@
     const info = {
       scr: 'SCR-97', name: view ? 'Xem chi tiết đề xuất mua sắm' : 'Chi tiết đề xuất mua sắm', uc: 'UC-07-01, UC-07-12 · UR-DX-20',
       notes: [
+        '<b>T72 (kho comment #77, #80, #81; D-122 Q1, Q3):</b> Thông tin chung bỏ <b>Giá trị dự kiến</b>; <b>Giá trị đề xuất</b> = giá trị mới nhất (lúc lập → tổng theo cơ sở giá bước 10 / Phụ lục chi phí Tờ trình bước 12, biến <code>totalQ</code> → giá trị phê duyệt). Tab Tài liệu & văn bản › Văn bản đầu ra còn Thao tác (chỉ <b>Tải xuống</b>), Văn bản, Ngày — bỏ Bước, Trạng thái, Ký duyệt (thay phần trạng thái ký của D-95; xem ở menu Trình ký).',
         '<b>T59 (D-114) #44:</b> tab Căn cứ & hạng mục luôn có ô <b>Nội dung căn cứ pháp lý</b> dưới bảng Căn cứ pháp lý (trống: "-"). <b>#47, #49, #50, #51 (Q2, Q3):</b> tab <b>Thành phần tham gia</b> theo SRS 14 §3.1.5 — 3 cột STT · Vai trò thực hiện · Nhân sự thực hiện (Họ tên — Đơn vị), một dòng mỗi cặp vai trò – người từ bảng Thành phần tham gia của ĐXMS (cùng nguồn khối ở Lập ĐXMS, D-75); không còn cột Bước / Tên công việc / Trạng thái. Nút <b>Cập nhật</b> (ĐXMS đang chạy quy trình) chuyển bảng sang sửa tại chỗ: Xóa dòng, Thêm dòng (chọn Vai trò → Nhân sự), dòng đã có đổi được Nhân sự (vai trò giữ — Q2, khác SRS 14 BR-XCT-05-02 cũ), Lưu / Hủy. Lưu: việc đang mở của vai trò bị đổi giao lại theo bảng, lần tới bước giao theo bảng (bước đã xong giữ nguyên); mỗi lần Lưu một dòng <b>Lịch sử xử lý</b> ("Cập nhật Thành phần tham gia: +A (vai trò), −B (vai trò)"). Bỏ hộp thoại SCR-98 và khối Lịch sử thay đổi nhân sự (bảng member_log). Ghi chú cũ về Nhân sự thực hiện / Lịch sử thay đổi nhân sự bên dưới là thiết kế trước T59. <b>Q4:</b> tab Rà soát tồn kho ở màn này chỉ đọc; Kho nhập ở cùng tab trên màn xử lý việc bước 7.',
         '<b>T58 (12/11):</b> ĐXMS có hồ sơ đang xử lý → dưới tiêu đề có <b>thanh trạng thái</b> như màn xử lý việc ("Đang chờ bạn xử lý · Bước · Tên bước · Hạn xử lý", nút theo Luật hiển thị trong thanh; việc của người khác: "Đang chờ <tên> xử lý", không nút). Hồ sơ mẫu: bấm nút thì hồ sơ được nạp vào luồng chạy tại bước đó rồi thực hiện hành động (GIẢ LẬP — prototype chạy một hồ sơ một lúc).',
         '<b>T56 (review Nhi 12/11 #19, #20):</b> Thông tin chung thêm <b>Ngày tạo</b> sau Người tạo; <b>Giá trị hiệu lực (gồm VAT)</b> đổi tên <b>Giá trị đề xuất</b> (cùng giá trị, gồm VAT). Tab Nhân sự thực hiện đổi tên <b>Thành phần tham gia</b> (#9).',

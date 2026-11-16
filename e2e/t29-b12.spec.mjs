@@ -25,7 +25,8 @@ test('SCR-96: Đề tài / dự án và khối bóc tách đứng đầu; Căn c
   await gop(page, '#/luong/create');
   const cards = await page.locator('form[data-luong-form] > section.vcard h3').allInnerTexts();
   // T29 B19: thẻ đầu là bước 1 (Căn cứ và nội dung mua sắm — Thông tin dự án / đề tài).
-  expect(cards[0]).toContain('Thông tin dự án / đề tài');
+  // T72 (D-122 Q9): "… — Bóc tách hạng mục".
+  expect(cards[0]).toContain('Căn cứ và nội dung mua sắm — Bóc tách hạng mục');
   expect(cards[1]).toBe('Thông tin chung');
   expect(cards).toContain('Căn cứ pháp lý');
   expect(cards).not.toContain('Căn cứ đầu vào');
@@ -99,11 +100,14 @@ test('SCR-95: Ngày tạo một trường "từ – đến"', async ({ page }) =
 
 test('D-76, D-78, D-105: menu ẩn Quản lý thầu / hợp đồng (route giữ); Quản lý tài liệu ĐXMS (SRS 29) — văn bản đầu ra, lọc, mở ĐXMS', async ({ page }) => {
   await gop(page);
-  // T56 Q1: nhóm Quản lý thầu hiện, chỉ có Yêu cầu báo giá; các mục thầu khác vẫn ẩn (D-76).
+  // T56 Q1: nhóm Quản lý thầu có Yêu cầu báo giá; T67 (D-118 Q2) hiện lại KHLCNT, Gói thầu, Nhà thầu, Công khai; Giám sát hoạt động thầu vẫn ẩn.
   await page.locator('.sb-nav [data-toggle="Quản lý thầu"]').click();
   await expect(page.locator('.sb-nav [data-go="ycbg"]')).toBeVisible();
-  await expect(page.locator('.sb-nav [data-go="khlcnt"], .sb-nav [data-go="goi-thau"]')).toHaveCount(0);
-  await expect(page.locator('.sb-nav [data-toggle="Quản lý hợp đồng"]')).toHaveCount(0);
+  await expect(page.locator('.sb-nav [data-go="khlcnt"], .sb-nav [data-go="goi-thau"]')).toHaveCount(2);
+  await expect(page.locator('.sb-nav [data-go="ph/giam-sat-thau"]')).toHaveCount(0);
+  // T67 H1–H5: nhóm Quản lý hợp đồng hiện (Hợp đồng, Thỏa thuận khung & đơn hàng).
+  await page.locator('.sb-nav [data-toggle="Quản lý hợp đồng"]').click();
+  await expect(page.locator('.sb-nav [data-go="hop-dong"], .sb-nav [data-go="thoa-thuan-khung"]')).toHaveCount(2);
   const kids = await page.evaluate(() => {
     let n = document.querySelector('.sb-nav [data-toggle="Quản lý đề xuất mua sắm"]').nextElementSibling;
     const out = [];
@@ -170,16 +174,18 @@ test('D-81, #4 + B19: bước 1 mở màn Lập ĐXMS (không popup), căn cứ 
   await expect(page.locator('.task-acts [data-act]')).toHaveCount(0);
   await expect(page.locator('[data-basis-avail]')).toHaveCount(0); // T37 (RV-PROTO-0911 #4): bỏ khối căn cứ khả dụng
   // P-216 (chốt 06/11): AI chạy khi bấm nút Gợi ý từ AI.
-  await expect(page.locator('[data-lf-ai-sec="boc"]')).toHaveText('✦ Gợi ý từ AI');
+  // T72 #83 (D-122 Q4): khối Căn cứ không còn nút AI — hệ thống bóc tách sẵn.
+  await expect(page.locator('[data-lf-ai-sec="boc"]')).toHaveCount(0);
   await aiApply(page);
-  await expect(page.locator('[data-lf-ai2]')).toContainText('AI đã lấy dữ liệu căn cứ');
+  await expect(page.locator('[data-lf-boc-sum]')).toContainText('Hệ thống đã đối chiếu');
   await page.locator('#lf-save').click();
   await expect(page).toHaveURL(/#\/viec-cua-toi$/);
   // Bước 5.1 (Chỉ huy ĐVĐX): Thông tin chung có Giá trị dự kiến, Tổng giá trị trống, phần khả dụng.
   await jump(page, '5.1');
   // T58: Thông tin chung như màn Chi tiết ĐXMS — Giá trị đề xuất, Giá trị dự kiến; không còn Tổng giá trị (gồm VAT).
   const gi = page.locator('.dx-body .gen .ginfo').first();
-  await expect(gi).toContainText('Giá trị dự kiến');
+  // T72 #77 (D-122 Q1): bỏ Giá trị dự kiến.
+  await expect(gi).not.toContainText('Giá trị dự kiến');
   await expect(gi).toContainText('Giá trị đề xuất');
   await expect(gi).not.toContainText('Tổng giá trị');
   await expect(page.locator('[data-basis-avail]')).toHaveCount(0); // T37 #4
@@ -194,11 +200,8 @@ test('#20 + B19: bóc tách trên màn Lập ĐXMS — bớt hạng mục, thêm
   await jump(page, 5);
   await expect(page.locator('[data-luong-form]')).toHaveCount(1);
   // Góp ý 06/11: bóc tách sửa trong popup (✦ Gợi ý lại) — bỏ hạng mục 5; thêm hạng mục từ dự toán = tự thêm khoản mục vào bảng Loại chi phí.
-  await page.evaluate(() => { D.bocHide = false; }); // Review nhi 06/11 #18: bảng tạm ẩn — bật lại để kiểm.
-  await page.locator('[data-lf-ai-sec="boc"]').click();
-  await page.locator('[data-lf-pop-ion="5"]').uncheck();
-  await page.locator('[data-lf-ai-apply]').click();
-  await expect(page.locator('[data-lf-boc-sum]')).toContainText('4 / 5');
+  // T72 #83 (D-122 Q4): bỏ popup AI (trước: bỏ chọn hạng mục 5 trong popup → 4 / 5) — hệ thống bóc tách đủ hạng mục của căn cứ.
+  await expect(page.locator('[data-lf-boc-sum]')).toContainText('5 / 5');
   await pickSel(page, 'lf-ctype', 'PL2');
   await page.locator('[data-vsel="lf-cline"]').click();
   await page.locator('.vsel-panel .vsel-opt').first().click();
@@ -211,12 +214,10 @@ test('#20 + B19: bóc tách trên màn Lập ĐXMS — bớt hạng mục, thêm
   await page.locator('#lf-save').click();
   await expect(page).toHaveURL(/#\/viec-cua-toi$/);
   const it = await page.evaluate(() => D.items.map((i) => [i.n, i.buy]));
-  expect(it.map((x) => x[0])).not.toContain(5);
   expect(it.find((x) => x[0] === 101)).toEqual([101, 2]);
   // Bước 8 (biến ycbgHang): danh mục hàng hoá YCBG có hạng mục thêm, không có hạng mục đã bỏ.
   const v = await page.evaluate(() => EVars.of({ id: 'x8', task: 8, who: 'minh' }).ycbgHang.map((r) => r.n));
   expect(v).toContain(101);
-  expect(v).not.toContain(5);
   expect(page.errors).toEqual([]);
 });
 
@@ -226,7 +227,9 @@ test('#26: bước 8 theo màn Thêm mới YCBG của hệ thống cũ — Thôn
   await page.locator('.task-acts [data-act].primary').click();
   const f = form(page);
   const heads = await f.locator('.ef-text h4').allInnerTexts();
-  expect(heads.slice(0, 4)).toEqual(['Thông tin chung', 'Nhà cung cấp nhận yêu cầu', 'Danh mục hàng hoá yêu cầu báo giá', 'Tài liệu kỹ thuật']);
+  // T72 #86: Thông tin chung thành nhóm (tiêu đề nhóm có nút ✦ Gợi ý từ AI), không còn là dòng chữ h4.
+  await expect(f.locator('.ef-group .ef-gh', { hasText: 'Thông tin chung' })).toHaveCount(1);
+  expect(heads.slice(0, 3)).toEqual(['Nhà cung cấp nhận yêu cầu', 'Danh mục hàng hoá yêu cầu báo giá', 'Tài liệu kỹ thuật']);
   await expect(f.locator('[data-ef="maYcbg"]')).toHaveValue(/^YCBG-2026-0117-1$/);
   const da = f.locator('.ef-table', { hasText: 'Thông tin dự án / đề tài' });
   await expect(da.locator('thead th')).toHaveText(['Mã dự án / đề tài', 'Tên dự án / đề tài', 'Loại', 'Nguồn vốn']);

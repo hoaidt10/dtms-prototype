@@ -46,7 +46,7 @@
   };
   const sysOfKh = (k) => (k && k.law ? 'DTQG' : 'VTB');
 
-  /* ---------- Mốc phát sinh của gói thầu từ tiến trình tổ chức LCNT (MS19 chưa có BPMN — P-77) ---------- */
+  /* ---------- Mốc phát sinh của gói thầu từ tiến trình tổ chức LCNT (MS19 theo BPMN-MS19; quy trình con chi tiết treo P-235) ---------- */
   const EV = {
     'DSN:GT-2026-0024': '22/09/2026', 'TBMT:GT-2026-0024': '25/09/2026 08:00',
     'TBMT:GT-2026-0021': '04/09/2026 08:00', 'BBMT:GT-2026-0021': '15/09/2026 10:00',
@@ -134,7 +134,7 @@
   const tabBar = () => `<nav class="tabs dx-tabs" role="tablist">${TABS.map(([k, l]) => `<button type="button" class="tab ${TAB.v === k ? 'on' : ''}" role="tab" aria-selected="${TAB.v === k}" data-ck-tab="${k}">${l}</button>`).join('')}</nav>`;
   const INFO = {
     scr: 'SCR-94', name: 'Công khai & tích hợp đấu thầu', uc: 'Backlog W1_T10 › Quản lý thầu › Công khai & Tích hợp đấu thầu (dòng 409–415)',
-    bpmn: 'MS18 bước 54–60 (MS18.4 bước 11–17): sinh dữ liệu đăng tải → Chủ đầu tư kiểm tra, xác nhận → đăng tải → ghi nhận thời điểm / lỗi, cho gửi lại',
+    bpmn: 'MS18 bước 21–23 (đăng tải KHLCNT), MS19 bước 22–23 (công khai KQLCNT) — BPMN-MS18-TOBE / BPMN-MS19: sinh dữ liệu đăng tải → Chủ đầu tư kiểm tra, xác nhận → đăng tải → ghi nhận thời điểm / lỗi, cho gửi lại',
     notes: [
       '<b>Theo dõi đăng tải</b>: mỗi dòng là một tin phải công khai theo QC-12869 Điều 26 khoản 1, <b>sinh tự động</b> từ dữ liệu Quản lý thầu khi đối tượng đạt mốc (KHLCNT được phê duyệt — mỗi phiên bản điều chỉnh là một tin; danh sách ngắn; phát hành HSMT / HSMCG; mở thầu; KQLCNT; huỷ thầu; quyết định xử lý vi phạm). Không nhập tay.',
       '<b>Hạn đăng tải</b> = mốc phát sinh + thời hạn theo loại tin ở tab Kết nối & thời hạn (Điều 26 khoản 2: 05 ngày làm việc, 24 giờ với biên bản mở thầu). Bảng thời hạn là cấu hình, các chỉ tiêu KPI thầu ở Báo cáo đọc cùng nguồn.',

@@ -657,11 +657,12 @@
   /* T25 B3 — MS24 Thanh toán theo từng đợt (DG-MS24): mỗi đợt một hồ sơ con. Hai tuyến ký 4 cấp độc lập về nhánh sửa: bảng tổng hợp 7 → 8 → 9 → 10, trả về 11 → 7; đề nghị chuyển tiền 13 → 14 → 15 → 16, trả về 17 → 12 → 13.
      Hình thức ký chọn một lần ở bước 12 (DG-MS24 §C.21), các cấp bấm Đồng ý và ký, không mở hộp thoại Trình ký (GIẢ LẬP P-152). Người ký Phòng tài chính = Trưởng phòng TCKT (P-124). Đồng bộ SAP lỗi: việc Gửi lại cho Phòng TCKT (P-125).
      Kế hoạch thanh toán theo hợp đồng: value = giá trị đề nghị, adv = khấu trừ tạm ứng, hold = giữ lại bảo hành (tỷ đồng); need = mốc phải có ngày thực tế mới tạo được hồ sơ, HOLD = chưa tới kỳ. GIẢ LẬP P-147. */
+  /* T67 H4 (T66 L4): kế hoạch HĐ-2026-0052 sinh theo phương thức thanh toán của mẫu hợp đồng 1.6 (BM-HD-2026, TT 10 / 30 / 60) — có nguồn, thay GIẢ LẬP P-147 phần
+     kế hoạch: tạm ứng 10% có bảo lãnh; đợt 1 trả 40% trừ tạm ứng sau Biên bản bàn giao; đợt 2 trả 60% sau nghiệm thu. Mẫu không có khoản giữ lại bảo hành. */
   D.hdPayPlan = { 'HĐ-2026-0052': [
-    { name: 'Tạm ứng', cond: 'Ký hợp đồng và nộp bảo lãnh tạm ứng', rate: 20, value: 38.24, adv: 0, hold: 0 },
-    { name: 'Thanh toán đợt 1', cond: 'Bàn giao đợt 1', rate: 61, value: 116.6, adv: 23.32, hold: 5.83, need: ['GIAO', 0] },
-    { name: 'Thanh toán đợt 2', cond: 'Nghiệm thu tổng thể', rate: 39, value: 74.6, adv: 14.92, hold: 3.73, need: ['NT', 0] },
-    { name: 'Giữ lại bảo hành', cond: 'Hết thời hạn bảo hành năm đầu', rate: 5, value: 9.56, adv: 0, hold: 0, need: ['HOLD'] }] };
+    { name: 'Tạm ứng', cond: 'Sau ký hợp đồng và nộp bảo lãnh tạm ứng', rate: 10, value: 19.12, adv: 0, hold: 0 },
+    { name: 'Thanh toán đợt 1', cond: 'Sau Biên bản bàn giao — 40% giá trị hợp đồng, trừ tạm ứng', rate: 40, value: 76.48, adv: 19.12, hold: 0, need: ['GIAO', 0] },
+    { name: 'Thanh toán đợt 2', cond: 'Sau nghiệm thu', rate: 60, value: 114.72, adv: 0, hold: 0, need: ['NT', 0] }] };
   const noTable = (v, u) => u.ttBangTH === false;
   const kyTT = (who, to, back, what, o) => Object.assign({ who, scr: 'SCR-102', nlv: 1, choices: [{ label: 'Đồng ý và ký', to, main: true }, { label: `Không đồng ý — sửa ${what}`, to: back, kind: 'secondary', reason: true }] }, o);
   const onTable = { optional: noTable, q: ['P-124', 'P-150'] }, onReq = { q: ['P-124', 'P-150'] };
@@ -821,17 +822,142 @@
   D.hdSignals.MS23.dv = (v, u, s, c) => { v.evt = { flow: 'MS23.03', why: 'Có hồ sơ dịch vụ cần nghiệm thu', kcs: 'DV', date: window.Flow.dateOf(c.clock) }; return 'S4'; };
   D.hdProcesses['MS23.02'] = { name: 'Bàn giao hàng hoá / dịch vụ', page: 'MS23.02', type: 'Bàn giao', end: 'Hoàn tất hồ sơ bàn giao', prefix: 'HSBG-', tab: 'bg', many: true, auto: true, done: 'Hoàn tất hồ sơ bàn giao, đã cập nhật ngày bàn giao thực tế.' };
   D.hdProcesses.MS24.many = true;
+  /* Đối tượng cha của hồ sơ con: mặc định hợp đồng (D-47). Quy trình có đối tượng cha khác khai báo obj (T67: MS18 thuộc KHLCNT). */
+  D.hdObj = { label: 'Mã hợp đồng', find: (c) => (window.HopDong ? window.HopDong.find(c) : null), href: (c) => 'hop-dong/' + encodeURIComponent(c) };
+  D.caseObj = (p) => ((D.hdProcesses[p] || {}).obj || D.hdObj);
+
+  /* T67 T2 (D-118) — MS18 Lập và phê duyệt KHLCNT. Nguồn: BPMN-MS18-TOBE (trang MS18 của BPMN-DTMS-1611), THAU-TT-1311 §3, BM-KHLCNT.
+     Hồ sơ con của KHLCNT (đối tượng cha, cơ chế như hồ sơ con của hợp đồng D-47). Bước 1–2 (tạo hồ sơ, chọn hồ sơ nguồn) làm ở SCR-79 trước khi
+     khởi tạo; Khởi tạo KHLCNT ghi nhận hai bước rồi mở bước 3 (THAU-TT-1311 §3.1 bước 2). Cấp phê duyệt (vars.level) khoá từ lúc khởi tạo.
+     Vai GIẢ LẬP: Phòng Đầu tư – TTMS = thau; TTMS kiểm tra (BM02 VHT) = lan; Tổ trưởng Tổ thẩm định = binh; ý kiến Ban ĐTXD do TTMS ghi nhận thay
+     (D-118 Q10, như nhà thầu ở MS22 D-50). Bước 8 = multi-instance theo danh sách Tổ thẩm định chọn ở bước 6 (bước 7 tạo việc cho từng người). */
+  const KH18 = 'SCR-102';
+  /* Tổ thẩm định mặc định [người, vai trò, phân công] — GIẢ LẬP theo thành phần Tổ thẩm định của hệ thống cũ (HT-THAU-IMG 7222). */
+  D.khTeam0 = [['binh', 'Tổ trưởng', 'Chỉ đạo chung'], ['tckt', 'Thành viên', 'Tài chính'], ['thauch', 'Thành viên', 'Pháp lý']];
+  /* Tiêu chí BM02 (BM-KHLCNT): VHT = Báo cáo kiểm tra, 16 tiêu chí 3 nhóm, Đáp ứng / Không đáp ứng; Tập đoàn = Báo cáo thẩm định, Bảng số 2, 7 nội dung,
+     Tuân thủ, phù hợp / Không tuân thủ hoặc không phù hợp. Dùng chung cho eForm bước 10 / 12 và tab TĐ KHLCNT (T67 T3). */
+  D.khCrit = { VHT: [['Căn cứ pháp lý', ['Sự đầy đủ hồ sơ trình theo danh mục quy định', 'Sự phù hợp của các căn cứ pháp lý trong tờ trình',
+    'Sự tuân thủ các quy định về cấu trúc tờ trình và biểu mẫu kèm theo tờ trình', 'Sự đầy đủ và chính xác của các thông tin, số liệu cơ bản trong tờ trình']],
+  ['Phần công việc không thuộc KHLCNT', ['Phần công việc đã thực hiện', 'Phần công việc không áp dụng được một trong các hình thức LCNT', 'Phần công việc chưa đủ điều kiện lập KHLCNT']],
+  ['Phần công việc thuộc KHLCNT', ['Phân chia gói thầu', 'Tên gói thầu, nội dung công việc chính, nguồn vốn', 'Giá gói thầu', 'Hình thức LCNT', 'Phương thức LCNT',
+    'Thời gian LCNT', 'Thời gian bắt đầu tổ chức LCNT', 'Loại hợp đồng', 'Thời gian thực hiện gói thầu']]],
+  TD: ['Tên gói thầu', 'Giá gói thầu', 'Nguồn vốn', 'Hình thức và phương thức lựa chọn nhà thầu', 'Thời gian bắt đầu tổ chức lựa chọn nhà thầu', 'Loại hợp đồng', 'Thời gian thực hiện hợp đồng'],
+  ok: { VHT: ['Đáp ứng', 'Không đáp ứng'], TD: ['Tuân thủ, phù hợp', 'Không tuân thủ hoặc không phù hợp'] } };
+  const kySplit = () => ({ who: 'thau', scr: KH18, nlv: 1, q: ['P-230'], choices: [{ label: 'Trình ký VOffice', to: 16, main: true, set: { khKy: 'VO' } },
+    { label: 'Trình ký cứng', to: 20, kind: 'secondary', set: { khKy: 'CUNG' } }] });
+  D.flows.MS18 = {
+    1: { who: 'thau', scr: KH18, nlv: 0.5, actionLabel: 'Hoàn thành', next: 2 },
+    2: { who: 'thau', scr: KH18, nlv: 0.5, actionLabel: 'Hoàn thành', next: 3 },
+    3: { who: 'thau', scr: KH18, nlv: 2, actionLabel: 'Hoàn thành tạo gói', next: 4 },
+    4: { who: 'thau', scr: KH18, nlv: 1, actionLabel: 'Hoàn thành thông tin gói', next: 5 },
+    5: { who: 'thau', scr: KH18, nlv: 2, actionLabel: 'Hoàn thành Tờ trình', next: 6 },
+    6: { who: 'thau', scr: KH18, nlv: 0.5, actionLabel: 'Gửi Tổ thẩm định xác nhận', next: 7 },
+    /* 7 service: tạo việc cam kết cho từng thành viên đã chọn ở bước 6 (Camunda: multi-instance trên collection khTtd). */
+    7: { nlv: 0.5, multi: (v, u) => (u.khTtd || D.khTeam0.map((r) => ({ nguoi: r[0] }))).map((r) => r.nguoi).filter(Boolean), to: 8, group: 'ttd8' },
+    8: { scr: KH18, nlv: 1, q: ['P-231'], actionLabel: 'Xác nhận cam kết', next: 'j8' },
+    j8: { gw: true, join: 'ttd8', next: 'g1' },
+    g1: { gw: true, when: (v) => (v.level === 'TD' ? 12 : 10) },
+    9: { who: 'thau', scr: KH18, nlv: 1, optional: true, q: ['P-232'], actionLabel: 'Gửi lại', next: 5 },
+    10: { who: 'lan', scr: KH18, nlv: 2, choices: [{ label: 'Đáp ứng', to: 11, main: true }, { label: 'Không đáp ứng — trả sửa', to: 9, kind: 'secondary', reason: true }] },
+    11: kySplit(),
+    12: { who: 'binh', scr: KH18, nlv: 2, choices: [{ label: 'Đạt', to: 13, main: true }, { label: 'Không đạt — trả sửa', to: 9, kind: 'secondary', reason: true }] },
+    13: { who: 'thau', scr: KH18, nlv: 3, external: 'Ban ĐTXD Tập đoàn', q: ['P-233'], actionLabel: 'Ghi nhận ý kiến', next: 14 },
+    14: { who: 'thau', scr: KH18, nlv: 2, actionLabel: 'Hoàn thành giải trình', next: 15 },
+    15: kySplit(),
+    /* 16–18, G5 (VOffice / Cổng đấu thầu): lỗi kỹ thuật (ui.voFail) → 18 thử lại tự động → 16, giữ bước nghiệp vụ; người ký từ chối (ui.signReject) → 19. */
+    16: { nlv: 1, next: 17 },
+    17: { nlv: 0.5, next: 'g5' },
+    g5: { gw: true, run: (v, u) => { v.khKq = u.voFail ? 'ERR' : u.signReject ? 'REJ' : 'OK'; if (u.voFail) u.voFail = false; else u.signReject = false; },
+      when: (v) => (v.khKq === 'ERR' ? 18 : v.khKq === 'REJ' ? 19 : 'g6') },
+    18: { nlv: 0.5, next: 16 },
+    19: { who: 'thau', scr: KH18, nlv: 1, optional: true, actionLabel: 'Chuyển chỉnh sửa', next: 9 },
+    20: { who: 'thau', scr: KH18, nlv: 1, optional: (v) => v.khKy !== 'CUNG', actionLabel: 'Xác nhận kết quả ký', next: 'g6' },
+    /* G6 "Có kết quả ký hợp lệ?": BPMN chỉ vẽ nhánh Có (P-232). */
+    g6: { gw: true, next: 21 },
+    21: { who: 'thau', scr: KH18, nlv: 0.5, actionLabel: 'Đăng tải KHLCNT', next: 22 },
+    /* 22 tích hợp Cổng đấu thầu: BPMN chưa vẽ nhánh lỗi đăng tải (P-232). */
+    22: { nlv: 0.5, next: 23 },
+    /* 23 cập nhật KHLCNT Hoàn thành, mở các gói cho tổ chức LCNT (MS19 — T5). */
+    23: { nlv: 0.5, run: (v) => { if (window.Thau) window.Thau.khFlowDone(v.kh); }, next: 'END' },
+  };
+  /* T67 T4 — trạng thái KHLCNT theo bước (THAU-TT-1311 §3.2–§3.4): thuộc tính khl của dòng cấu hình bước. Việc của bước được mở
+     thì KHLCNT nhận trạng thái này (thật: listener task created cập nhật trạng thái đối tượng cha) — người dùng không chọn trạng thái (S6).
+     11 / 15 Lập Quyết định gộp vào KHL-07 (§3.4 không có mã riêng cho lập Quyết định); 19 người ký từ chối → KHL-05. */
+  Object.entries({ 'KHL-02': [1, 2, 3, 4, 5], 'KHL-03': [6, 7, 8], 'KHL-04': [10, 12], 'KHL-05': [9, 19], 'KHL-06': [13, 14],
+    'KHL-07': [11, 15, 16, 17, 18, 20], 'KHL-08': [21], 'KHL-09': [22], 'KHL-10': [23] }).forEach(([c, ns]) => ns.forEach((n) => { D.flows.MS18[n].khl = c; }));
+  D.hdProcesses.MS18 = { name: 'Lập và phê duyệt kế hoạch lựa chọn nhà thầu', page: 'MS18', type: 'Lập và phê duyệt KHLCNT', prefix: 'HSKH-', strip: 7,
+    end: 'Kết thúc — KHLCNT đã phê duyệt và công khai, mở gói cho tổ chức lựa chọn nhà thầu', done: 'KHLCNT đã phê duyệt và công khai.',
+    obj: { label: 'Mã KHLCNT', find: (c) => (window.Thau ? window.Thau.khCase(c) : null), href: (c) => 'khlcnt/' + encodeURIComponent(c) } };
+  /* T67 T5 (D-118) — MS19 Tổ chức lựa chọn nhà thầu, một hồ sơ cho mỗi gói (BPMN-MS19, THAU-TT-1311 §4). Hồ sơ con của gói thầu (đối tượng cha).
+     Bước 2 đọc hình thức / phương thức đã duyệt trong KHLCNT → cổng G1 chọn quy trình con. Q7 = A: rộng rãi 1 túi (3.1–3.6) và chỉ định thầu (7.1–7.4)
+     chi tiết theo gạch đầu dòng của BPMN; 8 hình thức còn lại một bước gộp (chính task quy trình con 4, 5, 6, 8–12 — GIẢ LẬP, P-235).
+     Mua sắm trực tiếp không có trong BPMN-MS19 → đi theo chỉ định thầu (GIẢ LẬP, P-235). Thuộc tính lc = trạng thái gói (THAU-TT-1311 §4.1).
+     Vai GIẢ LẬP: TTMS / Tổ chuyên gia = thau; Tổ thẩm định = lan; người có thẩm quyền ký qua VOffice (bước hệ thống). */
+  const LC19 = 'SCR-102';
+  D.lcRoute = (form, method) => ({ DTRR: method === '1GD2T' ? '4' : '3', DTHC: '5', CGTT: '6', CDT_TT: '7', CDT_RG: '7', MSTT: '7', DPTT: '8', DAT_HANG: '9',
+    GIAO_NV: '10', TU_TH: '11', DAC_BIET: '12' }[form] || '12');
+  const SUB19 = { 3.1: ['Lập HSMT', 'LC-01'], 3.2: ['Thẩm định, phê duyệt HSMT', 'LC-02', 'Tổ thẩm định'], 3.3: ['Phát hành HSMT', 'LC-03'], 3.4: ['Đóng thầu, mở HSDT', 'LC-05'],
+    3.5: ['Đánh giá HSDT', 'LC-06'], 3.6: ['Thương thảo hợp đồng', 'LC-07'],
+    7.1: ['Lập, phê duyệt HSYC', 'LC-01'], 7.2: ['Gửi HSYC cho nhà thầu dự kiến', 'LC-04'], 7.3: ['Nhận và đánh giá HSĐX', 'LC-06'], 7.4: ['Thương thảo, hoàn thiện hợp đồng', 'LC-07'] };
+  if (window.BPMN_FLOWS && window.BPMN_FLOWS.MS19) Object.entries(SUB19).forEach(([k, [name, , actor]]) => {
+    window.BPMN_FLOWS.MS19.tasks[k] = { name, actor: actor || 'TTMS / Tổ chuyên gia', type: 'user', form: 'eForm', note: `Bước của quy trình con ${k.split('.')[0]} (gạch đầu dòng BPMN-MS19)`, lane: actor || 'TTMS / Tổ chuyên gia', sub: k.split('.')[0] };
+  });
+  const sub19 = (k, o) => Object.assign({ who: k === '3.2' ? 'lan' : 'thau', scr: LC19, nlv: 1, lc: SUB19[k][1] }, o);
+  const gop19 = () => ({ who: 'thau', scr: LC19, nlv: 5, lc: 'LC-01', q: ['P-235'], actionLabel: 'Hoàn thành', next: 'g2' });
+  D.flows.MS19 = {
+    1: { who: 'thau', scr: LC19, nlv: 0.5, lc: 'LC-01', actionLabel: 'Khởi tạo tổ chức LCNT', next: 2 },
+    2: { nlv: 0.5, lc: 'LC-01', run: (v) => { const g = window.Thau ? window.Thau.pkOf(v.goi) : null; if (g) v.route = D.lcRoute(g.form, g.method); }, next: 'g1' },
+    g1: { gw: true, when: (v) => (v.route === '3' ? '3.1' : v.route === '7' ? '7.1' : Number(v.route)) },
+    3.1: sub19('3.1', { actionLabel: 'Trình thẩm định HSMT', next: '3.2' }),
+    3.2: sub19('3.2', { choices: [{ label: 'Đạt — phê duyệt HSMT', to: '3.3', main: true }, { label: 'Không đạt — trả sửa', to: '3.1', kind: 'secondary', reason: true }] }),
+    3.3: sub19('3.3', { nlv: 0.5, actionLabel: 'Phát hành', next: '3.4' }),
+    3.4: sub19('3.4', { actionLabel: 'Hoàn thành mở thầu', next: '3.5' }),
+    3.5: sub19('3.5', { nlv: 3, actionLabel: 'Hoàn thành đánh giá', next: '3.6' }),
+    3.6: sub19('3.6', { nlv: 2, actionLabel: 'Hoàn thành thương thảo', next: 'g2' }),
+    7.1: sub19('7.1', { actionLabel: 'Hoàn thành HSYC', next: '7.2' }),
+    7.2: sub19('7.2', { nlv: 0.5, actionLabel: 'Gửi HSYC', next: '7.3' }),
+    7.3: sub19('7.3', { nlv: 2, actionLabel: 'Hoàn thành đánh giá', next: '7.4' }),
+    7.4: sub19('7.4', { nlv: 2, actionLabel: 'Hoàn thành thương thảo', next: 'g2' }),
+    4: gop19(), 5: gop19(), 6: gop19(), 8: gop19(), 9: gop19(), 10: gop19(), 11: gop19(), 12: gop19(),
+    g2: { gw: true, next: 13 },
+    13: { who: 'thau', scr: LC19, nlv: 1, lc: 'LC-08', actionLabel: 'Trình thẩm định KQLCNT', next: 14 },
+    14: { who: 'lan', scr: LC19, nlv: 2, lc: 'LC-08', choices: [{ label: 'Đạt', to: 16, main: true }, { label: 'Không đạt — trả sửa', to: 15, kind: 'secondary', reason: true }] },
+    15: { who: 'thau', scr: LC19, nlv: 1, lc: 'LC-08', optional: true, actionLabel: 'Trình lại', next: 13 },
+    16: { who: 'thau', scr: LC19, nlv: 1, lc: 'LC-08', choices: [{ label: 'Trình ký VOffice', to: 17, main: true, set: { lcKy: 'VO' } }, { label: 'Trình ký cứng', to: 18, kind: 'secondary', set: { lcKy: 'CUNG' } }] },
+    17: { nlv: 1, lc: 'LC-08', next: 19 },
+    18: { who: 'thau', scr: LC19, nlv: 1, lc: 'LC-08', optional: (v) => v.lcKy !== 'CUNG', actionLabel: 'Xác nhận kết quả ký', next: 19 },
+    /* 19 nhận kết quả ký → G5: lỗi kỹ thuật (ui.voFail) → 20 thử lại → 17; người ký từ chối (ui.signReject) → 21 → 16; thành công → 22. */
+    19: { nlv: 0.5, lc: 'LC-08', next: 'g5' },
+    g5: { gw: true, run: (v, u) => { v.lcKq = u.voFail ? 'ERR' : u.signReject ? 'REJ' : 'OK'; if (u.voFail) u.voFail = false; else u.signReject = false; },
+      when: (v) => (v.lcKq === 'ERR' ? 20 : v.lcKq === 'REJ' ? 21 : 22) },
+    20: { nlv: 0.5, lc: 'LC-08', next: 17 },
+    21: { who: 'thau', scr: LC19, nlv: 1, lc: 'LC-08', optional: true, actionLabel: 'Chuyển chỉnh sửa', next: 16 },
+    22: { who: 'thau', scr: LC19, nlv: 0.5, lc: 'LC-09', actionLabel: 'Đăng tải KQLCNT', next: 23 },
+    23: { nlv: 0.5, lc: 'LC-09', next: 24 },
+    /* 24: đóng tổ chức LCNT, gói có KQLCNT (Chuyển ký hợp đồng) — Tạo hợp đồng ở Chi tiết gói thầu khởi tạo MS22 (H3). */
+    24: { nlv: 0.5, lc: 'LC-10', run: (v) => { if (window.Thau) window.Thau.lcFlowDone(v.goi); }, next: 'END' },
+  };
+  /* Thứ tự bước hiện ở timeline hồ sơ: bước con nằm sau task quy trình con của nó. */
+  const ORDER19 = [1, 2, 3, '3.1', '3.2', '3.3', '3.4', '3.5', '3.6', 4, 5, 6, 7, '7.1', '7.2', '7.3', '7.4', 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24];
+  D.hdProcesses.MS19 = { name: 'Tổ chức lựa chọn nhà thầu', page: 'MS19', type: 'Tổ chức LCNT', prefix: 'HSLC-', strip: 3, order: ORDER19,
+    end: 'Kết thúc — KQLCNT đã phê duyệt và công khai, gói chuyển ký hợp đồng', done: 'KQLCNT đã phê duyệt và công khai; gói chuyển ký hợp đồng.',
+    obj: { label: 'Mã gói thầu', tail: ['Hình thức lựa chọn nhà thầu', 'Giá gói thầu'], find: (c) => (window.Thau ? window.Thau.lcCase(c) : null), href: (c) => 'goi-thau/' + encodeURIComponent(c) } };
   /* Tên bước hiện trên màn không mang ghi chú chờ chốt của bản vẽ ("[? Q2]"); điểm này nằm ở (i). */
   Object.keys(D.hdProcesses).forEach((p) => Object.values((window.BPMN_FLOWS[p] || {}).tasks || {}).forEach((t) => { t.name = t.name.replace(/\s*\[\?[^\]]*\]/g, ''); }));
   /* Mã hồ sơ theo mã hợp đồng và quy trình; quy trình many (MS24, MS23.01) mỗi lần một hồ sơ (n). Mốc đầu = ngày tạo hợp đồng mẫu 05/10/2026 (2 NLV sau 01/10). */
-  D.hdCaseCode = (hd, process, n) => { const p = D.hdProcesses[process || 'MS22']; return p.prefix + hd.slice(3) + (p.many ? '-' + String(n || 1).padStart(2, '0') : ''); };
+  D.hdCaseCode = (hd, process, n) => { const p = D.hdProcesses[process || 'MS22']; return p.prefix + hd.slice(p.strip != null ? p.strip : 3) + (p.many ? '-' + String(n || 1).padStart(2, '0') : ''); };
   D.hdCaseClock = 2;
   /* T25: mỗi trang Hợp đồng là một quy trình riêng (MS22, MS23, MS23.01…04, MS24). */
-  D.familyOf = (process) => { const h = /^(MS22|MS23(?:\.0[1-4])?|MS24)/.exec(process || ''); return h ? h[1] : /^MS13/.test(process || '') ? 'MS13' : /^MS02/.test(process || '') ? 'MS02' : 'MS01'; };
+  D.familyOf = (process) => { const h = /^(MS22|MS23(?:\.0[1-4])?|MS24|MS18|MS19)/.exec(process || ''); /* T67 T1: MS18, MS19 là quy trình riêng */ return h ? h[1] : /^MS13/.test(process || '') ? 'MS13' : /^MS02/.test(process || '') ? 'MS02' : 'MS01'; };
   /* Luồng con của hồ sơ Điều chỉnh (DG-MS02 §B.3): < 160 tỷ → MS02.03; ≥ 160 tỷ → MS02.02 khi không báo cáo Tập đoàn (đã chọn ở 48,
      chưa tới 48 thì theo căn cứ ĐXMS cũ), còn lại MS02.01. Các bước "Không áp dụng" lấy theo luồng MS01 tương ứng. */
   D.adjBranch = (v) => (v.big === false ? 'MS02.03' : v.reportTD === false || (v.reportTD == null && v.basisTD) ? 'MS02.02' : 'MS02.01');
-  D.naOf = (v) => (D.familyOf(v.process) === 'MS02' ? D.notApplicable[D.adjBranch(v).replace('MS02', 'MS01')]
+  /* T67 T2: MS18 — tuyến VHT không qua 12–15, tuyến Tập đoàn không qua 10–11 (cổng Cấp phê duyệt). */
+  D.naOf = (v) => (D.familyOf(v.process) === 'MS18' ? (v.level === 'TD' ? [10, 11] : [12, 13, 14, 15])
+    /* T67 T5: MS19 — task quy trình con 3 / 7 chỉ là khung (bước con hiện thay); quy trình con của hình thức khác không áp dụng. */
+    : D.familyOf(v.process) === 'MS19' ? [3, 7].concat([4, 5, 6, 8, 9, 10, 11, 12].filter((n) => String(n) !== v.route),
+      v.route === '3' ? [] : [3.1, 3.2, 3.3, 3.4, 3.5, 3.6], v.route === '7' ? [] : [7.1, 7.2, 7.3, 7.4])
+    : D.familyOf(v.process) === 'MS02' ? D.notApplicable[D.adjBranch(v).replace('MS02', 'MS01')]
     /* DX-10 (b): người khởi tạo là Chỉ huy ĐVĐX → bước 5.1 không áp dụng. */
     : (D.notApplicable[v.process] || []).concat(v.creatorCh ? [5.1] : []));
   /* Task MS13 hồ sơ không đi qua (timeline "Không áp dụng"): tuyến Tập đoàn 63–74 khi chưa rẽ Tập đoàn; đã rẽ (vars.tdKinds) thì bỏ bước ký VHT
@@ -1243,11 +1369,11 @@
     'P-73': { q: 'Đối soát ĐXMS (comment #4): MBOM, dự toán nhiệm vụ / dự án, KHN lấy từ hệ thống nào, đối soát theo mã hàng hay theo tên', src: 'Comment Figma #4', def: 'Dữ liệu mẫu, đối soát theo dòng hạng mục', scr: 'SCR-07' },
     'P-74': { q: 'Backlog "Import yêu cầu báo giá cho các nhà cung cấp": nhập gì (danh sách hạng mục, NCC nhận, hay báo giá NCC trả về), ở bước nào, theo mẫu tệp nào', src: 'BA-TD Backlog dòng 210', def: 'Chưa dựng; YCBG tạo trong task 08', scr: 'SCR-73' },
     'P-75': { q: 'Backlog KĐT "Thành phần tham gia — Quản lý Tổ chuyên gia" (dòng 263): KĐT có Tổ chuyên gia riêng không? MS13-TO BE không có bước lập Tổ chuyên gia', src: 'BA-TD Backlog dòng 263, BPMN-DTMS MS13-TO BE', def: 'Tab Thành phần tham gia của KĐT hiện CQCM thẩm định; Tổ chuyên gia ở Gói thầu', scr: 'SCR-56' },
-    'P-76': { q: 'Báo cáo kiểm tra KHLCNT (MS18.3): tên / biểu mẫu chính thức, nội dung bắt buộc, người ký, có trình ký VOffice không (Q02 của BPMN-MS18)', src: 'BPMN-MS18 Q02', def: 'Tạm gọi BM-02 Báo cáo kiểm tra KHLCNT, ký VOffice', scr: 'SCR-80' },
-    'P-77': { q: 'Tổ chức LCNT (MS19) chưa có BPMN: trình tự theo từng hình thức (Điều 12–21) có tách một quy trình Camunda cho mỗi hình thức không', src: 'QC-12869 Điều 12–21; INDEX MS18 / MS19', def: 'Mỗi hình thức một trình tự (bảng Trình tự thực hiện ở Chi tiết gói thầu), chọn quy trình theo mã hình thức', scr: 'SCR-82' },
+    'P-76': { q: 'Báo cáo kiểm tra KHLCNT (MS18.3): tên / biểu mẫu chính thức, nội dung bắt buộc, người ký, có trình ký VOffice không (Q02 của BPMN-MS18)', src: 'BPMN-MS18 Q02', def: 'Đã có nguồn (T67, BM-KHLCNT): cấp VHT = BM02 Báo cáo kiểm tra 16 tiêu chí, Trung tâm Mua sắm lập, Giám đốc ký, không có ô Số; cấp Tập đoàn = BM02 Báo cáo thẩm định Bảng số 2, Tổ thẩm định lập — MS18 bước 10 / 12', scr: 'SCR-80' },
+    'P-77': { q: 'Tổ chức LCNT (MS19) chưa có BPMN: trình tự theo từng hình thức (Điều 12–21) có tách một quy trình Camunda cho mỗi hình thức không', src: 'QC-12869 Điều 12–21; INDEX MS18 / MS19', def: 'Một phần đã có nguồn (T67 T5): BPMN-MS19 mức tổng 24 bước, một process instance cho mỗi gói, cổng Hình thức LCNT chọn quy trình con. Trình tự chi tiết từng hình thức vẫn treo (P-235)', scr: 'SCR-82' },
     'P-78': { q: 'Danh sách nhà thầu / hãng sản xuất chiến lược và nhà thầu bị cấm: tích hợp từ Tập đoàn hay nhập tay trên ĐTMS; ai cập nhật', src: 'QC-12869 Điều 13 khoản 2; Backlog dòng 403–406', def: 'Chiến lược: dữ liệu mẫu theo QĐ công bố; cấm: cờ Tình trạng của danh mục NCC', scr: 'SCR-83' },
     'P-79': { q: 'Ngưỡng cảnh báo giá dự thầu thấp bất thường (QC-12869 không nêu tỷ lệ)', src: 'Backlog dòng 389', def: 'Thấp hơn 20% giá gói thầu → cảnh báo, yêu cầu nhà thầu giải trình', scr: 'SCR-82' },
-    'P-110': { q: 'Video hệ thống thầu cũ team BA nhắc tới (chưa có trong project-knowledge): có màn nào ngoài KHLCNT (HSMT, phát thầu, chấm thầu, KQLCNT — MS19) không', src: 'Yêu cầu team BA 30/10/2026; HT-THAU-IMG chỉ có KHLCNT', def: 'GIẢ LẬP — cập nhật trường theo 53 ảnh KHLCNT; màn MS19 giữ như đã dựng cho tới khi có video.' },
+    'P-110': { q: 'Video hệ thống thầu cũ team BA nhắc tới (chưa có trong project-knowledge): có màn nào ngoài KHLCNT (HSMT, phát thầu, chấm thầu, KQLCNT — MS19) không', src: 'Yêu cầu team BA 30/10/2026; HT-THAU-IMG chỉ có KHLCNT', def: 'Hệ thống cũ không có màn MS19 (hiện trạng hệ thống thầu §8 câu 10) — Chi tiết gói thầu giữ 6 tab như đã dựng, đọc biến MS19 khi gói chạy luồng (T67 T5)' },
     'P-112': { q: 'Danh mục nào là chung toàn hệ thống, danh mục nào riêng ĐTMS; danh mục trùng ý nghĩa với ecat (Nguồn kinh phí ↔ Nguồn vốn, Đối tác ↔ Nhà cung cấp / Nhà thầu, Lĩnh vực ↔ Lĩnh vực đầu tư) dùng chung hay tách', src: 'Yêu cầu team BA 30/10/2026; ecat common-catalog', def: 'GIẢ LẬP — mọi danh mục nằm trong phân hệ Danh mục dùng chung; Nhà cung cấp / Nhà thầu, Loại đối tác, Nguồn vốn, Lĩnh vực đầu tư, Đơn vị tính, Tiền tệ xếp danh mục chung; còn lại gom nhóm Đầu tư mua sắm.' },
     'P-113': { q: 'Nhiệm vụ / Đề tài, dự án của KĐT: "KHN" trong yêu cầu BA là Kế hoạch năm (mọi nhiệm vụ, đề tài, dự án đã vào KHN) hay chỉ loại Mua sắm thường xuyên (KHN)', src: 'Yêu cầu team BA 30/10/2026', def: 'GIẢ LẬP — chọn trong toàn bộ danh sách nhiệm vụ / đề tài, dự án dùng chung với ĐXMS; bắt buộc khi tạo KĐT.' },
     'P-114': { q: 'Bộ Loại hợp đồng: 12 giá trị của hệ thống cũ (có 3 loại kết hợp, Thỏa thuận khung…) hay 8 giá trị theo QC-12869 Điều 43', src: 'HT-THAU-IMG 7221; QC-12869 Điều 43; P-35', def: 'GIẢ LẬP — giữ 8 giá trị theo Quy chế mới; loại kết hợp xếp vào Hỗn hợp.' },
@@ -1290,9 +1416,9 @@
     'P-109': { q: 'Trang MS02 ver1.1 còn bản MS01 cũ nằm khít bên dưới (cùng vị trí, khác nhãn) và một cổng G5 cạnh bước 17 không có mũi tên; 34 "Yêu cầu xử lý lại" về 12 (chỉ nhánh ≥ 160 tỷ)', src: 'BPMN-DTMS trang MS02 ver1.1', def: 'Tool trích lấy hình nằm trên (như drawio hiển thị), bỏ qua G5; 34 → 14 → 11 / 12 theo giá trị như MS01', scr: 'SCR-14' },
     'P-36': { q: 'Ai quản trị từng danh mục (TTMS cho Nhà cung cấp; quản trị hệ thống cho phần còn lại?)', src: 'UC-12-05 (A21)', def: 'Vai Quản trị hệ thống thấy tất cả; vai TTMS chỉ thấy Nhà cung cấp và Loại hàng hoá', scr: 'SCR-30' },
     /* T25 B1 — MS22, plan docs/dtms/prototype-T25-hop-dong-chuan-bi.md §4. */
-    'P-119': { q: 'Tiêu chí chọn mẫu dự thảo; có phân mẫu theo giá trị không (ghi chú nêu ví dụ 45 tỷ, chưa phải quy tắc)', src: 'DG-MS22 §D 1–2', def: 'GIẢ LẬP — bước 3 chọn mẫu tay từ danh sách, không dùng ngưỡng', scr: 'SCR-102' },
+    'P-119': { q: 'Tiêu chí chọn mẫu dự thảo; có phân mẫu theo giá trị không (ghi chú nêu ví dụ 45 tỷ, chưa phải quy tắc)', src: 'DG-MS22 §D 1–2', def: 'GIẢ LẬP — tiêu chí mẫu đơn giản / đầy đủ, sẵn có / theo yêu cầu theo gợi ý P-236. Nguồn mẫu đã có: lấy từ HSMT / HSYC của gói (T67 H3, QT-10.2.4 §5.2), MS22 bước 3 chỉ xem', scr: 'SCR-102' },
     'P-121': { q: 'Nhà thầu không ký hoặc chậm gửi lại: quay về đâu, ai theo dõi', src: 'DG-MS22 §D 9', def: 'GIẢ LẬP — bước 13 có nút Ghi nhận chưa ký, hồ sơ ở lại bước 13; đề xuất DX-06, không tự thêm nhánh', scr: 'SCR-102' },
-    'P-126': { q: 'Mã, tên, mẫu hợp đồng, phụ lục, biên bản thương thảo và checklist áp dụng', src: 'DG-MS22 §D 3', def: 'GIẢ LẬP — mã văn bản tạm HD-PLKT, HD-BODY, HD-PL1, HD-DT, HD-KY; danh sách mẫu tự đặt', scr: 'SCR-102' },
+    'P-126': { q: 'Mã, tên, mẫu hợp đồng, phụ lục, biên bản thương thảo và checklist áp dụng', src: 'DG-MS22 §D 3', def: 'GIẢ LẬP — mã văn bản tạm HD-PLKT, HD-BODY, HD-PL1, HD-DT, HD-KY; checklist. Mẫu hợp đồng đã có nguồn (BM-HD-2026, danh mục Mẫu hợp đồng — T67 H1)', scr: 'SCR-102' },
     'P-127': { q: 'Thông tin AI kiểm tra, tiêu chí OK / Not OK, mức cảnh báo, cách xác nhận kết quả', src: 'DG-MS22 §D 4', def: 'GIẢ LẬP — AI đối chiếu bảo hành với HSMT và kiểm tra đủ mã hàng; hiện kết quả chỉ xem ở bước 6, 7, 8', scr: 'SCR-102' },
     'P-128': { q: 'Ai quyết định có cần thống nhất lại với nhà thầu, tiêu chí rẽ bước 6 / 7', src: 'DG-MS22 §D 5', def: 'GIẢ LẬP — theo loại cảnh báo AI (điều khoản đã thương thảo → 6, thiếu sót nội bộ → 7); Trưởng phòng trả về thì chọn bằng nút', scr: 'SCR-102' },
     'P-129': { q: 'Thủ trưởng VHT không phê duyệt: sửa ở bước nào; có quay bước 5, 8 và lấy lại ký nháy không', src: 'DG-MS22 §D 6', def: 'GIẢ LẬP — theo mũi tên BPMN về bước 9, không qua lại AI và Trưởng phòng', scr: 'SCR-102' },
@@ -1307,7 +1433,7 @@
     'P-144': { q: 'Đơn vị, người tập hợp và bổ sung hồ sơ (Chuyên quản / ĐVMS); tên đầy đủ YCCT, nguồn giao việc', src: 'DG-MS24 §D 1', def: 'GIẢ LẬP — chuyên viên Phòng Hợp đồng (vai R-DVMS) làm bước 1, 3; không tách tài khoản với nhân sự chuyên thanh toán', scr: 'SCR-102' },
     'P-145': { q: 'Hợp đồng nào bắt buộc bảng tổng hợp; ai chọn Có / Không', src: 'DG-MS24 §D 2', def: 'GIẢ LẬP — nhân sự chuyên thanh toán chọn ở bước 2, mặc định Có', scr: 'SCR-102' },
     'P-146': { q: 'Tên trạng thái, thông tin và minh chứng bắt buộc theo phương thức thanh toán ở bước 19', src: 'DG-MS24 §D 4', def: 'GIẢ LẬP — một trạng thái Đã thanh toán; bắt buộc tải minh chứng, không phân theo phương thức', scr: 'SCR-102' },
-    'P-147': { q: 'Checklist đủ căn cứ theo tạm ứng, bảo lãnh, giai đoạn; ai chốt ở bước 2; kế hoạch và số tiền từng đợt', src: 'DG-MS24 §D 5', def: 'GIẢ LẬP — kế hoạch thanh toán đặt trong dữ liệu mẫu; đợt có mốc chưa có ngày thực tế thì không tạo được hồ sơ; khi kiểm tra người xử lý chọn nút', scr: 'SCR-102' },
+    'P-147': { q: 'Checklist đủ căn cứ theo tạm ứng, bảo lãnh, giai đoạn; ai chốt ở bước 2; kế hoạch và số tiền từng đợt', src: 'DG-MS24 §D 5', def: 'GIẢ LẬP — checklist căn cứ; đợt có mốc chưa có ngày thực tế thì không tạo được hồ sơ; khi kiểm tra người xử lý chọn nút. Kế hoạch và số tiền từng đợt đã có nguồn: sinh theo phương thức thanh toán của mẫu hợp đồng (T67 H4: HĐ-2026-0052 mẫu 1.6, 10 / 30 / 60)', scr: 'SCR-102' },
     'P-148': { q: 'Mẫu đề nghị chuyển tiền và bảng tổng hợp, thông tin bắt buộc, nguồn dữ liệu', src: 'DG-MS24 §D 6', def: 'GIẢ LẬP — mã văn bản tạm TT-DNCT, TT-BTH, nội dung tự đặt', scr: 'SCR-102' },
     'P-149': { q: 'AI đọc hoá đơn thế nào, tổng hợp gì, xử lý thiếu / sai dữ liệu, ai rà soát trước khi trình ký', src: 'DG-MS24 §D 7', def: 'GIẢ LẬP — bảng tổng hợp lấy từ số hoá đơn và kế hoạch thanh toán; không có bước rà soát riêng', scr: 'SCR-102' },
     'P-150': { q: 'Trả sửa rồi ký lại: quản lý phiên bản, chữ ký, ý kiến của bản trước', src: 'DG-MS24 §D 8', def: 'GIẢ LẬP — trình lại đủ các cấp từ Phòng tài chính; ý kiến giữ ở lịch sử hồ sơ', scr: 'SCR-102' },
@@ -1372,12 +1498,20 @@
     'P-221': { q: 'Thầu sửa tên, xoá, thêm hàng hoá trên phiếu YCBG ở bước 8 (review nhi 06/11 #23) và bỏ bảng Đối soát ĐXMS (#24): phiếu gửi nhà cung cấp được khác danh mục ĐXMS đã xác nhận ở mức nào, có cần đồng bộ ngược về danh mục hồ sơ hay trả ĐVĐX xác nhận lại không', src: 'Review nhi 06/11 #23, #24; P-73', def: 'GIẢ LẬP — chỉ đổi trên phiếu YCBG, danh mục hồ sơ dùng cho Tờ trình không đổi, không kiểm tra lại', scr: 'SCR-07' },
     'P-222': { q: 'Sửa Phụ lục chi phí ở bước Soạn thảo tờ trình (review nhi 06/11 #36): được lệch giá trị báo giá đã được Chỉ huy Thầu phê duyệt ở 10.1 không; qua ngưỡng 160 tỷ thì đổi biểu mẫu tại chỗ hay phải quay lại bước 10 / 10.1', src: 'Review nhi 06/11 #36; D-54', def: 'GIẢ LẬP — lệch giá chỉ cảnh báo; qua ngưỡng thì khi gửi hồ sơ đổi luồng con, biểu mẫu và Checklist theo giá trị mới, người soạn kiểm tra lại rồi gửi; đơn giá mẫu quy đổi theo tỷ lệ cho khớp giá trị cuối cùng', scr: 'SCR-08' },
     'P-223': { q: 'Tạm ẩn bảng AI bước 6 Bóc tách và đối chiếu ở màn Lập ĐXMS (review nhi 06/11 #18): bỏ hẳn bước 6 trên BPMN hay chỉ ẩn trên giao diện; khi đó ai kiểm số lượng đề xuất so với số còn được dùng', src: 'Review nhi 06/11 #18; BPMN MS01 v1.1 bước 6', def: 'GIẢ LẬP — ẩn bảng bằng cờ D.bocHide, áp dụng theo số đề xuất của căn cứ; popup còn dữ liệu căn cứ và bảng điền Loại chi phí', scr: 'SCR-96' },
+    'P-250': { q: 'AI gợi ý điền phiếu Yêu cầu báo giá ở bước 8 (kho comment #86): AI lấy nguồn nào cho Điều kiện thanh toán, Địa điểm giao hàng, Các yêu cầu khác; có gợi ý thêm Model / Yêu cầu kỹ thuật từng hàng hoá không', src: 'Kho comment #86 (Phong BA 16/11); D-122', def: 'GIẢ LẬP — nút ✦ Gợi ý từ AI ở nhóm Thông tin chung (khuôn aiFill như Tờ trình), điền các ô điều khoản đang trống theo giá trị mẫu của hồ sơ demo, mỗi ô ghi nguồn; chưa gợi ý dòng hàng hoá', scr: 'SCR-106' },
     'P-224': { q: 'Chọn đích danh Người thẩm định của từng CQCM ở bước 16 (review nhi 06/11 #40): danh sách người lấy từ đâu; lãnh đạo CQCM có được đổi người được giao không', src: 'Review nhi 06/11 #40; D-27', def: 'GIẢ LẬP — danh sách chuyên viên mẫu theo đơn vị, mặc định người đầu danh sách; bước 19 giao đúng người đã chọn, bước 20 vẫn là lãnh đạo CQCM', scr: 'SCR-10' },
     'P-225': { q: 'Bước 18 "Gửi yêu cầu thẩm định, trình ký và thông báo" (tác nhân Hệ thống): ai là Đại diện đơn vị đề xuất ký BM-03; bước 16.1 Chỉ huy ĐVĐX duyệt trên ĐTMS có thay được việc ký không; hồ sơ Mật ký bản cứng thì ai tải bản scan, CQCM có phải chờ ký xong mới nhận yêu cầu không', src: 'BPMN-DTMS trang MS01 v1.1 bước 17, 18; BM-10.2.1 BM-03 (khối ký Đại diện đơn vị đề xuất); QT-10.2.1 bước 2', def: 'GIẢ LẬP — hệ thống tự trình Chỉ huy ĐVĐX (người duyệt 16.1) ký BM-03 theo Hình thức trình ký của hồ sơ (Mật: bản cứng), nhận kết quả ngay rồi gửi CQCM; 16.1 vẫn tách riêng với việc ký; chưa dựng bước tải bản scan', scr: 'SCR-22' },
     'P-226': { q: 'ĐXMS Dừng xử lý muốn làm lại: tạo ĐXMS mới từ đầu hay có chức năng Sao chép; ĐXMS mới có giữ liên kết tới ĐXMS cũ không, căn cứ đang giữ của ĐXMS cũ trả lúc nào', src: 'T34 (người dùng 09/11, mô hình 1 ĐXMS – 1 hồ sơ)', def: 'GIẢ LẬP — nút Sao chép thành ĐXMS mới: chép thông tin chung, Sao chép từ = ĐXMS cũ, chưa có hồ sơ; căn cứ của ĐXMS cũ trả khi dừng', scr: 'SCR-29' },
     'P-227': { q: 'HR Tool có phải nguồn đề tài / dự án của ĐTMS không, cho Loại nào; trạng thái, Mật, dự toán chi tiết của đề tài từ HR Tool lấy từ đâu (HR Tool chỉ có trạng thái phân bổ chi phí nhân công, không có cờ Mật, chỉ có Tổng dự toán)', src: 'T36 (người dùng 09/11, D-96); be/hrtool mission; YC-DXMS-PROTO §2.1; DTMS_Q_0438, 0439, 0441, 0442', def: 'GIẢ LẬP — HR Tool cấp Loại SXKD, Dự án đầu tư (phân loại SXKD, DTPT); nhiệm vụ KHCN bỏ qua, ghi Cảnh báo; Trạng thái Đang thực hiện, Mật = Không, chỉ Tổng dự toán', scr: 'SCR-103' },
     'P-228': { q: 'Đội HR Tool có làm API cho ĐTMS: danh sách nhiệm vụ thay đổi từ mốc (gồm bản ghi đã xóa), chi tiết theo mã, tải tệp tờ trình, tài khoản dịch vụ', src: 'T36 B0 §3; MissionController chỉ có POST /search, GET /{id}; DTMS_Q_0443', def: 'GIẢ LẬP — lần chạy thủ công trả kết quả mẫu; chưa có API thì mọi lần HR Tool chạy phạm vi Toàn bộ qua POST /search', scr: 'SCR-109' },
     'P-229': { q: 'Màn Thêm mới hồ sơ chủ trương / phê duyệt KĐT: AI bước 3 (thông tin cơ bản), bước 2 (loại căn cứ), bước 49 (BM-03) gợi ý những mục nào, nguồn trích ghi thế nào', src: 'T63 (D-117); DG-MS13 bước 3, 49; LNV MS13.01; SRS 25 tác vụ dtms-ms13-buoc-3; SRS 27 BR-KPD-02-01', def: 'GIẢ LẬP — gợi ý theo nút ✦ Gợi ý từ AI như Lập ĐXMS (P-216): sáu mục bước 3 từ đề tài / dự án và bóc tách của KĐT; loại căn cứ theo tên tệp; mục BM-03 kế thừa BM-01 đã duyệt', scr: 'SCR-25' },
+    /* T67 T2 (D-118) — MS18 TO-BE (BPMN-MS18-TOBE, THAU-TT-1311). */
+    'P-230': { q: 'Trình ký Quyết định KHLCNT: ai chọn VOffice hay ký cứng, khi nào bắt buộc ký cứng (hồ sơ Mật?); người ký theo cấp phê duyệt', src: 'BPMN-MS18-TOBE cổng Phương thức ký?, THAU-TT-1311 §5', def: 'GIẢ LẬP — người lập chọn bằng nút ở bước 11 / 15; người ký TGĐ Tổng Công ty (VHT) hoặc TGĐ Tập đoàn (Tập đoàn)' },
+    'P-231': { q: 'Bản cam kết Tổ thẩm định: số CCCD, địa chỉ lấy từ hồ sơ nhân sự hay người cam kết tự nhập; căn cứ Điều 66 QĐ 1340 (MSTX) có áp cho KHLCNT Theo luật không', src: 'BM-KHLCNT Bản cam kết, hien-trang-he-thong-thau §8 câu 7', def: 'GIẢ LẬP — người cam kết tự nhập trong eForm bước 8, mỗi thành viên một việc' },
+    'P-232': { q: 'Nhánh BPMN MS18 chưa vẽ: cổng Có kết quả ký hợp lệ? chỉ có nhánh Có; đăng tải lỗi; trả sửa về bước 5 có phải chọn lại và cam kết lại Tổ thẩm định không', src: 'BPMN-MS18-TOBE, plan T67 §3 T1', def: 'GIẢ LẬP — theo đúng mũi tên BPMN: trả sửa về 5 → 6 → 7 → 8 (cam kết lại); không vẽ nhánh Không và lỗi đăng tải' },
+    'P-235': { q: 'Quy trình con của từng hình thức LCNT (MS19 bước 3–12): BPMN-MS19 chỉ ghi gạch đầu dòng, chưa có sơ đồ con; mua sắm trực tiếp không có trong cổng Hình thức LCNT', src: 'BPMN-MS19, THAU-TT-1311 §4.2–4.10', def: 'GIẢ LẬP (D-118 Q7 = A) — rộng rãi 1 túi (3.1–3.6) và chỉ định thầu (7.1–7.4) chi tiết theo gạch đầu dòng; 8 hình thức còn lại một bước gộp hiện trình tự chỉ xem; mua sắm trực tiếp đi theo chỉ định thầu', scr: 'SCR-82' },
+    'P-236': { q: 'Mẫu hợp đồng: quy tắc chọn mẫu (đơn giản / đầy đủ, sẵn có / theo yêu cầu, nước ngoài); thư trao hợp đồng (trường trộn so_thu_trao_hd) do bước nào của MS19 phát hành; xây lắp chưa có mẫu', src: 'BM-HD-2026, T66 §3, H-Q2 / H-Q6', def: 'GIẢ LẬP — gợi ý theo Loại gói thầu (MS_HH 1.0, HH_LD 1.6, PM 1.8, PTV 3.0, TV 5; nhà thầu nước ngoài 9 / 10; xây lắp 1.6), người lập HSMT chọn lại; thư trao hợp đồng để trống', scr: 'SCR-103' },
+    'P-233': { q: 'Ý kiến Ban ĐTXD Tập đoàn: nhận qua tích hợp hay TTMS nhập Phiếu nhận xét; Ban ĐTXD không đồng ý thì quay về đâu', src: 'BPMN-MS18-TOBE bước 13, THAU-TT-1311 §3.3', def: 'GIẢ LẬP — TTMS ghi nhận số, ngày phiếu và từng ý kiến (D-118 Q10); không có nhánh không đồng ý' },
     'P-220': { q: 'Bộ trường nhập của Tờ trình BM-01 / BM-09 và phiếu BM-03 trên eForm (review nhi 06/11 #8, #15): các ô của mẫu Word chưa có nguồn dữ liệu (Quan điểm thực hiện, Nguồn ngân sách, Đánh giá hiệu quả, số / trích yếu công văn BM-03) do người soạn nhập trên form hay để điền tiếp trên Word', src: 'BM-10.2.1 (BM-01, BM-09, BM-03); review nhi 06/11', def: 'GIẢ LẬP — mọi mục của mẫu có ô nhập trên eForm (không bắt buộc trừ mục bắt buộc của mẫu); ô bỏ trống in "…" trên văn bản', scr: 'SCR-08' },
     'P-206': { q: 'Hình thành gói thầu (bảng bóc tách chi phí ở Thêm mới luồng) là dropdown — danh sách giá trị gồm những gì', src: 'RV-PROTO-0511 #14; HT-DXMS-NOTE màn 8 (cột Hình thành gói thầu); QC-12869 Điều 39', def: 'GIẢ LẬP — Hình thành gói thầu / Không hình thành gói thầu (các trường hợp Điều 39 QC-12869)', scr: 'SCR-96' },
     'P-207': { q: 'Lý do khi chọn Mức ưu tiên Khẩn / Thượng khẩn nhập ở đâu — review ghi ở dòng "Luồng mua sắm / Tìm kiếm"', src: 'RV-PROTO-0511 #1', def: 'GIẢ LẬP — nhập ở Thêm mới luồng (trường Lý do ưu tiên, bắt buộc khi Khẩn / Thượng khẩn), hiện ở Chi tiết luồng; tìm kiếm chỉ lọc theo Mức ưu tiên', scr: 'SCR-96' },
@@ -1465,15 +1599,17 @@
        T56 Q1 (review Nhi #10, Phong BA #32, #33): mục này chuyển vào nhóm Quản lý thầu (bên dưới). */
     // [T56 dời vào Quản lý thầu] { label: 'Yêu cầu báo giá', icon: 'view_list', path: 'ycbg', scr: 'SCR-73' },
     /* D-76 (RV-PROTO-0511 #17): Quản lý thầu / hợp đồng ẩn khỏi sidebar ở bản demo ĐXMS bằng cờ D.show.menuThau; route và bộ demo MS22–MS24 giữ nguyên. */
-    /* T56 Q1: nhóm Quản lý thầu hiện, chỉ mục Yêu cầu báo giá; các mục thầu khác vẫn ẩn theo D-76 (cờ show từng mục con). */
+    /* T56 Q1: nhóm Quản lý thầu hiện, chỉ mục Yêu cầu báo giá; các mục thầu khác vẫn ẩn theo D-76 (cờ show từng mục con).
+       T67 (D-118 Q2): hiện lại KHLCNT, Gói thầu, Nhà thầu, Công khai (MS18 chạy luồng). T67 H1–H5 xong (người dùng 16/11): hiện nhóm Quản lý hợp đồng.
+       Giám sát hoạt động thầu vẫn ẩn (màn chưa dựng). */
     { label: 'Quản lý thầu', icon: 'doi_tac', bl: 'Quản lý thầu', due: 'B2 (08/10)', children: [
       { label: 'Yêu cầu báo giá', path: 'ycbg', scr: 'SCR-73' },
-      { label: 'Kế hoạch lựa chọn nhà thầu', path: 'khlcnt', scr: 'SCR-78', show: 'menuThau' },
-      { label: 'Gói thầu', path: 'goi-thau', scr: 'SCR-81', show: 'menuThau' },
-      { label: 'Nhà thầu & kiểm soát rủi ro', path: 'nha-thau', scr: 'SCR-83', show: 'menuThau' },
-      { label: 'Công khai & tích hợp đấu thầu', path: 'cong-khai-thau', scr: 'SCR-94', show: 'menuThau' },
+      { label: 'Kế hoạch lựa chọn nhà thầu', path: 'khlcnt', scr: 'SCR-78' },
+      { label: 'Gói thầu', path: 'goi-thau', scr: 'SCR-81' },
+      { label: 'Nhà thầu & kiểm soát rủi ro', path: 'nha-thau', scr: 'SCR-83' },
+      { label: 'Công khai & tích hợp đấu thầu', path: 'cong-khai-thau', scr: 'SCR-94' },
       { label: 'Giám sát hoạt động thầu', path: 'ph/giam-sat-thau', show: 'menuThau' }] },
-    { label: 'Quản lý hợp đồng', icon: 'chuc_danh_khoa_hoc', show: 'menuThau', children: [
+    { label: 'Quản lý hợp đồng', icon: 'chuc_danh_khoa_hoc', children: [
       { label: 'Hợp đồng', path: 'hop-dong', scr: 'SCR-84' },
       { label: 'Thỏa thuận khung & đơn hàng', path: 'thoa-thuan-khung', scr: 'SCR-87' }] },
     { label: 'Báo cáo', icon: 'nguon_kinh_phi', children: [

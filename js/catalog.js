@@ -213,6 +213,45 @@
   const PKG_FIELD = [{ value: 'HANG_HOA', label: 'Hàng hoá' }, { value: 'XAY_LAP', label: 'Xây lắp' }, { value: 'TU_VAN', label: 'Tư vấn' },
     { value: 'PHI_TU_VAN', label: 'Phi tư vấn' }, { value: 'HON_HOP', label: 'Hỗn hợp' }];
   /* T17 (D-30, P-84): căn cứ đầu vào của luồng mua sắm = tệp đính kèm vào ĐXMS / hồ sơ, mỗi tệp một loại; loại Bắt buộc thiếu thì không Lưu được. */
+  /* T67 H1 — thuộc tính mẫu hợp đồng (BM-HD-2026, tên tệp mẫu ghi phương thức thanh toán TT10_30_60 / TT10_90 / TT100). */
+  const MAU_GROUP = [['DAY_DU', 'HĐ đầy đủ'], ['DON_GIAN', 'HĐ đơn giản'], ['KHUNG', 'Thỏa thuận khung'], ['QUOC_TE', 'HĐ quốc tế']].map(([value, label]) => ({ value, label }));
+  const MAU_FIELD = [['HANG_HOA', 'Hàng hóa'], ['PHI_TU_VAN', 'Phi tư vấn'], ['TU_VAN', 'Tư vấn']].map(([value, label]) => ({ value, label }));
+  const MAU_NATURE = [['SAN_CO', 'Sẵn có'], ['THEO_YC', 'Theo yêu cầu'], ['PM', 'Phần mềm – license'], ['KAD', 'Không áp dụng']].map(([value, label]) => ({ value, label }));
+  const MAU_TT = ['10 / 30 / 60', '10 / 90', '100'].map((v) => ({ value: v, label: v }));
+  const MAU_LANG = [['VI', 'Tiếng Việt'], ['EN', 'Tiếng Anh']].map(([value, label]) => ({ value, label }));
+  const YES_NO = [{ value: 'CO', label: 'Có' }, { value: 'KHONG', label: 'Không' }];
+  const MAU_SEED = [
+    ['1.0', 'HĐ hàng hóa sẵn có', 'DAY_DU', 'HANG_HOA', 'SAN_CO', 'KHONG', '10 / 30 / 60', 'Mau 1.0_Mau HD hang hoa san co (TT10_30_60).docx'],
+    ['1.1', 'HĐ hàng hóa sẵn có', 'DAY_DU', 'HANG_HOA', 'SAN_CO', 'KHONG', '10 / 90', 'Mau 1.1_Mau HD hang hoa san co (TT10_90).docx'],
+    ['1.2', 'HĐ hàng hóa sẵn có', 'DAY_DU', 'HANG_HOA', 'SAN_CO', 'KHONG', '100', 'Mau 1.2_Mau HD hang hoa san co (TT100).docx'],
+    ['1.3', 'HĐ hàng hóa theo yêu cầu', 'DAY_DU', 'HANG_HOA', 'THEO_YC', 'KHONG', '10 / 30 / 60', 'Mau 1.3_Mau HD hang hoa theo yeu cau (TT10_30_60).docx'],
+    ['1.4', 'HĐ hàng hóa theo yêu cầu', 'DAY_DU', 'HANG_HOA', 'THEO_YC', 'KHONG', '10 / 90', 'Mau 1.4_Mau HD hang hoa theo yeu cau (TT10_90).docx'],
+    ['1.5', 'HĐ hàng hóa theo yêu cầu', 'DAY_DU', 'HANG_HOA', 'THEO_YC', 'KHONG', '100', 'Mau 1.5_Mau HD hang hoa theo yeu cau (TT100).docx'],
+    ['1.6', 'HĐ hàng hóa sẵn có và dịch vụ', 'DAY_DU', 'HANG_HOA', 'SAN_CO', 'CO', '10 / 30 / 60', 'Mau 1.6_Mau HD hang hoa san co va dich vu (TT10_30_60).docx'],
+    ['1.7', 'HĐ hàng hóa theo yêu cầu và dịch vụ', 'DAY_DU', 'HANG_HOA', 'THEO_YC', 'CO', '10 / 30 / 60', 'Mau 1.7_Mau HD hang hoa theo yeu cau va dich vu (TT10_30_60).docx'],
+    ['1.8', 'HĐ hàng hóa phần mềm / license phần mềm', 'DAY_DU', 'HANG_HOA', 'PM', 'KHONG', '10 / 90', 'Mau 1.8_Mau HD hang hoa PM_License PM (TT10_90).docx'],
+    ['2', 'Thỏa thuận khung hàng hóa', 'KHUNG', 'HANG_HOA', 'KAD', 'KHONG', '10 / 30 / 60', 'Mau 2_Mau Thoa thuan khung hang hoa (TT10-30-60).docx'],
+    ['3.0', 'HĐ dịch vụ phi tư vấn', 'DAY_DU', 'PHI_TU_VAN', 'KAD', 'CO', '10 / 90', 'Mau 3.0_Mau HD dich vu phi tu van (TT 10_90).docx'],
+    ['3.1', 'HĐ dịch vụ phi tư vấn — vận chuyển', 'DAY_DU', 'PHI_TU_VAN', 'KAD', 'CO', '10 / 90', 'Mau 3.1_Mau HD dich vu phi tu van_Van chuyen (TT 10_90).docx'],
+    ['3.2', 'HĐ dịch vụ phi tư vấn — đào tạo', 'DAY_DU', 'PHI_TU_VAN', 'KAD', 'CO', '10 / 90', 'Mau 3.2_Mau HD dich vu phi tu van_Dao tao (TT 10_90).docx'],
+    ['4', 'Thỏa thuận khung phi tư vấn', 'KHUNG', 'PHI_TU_VAN', 'KAD', 'CO', '10 / 90', 'Mau 4_Mau Thoa thuan khung Phi tu van (TT10_90).docx'],
+    ['5', 'HĐ dịch vụ tư vấn', 'DAY_DU', 'TU_VAN', 'KAD', 'CO', '10 / 90', 'Mau 5_Mau HD dich vu tu van (TT 10_90).docx'],
+    ['6', 'Thỏa thuận khung tư vấn', 'KHUNG', 'TU_VAN', 'KAD', 'CO', '10 / 90', 'Mau 6_Mau Thoa thuan khung tu van (TT-90).docx'],
+    ['7.0', 'HĐ hàng hóa đơn giản sẵn có', 'DON_GIAN', 'HANG_HOA', 'SAN_CO', 'KHONG', '10 / 30 / 60', 'Mau 7.0_Mau HD hang hoa don gian san co (TT10_30_60).docx'],
+    ['7.1', 'HĐ hàng hóa đơn giản sẵn có', 'DON_GIAN', 'HANG_HOA', 'SAN_CO', 'KHONG', '10 / 90', 'Mau 7.1_Mau HD hang hoa don gian san co (TT10_90).docx'],
+    ['7.2', 'HĐ hàng hóa đơn giản sẵn có', 'DON_GIAN', 'HANG_HOA', 'SAN_CO', 'KHONG', '100', 'Mau 7.2_Mau HD hang hoa don gian san co (TT100).docx'],
+    ['7.3', 'HĐ hàng hóa đơn giản theo yêu cầu', 'DON_GIAN', 'HANG_HOA', 'THEO_YC', 'KHONG', '10 / 30 / 60', 'Mau 7.3_Mau HD hang hoa don gian theo yeu cau (TT10_30_60).docx'],
+    ['7.4', 'HĐ hàng hóa đơn giản theo yêu cầu', 'DON_GIAN', 'HANG_HOA', 'THEO_YC', 'KHONG', '10 / 90', 'Mau 7.4_Mau HD hang hoa don gian theo yeu cau (TT10_90).docx'],
+    ['7.5', 'HĐ hàng hóa đơn giản theo yêu cầu', 'DON_GIAN', 'HANG_HOA', 'THEO_YC', 'KHONG', '100', 'Mau 7.5_Mau HD hang hoa don gian theo yeu cau (TT100).docx'],
+    ['7.6', 'HĐ hàng hóa đơn giản sẵn có và dịch vụ', 'DON_GIAN', 'HANG_HOA', 'SAN_CO', 'CO', '10 / 30 / 60', 'Mau 7.6_Mau HD hang hoa don gian san co va dich vu (TT10_30_60).docx'],
+    ['7.7', 'HĐ hàng hóa đơn giản theo yêu cầu và dịch vụ', 'DON_GIAN', 'HANG_HOA', 'THEO_YC', 'CO', '10 / 30 / 60', 'Mau 7.7_Mau HD hang hoa don gian theo yeu cau va dich vu (TT10_30_60).docx'],
+    ['7.8', 'HĐ hàng hóa đơn giản phần mềm / license phần mềm', 'DON_GIAN', 'HANG_HOA', 'PM', 'KHONG', '10 / 90', 'Mau 7.8_Mau HD hang hoa don gian_Phan mem_License PM (TT10_90).docx'],
+    ['8.0', 'HĐ dịch vụ phi tư vấn đơn giản', 'DON_GIAN', 'PHI_TU_VAN', 'KAD', 'CO', '10 / 90', 'Mau 8.0_Mau HD dich vu phi tu van don gian (TT10_90).docx'],
+    ['8.1', 'HĐ dịch vụ phi tư vấn đơn giản — vận chuyển', 'DON_GIAN', 'PHI_TU_VAN', 'KAD', 'CO', '10 / 90', 'Mau 8.1_Mau HD dich vu phi tu van don gian_Van chuyen (TT10_90).docx'],
+    ['8.2', 'HĐ dịch vụ phi tư vấn đơn giản — đào tạo', 'DON_GIAN', 'PHI_TU_VAN', 'KAD', 'CO', '10 / 90', 'Mau 8.2_Mau HD dich vu phi tu van don gian_Dao tao (TT 10_90).docx'],
+    ['9', 'HĐ quốc tế dịch vụ', 'QUOC_TE', 'PHI_TU_VAN', 'KAD', 'CO', '10 / 90', 'Mau 9_HD Quoc te_dich vu.docx', 'Tên tệp không ghi phương thức thanh toán — theo nội dung mẫu'],
+    ['10', 'HĐ quốc tế hàng hóa — mua sắm thường xuyên', 'QUOC_TE', 'HANG_HOA', 'SAN_CO', 'KHONG', '10 / 30 / 60', 'Mau 10 - HD quoc te_Hang hoa_MSTX.docx', 'Tên tệp không ghi phương thức thanh toán — theo nội dung mẫu'],
+  ].map(([code, name, group, field, nature, svc, tt, file, desc]) => [code, name, desc || '', true, 0, { group, field, nature, svc, tt, lang: group === 'QUOC_TE' ? 'EN' : 'VI', file }]);
   const BASIS_SCOPE = [{ value: 'DXMS', label: 'ĐXMS' }, { value: 'PD', label: 'Hồ sơ Phê duyệt' }, { value: 'DC', label: 'Hồ sơ Điều chỉnh' }];
   const REQUIRED = [{ value: 'CO', label: 'Bắt buộc' }, { value: 'KHONG', label: 'Không bắt buộc' }];
   const B1_CATALOGS = {
@@ -430,6 +469,19 @@
         ['TY_LE', 'Theo tỷ lệ phần trăm', '', true, 0],
         ['HON_HOP', 'Hỗn hợp', 'Kết hợp các loại trên; ghi rõ phạm vi áp dụng từng loại', true, 0],
       ] },
+    /* T67 H1 (T66 L1, H-Q3 = A) — Mẫu hợp đồng: 30 mẫu BM-HD-2026 (bản T7/2026). Thật: BE doc-templates thêm cột thuộc tính, FE quản trị khuôn catalog-list
+       (cần dev nhỏ: doc-templates chưa có màn quản trị). Khi nạp mẫu đổi cú pháp trường trộn <so_hop_dong> → {{hd.so_hop_dong}} (TemplatePlaceholderFormatter). */
+    { key: 'mau-hop-dong', scr: 'SCR-103', title: 'Mẫu hợp đồng', entity: 'mẫu hợp đồng', icon: 'menu_square', built: true, q: ['P-236'],
+      use: 'Hồ sơ mời thầu / hồ sơ yêu cầu của gói thầu (MS19 bước lập HSMT / HSYC) — MS22 bước 3 đọc lại mẫu; kế hoạch thanh toán của hợp đồng sinh theo phương thức của mẫu.',
+      fields: [F.code('Mã mẫu', 120), F.name('Tên mẫu', 300),
+        { key: 'group', label: 'Nhóm mẫu', type: 'select', required: true, options: MAU_GROUP, width: 170 },
+        { key: 'field', label: 'Lĩnh vực', type: 'select', required: true, options: MAU_FIELD, width: 140 },
+        { key: 'nature', label: 'Tính chất hàng hóa', type: 'select', required: true, options: MAU_NATURE, width: 180 },
+        { key: 'svc', label: 'Kèm dịch vụ', type: 'select', required: true, options: YES_NO, width: 120 },
+        { key: 'tt', label: 'Phương thức thanh toán', type: 'select', required: true, options: MAU_TT, width: 190 },
+        { key: 'lang', label: 'Ngôn ngữ', type: 'select', required: true, options: MAU_LANG, width: 120 },
+        { key: 'file', label: 'Tệp mẫu', type: 'text', max: 255, minWidth: 260 }, F.desc()],
+      seed: MAU_SEED },
     B1_CATALOGS['hinh-thuc-bao-dam'],
     { key: 'loai-tai-lieu-can-cu', scr: 'SCR-99', title: 'Loại tài liệu căn cứ', entity: 'loại tài liệu căn cứ', icon: 'menu_square', built: true, q: ['P-84'],
       use: 'Căn cứ đầu vào của luồng mua sắm (T17): mỗi tệp đính kèm vào ĐXMS / hồ sơ chọn một loại; loại Bắt buộc của ĐXMS và hồ sơ Phê duyệt phải có khi Tạo luồng.',
@@ -449,6 +501,8 @@
     Object.assign({ key: 'nguong-phan-luong', scr: 'SCR-40', title: 'Ngưỡng phân luồng', entity: 'ngưỡng phân luồng', icon: 'danh_muc_dung_chung', built: true }, TH),
     Object.assign({ key: 'phan-cap-tham-quyen', scr: 'SCR-100', title: 'Phân cấp thẩm quyền KĐT', entity: 'quy tắc phân cấp thẩm quyền', icon: 'view_flow', built: true, q: ['P-90'],
       use: 'Bước 13 "Xác định thẩm quyền phê duyệt" của MS13 (BPMN 12/10) đọc bảng này theo loại KĐT, lĩnh vực và tổng mức vốn thực tế để ghi cấp duyệt chủ trương / KĐT; cổng cấp duyệt trước trình ký tính lại (D-33).' }, PC),
+    /* T71 S0 (D-121): danh mục riêng phân hệ Quản lý sản xuất (SX-13, khai báo ở sx-data.js) — nhóm riêng trên sidebar. */
+    ...(D.sxCatalogs || []),
   ];
   const byKey = (k) => CATALOGS.find((c) => c.key === k);
   const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
@@ -478,6 +532,8 @@
     .map((r) => ({ type: r.type, field: r.field, from: r.from, to: r.to, ct: r.ct, kdt: r.kdt, basis: r.basis }));
   /* Tên Nguồn vốn theo danh mục SCR-32 (trước: bảng tên viết cứng trong data.js, lệch mã với danh mục — rà 11/11/2026). */
   D.fundNames = new Proxy({}, { get: (_, k) => (typeof k === 'string' ? (rows(byKey('nguon-von')).find((r) => r.code === k) || {}).name : undefined) });
+  /* T67 H1: tra mẫu hợp đồng theo mã (MS19 lập HSMT, MS22 bước 3, Chi tiết gói thầu / hợp đồng). */
+  D.mauOf = (code) => rows(byKey('mau-hop-dong')).find((r) => r.code === code) || null;
   const nccDefault = D.nccOf;
   D.nccOf = (code) => rows(byKey('nha-cung-cap')).find((r) => r.code === code) || nccDefault(code);
 
@@ -488,8 +544,13 @@
   /* Sidebar phân hệ Danh mục dùng chung (D-42): danh mục chung nối sau các mục sẵn có, danh mục riêng ĐTMS vào nhóm Đầu tư mua sắm (P-112). */
   const COMMON = ['nha-cung-cap', 'loai-doi-tac', 'nguon-von', 'linh-vuc', 'don-vi-tinh', 'tien-te'];
   const dtmsGroup = D.dmdcMenu.pop();
-  dtmsGroup.children = CATALOGS.filter((c) => !COMMON.includes(c.key)).map((c) => ({ label: c.title, path: 'dmdc/' + c.key, scr: c.scr, dmdc: c.key }));
-  D.dmdcMenu.push(...CATALOGS.filter((c) => COMMON.includes(c.key)).map((c) => ({ label: c.title, icon: c.icon, path: 'dmdc/' + c.key, scr: c.scr, dmdc: c.key })), dtmsGroup);
+  const SX_KEYS = (D.sxCatalogs || []).map((c) => c.key);
+  const sub = (c) => ({ label: c.title, path: 'dmdc/' + c.key, scr: c.scr, dmdc: c.key });
+  dtmsGroup.children = CATALOGS.filter((c) => !COMMON.includes(c.key) && !SX_KEYS.includes(c.key)).map(sub);
+  /* T71 S0 (D-121): nhóm danh mục riêng phân hệ Quản lý sản xuất, như nhóm Đầu tư mua sắm. */
+  const sxGroup = { label: 'Quản lý sản xuất', icon: 'phan_he_hang_hoa', dmdcGroup: true, children: CATALOGS.filter((c) => SX_KEYS.includes(c.key)).map(sub) };
+  D.dmdcMenu.push(...CATALOGS.filter((c) => COMMON.includes(c.key)).map((c) => ({ label: c.title, icon: c.icon, path: 'dmdc/' + c.key, scr: c.scr, dmdc: c.key })), dtmsGroup,
+    ...(sxGroup.children.length ? [sxGroup] : []));
 
   function overview() {
     // Theo: fe/repo-khcn-ecat-fe/src/app/features/common-catalog/overview/common-catalog-overview.component.html

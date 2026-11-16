@@ -107,8 +107,7 @@ export async function fillRsk(page, send = true) {
   await page.locator('[data-rsk-ed]').waitFor();
   await page.locator('#rsk-file').setInputFiles({ name: 'Ket-qua-ra-soat.xlsx', mimeType: 'application/vnd.ms-excel', buffer: Buffer.alloc(16) });
   await expect(page.locator('.rsk-file')).toHaveText('Ket-qua-ra-soat.xlsx');
-  await page.locator('#rsk-sign').setInputFiles({ name: 'Bien-ban-kiem-dem.pdf', mimeType: 'application/pdf', buffer: Buffer.alloc(16) });
-  await expect(page.locator('.rsk-sign')).toHaveText('Bien-ban-kiem-dem.pdf');
+  // T72 #78 (D-122 Q2): bỏ ô Biên bản kiểm đếm có ký.
   await page.evaluate(() => {
     D.rstkSample(D.items, Flow.state.clock).kq.rows.forEach((r) => Object.keys(r).forEach((k) => {
       const el = document.querySelector(`[data-rsk-in="${r.n}:${k}"]`);

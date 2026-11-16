@@ -393,7 +393,7 @@ for (const r of WF_ROUTES) {
 test('C3: SCR-42 — panel của mọi phần tử trên 5 sơ đồ không có chữ BA', async ({ page }) => {
   await asQt(page, '#/quy-trinh');
   const keys = await page.evaluate(() => QuyTrinh.WORKFLOWS.flatMap((w) => w.versions.map((v) => [v.key, v.page])));
-  expect(keys.length).toBe(5); // T29 B1: MS01 (2 phiên bản), MS02, MS13, MS14
+  expect(keys.length).toBe(7); // T29 B1: MS01 (2 phiên bản), MS02, MS13, MS14; T67 T1: MS18, MS19
   for (const [key, pg] of keys) {
     await go(page, '#/quy-trinh/' + key);
     await expect(page.locator('.bp-vp')).toBeVisible();

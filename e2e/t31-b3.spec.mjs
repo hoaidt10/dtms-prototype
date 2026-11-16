@@ -44,6 +44,8 @@ test('SCR-55: bóc tách 2 dòng, cảnh báo vượt còn lại, chặn vượt
   await page.locator('#k-legal').fill('QĐ 1482/QĐ-VHT ngày 12/03/2026 giao nhiệm vụ KHCN');
 
   // Khả dụng tính chung: dòng 6 đã giữ 2 chiếc ở ĐXMS-2026-0101 → còn 8; dòng 1 giữ 1 ở ĐXMS-2026-0101 + 1 ở KĐT-2026-0030 → còn 2.
+  // T72b (D-123): hệ thống đã bóc tách sẵn khi chọn đề tài — xoá các dòng đó để test tự thêm.
+  while (await page.locator('[data-kc-cdel]').count()) await page.locator('[data-kc-cdel]').first().click();
   await pickV(page, 'kc-ctype', 'PL2');
   expect(await optText(page, 'kc-cline', `${DT}-6`)).toContain('còn 8 Chiếc');
   expect(await optText(page, 'kc-cline', `${DT}-1`)).toContain('còn 2 Bộ');
@@ -63,7 +65,7 @@ test('SCR-55: bóc tách 2 dòng, cảnh báo vượt còn lại, chặn vượt
   await page.locator('#k-save').click();
   await expect(page).toHaveURL(/#\/kdt\/create$/);
   await expect(page.locator('[data-kc-cost] .msg')).toHaveText(/Vượt giá trị dự toán/);
-  await expect(page.locator('[data-kc-cwarn]').first()).toHaveText('Vượt khối lượng còn lại (8).');
+  await expect(page.locator('[data-kc-cwarn]').first()).toHaveText(/^Vượt số lượng còn được mua \(8 /); // T72b: trước "Vượt khối lượng còn lại (8)."
   await page.locator('[data-kc-cval]').nth(1).fill('50');
   await expect(page.locator('[data-kc-sum]')).toContainText('50,30 tỷ đồng');
   await page.locator('#k-save').click();

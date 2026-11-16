@@ -31,8 +31,7 @@ test('4 tab, mỗi tab 3 khối; số chỉ số khớp ngăn chi tiết; thẻ 
   // ĐXMS: Tổng số không đếm nháp (27, như T48); thẻ trạng thái run + wait + done ≤ tổng; Quá hạn đếm chéo.
   await page.locator('[data-tq4="dxms"]').click();
   await expect(tileN(page, 'Tổng số ĐXMS')).toHaveText('27');
-  const v = await page.evaluate(() => UI.ty(1963.6, 2));
-  await expect(tileN(page, 'Tổng giá trị ĐXMS')).toContainText(v);
+  await expect(tileN(page, 'Tổng giá trị ĐXMS')).toContainText('1.963.600.000.000'); // T69 L1: đồng
   const n = async (l) => Number((await stN(page, l).textContent()).trim());
   expect((await n('Đang xử lý')) + (await n('Chờ phê duyệt')) + (await n('Đã phê duyệt'))).toBeLessThanOrEqual(27);
   expect(await n('Quá hạn')).toBeGreaterThan(0);

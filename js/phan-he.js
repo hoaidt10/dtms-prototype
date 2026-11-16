@@ -13,6 +13,8 @@
     { key: 'process-management', name: 'Quản trị khoa học công nghệ', description: 'Quản lý toàn trình nhiệm vụ KHCN từ chủ trương đến nghiệm thu, quyết toán', path: 'ph/he-khcn', icon: 'phan_he_quy_trinh', color: '#EE0033', bg: '#FCE7F3' },
     { key: 'labour-cost', name: 'Quản lý nhân công', description: 'Quản lý nhân sự, chấm công, phân bổ nguồn lực và bảng lương', path: 'ph/he-nhan-cong', icon: 'vai_tro_thuc_hien', color: '#DBA000', bg: '#FFEDD5' },
     { key: 'procurement', name: 'Đầu tư mua sắm', description: 'Quản lý toàn trình đề xuất, thẩm định, phê duyệt và thực hiện đầu tư mua sắm', path: 'viec-cua-toi', icon: 'phan_he_mua_sam', color: '#6F8DE3', bg: '#E0E7FF' },
+    /* T71 (D-121, P-237): source chưa có phân hệ sản xuất — thật: thêm một dòng SUBSYSTEMS. */
+    { key: 'production', name: 'Quản lý sản xuất', description: 'Quản lý toàn trình dự án sản xuất từ kế hoạch, chuyển giao, cung ứng đến nghiệm thu, nhập kho', path: 'sx', icon: 'phan_he_hang_hoa', color: '#C2410C', bg: '#FFEDD5' },
     { key: 'project-goods', name: 'Quản lý hàng hóa đề tài dự án', description: 'Kiểm kê, xuất nhập kho và quản lý thiết bị phục vụ nghiên cứu.', icon: 'view_flow', color: '#0F766E', bg: '#CCFBF1' },
   ];
   const ARROW = '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
@@ -32,8 +34,9 @@
         'Khuôn subsystem-list của core-fe: thẻ / bảng (nhớ lựa chọn trong trình duyệt), tiêu đề và nhãn theo source. Thật: danh sách lọc theo module người dùng được cấp (<code>/users/me/modules</code>); prototype hiện đủ 6 phân hệ.',
         '<b>Danh mục dùng chung</b> là phân hệ của toàn hệ thống (app ecat, host riêng), không nằm trong menu Đầu tư mua sắm. Từ phân hệ khác về màn này bằng logo trên topbar, như vht-topbar.',
         'Phân hệ ngoài phạm vi prototype mở trang Đang phát triển; "Quản lý hàng hóa đề tài dự án" là COMING_SOON nên khoá nút như source.',
+        '<b>Quản lý sản xuất</b> (T71, D-121): phân hệ mới, source chưa có (P-237); vào sidebar riêng của phân hệ.',
       ],
-      q: ['P-112'], src: 'core-fe features/subsystem-list · /subsystem-list',
+      q: ['P-112', 'P-237'], src: 'core-fe features/subsystem-list · /subsystem-list',
     };
     return `<div class="ss-page">
       <div class="ss-head"><div><h1>Danh sách Phân hệ${infoBtn(info)}</h1><p>Chọn phân hệ để truy cập vào các module nghiệp vụ của bạn</p></div>

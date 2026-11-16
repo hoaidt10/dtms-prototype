@@ -59,8 +59,9 @@ test('MS22 đủ 13 bước: song song 2 ‖ 3, AI cảnh báo → thống nhấ
   // Bước 3
   await openTask(page, 'phd', 3);
   await act(page, 'Hoàn thành body và phụ lục giá');
-  await page.locator('[data-vsel="ef-hdMau"]').click();
-  await page.locator('.vsel-panel [data-opt="Mẫu hợp đồng mua sắm thiết bị — nhiều lô"]').click();
+  // T67 H3: mẫu hợp đồng đọc từ HSMT của gói (1.6), chỉ xem; bảng Thông tin điền vào mẫu.
+  await expect(page.locator('.vmodal')).toContainText('1.6 — HĐ hàng hóa sẵn có và dịch vụ');
+  await expect(page.locator('.vmodal')).toContainText('Thông tin điền vào mẫu');
   await ok(page);
   await done(page);
   // Bước 4: thiếu biên bản thì bị chặn; bảo hành 18 tháng → AI cảnh báo
