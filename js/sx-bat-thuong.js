@@ -42,10 +42,17 @@
     const n = r['sla' + x.sev];
     return n ? Number(n) : null;
   }
+  /* Nhánh hoaidt10: tên theo danh mục (Nơi phát hiện, Công đoạn, Ca sản xuất, Đơn vị tính, Nhóm nguyên nhân); không có trong danh mục thì giữ nguyên chữ đã lưu. */
+  const catN = (key, c) => { if (!c) return ''; const r = window.Catalog.rows(key).find((x) => x.code === c); return r ? r.name : String(c); };
+  const causesText = (x) => (x.causes || []).map((c) => catN('sx-nhom-nguyen-nhan', c)).join(', ');
+  const defectPct = (x) => (x.sample > 0 && x.qty != null ? Math.round(x.qty / x.sample * 10000) / 100 : null);
+  const spOf = (x, p) => x.spMa || (p ? p.product : '');
   function decorate(x) {
     const p = P().byCode(x.project), sla = slaOf(x), due = sla && x.received ? addWd(x.received, sla) : null;
     const r = catRow(x.type);
-    return Object.assign({}, x, { pm: p ? p.pm : null, handler: handlerOf(x, p), sla, due, unitText: r ? UNIT_TEXT[r.unit] : '', projectName: p ? p.name : '' });
+    return Object.assign({}, x, { pm: p ? p.pm : null, handler: handlerOf(x, p), sla, due, unitText: r ? UNIT_TEXT[r.unit] : '', projectName: p ? p.name : '',
+      spMa: spOf(x, p), spTen: ((D.sxProducts || []).find((s) => s.code === spOf(x, p)) || {}).name || '', khachN: x.khach || (p && p.customer) || '', donViC: x.donVi || (p && p.factory) || '',
+      donViN: catN('sx-don-vi', x.donVi || (p && p.factory) || '') });
   }
   const all = () => U.created.concat(D.sxIssues).map((x) => decorate(Object.assign({}, x, U.edit[x.code] || {})));
   const byCode = (code) => all().find((x) => x.code === code) || null;
@@ -72,10 +79,14 @@
   /* ---------- Bộ xử lý hành động của SX-BT ---------- */
   /* Giá trị form lap → bản ghi phiếu (T74 #100). */
   const fromForm = (v) => ({ project: v.btProject, title: String(v.btTitle || '').trim(), type: v.btLoai || null, sev: v.btMucDo ? Number(v.btMucDo) : null, desc: String(v.btDesc || '').trim(),
-    found: fromDmy(v.btFound), place: String(v.btPlace || '').trim(), qty: v.btQty == null || v.btQty === '' ? null : Number(v.btQty), guess: String(v.btGuess || '').trim(),
+    found: fromDmy(v.btFound), foundTime: String(v.btFoundTime || '').trim(), place: v.btPlace || '', qty: v.btQty == null || v.btQty === '' ? null : Number(v.btQty), unit: v.btQtyDvt || '', guess: String(v.btGuess || '').trim(),
+    spMa: v.btSpMa || '', khach: v.btKhach || '', donVi: v.btDonVi || '', serial: v.btSerial || '', sample: v.btCoMau == null || v.btCoMau === '' ? null : Number(v.btCoMau),
+    stage: v.btCongDoan || '', op: String(v.btThaoTac || '').trim(), shift: v.btCa || '', req: String(v.btYeuCau || '').trim(), causes: v.btNhomNN || [],
+    actions: (v.btDoiSach || []).filter((r) => String(r.hanhDong || '').trim()).map((r) => ({ hd: String(r.hanhDong).trim(), who: r.nguoi || '', han: fromDmy(r.han) || '' })),
+    inspect: v.btKiemTra || [], partner: v.btThamGia || [], media: v.btFileMedia || '',
     files: { bm: v.btFileBm || '', iqc: v.btFileIqc || '', qc: v.btFileQc || '', kd: v.btFileKd || '', khac: v.btFile || '' }, file: v.btFile || '' });
   const FILE_ITEMS = [['bm', 'Phiếu báo cáo bất thường (BM.QLBT.01)'], ['iqc', 'Hồ sơ IQC vật tư, linh kiện, bán thành phẩm'], ['qc', 'Hồ sơ kiểm soát chất lượng trong sản xuất'],
-    ['kd', 'Hồ sơ kiểm định / hiệu chuẩn phương tiện đo'], ['khac', 'Ảnh, tài liệu khác']];
+    ['kd', 'Hồ sơ kiểm định / hiệu chuẩn phương tiện đo'], ['khac', 'Tài liệu liên quan khác']];
   const filesOf = (x) => Object.assign({}, x.file ? { khac: x.file } : {}, x.files || {});
   const patch = (code, data) => { const own = U.created.find((x) => x.code === code); if (own) Object.assign(own, data); else U.edit[code] = Object.assign({}, U.edit[code], data); persist(); };
   Object.assign(F().ACT, {
@@ -107,6 +118,7 @@
         '<b>T74 (comment #98, #100, #101):</b> <b>Trạng thái</b> theo bước đang chạy của luồng — Chờ tiếp nhận (bước 2), Đang đề xuất giải pháp (3), Chờ đánh giá giải pháp (4), Đang xử lý (5), Chờ đánh giá kết quả xử lý (6), Đang lưu hồ sơ (7), Đã đóng; quá hạn không còn là trạng thái mà tô đỏ ở Hạn xử lý và Còn lại. <b>Người lập chọn Phân loại và Mức độ ngay khi Thêm mới</b> (bắt buộc), kèm Dự đoán sơ bộ nguyên nhân và hồ sơ đính kèm theo mục của BM.QLBT.01 (chỉ phiếu BM.QLBT.01 bắt buộc); bước 2 Giám đốc dự án chỉ tiếp nhận, phân tích nguyên nhân, đính kèm tài liệu — phân loại / mức độ sai thì <b>Trả lại người lập</b> (sửa phiếu ở bước 1 rồi gửi lại). Lệch SX-KS-K1 §3.2 bước 2 (phân loại do QLSX) theo ý người review — GIẢ LẬP P-238.',
         'Loại và mức độ theo danh mục <b>Loại bất thường và SLA</b>: loại quyết định đơn vị triển khai (Loại 1 QLSX, Loại 2 R&D, Loại 3 Nhà máy), mức độ quyết định số ngày làm việc. Hạn = ngày tiếp nhận + số ngày làm việc (bỏ thứ Bảy, Chủ nhật; chưa tính ngày lễ — GIẢ LẬP P-251). Loại 3 theo quy trình nhà máy, không có hạn (P-240).',
         'Cột Còn lại: số ngày làm việc tới hạn; quá hạn tô đỏ. Kiểm tra Không đạt quay lại bước đề xuất phương án.',
+        '<b>Cột và tìm kiếm nâng cao:</b> thêm Mã SP, Serial, Nhóm nguyên nhân, Ngày xử lý (ngày đóng phiếu) và Mã TĐKT liên kết (yêu cầu thay đổi kỹ thuật mở từ phiếu). Nhóm nguyên nhân lấy từ danh mục Nhóm nguyên nhân bất thường.',
       ],
       q: ['P-238', 'P-240', 'P-251'], src: 'task-management/task-management.component · /task-management',
     };
@@ -114,31 +126,60 @@
     return k.listPage({
       id: 'sxbt', exp: 'Danh sach phieu bat thuong', title: 'Danh sách phiếu bất thường', ph: 'Tìm kiếm theo mã, tiêu đề, dự án', info,
       right: canCreate() ? `<button class="vbtn primary" data-sxbt-new>${icon('add')} Thêm mới</button>` : '',
-      rows: () => visible().map((x) => Object.assign(x, { st: stOf(x), step: stepOf(x), who: whoOf(x) })).sort((a, b) => (a.code < b.code ? 1 : -1)),
+      rows: () => visible().map((x) => Object.assign(x, { st: stOf(x), step: stepOf(x), who: whoOf(x), ecrCode: ((window.SxTd && window.SxTd.ecrOf(x.code)) || {}).code || '' })).sort((a, b) => (a.code < b.code ? 1 : -1)),
       kwText: (x) => `${x.code} ${x.title} ${x.project}`,
-      empty: () => ({ code: '', title: '', project: null, type: null, sev: null, st: [] }),
-      match: (x, f) => k.has(f.code, x.code) && k.has(f.title, x.title) && (!f.project || x.project === f.project) && (!f.type || x.type === f.type) && (!f.sev || String(x.sev) === String(f.sev)) && k.inSet(f.st, x.st[0]),
+      empty: () => ({ code: '', title: '', project: null, type: null, sev: null, st: [], sp: '', serial: '', nn: null, ecr: '' }),
+      match: (x, f) => k.has(f.code, x.code) && k.has(f.title, x.title) && (!f.project || x.project === f.project) && (!f.type || x.type === f.type) && (!f.sev || String(x.sev) === String(f.sev)) && k.inSet(f.st, x.st[0])
+        && k.has(f.sp, x.spMa || '') && k.has(f.serial, x.serial || '') && (!f.nn || (x.causes || []).includes(f.nn)) && k.has(f.ecr, x.ecrCode || ''),
       adv: (txt, sel) => `${txt('code', 'Mã phiếu')}${txt('title', 'Tiêu đề')}
         ${sel('project', 'Dự án', { options: P().visible().map((p) => ({ value: p.code, label: `${p.code} — ${p.name}` })) })}
+        ${txt('sp', 'Mã SP')}${txt('serial', 'Serial')}
         ${sel('type', 'Loại bất thường', { options: k.catOpts('sx-bat-thuong') })}
         ${sel('sev', 'Mức độ', { searchable: false, options: Object.entries(D.sxSev).map(([value, label]) => ({ value, label })) })}
+        ${sel('nn', 'Nhóm nguyên nhân', { searchable: false, options: k.catOpts('sx-nhom-nguyen-nhan') })}${txt('ecr', 'Mã TĐKT liên kết')}
         ${sel('st', 'Trạng thái', { multi: true, searchable: false, options: ST.map((x) => ({ value: x, label: x })) })}`,
-      cols: [['Trạng thái', 160, 'c'], ['Mã phiếu', 120], ['Tiêu đề', 280], ['Dự án', 140], ['Loại', 90], ['Mức độ', 140], ['Đơn vị xử lý', 190], ['Bước hiện tại', 240], ['Người đang xử lý', 170], ['Ngày tiếp nhận', 120], ['Hạn xử lý', 120], ['Còn lại', 110, 'r']],
+      cols: [['Trạng thái', 160, 'c'], ['Mã phiếu', 120], ['Tiêu đề', 280], ['Dự án', 140], ['Mã SP', 110], ['Serial', 130], ['Loại', 90], ['Mức độ', 140], ['Nhóm nguyên nhân', 220], ['Đơn vị xử lý', 190],
+        ['Bước hiện tại', 240], ['Người đang xử lý', 170], ['Ngày tiếp nhận', 130], ['Hạn xử lý', 120], ['Còn lại', 110, 'r'], ['Ngày xử lý', 120], ['Mã TĐKT liên kết', 150]],
       href,
       cell: (x) => `<td class="c">${badge(...x.st)}</td><td><a class="link" data-go="${href(x)}">${esc(x.code)}</a></td><td>${k.clamp(x.title)}</td><td>${esc(x.project)}</td>
-        <td>${x.type ? esc(typeText(x.type)) : k.dash}</td><td>${x.sev ? esc(D.sxSev[x.sev]) : k.dash}</td><td>${x.unitText ? k.clamp(x.unitText) : k.dash}</td>
+        <td>${x.spMa ? esc(x.spMa) : k.dash}</td><td>${x.serial ? esc(x.serial) : k.dash}</td>
+        <td>${x.type ? esc(typeText(x.type)) : k.dash}</td><td>${x.sev ? esc(D.sxSev[x.sev]) : k.dash}</td><td>${(x.causes || []).length ? k.clamp(causesText(x)) : k.dash}</td><td>${x.unitText ? k.clamp(x.unitText) : k.dash}</td>
         <td>${x.step ? k.clamp(x.step) : k.dash}</td><td>${x.who ? k.clamp(x.who) : k.dash}</td><td class="num">${x.received ? esc(dmy(x.received)) : k.dash}</td>
-        <td class="num${isOver(x) ? ' due-over' : ''}">${x.due ? esc(dmy(x.due)) : x.type && !x.sla ? 'Theo nhà máy' : k.dash}</td><td class="r">${leftCell(x, k)}</td>`,
+        <td class="num${isOver(x) ? ' due-over' : ''}">${x.due ? esc(dmy(x.due)) : x.type && !x.sla ? 'Theo nhà máy' : k.dash}</td><td class="r">${leftCell(x, k)}</td>
+        <td class="num">${x.closed ? esc(dmy(x.closed)) : k.dash}</td><td>${x.ecrCode ? `<a class="link" data-go="sx/thay-doi/${encodeURIComponent(x.ecrCode)}">${esc(x.ecrCode)}</a>` : k.dash}</td>`,
     });
   }
 
   /* ---------- Thêm mới phiếu (BM.QLBT.01) = bước 1 của luồng ---------- */
   const catTypes = () => window.Catalog.rows('sx-bat-thuong').filter((r) => r.active !== false).map((r) => [r.code, r.name]);
+  const catList = (key) => window.Catalog.rows(key).filter((r) => r.active !== false).map((r) => [r.code, r.name]);
+  /* Danh sách lựa chọn của form Thêm mới: sản phẩm, khách hàng, đơn vị, serial theo dự án, danh mục chuẩn, nhân sự. */
+  function lists() {
+    const ps = P().visible().filter((p) => p.status !== 'PLANNING' && p.status !== 'DONE'), staff = D.personas.filter((x) => x.sx), pad = (n, l) => String(n).padStart(l, '0');
+    return {
+      projects: ps.map((p) => [p.code, `${p.code} — ${p.name}`]),
+      projectOpts: ps.map((p) => ({ label: `${p.code} — ${p.name}`, value: p.code, fill: { btSpTen: p.product, btSpMa: p.product, btKhach: p.customer || '', btDonVi: p.factory || '' } })),
+      products: D.sxProducts.map((p) => [p.code, p.name]),
+      customers: [...new Set(P().all().map((p) => p.customer).filter(Boolean))].map((c) => [c, c]),
+      units: catList('sx-don-vi'), places: catList('sx-noi-phat-hien'), dvts: catList('sx-don-vi-tinh'), stages: catList('sx-cong-doan'), shifts: catList('sx-ca-san-xuat'), causes: catList('sx-nhom-nguyen-nhan'),
+      staffAll: staff.map((x) => [x.id, x.name]), staffVht: staff.filter((x) => x.urd !== 'R-SX-NM').map((x) => [x.id, x.name]), staffPartner: staff.filter((x) => x.urd === 'R-SX-NM').map((x) => [x.id, x.name]),
+      serialOpts: P().all().flatMap((p) => { const s = D.sxSerial[p.code]; return s ? Array.from({ length: 12 }, (_, i) => ({ label: s[0] + pad(i + 1, s[1]), value: s[0] + pad(i + 1, s[1]), proj: p.code })) : []; }),
+    };
+  }
   async function create(project) {
     const f = window.EForms.sx['SX-BT'].lap;
     const projects = P().visible().filter((p) => p.status !== 'PLANNING' && p.status !== 'DONE').map((p) => [p.code, `${p.code} — ${p.name}`]);
-    const r = await window.EFormRun.open({ title: 'Thêm mới phiếu bất thường', schema: Object.assign({ id: f.id }, f.schema({ projects, types: catTypes(), sevs: Object.entries(D.sxSev) })), values: { btProject: project || null, btFound: dmy(D.sxToday), btQty: null },
-      check: (v) => { const d = fromDmy(v.btFound); if (!d) return 'Ngày phát hiện phải đúng định dạng DD/MM/YYYY.'; if (d > D.sxToday) return 'Ngày phát hiện không được sau ngày hiện tại.'; return null; } });
+    const L = lists(), pr = project ? P().byCode(project) : null;
+    const r = await window.EFormRun.open({ title: 'Thêm mới phiếu bất thường', schema: Object.assign({ id: f.id }, f.schema(Object.assign({ types: catTypes(), sevs: Object.entries(D.sxSev) }, L))), vars: { serialOpts: L.serialOpts },
+      values: Object.assign({ btProject: project || null, btFound: dmy(D.sxToday), btQty: null, btCoMau: null }, pr ? { btSpTen: pr.product, btSpMa: pr.product, btKhach: pr.customer || '', btDonVi: pr.factory || '' } : {}),
+      check: (v) => {
+        const d = fromDmy(v.btFound);
+        if (!d) return 'Ngày xảy ra lỗi phải đúng định dạng DD/MM/YYYY.';
+        if (d > D.sxToday) return 'Thời gian xảy ra lỗi không được sau thời điểm hiện tại.';
+        if (v.btCoMau != null && v.btCoMau !== '' && v.btQty != null && v.btQty !== '' && Number(v.btQty) > Number(v.btCoMau)) return 'Số lượng ảnh hưởng không được lớn hơn cỡ mẫu kiểm tra.';
+        if ((v.btDoiSach || []).some((x) => x.han && !fromDmy(x.han))) return 'Thời hạn của đối sách tức thời phải đúng định dạng DD/MM/YYYY.';
+        return null;
+      } });
     if (!r || !r.submit) return;
     const v = r.values, n = Math.max(0, ...all().map((x) => Number(x.code.slice(-3)))) + 1, code = 'BT-2026-' + String(n).padStart(3, '0');
     U.created.unshift(Object.assign({ code }, fromForm(v), { creator: pid() }));
@@ -176,14 +217,24 @@
     const tInfo = () => k.card('Thông tin phiếu', `<div class="ginfo c3">
         ${k.kv('Mã phiếu', esc(x.code))}${k.kv('Tiêu đề', esc(x.title), 'span2')}
         ${k.kv('Trạng thái', badge(...st))}${k.kv('Dự án sản xuất', `<a class="link" data-go="sx/du-an/${encodeURIComponent(x.project)}">${esc(x.project)}</a>`)}${k.kv('Người lập', esc(pName(x.creator)))}
-        ${k.kv('Ngày phát hiện', esc(dmy(x.found)))}${k.kv('Nơi phát hiện', esc(x.place || ''))}${k.kv('Số lượng ảnh hưởng', x.qty != null ? esc(String(x.qty)) : null)}
+        ${k.kv('Thời gian xảy ra lỗi', esc(dmy(x.found) + (x.foundTime ? ' ' + x.foundTime : '')))}${k.kv('Nơi phát hiện', esc(catN('sx-noi-phat-hien', x.place)))}${k.kv('Công đoạn', x.stage ? esc(catN('sx-cong-doan', x.stage)) : null)}
+        ${k.kv('Tên sản phẩm', x.spTen ? esc(x.spTen) : null)}${k.kv('Mã sản phẩm', x.spMa ? esc(x.spMa) : null)}${k.kv('Serial', x.serial ? esc(x.serial) : null)}
+        ${k.kv('Khách hàng', x.khachN ? esc(x.khachN) : null)}${k.kv('Đơn vị sản xuất', x.donViN ? esc(x.donViN) : null)}${k.kv('Số hiệu thao tác', x.op ? esc(x.op) : null)}
+        ${k.kv('Ca sản xuất', x.shift ? esc(catN('sx-ca-san-xuat', x.shift)) : null)}${k.kv('Cỡ mẫu kiểm tra', x.sample ? esc(String(x.sample)) : null)}${k.kv('Số lượng ảnh hưởng', x.qty != null ? esc(`${x.qty}${x.unit ? ' ' + catN('sx-don-vi-tinh', x.unit).toLowerCase() : ''}`) : null)}
+        ${k.kv('Tỷ lệ lỗi', defectPct(x) != null ? esc(defectPct(x) + ' %') : null)}${k.kv('Yêu cầu kỹ thuật vi phạm', x.req ? esc(x.req) : null, 'span2')}
         ${k.kv('Mô tả hiện tượng', esc(x.desc || ''), 'span3')}
         ${k.kv('Loại bất thường', x.type ? esc(catRow(x.type).name) : null, 'span2')}${k.kv('Mức độ', x.sev ? esc(D.sxSev[x.sev]) : null)}
         ${k.kv('Đơn vị xử lý', x.unitText ? esc(x.unitText) : null)}${k.kv('Ngày tiếp nhận', x.received ? esc(dmy(x.received)) : null)}
         ${k.kv('Hạn xử lý', x.due ? `${esc(dmy(x.due))} (${x.sla} ngày làm việc)` : x.type && !x.sla ? 'Theo quy trình nhà máy' : x.type && !x.received ? `Tính từ ngày tiếp nhận (${x.sla} ngày làm việc)` : null)}
         ${k.kv('Còn lại', l == null ? null : l < 0 ? `<span class="t-err">Quá hạn ${-l} ngày làm việc</span>` : `${l} ngày làm việc`)}${k.kv('Ngày đóng', x.closed ? esc(dmy(x.closed)) : null)}
-        ${k.kv('Số lần kiểm tra không đạt', x.nok ? String(x.nok) : null)}${k.kv('Dự đoán sơ bộ nguyên nhân', x.guess ? esc(x.guess) : null, 'span2')}</div>`)
-      + k.card('Hồ sơ đính kèm (BM.QLBT.01)', k.table([['Mục hồ sơ', 360], ['Tệp', 320]], FILE_ITEMS.map(([key, lb]) => [lb, filesOf(x)[key]]).concat(v.blFile ? [['Tài liệu tiếp nhận (bước 2)', v.blFile]] : []),
+        ${k.kv('Số lần kiểm tra không đạt', x.nok ? String(x.nok) : null)}</div>`)
+      + k.card('Đối sách tức thời', k.table([['TT', 60, 'c'], ['Hành động', 420], ['Người thực hiện', 200], ['Thời hạn', 120]], (x.actions || []).map((a, i) => [i + 1, a.hd, pName(a.who), a.han]),
+        (r) => `<td class="c num">${r[0]}</td><td>${esc(r[1] || '')}</td><td>${r[2] ? esc(r[2]) : k.dash}</td><td class="num">${r[3] ? esc(dmy(r[3])) : k.dash}</td>`))
+      + k.card('Phân tích sơ bộ và xác nhận hiện trường', `<div class="ginfo c3">
+        ${k.kv('Nhóm nguyên nhân', causesText(x) ? esc(causesText(x)) : null, 'span3')}${k.kv('Dự đoán sơ bộ nguyên nhân', x.guess ? esc(x.guess) : null, 'span3')}
+        ${k.kv('Nhân sự kiểm tra (TT.SX - VHT)', (x.inspect || []).length ? esc((x.inspect || []).map(pName).join(', ')) : null, 'span2')}${k.kv('Nhân sự tham gia (Đối tác SX)', (x.partner || []).length ? esc((x.partner || []).map(pName).join(', ')) : null)}</div>`)
+      + k.card('Ảnh / video lỗi', k.table([['Tệp', 640]], x.media ? [[x.media]] : [], (r) => `<td><a class="link">${esc(r[0])}</a></td>`))
+      + k.card('Các tài liệu liên quan (BM.QLBT.01)', k.table([['Mục hồ sơ', 360], ['Tệp', 320]], FILE_ITEMS.map(([key, lb]) => [lb, filesOf(x)[key]]).concat(v.blFile ? [['Tài liệu tiếp nhận (bước 2)', v.blFile]] : []),
         (r) => `<td>${esc(r[0])}</td><td>${r[1] ? `<a class="link">${esc(r[1])}</a>` : k.dash}</td>`));
     const tXl = () => `<div data-sxbt-xl>${k.card('Phân tích và xử lý', `<div class="ginfo c3">
         ${k.kv('Nguyên nhân', v.blNguyenNhan ? esc(v.blNguyenNhan) : null, 'span3')}${k.kv('Biện pháp xử lý (BM.QLBT.02)', v.paBienPhap ? esc(v.paBienPhap) : null, 'span2')}${k.kv('Hạn hoàn thành dự kiến', v.paHan ? esc(v.paHan) : null)}
@@ -198,12 +249,15 @@
   /* Ngữ cảnh eForm. */
   function ctx(code) {
     const x = byCode(code);
-    return { phieu: { code: x.code, title: x.title, project: x.project, type: x.type, typeText: x.type ? typeText(x.type) : 'Chưa phân loại', sevText: x.sev ? D.sxSev[x.sev] : 'Chưa đánh giá mức độ', handlerText: x.unitText || '' },
+    return Object.assign(lists(), { phieu: { code: x.code, title: x.title, project: x.project, type: x.type, typeText: x.type ? typeText(x.type) : 'Chưa phân loại', sevText: x.sev ? D.sxSev[x.sev] : 'Chưa đánh giá mức độ', handlerText: x.unitText || '' },
       types: window.Catalog.rows('sx-bat-thuong').filter((r) => r.active !== false).map((r) => [r.code, r.name]), sevs: Object.entries(D.sxSev).map(([a, b]) => [a, b]),
       projects: P().visible().filter((p) => p.status !== 'PLANNING' && p.status !== 'DONE').map((p) => [p.code, `${p.code} — ${p.name}`]),
       /* T74 Q10: phiếu bị trả lại → bước 1 mở form lap điền sẵn thông tin phiếu hiện tại. */
       btProject: x.project, btTitle: x.title, btLoai: x.type || null, btMucDo: x.sev ? String(x.sev) : null, btDesc: x.desc || '', btFound: dmy(x.found), btPlace: x.place || '',
-      btQty: x.qty, btGuess: x.guess || '', btFileBm: filesOf(x).bm || '', btFileIqc: filesOf(x).iqc || '', btFileQc: filesOf(x).qc || '', btFileKd: filesOf(x).kd || '', btFile: filesOf(x).khac || '' };
+      btQty: x.qty, btGuess: x.guess || '', btFileBm: filesOf(x).bm || '', btFileIqc: filesOf(x).iqc || '', btFileQc: filesOf(x).qc || '', btFileKd: filesOf(x).kd || '', btFile: filesOf(x).khac || '',
+      btSpTen: spOf(x, P().byCode(x.project)), btSpMa: spOf(x, P().byCode(x.project)), btKhach: x.khachN || '', btDonVi: x.donViC || '', btSerial: x.serial || '', btCoMau: x.sample == null ? null : x.sample,
+      btFoundTime: x.foundTime || '', btCongDoan: x.stage || null, btThaoTac: x.op || '', btCa: x.shift || null, btYeuCau: x.req || '', btQtyDvt: x.unit || null,
+      btDoiSach: (x.actions || []).map((a) => ({ hanhDong: a.hd, nguoi: a.who, han: dmy(a.han) })), btNhomNN: x.causes || [], btKiemTra: x.inspect || [], btThamGia: x.partner || [], btFileMedia: x.media || '' });
   }
 
   /* ---------- Tab của dự án ---------- */
