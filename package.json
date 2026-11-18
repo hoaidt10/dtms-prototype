@@ -7,6 +7,7 @@
     "test:unit": "node --test test/*.test.mjs",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
+    "test:quarantine": "node tools/run-quarantine.mjs",
     "report": "playwright show-report",
     "e2e:shots": "node tools/e2e.mjs",
     "release": "node tools/release.mjs --check"

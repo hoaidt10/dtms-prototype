@@ -128,7 +128,7 @@ test('D-26 / D-75: Lưu tạo ĐXMS + hồ sơ Phê duyệt + start; task 01 m�
   await addRow(page, 'R-DVDX-CQ', 'ngoc');
   await page.locator('#lf-draft').click();
   await expect(page).toHaveURL(/#\/task\/k\d+$/);
-  expect(await lastToast(page)).toContain('Đã tạo luồng');
+  expect(await lastToast(page)).toContain('Đã tạo ĐXMS-');
   const st = await page.evaluate(() => {
     const x = Flow.findDxms(Flow.state.dxms);
     return { members: x.members, roles: x.roleMembers, basis: x.basis.map((f) => f.type), uploads: Flow.ui.uploads.map((f) => f.name), proc: Flow.state.vars.process, t1: Flow.state.tokens[0] };

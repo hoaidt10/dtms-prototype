@@ -62,7 +62,7 @@ test('B19: mỗi khối có nút Gợi ý từ AI riêng → popup chỉ trả t
   await pop.locator('[data-lf-pop-on="est"]').uncheck();
   await page.locator('[data-lf-ai-apply]').click();
   expect(await lastToast(page)).toContain('Thông tin chung: 4 / 5 trường');
-  await expect(page.locator('#lf-title')).toHaveValue('Luồng mua sắm cho Phát triển trạm gNodeB thế hệ 2');
+  await expect(page.locator('#lf-title')).toHaveValue('Đề xuất mua sắm cho Phát triển trạm gNodeB thế hệ 2');
   await expect(page.locator('#lf-period')).toHaveValue('01/2027 – 09/2027');
   await expect(page.locator('#lf-est')).toHaveValue('');
   // Khối Căn cứ pháp lý → loại tài liệu theo tên tệp, nội dung căn cứ pháp lý thêm văn bản phê duyệt đề tài.

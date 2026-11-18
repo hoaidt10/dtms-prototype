@@ -174,7 +174,7 @@ test('B5: Việc của tôi theo my-tasks — không tab, cột, lọc Trạng t
   await fresh(page, '#/viec-cua-toi');
   // DX-10 (T29 B16): bước 8–10 là việc của Thầu TTMS — dùng bước 5 của Chuyên quản ĐVĐX (có nhiều việc mẫu).
   await page.evaluate(() => { Flow.jumpTo(5, 'minh'); location.hash = '#/viec-cua-toi'; });
-  await expect(page.locator('.pg-title')).toHaveText('Danh sách việc của tôi');
+  await expect(page.locator('.pg-title')).toHaveText('Việc của tôi');
   await expect(page.locator('main .tab')).toHaveCount(0);
   await expect(page.locator('main [data-create]')).toHaveCount(0);
   await expect(page.locator('.vtable th')).toHaveText(['STT', 'Trạng thái', 'Mã hồ sơ', 'Mã ĐXMS / KĐT', 'Hành động', 'Ngày tạo',
@@ -273,7 +273,8 @@ for (const [task, who, proc, dxms] of TASKS_T6) {
     expect(await mainText(page)).not.toMatch(/SCR-\d|UC-\d|task \d|Prototype|minh hoạ|giả lập|BBLV|❓/i);
     // T29 B19: task 1 của MS01 là màn Lập ĐXMS — Mã ĐXMS ở ô chỉ đọc.
     if (await page.locator('[data-luong-form]').count()) await expect(page.locator('[data-luong-form] input[disabled]').first()).toHaveValue(dxms);
-    else await expect(page.locator('.tmain .ginfo').first()).toContainText(dxms);
+    // T59: màn việc chia tab — card Thông tin chung không còn nằm trực tiếp dưới .tmain.
+    else await expect(page.locator('.ginfo', { hasText: dxms }).first()).toBeVisible();
     expect(page.errors).toEqual([]);
   });
 }
@@ -283,7 +284,7 @@ test('B2: Chi tiết hồ sơ theo profile-detail — chỉ nút Xem BPMN, 4 car
   await fresh(page, '#/viec-cua-toi');
   await openTask(page, 26, 'minh');
   await page.evaluate(() => { location.hash = '#/ho-so'; });
-  await expect(page.locator('.pg-title')).toHaveText('Chi tiết hồ sơ');
+  await expect(page.locator('.pg-title')).toHaveText('Chi tiết đề xuất mua sắm');
   await expect(page.locator('.pg-head .r .vbtn')).toHaveText(['Xem BPMN']);
   await expect(page.locator('.tabs, .tab')).toHaveCount(0);
   const h3 = await page.locator('.dmain > section > h3, .dmain > section > .vcard-h > h3').allInnerTexts();
@@ -328,7 +329,7 @@ test('B2: Xem BPMN từ màn xử lý task theo my-task-bpmn-detail', async ({ p
   await openTask(page, 60, 'tgd');
   await page.locator('.task-acts .vbtn', { hasText: 'Xem BPMN' }).click();
   await expect(page).toHaveURL(/#\/task\/.+\/bpmn$/);
-  await expect(page.locator('.pg-title')).toHaveText('Chi tiết hồ sơ');
+  await expect(page.locator('.pg-title')).toHaveText('Chi tiết đề xuất mua sắm');
   await expect(page.locator('.bp-h h2')).toHaveText('Bước hiện tại: Xem xét, phê duyệt ĐXMS');
   await expect(page.locator('.bp-vp')).toHaveCSS('height', '500px');
   await expect(page.locator('.bp-svg [data-task="60"] rect')).toHaveAttribute('stroke', '#5fe495');
@@ -354,7 +355,7 @@ for (const st of ['approved']) {
       if (st === 'approved') Flow.jumpToScene(9);
       location.hash = '#/ho-so';
     }, st);
-    await expect(page.locator('.pg-title')).toHaveText('Chi tiết hồ sơ');
+    await expect(page.locator('.pg-title')).toHaveText('Chi tiết đề xuất mua sắm');
     await expect(page.locator('.ginfo')).toContainText(st === 'approved' ? 'Hoàn thành' : 'Đã chuyển quy trình');
     expect(await mainText(page)).not.toMatch(BA);
     await page.evaluate(() => { location.hash = '#/ho-so/bpmn'; });
@@ -492,7 +493,7 @@ test('C3: SCR-48 — mọi Mã hồ sơ mở Chi tiết hồ sơ', async ({ page
   expect(hrefs.length).toBeGreaterThan(10);
   for (const h of hrefs) {
     await go(page, h);
-    await expect(page.locator('.pg-title')).toHaveText('Chi tiết hồ sơ');
+    await expect(page.locator('.pg-title')).toHaveText('Chi tiết đề xuất mua sắm');
     await expect(page.locator('main')).not.toContainText('không còn tồn tại');
     expect(await mainText(page)).not.toMatch(BA);
   }

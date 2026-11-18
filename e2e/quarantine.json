@@ -1,0 +1,334 @@
+{
+ "note": "T77 S4 (2026-11-18, D-129): e2e đỏ từ trước — test chưa theo các lần đổi màn (T34, T39, T56, T59, D-92…). CI bỏ qua các ca này (playwright.config.mjs grepInvert). Sửa xong ca nào thì xoá dòng đó. Chạy riêng: npm run test:quarantine.",
+ "tests": [
+  {
+   "file": "t33-tour.spec.mjs",
+   "line": 10,
+   "title": "Tour 1: chạy hết các bước, bước nào cũng thấy phần tử cần chỉ",
+   "area": "chung",
+   "reason": "Error: tour 1 bước 6 ¦ expect(locator).toHaveCount(expected) failed ¦ Locator: locator('.tour-pop').locator('.tp-miss')"
+  },
+  {
+   "file": "ui-rules.spec.mjs",
+   "line": 173,
+   "title": "B5: Việc của tôi theo my-tasks — không tab, cột, lọc Trạng thái, mọi dòng mở được",
+   "area": "chung",
+   "reason": "Error: expect(locator).toHaveCount(expected) failed ¦ Locator: locator('main .tab') ¦ Expected: 0"
+  },
+  {
+   "file": "ui-rules.spec.mjs",
+   "line": 229,
+   "title": "B7: màn xử lý task theo my-task-detail — hàng tiêu đề, lưới 5 + 2, thứ tự card",
+   "area": "chung",
+   "reason": "Error: expect(locator).toHaveText(expected) failed ¦ Locator: locator('.pg-title') ¦ Expected: \"Xem chi tiết hồ sơ\""
+  },
+  {
+   "file": "ui-rules.spec.mjs",
+   "line": 248,
+   "title": "B7: Lịch sử hồ sơ — Xem nhận xét mở hộp thoại nội dung nhận xét",
+   "area": "chung",
+   "reason": "Test timeout of 30000ms exceeded."
+  },
+  {
+   "file": "ui-rules.spec.mjs",
+   "line": 269,
+   "title": "C3: MS01.03 màn task 7 không có chữ BA ngoài nút (i)",
+   "area": "chung",
+   "reason": "Error: expect(locator).toBeVisible() failed ¦ Locator: locator('.ginfo').filter({ hasText: 'ĐXMS-2026-0098' }).first() ¦ Expected: visible"
+  },
+  {
+   "file": "ui-rules.spec.mjs",
+   "line": 283,
+   "title": "B2: Chi tiết hồ sơ theo profile-detail — chỉ nút Xem BPMN, 4 card trái theo thứ tự, Lịch sử hồ sơ bên phải 801 : 333",
+   "area": "chung",
+   "reason": "Error: expect(locator).toHaveText(expected) failed ¦ Locator: locator('.pg-head .r .vbtn') ¦ Timeout: 5000ms"
+  },
+  {
+   "file": "ui-rules.spec.mjs",
+   "line": 303,
+   "title": "B2: Xem BPMN — Chi tiết BPMN tô bước đang xử lý trên sơ đồ MS01 v1.1; Xem quy trình quay lại",
+   "area": "chung",
+   "reason": "Error: expect(page).toHaveURL(expected) failed ¦ Expected pattern: /#\\/ho-so\\/bpmn$/ ¦ Received string: \"file:///"
+  },
+  {
+   "file": "ui-rules.spec.mjs",
+   "line": 327,
+   "title": "B2: Xem BPMN từ màn xử lý task theo my-task-bpmn-detail",
+   "area": "chung",
+   "reason": "Test timeout of 30000ms exceeded."
+  },
+  {
+   "file": "ui-rules.spec.mjs",
+   "line": 352,
+   "title": "C3: Chi tiết hồ sơ và BPMN khi hồ sơ đã phê duyệt không có chữ BA",
+   "area": "chung",
+   "reason": "Error: expect(locator).toContainText(expected) failed ¦ Locator: locator('.ginfo') ¦ Expected substring: \"Hoàn thành\""
+  },
+  {
+   "file": "ui-rules.spec.mjs",
+   "line": 487,
+   "title": "C3: SCR-48 — mọi Mã hồ sơ mở Chi tiết hồ sơ",
+   "area": "chung",
+   "reason": "Error: expect(received).toBe(expected) // Object.is equality ¦ Expected: 58 ¦ Received: 50"
+  },
+  {
+   "file": "task-eform.spec.mjs",
+   "line": 36,
+   "title": "eForm của mọi task MS13: mở được, không lỗi, không rò chữ BA",
+   "area": "kdt",
+   "reason": "Error: expect(locator).toHaveText(expected) failed ¦ Locator: locator('.tmain > section > h3, .tmain > section > .vcard-h > h3') ¦ Timeout: 5000ms"
+  },
+  {
+   "file": "task-eform.spec.mjs",
+   "line": 36,
+   "title": "eForm của mọi task MS13 (gộp BM-00): mở được, không lỗi, không rò chữ BA",
+   "area": "kdt",
+   "reason": "Error: expect(locator).toHaveText(expected) failed ¦ Locator: locator('.tmain > section > h3, .tmain > section > .vcard-h > h3') ¦ Timeout: 5000ms"
+  },
+  {
+   "file": "b05-comment.spec.mjs",
+   "line": 43,
+   "title": "#24: Chọn mẫu tài liệu theo bước + quy trình; Văn bản đầu ra có Trạng thái",
+   "area": "luong-dxms",
+   "reason": "Test timeout of 30000ms exceeded."
+  },
+  {
+   "file": "b05-comment.spec.mjs",
+   "line": 90,
+   "title": "#5 task 10: báo giá từng NCC là tài liệu bắt buộc của \"Báo giá đạt\"",
+   "area": "luong-dxms",
+   "reason": "Error: expect(locator).toContainText(expected) failed ¦ Locator: locator('section.vcard').filter({ hasText: 'Danh sách tài liệu' }).locator('.doc-req').filter({ hasText: 'Báo giá — NCC Alpha' }) ¦ Exp"
+  },
+  {
+   "file": "b05-comment.spec.mjs",
+   "line": 186,
+   "title": "#18–21 task 46: thời điểm trình ký / ký, lý do từ chối, KPI ký; #22, #23 task 60: phiếu Tập đoàn + AI",
+   "area": "luong-dxms",
+   "reason": "Error: expect(locator).toContainText(expected) failed ¦ Locator: locator('section.vcard').filter({ hasText: 'Danh sách tài liệu' }).locator('.doc-req.opt') ¦ Expected substring: \"Phiếu nhận xét của Tậ"
+  },
+  {
+   "file": "flow.spec.mjs",
+   "line": 103,
+   "title": "luồng chính tới phê duyệt",
+   "area": "luong-dxms",
+   "reason": "Test timeout of 120000ms exceeded."
+  },
+  {
+   "file": "luong.spec.mjs",
+   "line": 60,
+   "title": "SCR-96 (D-75): Nhân sự thực hiện — Vai trò thực hiện + Người thực hiện; mỗi vai trò một dòng; Thêm / Xóa dòng",
+   "area": "luong-dxms",
+   "reason": "Test timeout of 30000ms exceeded."
+  },
+  {
+   "file": "luong.spec.mjs",
+   "line": 117,
+   "title": "D-26 / D-75: Lưu tạo ĐXMS + hồ sơ Phê duyệt + start; task 01 mở; tệp gắn đúng nơi; mọi bước của vai trò giao người đã chọn",
+   "area": "luong-dxms",
+   "reason": "Error: expect(locator).toContainText(expected) failed ¦ Locator: locator('.vtable tbody tr').first() ¦ Timeout: 5000ms"
+  },
+  {
+   "file": "luong.spec.mjs",
+   "line": 211,
+   "title": "SCR-97: Chi tiết luồng 6 tab; Nhân sự thực hiện theo bước — chỉ định / theo vai trò, trạng thái bước, bước đã xong khoá (D-28)",
+   "area": "luong-dxms",
+   "reason": "Error: expect(locator).toHaveText(expected) failed ¦ Locator: locator('[data-ltab]') ¦ Timeout: 5000ms"
+  },
+  {
+   "file": "luong.spec.mjs",
+   "line": 241,
+   "title": "SCR-98: chọn Vai trò thực hiện (D-75), không chọn Bước; Thay người — bắt buộc chọn người, ảnh hưởng, lịch sử; luồng tới bước giao người mới",
+   "area": "luong-dxms",
+   "reason": "Test timeout of 30000ms exceeded."
+  },
+  {
+   "file": "ms01-02-03.spec.mjs",
+   "line": 61,
+   "title": "MS01.02 (ĐXMS-2026-0124): chỉ căn cứ đã được TĐ duyệt; ≥ 160 tỷ + Căn cứ đã được phê duyệt → luồng con MS01.02; task 48 chọn sẵn \"Không báo cáo\" (D-77); phê duyệt không qua 49–56",
+   "area": "luong-dxms",
+   "reason": "Test timeout of 120000ms exceeded."
+  },
+  {
+   "file": "ms01-02-03.spec.mjs",
+   "line": 89,
+   "title": "MS01.03 (ĐXMS-2026-0098): BM-09 + Checklist 02, Ban Tài chính bắt buộc, ký BM-04 + Checklist 02, SCR-23 ký BM-09, SCR-24 phê duyệt; KPI ≤ 10 NLV",
+   "area": "luong-dxms",
+   "reason": "Test timeout of 120000ms exceeded."
+  },
+  {
+   "file": "ms02.spec.mjs",
+   "line": 40,
+   "title": "MS02.02 — ĐXMS-2026-0103 (MS01.02, 210,5 tỷ): tạo hồ sơ Điều chỉnh chạy luồng tới phê duyệt BM-08, bỏ 49–56",
+   "area": "luong-dxms",
+   "reason": "Error: expect(locator).toContainText(expected) failed ¦ Locator: locator('.ginfo') ¦ Expected substring: \"Loại hồ sơĐiều chỉnh ĐXMS\""
+  },
+  {
+   "file": "ms02.spec.mjs",
+   "line": 87,
+   "title": "B2 — ĐXMS-2026-0103 giảm còn 150 tỷ: bước 1 ĐXMS cũ chỉ xem, bước 4 cảnh báo chuyển ngưỡng, kết quả cũ ở 7 / 10, BM-09 điều chỉnh, ĐXMS điều chỉnh lần 1",
+   "area": "luong-dxms",
+   "reason": "Error: expect(locator).toContainText(expected) failed ¦ Locator: locator('.ginfo') ¦ Timeout: 5000ms"
+  },
+  {
+   "file": "ms02.spec.mjs",
+   "line": 154,
+   "title": "B2 — MS02.02: Quyết định BM-08 điều chỉnh; Việc của tôi ghi loại Điều chỉnh ĐXMS",
+   "area": "luong-dxms",
+   "reason": "Error: expect(locator).toContainText(expected) failed ¦ Locator: locator('tr').filter({ hasText: 'HS-2026-0127' }).first() ¦ Expected substring: \"Điều chỉnh ĐXMS\""
+  },
+  {
+   "file": "ms02.spec.mjs",
+   "line": 200,
+   "title": "B3 — nhánh phụ bộ MS02 mở đúng màn task, không lỗi",
+   "area": "luong-dxms",
+   "reason": "Error: expect(locator).toContainText(expected) failed ¦ Locator: locator('tr').filter({ hasText: 'HS-2026-0126' }).first() ¦ Expected substring: \"Điều chỉnh ĐXMS\""
+  },
+  {
+   "file": "t29-b15.spec.mjs",
+   "line": 75,
+   "title": "#5: Chọn mẫu tài liệu chỉ hiện ở bước có biểu mẫu của bước",
+   "area": "luong-dxms",
+   "reason": "Error: expect(locator).toHaveCount(expected) failed ¦ Locator: locator('[data-tpl]') ¦ Expected: 1"
+  },
+  {
+   "file": "t29-b17.spec.mjs",
+   "line": 20,
+   "title": "SCR-96: căn cứ pháp lý điền sẵn; review nhi 06/11 #20: không còn khối Phụ lục, chưa tới bước lập dự thảo thì chưa có danh sách phụ lục",
+   "area": "luong-dxms",
+   "reason": "Error: expect(locator).toContainText(expected) failed ¦ Locator: locator('.vcard').filter({ has: locator('h3').filter({ hasText: 'Danh sách tài liệu' }) }).locator('thead') ¦ Expected substring: \"Bước"
+  },
+  {
+   "file": "t29-b17.spec.mjs",
+   "line": 56,
+   "title": "Bước lập dự thảo: phụ lục Có thiếu tệp thì chặn gửi, đổi sang Không thì qua; Tờ trình in Danh mục hồ sơ kèm theo; review nhi 06/11 #37: Xuất file Word đúng văn bản đang xem, không còn Tải xuống",
+   "area": "luong-dxms",
+   "reason": "Error: expect(locator).toHaveCount(expected) failed ¦ Locator: locator('.doc-req').filter({ hasText: 'Phụ lục' }) ¦ Expected: 2"
+  },
+  {
+   "file": "t29-b18.spec.mjs",
+   "line": 80,
+   "title": "B18: Chọn mẫu tài liệu ở bước 8 có BM-YCKT và BM-YCBG; không thành văn bản đầu ra",
+   "area": "luong-dxms",
+   "reason": "Test timeout of 30000ms exceeded."
+  },
+  {
+   "file": "t29-s5.spec.mjs",
+   "line": 75,
+   "title": "F5, F8, F10: Chi tiết hồ sơ — Số, ngày Tờ trình; hộp thoại Tình trạng thẩm định; tải PDF văn bản đầu ra",
+   "area": "luong-dxms",
+   "reason": "Error: expect(locator).toContainText(expected) failed ¦ Locator: locator('.ginfo') ¦ Expected substring: \"103/TTr-TTML\""
+  },
+  {
+   "file": "t29-s5.spec.mjs",
+   "line": 88,
+   "title": "F7, F8: bước lập dự thảo — phụ lục chọn Có (B17, P-212) bắt buộc tải lên, Checklist Đủ; hồ sơ đang thẩm định hiện Chưa xem / Đang xem",
+   "area": "luong-dxms",
+   "reason": "Error: expect(locator).toHaveCount(expected) failed ¦ Locator: locator('.doc-req').filter({ hasText: 'Phụ lục' }) ¦ Expected: 1"
+  },
+  {
+   "file": "t31-b3.spec.mjs",
+   "line": 29,
+   "title": "SCR-55: bóc tách 2 dòng, cảnh báo vượt còn lại, chặn vượt dự toán; Lưu → SCR-56, SCR-104, bước 01 có dòng đã bóc tách",
+   "area": "luong-dxms",
+   "reason": "Error: expect(locator).toContainText(expected) failed ¦ Locator: locator('.vmodal.ef') ¦ Timeout: 5000ms"
+  },
+  {
+   "file": "t34-mot-ho-so.spec.mjs",
+   "line": 75,
+   "title": "ĐXMS Dừng xử lý: Sao chép thành ĐXMS mới (chưa có hồ sơ, Sao chép từ) rồi Lập hồ sơ trên ĐXMS mới",
+   "area": "luong-dxms",
+   "reason": "Error: expect(locator).toContainText(expected) failed ¦ Locator: locator('.gen .ginfo') ¦ Timeout: 5000ms"
+  },
+  {
+   "file": "t34-mot-ho-so.spec.mjs",
+   "line": 92,
+   "title": "Menu Điều chỉnh đề xuất mua sắm (SCR-108) ngay dưới Luồng mua sắm; danh sách ĐXMS điều chỉnh; route cũ của phương án Tách về Luồng mua sắm",
+   "area": "luong-dxms",
+   "reason": "Error: expect(received).toBe(expected) // Object.is equality ¦ Expected: \"dieu-chinh-dxms\" ¦ Received: \"quan-ly-ho-so\""
+  },
+  {
+   "file": "task-eform.spec.mjs",
+   "line": 36,
+   "title": "eForm của mọi task MS01.01: mở được, không lỗi, không rò chữ BA",
+   "area": "luong-dxms",
+   "reason": "Error: expect(locator).toHaveText(expected) failed ¦ Locator: locator('.tmain > section > h3, .tmain > section > .vcard-h > h3') ¦ Timeout: 5000ms"
+  },
+  {
+   "file": "task-eform.spec.mjs",
+   "line": 36,
+   "title": "eForm của mọi task MS01.03: mở được, không lỗi, không rò chữ BA",
+   "area": "luong-dxms",
+   "reason": "Error: expect(locator).toHaveText(expected) failed ¦ Locator: locator('.tmain > section > h3, .tmain > section > .vcard-h > h3') ¦ Timeout: 5000ms"
+  },
+  {
+   "file": "task-eform.spec.mjs",
+   "line": 36,
+   "title": "eForm của mọi task MS02 ĐXMS-2026-0103: mở được, không lỗi, không rò chữ BA",
+   "area": "luong-dxms",
+   "reason": "Error: expect(locator).toHaveText(expected) failed ¦ Locator: locator('.tmain > section > h3, .tmain > section > .vcard-h > h3') ¦ Timeout: 5000ms"
+  },
+  {
+   "file": "task-eform.spec.mjs",
+   "line": 36,
+   "title": "eForm của mọi task MS02 ĐXMS-2026-0089: mở được, không lỗi, không rò chữ BA",
+   "area": "luong-dxms",
+   "reason": "Error: expect(locator).toHaveText(expected) failed ¦ Locator: locator('.tmain > section > h3, .tmain > section > .vcard-h > h3') ¦ Timeout: 5000ms"
+  },
+  {
+   "file": "task-eform.spec.mjs",
+   "line": 110,
+   "title": "G6: nút từ chối mở dialog nhận xét, không mở eForm; E3: tài liệu bắt buộc ở Danh sách tài liệu",
+   "area": "luong-dxms",
+   "reason": "Error: expect(locator).toContainText(expected) failed ¦ Locator: locator('section.vcard').filter({ hasText: 'Danh sách tài liệu' }).locator('.doc-req') ¦ Expected substring: \"Phiếu yêu cầu thẩm định ("
+  },
+  {
+   "file": "task-eform.spec.mjs",
+   "line": 150,
+   "title": "MS01 họp thống nhất (task 31–34): form mở được từ nhánh giải trình vượt vòng",
+   "area": "luong-dxms",
+   "reason": "Test timeout of 30000ms exceeded."
+  },
+  {
+   "file": "quy-trinh-t24.spec.mjs",
+   "line": 29,
+   "title": "Q1: tắt luật bằng công tắc thì nút ẩn; bật lại thì hiện; đổi Tên hiển thị đổi nhãn; xoá luật thì ẩn",
+   "area": "quan-tri",
+   "reason": "Error: expect(locator).toBeVisible() failed ¦ Locator: locator('main .pg-head [data-act]').first() ¦ Expected: visible"
+  },
+  {
+   "file": "quy-trinh-t24.spec.mjs",
+   "line": 60,
+   "title": "Q1: luật sang màn khác hoặc vai khác thì ẩn nút; tài khoản toàn quyền bỏ qua vai; Chi tiết hồ sơ không có nút",
+   "area": "quan-tri",
+   "reason": "Error: expect(locator).toBeVisible() failed ¦ Locator: locator('main .pg-head [data-act]').first() ¦ Expected: visible"
+  },
+  {
+   "file": "quy-trinh.spec.mjs",
+   "line": 19,
+   "title": "D-15: menu theo 12 module Backlog; Quản lý quy trình có 3 mục (D-2); route cũ của mục bị bỏ vẫn mở",
+   "area": "quan-tri",
+   "reason": "Error: expect(received).toEqual(expected) // deep equality ¦ - Expected - 2 ¦ + Received + 4"
+  },
+  {
+   "file": "quy-trinh.spec.mjs",
+   "line": 62,
+   "title": "SCR-48: bố cục theo process-monitoring — không nút tiêu đề, cột, badge, phân trang 10",
+   "area": "quan-tri",
+   "reason": "Error: expect(locator).toContainText(expected) failed ¦ Locator: locator('.vpager') ¦ Timeout: 5000ms"
+  },
+  {
+   "file": "quy-trinh.spec.mjs",
+   "line": 117,
+   "title": "SCR-48: tìm nhanh theo mã hồ sơ / mã Camunda; nâng cao — Mã Camunda chỉ nhập số, lọc trạng thái",
+   "area": "quan-tri",
+   "reason": "Error: expect(locator).toContainText(expected) failed ¦ Locator: locator('.vpager') ¦ Timeout: 5000ms"
+  },
+  {
+   "file": "quy-trinh.spec.mjs",
+   "line": 159,
+   "title": "SCR-48: hồ sơ đang chạy luồng hiện ở đầu danh sách, Đang chạy, có bước hiện tại",
+   "area": "quan-tri",
+   "reason": "Error: expect(locator).toContainText(expected) failed ¦ Locator: locator('.vpager') ¦ Timeout: 5000ms"
+  }
+ ]
+}

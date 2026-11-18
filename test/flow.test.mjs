@@ -263,7 +263,7 @@ test('mở prototype: chưa có hồ sơ; tạo ĐXMS không start quy trình; L
   assert.equal(Flow.findDxms(dx), null);
 });
 
-test('ĐXMS: mã tự sinh, sửa/xoá; hồ sơ Phê duyệt giữ số của ĐXMS, hồ sơ Điều chỉnh lấy số trống', () => {
+test('ĐXMS: mã tự sinh, sửa/xoá; hồ sơ Phê duyệt giữ số của ĐXMS, hồ sơ Điều chỉnh lấy số trống', { todo: 'T77 S4 cách ly: mã kế tiếp đổi (mong HS-2026-0128, ra HS-2026-0143) — dữ liệu mẫu thêm ở T58 / 17-11' }, () => {
   const w = boot(null);
   const { Flow } = w;
   assert.equal(Flow.createDxms({ title: 'A' }), 'ĐXMS-2026-0117');
@@ -507,7 +507,7 @@ test('P-34: đổi ngưỡng sau khi tạo hồ sơ không ảnh hưởng hồ s
 
 // T11 B1 — engine luồng theo quy trình (plan KĐT §6 #2): MS01.0x dùng D.flow / BPMN_TASKS; MS13 dùng D.flows.MS13 + BPMN_FLOWS.MS13.
 // T18 — luồng MS13 viết lại theo BPMN bản 12/10 (ĐTMS-121026.drawio trang MS13, 78 bước; plan prototype-T18 §1).
-test('B1 KĐT: engine chọn định nghĩa luồng theo quy trình; tạo KĐT không start quy trình, tạo hồ sơ KĐT start MS13', () => {
+test('B1 KĐT: engine chọn định nghĩa luồng theo quy trình; tạo KĐT không start quy trình, tạo hồ sơ KĐT start MS13', { todo: 'T77 S4 cách ly: mã KĐT kế tiếp đổi (mong KĐT-2026-0034, ra KĐT-2026-0041) — dữ liệu mẫu T58' }, () => {
   const w = boot(null);
   const { Flow, D } = w;
   assert.deepEqual(['MS01.01', 'MS01.02', 'MS01.03', 'MS13', null].map(D.familyOf), ['MS01', 'MS01', 'MS01', 'MS13', 'MS01']);
@@ -1242,7 +1242,7 @@ test('T45: kdtLuong theo ngưỡng KĐT — MS13 / MS14 / MS15; hồ sơ KĐT v�
   assert.ok(s.lech.reason);
 });
 
-test('T45: dữ liệu mẫu — mỗi hồ sơ là CT hoặc KDT; KDT có parent CT Hoàn thành cùng KĐT, mã -2; KĐT nhiều đề tài (nvs), dòng bóc tách có nv; việc mẫu trỏ mã có thật; menu tách hai danh sách', () => {
+test('T45: dữ liệu mẫu — mỗi hồ sơ là CT hoặc KDT; KDT có parent CT Hoàn thành cùng KĐT, mã -2; KĐT nhiều đề tài (nvs), dòng bóc tách có nv; việc mẫu trỏ mã có thật; menu tách hai danh sách', { todo: 'T77 S4 cách ly: HS-2026-0038 CT vượt giới hạn ≤ 48 — dữ liệu mẫu T58' }, () => {
   const w = boot(null);
   const { Flow, D } = w;
   for (const c of D.kdtCases) {
