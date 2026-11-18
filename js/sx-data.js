@@ -29,7 +29,6 @@
     { label: 'Dashboard', icon: 'tong_quan', path: 'sx/tong-quan', scr: 'SX-01' },
     /* T74 #94 / #96 (Q1): Việc của tôi thành mục con (giữ số việc) của nhóm Quản lý nhiệm vụ, cùng Nhiệm vụ đơn vị và Việc cá nhân — như KHCN. */
     { label: 'Quản lý nhiệm vụ', icon: 'menu_square', open: true, children: [
-      { label: 'Việc của tôi', path: 'sx/viec-cua-toi', scr: 'SX-15', badge: 'sx-tasks' },
       { label: 'Nhiệm vụ đơn vị', path: 'sx/cong-viec/don-vi', scr: 'SX-16' },
       { label: 'Việc cá nhân', path: 'sx/cong-viec/ca-nhan', scr: 'SX-16' }] },
     { label: 'Dự án sản xuất', icon: 'view_list', path: 'sx/du-an', scr: 'SX-02', notes: soon('S1', 'SX-02…04') },
