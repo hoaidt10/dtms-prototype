@@ -40,6 +40,8 @@ Trong mạng VHT, GitHub phải qua proxy: `git config http.proxy http://172.16.
 | `js/app.js`, `screens.js`, `flow.js`, `ui.js`, `data.js` | Khung app, màn chung (Việc của tôi, Chi tiết hồ sơ), động cơ luồng, dữ liệu chung — **dùng chung** |
 | `js/<phân-hệ>*.js`, `js/eforms/*.js`, `js/bpmn-*.js` | Màn / eForm / BPMN của từng phân hệ (`js/bpmn-*` sinh tự động từ BPMN khách — không sửa tay) |
 | `e2e/*.spec.mjs`, `test/*.test.mjs` | Test Playwright / unit; `e2e/helpers.mjs` dùng chung |
+| `js/data-<phân-hệ>.js` | Dữ liệu **mới** của phân hệ (đã nạp sẵn trong `index.html`, sau `data.js`) — không thêm vào `data.js` |
+| `changelog/<phân-hệ>.md` | Nhật ký thay đổi của phân hệ (mỗi PR một mục); lịch sử trước T77 ở `changelog/lich-su-chung.md` |
 | `modules.json` | Phân hệ → file, tiền tố số, chủ. Nguồn của hook guard và `.github/CODEOWNERS` |
 | `state/<phân-hệ>.md` | State của từng phân hệ |
 | `tai-lieu/` | Bản chép tài liệu nghiệp vụ (chỉ đọc, sinh tự động) |

@@ -15,6 +15,13 @@
   không đụng `.env.pages`, không push `main`.
 - **G4. Trước khi xin review:** `npm test` xanh trên máy; bấm thử màn đã sửa; chụp ảnh trước / sau.
 - **G5. PR nhỏ.** Một màn / một nhóm comment một PR. PR sửa file dùng chung tách riêng khỏi PR nghiệp vụ nếu được.
+- **G6. Thêm mới mà không đụng file dùng chung:**
+  - **Màn / route mới** → đăng ký trong tệp màn của phân hệ: `(window.AppRoutes = window.AppRoutes || []).push({ match, active, render, app })`
+    (mô tả ở đầu `js/app.js`). Không thêm nhánh `if` vào `content()` / `activePath()` của `app.js`.
+  - **Dữ liệu mới** (hồ sơ mẫu, danh mục, điểm treo, mục menu) → `js/data-<phân-hệ>.js` (đã nạp sau `data.js`); sửa dữ liệu **cũ** trong
+    `data.js` thì ghi ở mục "File dùng chung" của PR.
+  - **Tệp JS mới** cần dòng `<script>` trong `index.html` (dùng chung) → ghi trong PR; ưu tiên thêm vào tệp sẵn có của phân hệ.
+- **G7. Nhật ký:** mỗi PR thêm một mục đầu `changelog/<phân-hệ>.md` (ngày, việc, màn, nguồn, điểm treo mới). Không ghi vào README.
 
 ## N — Đánh số (không trùng giữa các BA)
 

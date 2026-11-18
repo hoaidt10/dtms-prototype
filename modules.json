@@ -10,23 +10,23 @@
   },
   "modules": {
     "luong-dxms": { "label": "Luồng / ĐXMS (MS01, MS02), YCBG", "prefix": "DXMS", "owners": [],
-      "files": ["js/luong.js", "js/ycbg*.js", "js/bao-gia.js", "js/ra-soat-kho.js", "js/tham-dinh.js", "js/quan-ly-ho-so.js", "js/eforms/ms01.js", "js/eforms/ms02.js",
+      "files": ["changelog/luong-dxms.md", "js/data-luong-dxms.js", "js/luong.js", "js/ycbg*.js", "js/bao-gia.js", "js/ra-soat-kho.js", "js/tham-dinh.js", "js/quan-ly-ho-so.js", "js/eforms/ms01.js", "js/eforms/ms02.js",
         "js/bpmn-*-ms01*.js", "js/bpmn-*-ms02.js", "e2e/luong*.spec.mjs", "e2e/ms0*.spec.mjs", "e2e/t29-*.spec.mjs", "e2e/b05-*.spec.mjs", "e2e/t59-dxms.spec.mjs", "e2e/t59-bc-ycbg.spec.mjs", "e2e/t60-*.spec.mjs", "test/luong.test.mjs", "test/ms02.test.mjs"] },
     "kdt": { "label": "Khoản đầu tư (MS13, MS14)", "prefix": "KDT", "owners": [],
-      "files": ["js/kdt*.js", "js/eforms/ms13.js", "js/bpmn-*-ms13.js", "js/bpmn-*-ms14.js", "e2e/kdt*.spec.mjs", "e2e/t45-*.spec.mjs", "e2e/t63-*.spec.mjs"] },
+      "files": ["changelog/kdt.md", "js/data-kdt.js", "js/kdt*.js", "js/eforms/ms13.js", "js/bpmn-*-ms13.js", "js/bpmn-*-ms14.js", "e2e/kdt*.spec.mjs", "e2e/t45-*.spec.mjs", "e2e/t63-*.spec.mjs"] },
     "thau": { "label": "Thầu (MS18, MS19)", "prefix": "THAU", "owners": [],
-      "files": ["js/thau.js", "js/cong-khai.js", "js/eforms/ms18.js", "js/eforms/ms19.js", "js/bpmn-*-ms18.js", "js/bpmn-*-ms19.js", "e2e/t67-*.spec.mjs", "e2e/cong-khai*.spec.mjs"] },
+      "files": ["changelog/thau.md", "js/data-thau.js", "js/thau.js", "js/cong-khai.js", "js/eforms/ms18.js", "js/eforms/ms19.js", "js/bpmn-*-ms18.js", "js/bpmn-*-ms19.js", "e2e/t67-*.spec.mjs", "e2e/cong-khai*.spec.mjs"] },
     "hop-dong": { "label": "Hợp đồng (MS22–MS24)", "prefix": "HD", "owners": [],
-      "files": ["js/hop-dong.js", "js/eforms/ms22.js", "js/eforms/ms23*.js", "js/eforms/ms24.js", "js/bpmn-*-ms22.js", "js/bpmn-*-ms23*.js", "js/bpmn-*-ms24.js",
+      "files": ["changelog/hop-dong.md", "js/data-hop-dong.js", "js/hop-dong.js", "js/eforms/ms22.js", "js/eforms/ms23*.js", "js/eforms/ms24.js", "js/bpmn-*-ms22.js", "js/bpmn-*-ms23*.js", "js/bpmn-*-ms24.js",
         "e2e/hop-dong-*.spec.mjs", "test/hop-dong.test.mjs"] },
     "de-tai": { "label": "Đề tài / dự án", "prefix": "DT", "owners": [],
-      "files": ["js/de-tai*.js", "e2e/dadt-*.spec.mjs", "e2e/t36-*.spec.mjs", "test/de-tai.test.mjs"] },
+      "files": ["changelog/de-tai.md", "js/data-de-tai.js", "js/de-tai*.js", "e2e/dadt-*.spec.mjs", "e2e/t36-*.spec.mjs", "test/de-tai.test.mjs"] },
     "bao-cao": { "label": "Báo cáo", "prefix": "BC", "owners": [],
-      "files": ["js/bao-cao.js", "e2e/t49-*.spec.mjs", "e2e/t65-*.spec.mjs", "e2e/t61-*.spec.mjs", "e2e/t69-*.spec.mjs", "e2e/t70-*.spec.mjs"] },
+      "files": ["changelog/bao-cao.md", "js/data-bao-cao.js", "js/bao-cao.js", "e2e/t49-*.spec.mjs", "e2e/t65-*.spec.mjs", "e2e/t61-*.spec.mjs", "e2e/t69-*.spec.mjs", "e2e/t70-*.spec.mjs"] },
     "quan-tri": { "label": "Quản trị (quy trình, ma trận, eForm, DMDC, thông báo, trình ký)", "prefix": "QT", "owners": [],
-      "files": ["js/quy-trinh.js", "js/ma-tran.js", "js/catalog.js", "js/trinh-ky.js", "js/thong-bao.js", "e2e/quy-trinh*.spec.mjs", "e2e/ma-tran*.spec.mjs",
+      "files": ["changelog/quan-tri.md", "js/data-quan-tri.js", "js/quy-trinh.js", "js/ma-tran.js", "js/catalog.js", "js/trinh-ky.js", "js/thong-bao.js", "e2e/quy-trinh*.spec.mjs", "e2e/ma-tran*.spec.mjs",
         "e2e/dmdc*.spec.mjs", "e2e/eform*.spec.mjs", "e2e/t54-*.spec.mjs"] },
     "sx": { "label": "Quản lý sản xuất", "prefix": "SX", "owners": [],
-      "files": ["js/sx*.js", "js/eforms/sx-*.js", "e2e/sx-*.spec.mjs", "e2e/t71-*.spec.mjs", "e2e/t74-*.spec.mjs"] }
+      "files": ["changelog/sx.md", "js/sx*.js", "js/eforms/sx-*.js", "e2e/sx-*.spec.mjs", "e2e/t71-*.spec.mjs", "e2e/t74-*.spec.mjs"] }
   }
 }

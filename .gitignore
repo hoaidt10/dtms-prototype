@@ -5,3 +5,5 @@ playwright-report/
 .env
 .env.*
 !*.example
+# đầu ra thừa của tools/capture.mjs khi thiếu tham số
+undefined/

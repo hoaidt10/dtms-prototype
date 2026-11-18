@@ -11,12 +11,21 @@
   const route = () => (location.hash.replace(/^#\/?/, '') || 'viec-cua-toi');
   /* D-42: khung theo phân hệ — Danh sách Phân hệ (không sidebar), Danh mục dùng chung (sidebar riêng), còn lại Đầu tư mua sắm. */
   /* T71 S0 (D-121): phân hệ Quản lý sản xuất — route #/sx/…, sidebar D.sxMenu. */
-  const appOf = (r) => (r === 'phan-he' || r.startsWith('ph/he-') ? 'picker'
+  const appOf = (r) => ((extRoute(r) || {}).app || (r === 'phan-he' || r.startsWith('ph/he-') ? 'picker'
     : r === 'sx' || r.startsWith('sx/') ? 'sx'
-    : r === 'dmdc' || r.startsWith('dmdc/') || r === 'eform' || r.startsWith('eform/') || r.startsWith('ph/dm-') ? 'dmdc' : 'dtms');
+    : r === 'dmdc' || r.startsWith('dmdc/') || r === 'eform' || r.startsWith('eform/') || r.startsWith('ph/dm-') ? 'dmdc' : 'dtms'));
+
+  /* T77 S3 (D-129): chỗ cắm route của phân hệ — màn MỚI tự đăng ký trong tệp của phân hệ, không thêm dòng vào app.js:
+       (window.AppRoutes = window.AppRoutes || []).push({ id: 'kdt-vi-du', match: (r) => r.startsWith('kdt-vi-du'),
+         active: (r) => 'kdt', render: (r) => '<div class="pg">…</div>' });
+     match nhận route không có '#/'; active trả path mục menu cần sáng; render trả HTML trang; app (tuỳ chọn) = 'dtms' | 'sx' | 'dmdc'
+     chọn khung topbar / sidebar. Route đã có giữ nguyên bên dưới. */
+  const extRoute = (r) => (window.AppRoutes || []).find((m) => { try { return m.match(r); } catch { return false; } });
 
   /* Mục menu đang được chọn theo route. */
   function activePath(r) {
+    const ext = extRoute(r);
+    if (ext) return ext.active ? ext.active(r) : r;
     if (r.startsWith('sx/')) return window.Sx.activePath(r);
     if (r.startsWith('task/') || r.startsWith('viec-cua-toi')) return 'viec-cua-toi';
     /* T17 phương án Gộp: luồng, ĐXMS, hồ sơ ĐXMS cùng thuộc mục Luồng mua sắm. */
@@ -114,6 +123,8 @@
     return '<div class="pg"></div>';
   }
   function content(r) {
+    const ext = extRoute(r);
+    if (ext) return ext.render(r);
     const [a, b, c] = r.split('/');
     if (a === 'phan-he') return window.PhanHe.page();
     /* T71 (D-121): phân hệ Quản lý sản xuất (sx.js). */
