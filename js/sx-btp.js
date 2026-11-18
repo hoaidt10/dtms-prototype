@@ -63,7 +63,7 @@
     /* Hạng mục chậm đã có cảnh báo đầu trang (Chi tiết dự án); trong tab chỉ thêm cảnh báo nguy cơ chậm. */
     const alerts = [
       risk.length ? `<div class="hd-alert warning">${icon('info')}<span>${risk.length} hạng mục có nguy cơ chậm: ${esc(risk.map((x) => x.name).join('; '))}</span></div>` : ''].join('');
-    const note = RUN.includes(p.status) ? '' : `<p class="cap">${p.status === 'DONE' ? 'Dự án đã hoàn thành.' : 'Dự án chưa bắt đầu sản xuất: cập nhật sản lượng mở khi dự án chuyển Đang sản xuất (đủ điều kiện 4M).'}</p>`;
+    const note = RUN.includes(p.status) ? '' : `<p class="cap">${p.status === 'DONE' ? 'Dự án đã hoàn thành.' : 'Dự án chưa bắt đầu sản xuất: cập nhật sản lượng mở khi dự án chuyển Đang sản xuất (đủ điều kiện sản xuất).'}</p>`;
     const tbl = k.table([['Hạng mục', 200], ['Phụ trách', 160], ['Kế hoạch', 120], ['Mục tiêu', 90, 'r'], ['Thực hiện', 90, 'r'], ['Hoàn thành', 90, 'r'], ['Kế hoạch đến hôm nay', 110, 'r'], ['Trạng thái', 140, 'c'], ['', 100, 'c']], list,
       (it) => `<td>${k.clamp(it.name)}</td><td>${k.clamp(it.who)}</td><td class="num">${esc(dmy(iso(it.s)))} –<br>${esc(dmy(iso(it.e)))}</td>
         <td class="r num">${it.target == null ? '100%' : num(it.target)}</td><td class="r num">${it.target == null ? it.r.done + '%' : num(it.r.done)}</td><td class="r num">${it.r.pct}%</td>

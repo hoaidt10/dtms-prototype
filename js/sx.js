@@ -27,6 +27,9 @@
   }
 
   function route(parts) {
+    /* T71 S13: Tổng quan SX-01, Báo cáo SX-14 (sx-bao-cao.js). */
+    if (parts[0] === 'tong-quan') return window.SxBc.overview();
+    if (parts[0] === 'bao-cao') return window.SxBc.report(parts[1]);
     /* T71 S1: Dự án sản xuất (sx-du-an.js). */
     if (parts[0] === 'du-an') return window.SxDuAn.route(parts.slice(1));
     /* T71 S2: Việc của tôi, xử lý việc (sx-flow.js). */

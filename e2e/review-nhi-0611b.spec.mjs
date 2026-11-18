@@ -21,8 +21,7 @@ test('#18 popup Bóc tách: bảng AI bước 6 tạm ẩn, Áp dụng vẫn đi
   await page.locator('.vsel-panel [data-opt="NV-KHCN-2026-014"]').click();
   // T72 #83 (D-122 Q4): không còn nút / popup AI ở khối Căn cứ — chọn đề tài thì hệ thống bóc tách, điền bảng.
   await expect(page.locator('[data-lf-ai-sec="boc"]')).toHaveCount(0);
-  await expect(page.locator('[data-lf-boc-sum]')).toContainText('5 / 5');
-  await expect(page.locator('[data-lf-boc-sum]')).not.toContainText('Gợi ý lại');
+  await expect(page.locator('[data-lf-boc-sum]')).toHaveCount(0); // #91 (17/11, phương án B): bỏ dòng tóm tắt đối chiếu
   await expect(page.locator('[data-lf-cqty]').first()).toBeVisible();
   expect(page.errors).toEqual([]);
 });

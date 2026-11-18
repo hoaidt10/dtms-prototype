@@ -323,22 +323,13 @@
      Thật: service task bước 2 (tích hợp dự toán / eBOM / tồn kho) ghi biến quy trình. GIẢ LẬP luật ghép như ĐXMS. */
   function sysBocK(nvs) {
     const lines = (nvs || []).flatMap((c) => D.duToanOf(c)).filter((l) => l.buy && l.status !== 'Hoàn thành' && availOf(l).value > 0);
-    if (!lines.length) return;
-    const lineFor = (i) => { const svc = /đào tạo|chuyển giao/i.test(i.name); return lines.find((l) => (svc ? /đào tạo/i : /thiết bị/i).test(l.item)) || lines.find((l) => l.type === 'PL2') || lines[0]; };
-    const g = [];
-    D.itemsBase().forEach((i) => {
-      const q = Number(i.prop);
-      if (!q || q <= 0) return;
-      const l = lineFor(i);
-      let x = g.find((y) => y.l.id === l.id);
-      if (!x) g.push(x = { l, sum: 0 });
-      x.sum += q * (i.price || 0);
-    });
-    g.forEach((x) => {
-      if (XF.cost.some((r) => r.line === x.l.id)) return;
-      const a = availOf(x.l), v = Math.round(Math.min(x.sum, a.value) * 1000) / 1000;
+    /* [#92, 17/11 — phương án B, như Lập ĐXMS sysBoc] điền sẵn theo dự toán, không ghép hàng hoá: mỗi dòng dự toán Chi mua sắm còn khả dụng của
+       đề tài vừa thêm thành một dòng — Số lượng = SL còn được mua, Giá trị dự tính = Còn lại khả dụng. Khoản mục đã có dòng thì giữ. */
+    lines.forEach((l) => {
+      if (XF.cost.some((r) => r.line === l.id)) return;
+      const a = availOf(l);
       XF.rseq += 1;
-      XF.cost.push({ id: 'c' + XF.rseq, line: x.l.id, qty: a.qty == null ? '' : String(a.qty), value: tyIn(v), pkg: '', sys: true });
+      XF.cost.push({ id: 'c' + XF.rseq, line: l.id, qty: a.qty == null ? '' : String(a.qty), value: tyIn(Math.round(a.value * 1000) / 1000), pkg: '', sys: true });
     });
   }
   const sumHtml = () => {
@@ -432,10 +423,16 @@
     const upd = (k) => (val) => { v[k] = val; delete err[k]; rerender(); };
     const txt = (k, ph, o) => `<input class="vctl" data-kx="${k}" id="k-${k}" maxlength="${(o && o.max) || 255}" placeholder="${ph}" value="${esc(v[k])}" ${err[k] ? 'aria-invalid="true"' : ''}>`;
     const dk3 = derivedK(v, m);
+    /* [#93, 17/11] như Lập ĐXMS (SCR-96, T29 B12): Đề tài / dự án là trường đầu tiên, đặt đầu card bóc tách — card này trước Thông tin chung KĐT. */
+    const nvTop = `<div class="grid3">${field('Đề tài / dự án', vSelect({ id: 'k-nv', multi: true, clear: true, value: v.nvs, searchable: true, placeholder: 'Chọn đề tài / dự án', invalid: !!err.nv,
+      options: nvOptions(true), onChange: (val) => { setNvs(val || [], lock); rerender(); } }), { req: true, err: err.nv, cls: 'span2' })}
+      ${field('Loại', `<input class="vctl" value="${esc(kindsOf(v.nvs))}" placeholder="Theo đề tài / dự án đã chọn" disabled>`)}</div>`;
     const cat = (k, label) => field(label, vSelect({ id: 'k-' + k, value: v[k], placeholder: 'Chọn ' + label.toLowerCase(), invalid: !!err[k], disabled: lock, options: catOptions(k, v[k]), onChange: upd(k) }), { req: true, err: err[k] });
     const info = {
       scr: 'SCR-55', name: edit ? 'Chỉnh sửa khoản đầu tư' : 'Thêm mới khoản đầu tư', uc: 'UC-05-01 · WBS PH09 #175 · UR-KDT-01, UR-KDT-02, UR-KDT-11 · IA-DXMS dòng 13 (plan T31 K3, K4; D-68, D-69)',
       notes: [
+        '<b>Kho comment #93 (17/11):</b> bố cục như Lập ĐXMS (SCR-96) — card <b>Căn cứ và nội dung KĐT — Bóc tách hạng mục</b> đứng đầu, ô <b>Đề tài / dự án</b> (chọn nhiều, D-104) và <b>Loại</b> ở đầu card; card Thông tin chung KĐT sau, không còn ô Đề tài / dự án.',
+        '<b>Kho comment #92 (17/11 — phương án B, như Lập ĐXMS):</b> chọn Đề tài / dự án thì hệ thống điền sẵn mỗi dòng dự toán Chi mua sắm còn khả dụng của đề tài vừa thêm — Số lượng = SL còn được mua, Giá trị dự tính = Còn lại khả dụng; không ghép hàng hoá của căn cứ (thay luật ghép của T72b dưới đây).',
         '<b>T72b (D-123 — BA: comment AI của ĐXMS áp tương tự KĐT, #83, #84):</b> chọn Đề tài / dự án thì <b>hệ thống bóc tách</b> hàng hoá của căn cứ vào khoản mục dự toán Chi mua sắm còn khả dụng của đề tài vừa thêm và điền bảng (không AI; cùng luật ghép với Lập ĐXMS — GIẢ LẬP); khoản mục đã có dòng thì giữ; Thêm mới hồ sơ chủ trương / phê duyệt KĐT: KĐT chưa có dòng bóc tách thì hệ thống bóc tách sẵn. Cột <b>SL còn được mua</b> tách khỏi Còn lại khả dụng; vượt → cảnh báo, không chặn. Bước YCBG của KĐT dùng chung eForm với ĐXMS nên đã có Mức giá làm cơ sở và ✦ Gợi ý từ AI (#85, #86).',
         '<b>T72 (kho comment #75, #76, #82; D-122 Q7–Q9):</b> card bóc tách đổi tên <b>Bóc tách hạng mục</b> (cả Thêm mới hồ sơ chủ trương / phê duyệt KĐT và tab Thông tin chung của Chi tiết KĐT); bảng ngay đầu card, hàng chọn Loại chi phí / Khoản mục xuống dưới bảng. Ô số (Tổng mức vốn, Số lượng, Giá trị dự tính — tỷ đồng): gõ dấu chấm hay dấu phẩy một lần đều là dấu thập phân ("0.001" = 0,001 tỷ), có cả hai loại dấu thì theo kiểu Việt Nam (1.234,5), rời ô thì hiện lại theo định dạng Việt Nam. Trước đó mọi dấu chấm bị coi là phân cách nghìn nên "0.001" thành 1 tỷ và báo nhầm Vượt giá trị dự toán.',
         'Theo task-create (mode create / edit), như Thêm mới ĐXMS: card <b>Thông tin chung KĐT</b>. Lưu chỉ tạo / cập nhật KĐT, <b>không khởi tạo quy trình</b> (D-12); về Danh sách KĐT. Mã KĐT tự sinh.',
@@ -451,13 +448,11 @@
     };
     return `<form class="pg" data-kdt-form>
       ${head({ title: edit ? 'Chỉnh sửa khoản đầu tư' : 'Thêm mới khoản đầu tư', back, lg: true, info, right: `<button type="button" class="vbtn secondary grey" data-go="${back}">Huỷ</button><button type="submit" class="vbtn primary" id="k-save">Lưu</button>` })}
+      ${costCard(lock, { title: 'Căn cứ và nội dung KĐT — Bóc tách hạng mục', top: nvTop })}
       <section class="vcard"><h3>Thông tin chung KĐT</h3>
         <div class="grid3">
           ${field('Mã KĐT', `<input class="vctl" placeholder="Hệ thống tự sinh" value="${esc(XF.code || '')}" disabled>`)}
           ${field('Tên KĐT', txt('title', 'Nhập tên khoản đầu tư', { max: 500 }), { req: true, err: err.title, cls: 'span2' })}
-          ${field('Đề tài / dự án', vSelect({ id: 'k-nv', multi: true, clear: true, value: v.nvs, searchable: true, placeholder: 'Chọn đề tài / dự án', invalid: !!err.nv,
-            options: nvOptions(true), onChange: (val) => { setNvs(val || [], lock); rerender(); } }), { req: true, err: err.nv, cls: 'span2' })}
-          ${field('Loại', `<input class="vctl" value="${esc(kindsOf(v.nvs))}" placeholder="Theo đề tài / dự án đã chọn" disabled>`)}
           ${field('Đơn vị đề xuất', vSelect({ id: 'k-unit', value: v.unit, searchable: true, placeholder: 'Chọn đơn vị đề xuất', invalid: !!err.unit, options: UNITS.map((u) => ({ value: u, label: u })), onChange: upd('unit') }), { req: true, err: err.unit })}
           ${cat('field', 'Lĩnh vực')}${cat('type', 'Loại KĐT')}${cat('nature', 'Tính chất tài sản')}
           ${field('Tổng mức vốn dự kiến (tỷ đồng)', txt('est', 'Nhập tổng mức vốn dự kiến'), { err: err.est })}
@@ -470,7 +465,6 @@
           ${field('Mục tiêu', `<textarea class="vctl ta" data-kx="purpose" id="k-purpose" maxlength="2000" placeholder="Nhập mục tiêu đầu tư">${esc(v.purpose)}</textarea>`, { cls: 'span3' })}
           ${field('Nội dung căn cứ pháp lý', `<textarea class="vctl ta" data-kx="legal" id="k-legal" maxlength="4000" placeholder="Nhập căn cứ pháp lý (số, ngày, trích yếu văn bản)">${esc(v.legal)}</textarea>`, { cls: 'span3' })}
         </div></section>
-      ${costCard(lock)}
       ${edit ? casesCard(x, true) + docsCard(x) : ''}</form>`;
   }
 
@@ -878,6 +872,7 @@
       scr: 'SCR-25', name: kd ? 'Thêm mới hồ sơ phê duyệt KĐT' : 'Thêm mới hồ sơ chủ trương KĐT', uc: 'UC-05-01 · WBS PH09 #175, 176; PH02 #29, 30 · UR-KDT-01, UR-KDT-02, UR-KDT-11',
       bpmn: kd ? 'MS13 task 50 (49 là AI) — một màn' : 'MS13 task 01–05 (02, 03 là AI / tích hợp) — một màn',
       notes: [
+        '<b>Kho comment #93 (17/11):</b> card <b>Căn cứ và nội dung KĐT — Bóc tách hạng mục</b> (ô Đề tài / dự án ở đầu card) đứng trước card Thông tin chung, như Lập ĐXMS.',
         `<b>Người dùng 10/11</b>: "Màn Thêm mới hồ sơ ${kd ? 'phê duyệt' : 'chủ trương'} KĐT đơn giản quá — phải tương tự phần tạo mới ĐXMS" → màn theo khuôn <b>Lập đề xuất mua sắm (SCR-96)</b>: hàng tiêu đề Huỷ / Lưu nháp / Gửi; card Thông tin chung, Căn cứ và nội dung KĐT, ${kd ? 'Nội dung tờ trình KĐT, ' : ''}Căn cứ pháp lý, Phụ lục kèm theo Tờ trình, Nhân sự thực hiện, Danh sách tài liệu. Trang riêng có route (B6). <b>Người dùng chọn "chọn KĐT có sẵn"</b>: Thêm mới KĐT (SCR-55) giữ nguyên; màn này chọn KĐT rồi điền sẵn từ KĐT${kd ? ' và hồ sơ chủ trương' : ''}, đổi KĐT thì điền lại.`,
         kd ? '<b>Một màn = bước 50</b> "Lập hồ sơ phê duyệt KĐT" (BM-03, Phụ lục thuyết minh) của MS13; bước 49 (AI gợi ý từ chủ trương) chạy khi tạo hồ sơ. Card <b>Nội dung tờ trình KĐT</b> = đúng trường, nhãn của eForm bước 50 (biến <code>hienTrang</code>, <code>phanTichNhuCau</code>, <code>ketLuanCanThiet</code>, <code>quanDiem</code>, <code>phuongAnTk</code>, <code>diaDiem</code>, <code>giaiPhap</code>, <code>ruiRo</code>, <code>phuongPhapTinh</code>, <code>danhGiaHieuQua</code>, <code>toChucTh</code>, <code>cacMoc</code>); để trống thì lấy mặc định kế thừa chủ trương như eForm (điền sẵn khi mở lại). <b>Bước 51</b> (kiểm tra Checklist 02, kết luận) là đầu mối kiểm tra độc lập của đơn vị — không gộp vào màn; Gửi mở việc bước 51. Checklist 02 vì thế không có trên màn (eForm bước 51).'
           : '<b>Một màn = bước 1, 4, 5 của MS13</b> (theo cách DX-11 của MS01 — <b>chờ BA</b>): người làm bước 1 (căn cứ: đề tài / dự án, Căn cứ pháp lý), 4 (thông tin cơ bản: tên, Mật), 5 (bóc tách); bước 2, 3 (AI / tích hợp) máy luồng tự chạy; bước 6 kiểm tra tồn kho chạy sau 5. Gửi ghi đúng biến của eForm các bước: 1 <code>basisType</code> (loại căn cứ của tệp đầu tiên có loại, không có thì mặc định), <code>basisDoc</code>; 4 <code>secret</code>, <code>tenDeXuat</code>; 5 <code>bocTach</code>, <code>bocTachEdit</code> (danh mục mẫu như eForm) — các bước sau (06 / 07 tồn kho, báo giá, kế thừa ở bước 50) chạy như cũ.',
@@ -915,6 +910,7 @@
     const right = `<button type="button" class="vbtn secondary grey" data-go="${back}">Huỷ</button><button type="button" class="vbtn secondary" id="kc-draft" ${ms15 ? 'disabled' : ''}>Lưu nháp</button><button type="submit" class="vbtn primary" id="kc-save" ${ms15 ? 'disabled' : ''}>Gửi</button>`;
     return `<form class="pg" data-kdt-case-form>
       ${head({ title: LAP_TITLE[C.kind][ed ? 1 : 0], back, lg: true, info: lapInfo(kd, ed), right })}
+      ${costCard(false, { title: 'Căn cứ và nội dung KĐT — Bóc tách hạng mục', top: nvTop + (kd ? '' : strip()), msg: err.cost0 })}
       <section class="vcard" data-kc-chung><div class="vcard-h"><h3>Thông tin chung</h3>${!kd && v.nvs.length ? `<div class="row">${aiBtnK('chung', !!C.h.ai.chung)}</div>` : ''}</div>
         ${!kd && C.h.ai.chung && !sameNvs(C.h.ai.chung.nvs, v.nvs) ? `<p class="t-warn" data-kc-ai-old>Đề tài / dự án đã đổi — gợi ý đã áp dụng theo ${esc(C.h.ai.chung.nvs.join(', '))}. Bấm ✦ Gợi ý lại; mục bạn đã sửa được giữ lại để xem lại.</p>` : ''}
         ${kd && !ed ? `<div data-kc-lech-box>${lechHtml(s)}</div>` : ''}
@@ -939,7 +935,6 @@
           ${field('Mật', vSelect({ id: 'kc-sec', value: v.secret, disabled: kd && v.secret === 'Có', options: ['Không', 'Có'].map((p) => ({ value: p, label: p })), onChange: upd('secret') }))}
           ${field('Mục tiêu' + tagIf('purpose'), `<textarea class="vctl ta" data-kx="purpose" id="kc-purpose" maxlength="2000" placeholder="Nhập mục tiêu đầu tư">${esc(v.purpose)}</textarea>`, { cls: 'span3' })}
         </div></section>
-      ${costCard(false, { title: 'Căn cứ và nội dung KĐT — Bóc tách hạng mục', top: nvTop + (kd ? '' : strip()), msg: err.cost0 })}
       ${kd ? bm03Card() : ''}${basisCardK()}${plCardK(C.kind)}${membersCardK()}${docsCardK()}</form>`;
   }
 

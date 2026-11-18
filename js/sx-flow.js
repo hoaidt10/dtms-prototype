@@ -42,14 +42,26 @@
   /* ---------- Bộ xử lý hành động (cấu hình bước gọi theo tên) ---------- */
   const ACT = {
     'kh.start': (c) => P().log(c.obj, 'Khởi tạo hồ sơ phê duyệt kế hoạch', c.code),
+    /* (b) Q1: bước 1 không bắt buộc — bỏ qua thì xoá dữ liệu báo cáo cũ (lần trình trước), ghi lý do; trình thì lưu tài liệu báo cáo phương án. */
+    'kh.pa': (c, ch, x) => {
+      const v = c.vars, skip = ch && ch[1] === 3;
+      if (skip) { ['paTomTat', 'paRangBuoc', 'paGoiMs', 'paPhoiHop', 'paFile', 'paQtcn', 'cdNoiDung'].forEach((k) => delete v[k]); P().log(c.obj, 'Không lập báo cáo phương án sản xuất', v.paLyDo || ''); return; }
+      delete v.paLyDo;
+      P().log(c.obj, 'Trình báo cáo phương án sản xuất', `${(v.paRangBuoc || []).length} ràng buộc cần xin ý kiến`);
+      if (v.paFile && (x.values || {}).paFile) P().addDoc(c.obj, [v.paFile, 'PA', 'v1.0', pid(), D.sxToday]);
+    },
+    /* Bước 2: ý kiến chỉ đạo của Ban Giám đốc Khối là căn cứ lập kế hoạch (QT bước 1 đầu ra: báo cáo được BGĐ Khối phê duyệt). */
+    'kh.direct': (c, ch) => P().log(c.obj, ch && ch[2] === 'no' ? 'Yêu cầu chỉnh sửa báo cáo phương án' : 'Đồng ý phương án sản xuất', c.vars.cdNoiDung || ''),
     'kh.submit': (c) => P().log(c.obj, 'Trình kế hoạch sản xuất', `Kế hoạch số ${c.vars.khSo || ''}`),
-    'kh.review': (c, ch) => { if (ch && ch[2] === 'no') P().log(c.obj, 'Yêu cầu chỉnh sửa kế hoạch', c.vars.ykNoiDung || ''); },
     'kh.approve': (c, ch) => P().log(c.obj, ch && ch[2] === 'no' ? 'Trả lại kế hoạch sản xuất' : 'Phê duyệt kế hoạch sản xuất', ch && ch[2] === 'no' ? c.vars.ykNoiDung || '' : `Kế hoạch số ${c.vars.khSo || ''}`),
-    /* Bước 5 xong: chốt kế hoạch gốc (khung 15 bước theo ngày dự án + các mốc chính của kế hoạch), dự án sang Chuẩn bị sản xuất, ghi tài liệu kế hoạch đã phê duyệt. */
+    /* Bước 5 xong: chốt kế hoạch gốc (khung 15 bước theo ngày dự án + các mốc chính của kế hoạch), dự án sang Chuẩn bị sản xuất, ghi tài liệu kế hoạch đã phê duyệt,
+       quyết định giao nhiệm vụ và biên bản kick-off (QT bước 3, Q6). */
     'kh.baseline': (c) => {
       const v = c.vars;
-      P().patch(c.obj, { baseline: D.sxToday, status: 'PREPARING', keyMs: v.khMoc || [], subPm: v.koSubPm || null, planNo: v.khSo || '' }, 'Chốt kế hoạch gốc', `Kick-off ngày ${v.koNgay || ''}`);
+      P().patch(c.obj, { baseline: D.sxToday, status: 'PREPARING', keyMs: v.khMoc || [], subPm: v.koSubPm || null, planNo: v.khSo || '' }, 'Chốt kế hoạch gốc', `Kick-off ngày ${v.koNgay || ''}${v.koChuTri ? `, chủ trì ${pName(v.koChuTri)}` : ''}`);
       P().addDoc(c.obj, [`Kế hoạch sản xuất ${v.khSo || ''} (đã phê duyệt).pdf`, 'KH', 'v1.0', pid(), D.sxToday].concat((v.kySo || []).length ? ['SIGN'] : []));
+      if (v.koQuyetDinh) P().addDoc(c.obj, [v.koQuyetDinh, 'QDGV', 'v1.0', pid(), D.sxToday]);
+      if (v.koBienBan) P().addDoc(c.obj, [v.koBienBan, 'KO', 'v1.0', pid(), D.sxToday]);
     },
   };
   const run = (name, c, ch, x) => { if (name && ACT[name]) ACT[name](c, ch, x || {}); };
@@ -112,18 +124,36 @@
   const formOf = (flow, key) => (key && window.EForms.sx[flow] ? window.EForms.sx[flow][key] : null);
   const tokensFor = (id) => S.cases.flatMap((c) => c.tokens.filter((t) => mine(t, id)).map((t) => ({ c, t })));
   const pending = (id) => tokensFor(id).length;
+  /* T74 #95: số việc quá hạn của người dùng (khối Gợi ý cho bạn trên Dashboard). */
+  const overdue = (id) => tokensFor(id).filter(({ c, t }) => late(c, t)).length;
 
   /* ---------- SX-15 Việc của tôi ---------- */
   const M = { tab: 'pending', kw: '' };
+  /* T74 #94 / #96: cột như KHCN — Mã dự án, Tên công việc, Bước "n/N tên bước", Giai đoạn, Ngày nhận việc, Hạn xử lý, Ngày xử lý, Độ trễ.
+     Giai đoạn = giai đoạn QT.VHT.TTSX.4A.1.1 mà luồng thuộc về (Lập kế hoạch / Chuẩn bị sản xuất / Tổ chức sản xuất). */
+  const FLOW_STAGE = { 'SX-KH': 'G1', 'SX-MS': 'G2', 'SX-BG': 'G2', 'SX-BGNM': 'G2', 'SX-BT': 'G3', 'SX-TD': 'G3', 'SX-NT': 'G3' };
+  const stepPos = (flow, step) => { const l = FL(flow).steps.filter((s) => s[2] !== 'svc'), i = l.findIndex((s) => String(s[0]) === String(step)); return `${i < 0 ? step : i + 1}/${l.length}`; };
+  const projCode = (c) => (P().byCode(c.obj) ? c.obj : (objRec(c) || {}).project || null);
+  /* Độ trễ (Q2, giờ đồng hồ): mốc = cuối ngày Hạn xử lý; dưới 24 giờ tính giờ (làm tròn lên), từ 24 giờ làm tròn ngày; không trễ thì để trống. GIẢ LẬP P-269. */
+  const ts = (s) => Date.parse(String(s).replace(' ', 'T') + (String(s).length <= 10 ? 'T00:00:00' : ':00'));
+  function delayTxt(due, end) {
+    const h = (ts(end) - (Date.parse(due + 'T00:00:00') + DAY_MS)) / 3600000;
+    if (!(h > 0)) return '';
+    return h < 24 ? `${Math.max(1, Math.ceil(h))} giờ` : `${Math.round(h / 24)} ngày`;
+  }
+  const DAY_MS = 86400000;
   function rows(id) {
     const n = window.UI.norm;
-    const todo = tokensFor(id).map(({ c, t }) => ({ c, st: late(c, t) ? ['Quá hạn', 'error'] : ['Chưa xử lý', 'info'], step: stepOf(c.flow, t.step)[1], date: dmy(dueOf(c, t)), sort: t.since,
-      go: `sx/viec/${encodeURIComponent(c.code)}/${t.id}`, over: late(c, t) }));
+    const base = (c, step, since) => ({ c, stepTxt: `${stepPos(c.flow, step)} ${stepOf(c.flow, step)[1]}`, step: stepOf(c.flow, step)[1], proj: projCode(c),
+      stage: window.SxDuAn.stageName(FLOW_STAGE[c.flow]), recv: dmy(since), due: addDays(since, (stepOf(c.flow, step)[3] || {}).nlv || 2) });
+    const todo = tokensFor(id).map(({ c, t }) => Object.assign(base(c, t.step, t.since), { st: late(c, t) ? ['Quá hạn', 'error'] : ['Chưa xử lý', 'info'], sort: t.since,
+      go: `sx/viec/${encodeURIComponent(c.code)}/${t.id}`, over: late(c, t), doneAt: '' })).map((r) => Object.assign(r, { delay: delayTxt(r.due, nowStamp()) }));
     const done = S.cases.flatMap((c) => c.hist.map((h, i) => ({ h, i })).filter(({ h }) => h.step != null && h.who && !h.sys && (h.who === id || isAdmin(id)))
-      .map(({ h, i }) => ({ c, st: ['Hoàn thành', 'success'], step: stepOf(c.flow, h.step)[1], date: dmy(h.at), sort: h.at, go: `sx/viec/${encodeURIComponent(c.code)}/xem/${i}` })));
+      .map(({ h, i }) => Object.assign(base(c, h.step, h.since || h.at), { st: ['Hoàn thành', 'success'], sort: h.at, doneAt: dmy(h.at), go: `sx/viec/${encodeURIComponent(c.code)}/xem/${i}` }))
+      .map((r) => Object.assign(r, { delay: delayTxt(r.due, r.sort) })));
     return (M.tab === 'pending' ? todo : done).filter((r) => {
       const p = objRec(r.c) || {};
-      return !M.kw || n(`${p.code} ${p.name || p.title || ''} ${r.step}`).includes(n(M.kw));
+      return !M.kw || n(`${p.code} ${r.proj || ''} ${p.name || p.title || ''} ${r.step}`).includes(n(M.kw));
     }).sort((a, b) => (a.sort < b.sort ? 1 : -1));
   }
   function tasks() {
@@ -132,17 +162,23 @@
     const info = {
       scr: 'SX-15', name: 'Việc của tôi (Quản lý sản xuất)', uc: 'CDS-BT-03COP COP2; SX-KS-K1 §3.1–3.3',
       notes: [
+        '<b>T74 (comment #94 / #96):</b> Việc của tôi là mục con của nhóm <b>Quản lý nhiệm vụ</b> (cùng Nhiệm vụ đơn vị, Việc cá nhân), giữ số việc chưa xử lý như KHCN. Cột: Mã dự án, Tên công việc (quy trình + đối tượng), Bước cần xử lý dạng <b>n/N tên bước</b> (số bước người dùng của quy trình), <b>Giai đoạn</b> (giai đoạn QT.VHT.TTSX.4A.1.1 của quy trình: Lập kế hoạch — phê duyệt kế hoạch; Chuẩn bị sản xuất — chuyển giao, bàn giao nhà máy, mua sắm; Tổ chức sản xuất — bất thường, thay đổi kỹ thuật, nghiệm thu), Ngày nhận việc, Hạn xử lý, Ngày xử lý, <b>Độ trễ</b>: tính từ cuối ngày Hạn xử lý tới lúc xử lý (việc chưa xong: tới hiện tại), dưới 1 ngày ghi số giờ, từ 1 ngày làm tròn ngày; theo giờ đồng hồ — GIẢ LẬP P-269.',
         'Cùng khuôn my-tasks với Việc của tôi của ĐTMS (SCR-01): tab Chưa xử lý / Đã hoàn thành, cột Mã / Tên đối tượng cha = dự án sản xuất. Việc của phân hệ Sản xuất chỉ hiện trong phân hệ này (danh sách việc lọc theo phân hệ).',
         'Việc sinh từ luồng nháp D.sxFlows (GIẢ LẬP P-238) chạy trên một bộ chạy chung: có luồng Phê duyệt kế hoạch sản xuất (S2) và Chuyển giao từ nghiên cứu sang sản xuất (S3, thẩm định song song); bất thường, thay đổi kỹ thuật, nghiệm thu thêm ở S6–S8.',
         'Người xử lý theo vai của bước (GIẢ LẬP P-244). Hạn xử lý = ngày nhận việc + định mức ngày của bước (ngày lịch, GIẢ LẬP); quá hạn tô đỏ.',
       ],
-      q: ['P-238', 'P-244'], src: 'my-tasks/my-tasks.component · /my-tasks',
+      q: ['P-238', 'P-244', 'P-269'], src: 'my-tasks/my-tasks.component · /my-tasks',
     };
-    const cols = [['Trạng thái', 140, 'c'], ['Mã dự án / gói chuyển giao', 190], ['Tên dự án / gói chuyển giao', 300], ['Quy trình', 220], [done ? 'Bước bạn đã xử lý' : 'Bước cần xử lý', 280], [done ? 'Ngày xử lý' : 'Hạn xử lý', 140]];
+    const cols = [['Trạng thái', 130, 'c'], ['Mã dự án', 150], ['Tên công việc', 300], [done ? 'Bước bạn đã xử lý' : 'Bước cần xử lý', 280], ['Giai đoạn', 200],
+      ['Ngày nhận việc', 140], ['Hạn xử lý', 120], ['Ngày xử lý', 140], ['Độ trễ', 100, 'r']];
     const body = list.map((r, i) => {
       const p = objRec(r.c) || {};
-      return `<tr class="click" data-go="${r.go}"><td class="ord">${i + 1}</td><td class="c">${badge(...r.st)}</td><td><a class="link" data-go="${r.go}">${esc(p.code || r.c.obj)}</a></td>
-        <td>${k.clamp(p.name || p.title || '')}</td><td>${k.clamp(FL(r.c.flow).name)}</td><td>${k.clamp(r.step)}</td><td class="num${r.over ? ' due-over' : ''}">${esc(r.date)}</td></tr>`;
+      /* Tên công việc = tên quy trình + đối tượng (dự án, phiếu, ECR, lô, gói chuyển giao); việc của gói chưa gắn dự án hiện mã gói ở cột Mã dự án. */
+      const title = `${FL(r.c.flow).name}${r.proj && r.proj !== r.c.obj ? ` ${r.c.obj}` : ''}: ${p.name || p.title || p.code || r.c.obj}`;
+      return `<tr class="click" data-go="${r.go}"><td class="ord">${i + 1}</td><td class="c">${badge(...r.st)}</td><td><a class="link" data-go="${r.go}">${esc(r.proj || p.code || r.c.obj)}</a></td>
+        <td>${k.clamp(title)}</td><td>${k.clamp(r.stepTxt)}</td><td>${k.clamp(r.stage)}</td><td class="num">${esc(r.recv)}</td>
+        <td class="num${r.over ? ' due-over' : ''}">${esc(dmy(r.due))}</td><td class="num">${r.doneAt ? esc(r.doneAt) : k.dash}</td>
+        <td class="r num ${r.delay ? 't-err' : ''}">${r.delay ? esc(r.delay) : k.dash}</td></tr>`;
     }).join('');
     return `<div class="pg" data-sx-tasks>
       ${head({ title: 'Việc của tôi', lg: true, info })}
@@ -186,7 +222,11 @@
     const p = P().byCode(c.obj), cat = (key, v) => { const r = window.Catalog.rows(key).find((x) => x.code === v); return r ? r.name : v; };
     const plan = P().planOf(p);
     const ms = plan.map((g) => ({ ten: `Hoàn thành giai đoạn ${g.name.toLowerCase()}`, han: dmy(isoOf(g.e)) }));
-    return Object.assign({ duAn: { code: p.code, name: p.name, product: p.product, version: p.version, qtyText: `${Number(p.qty).toLocaleString('vi-VN')} ${p.unitName}`, modelText: cat('sx-mo-hinh', p.model) },
+    /* Vật tư leadtime dài (≥ 20 tuần) hoặc cần Export License, theo MBOM đồng bộ VMMS — khối chỉ xem của form bước 1 (đầu vào QT bước 1). */
+    const vtLt = ((D.sxMbom || {})[p.product] || []).filter((m) => m.lt >= 20 || m.el).map((m) => ({ ma: m.code, ten: m.name, lt: String(m.lt), el: m.el ? 'Có' : 'Không' }));
+    return Object.assign({ duAn: { code: p.code, name: p.name, product: p.product, version: p.version, factoryText: p.factory ? cat('sx-don-vi', p.factory) : 'chưa chọn', qtyText: `${Number(p.qty).toLocaleString('vi-VN')} ${p.unitName}`, modelText: cat('sx-mo-hinh', p.model) },
+      ckTaiLieu: window.SxCg ? window.SxCg.handoverDocs(p) : [], ckLan: (cases(p.code, 'SX-BGNM').filter((x) => x.status === 'done').length || 0) + 1,
+      paVtLt: vtLt, leaders: D.personas.filter((x) => x.urd === 'R-SX-LD').map((x) => [x.id, `${x.name} — ${x.role}`]), koChuTri: 'sxld',
       subPms: p.khoi === 'K1' ? [['sxsub', pName('sxsub')]] : [[p.pm, pName(p.pm)]], khMoc: ms, khNhanSu: [{ hoTen: pName(p.pm), donVi: (D.personas.find((x) => x.id === p.pm) || {}).unit || '', vaiTro: 'Giám đốc dự án' }] }, c.vars);
   }
   /* Điền {{biến}} / {{a.b}} của tên tài liệu ký theo ngữ cảnh hồ sơ. */
@@ -256,18 +296,30 @@
     }
     const v = c.vars, pr = progress(c, k.kv('Kế hoạch số', v.khSo ? esc(v.khSo) : null)), top = pr.top, steps = pr.steps;
     const files = (keys) => keys.filter((x) => v[x]).map((x) => esc(v[x])).join('; ');
+    /* Báo cáo phương án sản xuất (bước 1, không bắt buộc) và ý kiến chỉ đạo của Ban Giám đốc Khối (bước 2). */
+    const phName = { TTMS: 'Trung tâm Mua sắm', NCPT: 'Đơn vị Nghiên cứu phát triển', DBCL: 'Đơn vị Đảm bảo chất lượng' };
+    const pa = v.paLyDo ? `<div class="ginfo c3">${k.kv('Báo cáo phương án', 'Không lập')}${k.kv('Lý do', esc(v.paLyDo), 'span2')}</div>`
+      : v.paTomTat ? `<div class="ginfo c3">${k.kv('Tóm tắt phương án', esc(v.paTomTat), 'span3')}${k.kv('Gói mua sắm dự kiến', v.paGoiMs ? esc(v.paGoiMs) : null, 'span2')}
+          ${k.kv('Đơn vị đã phối hợp', (v.paPhoiHop || []).length ? esc(v.paPhoiHop.map((x) => phName[x] || x).join(', ')) : null)}
+          ${k.kv('Báo cáo phương án sản xuất', v.paFile ? esc(v.paFile) : null, 'span2')}${k.kv('Hồ sơ quy trình công nghệ, đo kiểm', v.paQtcn ? esc(v.paQtcn) : null)}
+          ${k.kv('Ý kiến chỉ đạo của Ban Giám đốc Khối', v.cdNoiDung ? esc(v.cdNoiDung) : null, 'span3')}</div>
+        <h4 class="ginfo-sub">Điều kiện ràng buộc cần xin ý kiến</h4>${k.table([['Nội dung ràng buộc', 320], ['Ảnh hưởng tới mốc kế hoạch', 300], ['Đề xuất xin ý kiến', 300]], v.paRangBuoc || [],
+          (m) => `<td>${k.clamp(m.noiDung || '')}</td><td>${m.anhHuong ? k.clamp(m.anhHuong) : k.dash}</td><td>${k.clamp(m.deXuat || '')}</td>`)}`
+        : '<p class="faint">Báo cáo phương án sản xuất chưa được lập.</p>';
+    const ko = v.koBienBan ? `<div class="ginfo c3">${k.kv('Ngày kick-off', esc(v.koNgay || ''))}${k.kv('Chủ trì', esc(pName(v.koChuTri)))}${k.kv('Sub PM', v.koSubPm ? esc(pName(v.koSubPm)) : null)}
+        ${k.kv('Quyết định giao nhiệm vụ', esc(v.koQuyetDinh || ''), 'span2')}${k.kv('Biên bản kick-off', esc(v.koBienBan))}${k.kv('Ghi chú', v.koGhiChu ? esc(v.koGhiChu) : null, 'span3')}</div>` : '';
     const content = v.khMucTieu ? `<div class="ginfo c3">
         ${k.kv('Mục tiêu', esc(v.khMucTieu), 'span3')}${k.kv('Kết quả then chốt', [v.khKr1, v.khKr2, v.khKr3].filter(Boolean).map(esc).join('<br>'), 'span3')}
         ${k.kv('Yêu cầu', esc(v.khYeuCau || ''), 'span3')}${k.kv('Phương án tổ chức thực hiện', esc(v.khPhuongAn || ''), 'span3')}
         ${k.kv('Tổ chức thực hiện của các đơn vị', v.khToChuc ? esc(v.khToChuc) : null, 'span3')}${k.kv('Rủi ro, đề xuất', v.khRuiRo ? esc(v.khRuiRo) : null, 'span3')}
-        ${k.kv('Báo cáo phương án sản xuất', v.paFile ? esc(v.paFile) : null, 'span3')}${k.kv('Phụ lục', files(['khPl1', 'khPl2', 'khPl3', 'khPl4', 'khPl5', 'khPl6']) || null, 'span3')}</div>
+        ${k.kv('Phụ lục', files(['khPl1', 'khPl2', 'khPl3', 'khPl4', 'khPl5', 'khPl6']) || null, 'span3')}</div>
       <h4 class="ginfo-sub">Các mốc chính</h4>${k.table([['Mốc chính', 420], ['Thời gian hoàn thành', 180]], v.khMoc || [],
         (m) => `<td>${k.clamp(m.ten || '')}</td><td class="num">${esc(m.han || '')}</td>`)}
       <h4 class="ginfo-sub">Nhân sự chính thực hiện</h4>${k.table([['Họ và tên', 240], ['Đơn vị', 300], ['Vai trò', 200]], v.khNhanSu || [],
         (m) => `<td>${k.clamp(m.hoTen || '')}</td><td>${k.clamp(m.donVi || '')}</td><td>${k.clamp(m.vaiTro || '')}</td>`)}`
       : '<p class="faint">Kế hoạch sản xuất chưa được lập.</p>';
     const hist = pr.hist;
-    return `<div data-sx-kh="${esc(c.code)}">${k.card('Hồ sơ phê duyệt kế hoạch', top + steps)}${k.card('Kế hoạch sản xuất (BM.QLHDSX.01)', content)}${k.card('Lịch sử xử lý', hist)}</div>`;
+    return `<div data-sx-kh="${esc(c.code)}">${k.card('Hồ sơ phê duyệt kế hoạch', top + steps)}${k.card('Báo cáo phương án sản xuất', pa)}${k.card('Kế hoạch sản xuất (BM.QLHDSX.01)', content)}${ko ? k.card('Kick-off dự án', ko) : ''}${k.card('Lịch sử xử lý', hist)}</div>`;
   }
   /* Nút Khởi tạo phê duyệt kế hoạch ở Chi tiết dự án: PM của dự án, dự án Lập kế hoạch, chưa có hồ sơ đang chạy. */
   const canStartKh = (p) => p.status === 'PLANNING' && !p.baseline && !running(p.code, 'SX-KH') && (p.pm === pid() || isAdmin(pid()));
@@ -292,5 +344,5 @@
   }
   function reset() { S = seed(); persist(); }
 
-  window.SxFlow = { route, enter: enterRoute, GUARD, progress, start, complete, cases, caseOf, running, pending, tokensFor, planTab, canStartKh, reset, ACT };
+  window.SxFlow = { route, enter: enterRoute, GUARD, progress, start, complete, cases, caseOf, running, pending, overdue, delayTxt, tokensFor, planTab, canStartKh, reset, ACT };
 })();

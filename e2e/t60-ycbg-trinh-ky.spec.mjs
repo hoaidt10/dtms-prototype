@@ -45,16 +45,18 @@ test('#63–#66: Chi tiết YCBG đạt — lịch sử giảm dần, bỏ Kênh
   expect(page.errors).toEqual([]);
 });
 
-test('#68: Trình ký — Đã thu hồi không còn Gửi lại; Lỗi gửi vẫn Gửi lại', async ({ page }) => {
+test('#68: Trình ký — Đã thu hồi không còn Gửi lại; Lỗi gửi mở công việc Xử lý trình ký', async ({ page }) => {
   page.errors = []; page.on('pageerror', (e) => page.errors.push(String(e)));
   await fresh(page, '#/viec-cua-toi');
   await page.evaluate(() => { Flow.setPersona('tgd'); location.hash = '#/trinh-ky'; });
   const rc = page.locator('[data-tkl] tr[data-tk-id]', { hasText: 'ĐXMS-2026-0072' });
   await expect(rc).toHaveCount(1);
-  await expect(rc.locator('[data-tk-act]')).toHaveCount(1);
+  await expect(rc.locator('[data-tk-act="resend"]')).toHaveCount(0);
+  await expect(rc.locator('[data-tk-act="task"]')).toHaveCount(1); // SRS 32 V0.4: Mở công việc Xử lý trình ký (BR-TKV-04-03)
   await expect(rc.locator('[data-tk-act="view"]')).toHaveCount(1);
   await page.evaluate(() => { Flow.setPersona('hai'); App.render(); });
   const fail = page.locator('[data-tkl] tr[data-tk-id]', { hasText: 'BM-03' }).filter({ hasText: 'ĐXMS-2026-0124' });
-  await expect(fail.locator('[data-tk-act="resend"]')).toHaveCount(1);
+  // SRS 32 V0.4: Gửi lại ở công việc Xử lý trình ký — dòng Lỗi gửi có Mở công việc.
+  await expect(fail.locator('[data-tk-act="task"]')).toHaveCount(1);
   expect(page.errors).toEqual([]);
 });

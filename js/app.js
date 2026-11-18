@@ -133,7 +133,7 @@
     /* T29 B12 (D-78): SCR-107 Quản lý hồ sơ — biểu mẫu / văn bản đã sinh của mọi luồng. */
     if (a === 'quan-ly-ho-so') return window.QuanLyHoSo.page();
     /* T54 (SRS 32 DTMS_CN_0274): màn Trình ký. */
-    if (a === 'trinh-ky') return window.TrinhKy.page();
+    if (a === 'trinh-ky') return b === 'viec' && c ? window.TrinhKy.taskPage(c) : window.TrinhKy.page();
     /* ĐXMS (cha): SCR-27 danh sách, SCR-28 thêm mới / chỉnh sửa, SCR-29 chi tiết — theo task-management. */
     /* T34 (D-90): bỏ phương án Tách — SCR-27 / 28 / 29 comment; route cũ chuyển sang Luồng mua sắm (SCR-95 / 96 / 97). */
     // [T34 bỏ Tách] if (a === 'dxms' && b === 'create') return S.dxmsForm();
@@ -515,7 +515,7 @@
     if (t.closest('#reset')) {
       const m = modal(`<div class="modal-h"><h3>Reset luồng?</h3></div><div class="modal-b">Xoá hồ sơ đang chạy và các ĐXMS, hồ sơ đã tạo trên prototype, đưa quy trình và luật hiển thị về mẫu, quay về trước bước Thêm mới ĐXMS (SCR-28). Ý kiến ❓ đã ghi được giữ lại.</div>
         <div class="modal-f"><button class="btn secondary" data-close>Huỷ</button><button class="btn primary" id="rs">Reset</button></div>`);
-      m.el.querySelector('#rs').onclick = () => { m.close(); Flow.reset(); if (window.SxFlow) { window.SxFlow.reset(); window.SxDuAn.reset(); window.SxCg.reset(); window.SxMs.reset(); window.SxBtp.reset(); window.SxBt.reset(); window.SxTd.reset(); if (window.SxCv) window.SxCv.reset(); if (window.SxNc) window.SxNc.reset(); if (window.SxHs) window.SxHs.reset(); if (window.SxVmms) window.SxVmms.reset(); window.SxNt.reset(); } Flow.setPersona('minh'); demoOpen = false; location.hash = '#/viec-cua-toi'; toast('Đã reset luồng.'); };
+      m.el.querySelector('#rs').onclick = () => { m.close(); Flow.reset(); if (window.SxFlow) { window.SxFlow.reset(); window.SxDuAn.reset(); window.SxCg.reset(); window.SxMs.reset(); window.SxBtp.reset(); window.SxBt.reset(); window.SxTd.reset(); if (window.SxCv) window.SxCv.reset(); if (window.SxKh) window.SxKh.reset(); if (window.SxNc) window.SxNc.reset(); if (window.SxHs) window.SxHs.reset(); if (window.SxVmms) window.SxVmms.reset(); if (window.SxBc) window.SxBc.reset(); window.SxNt.reset(); } Flow.setPersona('minh'); demoOpen = false; location.hash = '#/viec-cua-toi'; toast('Đã reset luồng.'); };
       return;
     }
     /* Reset luồng không đụng dữ liệu DMDC, E-Form, thầu, hợp đồng, thông báo; khôi phục riêng ở đây. */

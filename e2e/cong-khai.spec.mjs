@@ -23,7 +23,7 @@ test('Công khai: menu mở màn thật; tin sinh từ dữ liệu thầu; hạn
   await expect(page.locator('.sb-nav .nav.active')).toHaveText('Công khai & tích hợp đấu thầu');
   expect(await mainText(page)).not.toMatch(BA);
   const it = await page.evaluate(() => CongKhai.items().map((x) => [x.id, x.st, x.due, x.sys]));
-  expect(it.length).toBe(19); // T67: + KHLCNT-2026-0020 đã ký, chờ đăng tải
+  expect(it.length).toBe(31); // T67: + KHLCNT-2026-0020 đã ký, chờ đăng tải; 17/11: + tin của KHLCNT-2026-0001 / 0002 / 0005 / 0007 và gói của chúng
   const by = Object.fromEntries(it.map(([id, ...r]) => [id, r]));
   expect(by['KHLCNT:KHLCNT-2026-0009:v2']).toEqual(['ERR', '07/10/2026', 'VTB']);
   expect(by['BBMT:GT-2026-0029']).toEqual(['WAIT', '03/10/2026 10:00', 'VTB']);
@@ -39,7 +39,7 @@ test('Công khai: menu mở màn thật; tin sinh từ dữ liệu thầu; hạn
   await page.locator('[data-vsel="tf-ckt-sys"]').click();
   await page.locator('.vsel-panel [data-opt="DTQG"]').click();
   await page.locator('[data-tadv="ckt"] button[type="submit"]').click();
-  await expect(page.locator('main .vtable tbody tr')).toHaveCount(3);
+  await expect(page.locator('main .vtable tbody tr')).toHaveCount(7); // 17/11: + KHLCNT-2026-0002 (Theo luật) và 3 gói của nó
   expect(page.errors).toEqual([]);
 });
 

@@ -25,8 +25,12 @@ const tableBeforePicker = (card, pickSel) => card.evaluate((c, s) => {
 
 test('#75, #76, #82: KĐT — tên Bóc tách hạng mục, bảng trên hàng chọn; "0.001" là 0,001 tỷ, không báo Vượt giá trị dự toán', async ({ page }) => {
   await fresh(page, '#/kdt/create');
-  await expect(page.locator('[data-kc-cost] h3')).toHaveText('Bóc tách hạng mục');
+  // #93 (17/11): như Lập ĐXMS — card bóc tách đứng đầu, ô Đề tài / dự án ở đầu card, Thông tin chung KĐT sau.
+  await expect(page.locator('[data-kc-cost] h3')).toHaveText('Căn cứ và nội dung KĐT — Bóc tách hạng mục');
+  expect(await page.locator('form.pg > section.vcard').first().getAttribute('data-kc-cost')).not.toBeNull();
+  await expect(page.locator('[data-kc-cost] [data-vsel="k-nv"]')).toBeAttached();
   await fresh(page, '#/ho-so-ct-kdt/create');
+  expect(await page.locator('form.pg > section.vcard').first().getAttribute('data-kc-cost')).not.toBeNull();
   await pick(page, 'kc-kdt', 'KĐT-2026-0021');
   const card = page.locator('[data-kc-cost]');
   await expect(card.locator('h3')).toHaveText('Căn cứ và nội dung KĐT — Bóc tách hạng mục');
@@ -81,7 +85,10 @@ test('#83, #84, Q8, Q9: Lập ĐXMS — không còn AI ở khối Căn cứ, h�
   await expect(card.locator('thead th')).toContainText(['Còn lại khả dụng', 'SL còn được mua']);
   await expect(card.locator('tbody [data-lf-cqty]').first()).toBeVisible();
   await expect(card.locator('[data-lf-cqleft]').first()).toHaveText(/^\d+ \S+/);
-  await expect(card.locator('[data-lf-boc-sum]')).toContainText('Hệ thống đã đối chiếu');
+  await expect(card.locator('[data-lf-boc-sum]')).toHaveCount(0); // #91
+  // #92 (17/11, phương án B): Số lượng đề xuất = SL còn được mua của dòng.
+  const r0 = await page.evaluate(() => ({ q: document.querySelector('[data-lf-cqty]').value, left: document.querySelector('[data-lf-cqleft]').textContent }));
+  expect(r0.left.startsWith(r0.q + ' ')).toBe(true);
   await expect(card).not.toContainText('AI');
   expect(await tableBeforePicker(card, '[data-lf-pick]')).toBe(true);
   // Vượt SL còn được mua: cảnh báo, không chặn.

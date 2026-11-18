@@ -38,7 +38,7 @@ test('SCR-54, 56: cột / nhãn "Đề tài / dự án", mã mở Chi tiết đ�
 test('SCR-55: nhãn, ô Loại chỉ đọc theo đề tài, thông báo bắt buộc', async ({ page }) => {
   await fresh(page, '#/kdt/create');
   await page.locator('#k-save').click();
-  await expect(page.locator('.vfield.invalid .msg').nth(1)).toHaveText('Bạn cần chọn Đề tài / dự án.');
+  await expect(page.locator('.vfield.invalid .msg').nth(0)).toHaveText('Bạn cần chọn Đề tài / dự án.'); // #93: ô Đề tài / dự án đứng đầu màn
   await page.locator('[data-vsel="k-nv"]').click();
   await page.locator(`.vsel-panel [data-opt="${NV}"]`).click();
   const kind = await page.evaluate((nv) => D.nvOf(nv).kind, NV);

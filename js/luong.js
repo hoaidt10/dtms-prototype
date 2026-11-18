@@ -273,7 +273,7 @@
         <td>${clamp(typeName(l.type))}</td><td data-lf-citem="${r.id}">${clamp(l.item)}${warn ? `<div class="t-err" data-lf-cwarn>${esc(warn)}</div>` : ''}</td><td>${esc(l.uom || '')}</td><td class="r num">${dong(availOf(l).value)} đồng</td><td class="r num" data-lf-cqleft="${r.id}">${qtyTxt(l)}</td>
         <td>${inp('qty', 'Nhập số lượng', 10)}</td><td>${inp('val', 'Nhập giá trị (đồng)', 20)}</td>
         <td>${vSelect({ id: 'lf-cpkg-' + r.id, value: r.pkg || null, clear: true, placeholder: 'Chọn hình thành gói thầu', options: PKGS.map((p) => ({ value: p, label: p })), onChange: upd((x) => { r.pkg = x || ''; }) })}</td>`;
-  }, 'Chưa bóc tách chi phí — chọn Loại chi phí, Khoản mục chi phí rồi Thêm vào ĐXMS')}${picker}${bocCard()}</section>`;
+  }, 'Chưa bóc tách chi phí — chọn Loại chi phí, Khoản mục chi phí rồi Thêm vào ĐXMS')}${picker}${LF.err.boc ? `<p class="msg lf-err mt8" role="alert" data-lf-boc>${esc(LF.err.boc)}</p>` : ''}</section>`;
   }
   /* D-75 (RV-PROTO-0511 #14, câu hỏi 4; Huylx4 #3): bỏ Danh sách người thẩm định — CQCM chọn ở bước 16, DX-08 rút. */
   function readCost() {
@@ -533,10 +533,14 @@
     if (!nv) { LF.aiBoc = null; return; }
     const items = D.itemsBase();
     items.forEach((i) => { LF.boc[i.n] = { prop: String(i.prop), bo: false }; });
+    /* [#92, 17/11 — phương án B] điền sẵn theo dự toán, không ghép hàng hoá của căn cứ: mỗi dòng dự toán Chi mua sắm còn khả dụng (costLinesOf)
+       thành một dòng — Số lượng đề xuất = SL còn được mua (dòng không có khối lượng: để trống), Giá trị dự tính = Còn lại khả dụng. Người dùng xoá / sửa.
+       Bỏ luật ghép theo tên khoản mục (lineFor, GIẢ LẬP) vì eBOM chưa có mã dòng dự toán. LF.boc vẫn giữ danh mục hàng hoá cho bước 7 trở đi. */
     if (!keep || !LF.cost.length) {
-      costGroups(nv, (i) => estNum(String(i.prop))).forEach((x) => {
+      costLinesOf(nv).forEach((l) => {
+        const a = availOf(l);
         LF.rseq += 1;
-        LF.cost.push({ id: 'c' + LF.rseq, line: x.l.id, pkg: '', qty: String(x.qty), value: dong(x.value), ai: true, man: false });
+        LF.cost.push({ id: 'c' + LF.rseq, line: l.id, pkg: '', qty: a.qty == null ? '' : String(a.qty), value: dong(a.value), ai: true, man: false });
       });
     }
     LF.aiBoc = { nv, fetch: aiFetch(nv), sys: true };
@@ -668,29 +672,7 @@
   /* Bước 5 + AI bước 6: danh mục hàng hoá bóc tách từ căn cứ (eBOM / mBOM), đối chiếu số còn được dùng, đang giữ, tồn kho sổ sách. */
   const remainOf = (i) => (i.bom == null ? null : i.bom - (i.used || 0));
   const bocRow = (i) => LF.boc[i.n] || (LF.boc[i.n] = { prop: String(i.prop), bo: false });
-  function bocIssue(i) {
-    const b = bocRow(i), q = estNum(b.prop), r = remainOf(i);
-    if (b.bo) return '';
-    if (q == null || Number.isNaN(q) || q < 0) return 'SL đề xuất không đúng định dạng.';
-    if (r != null && q > r) return `Vượt số còn được dùng (${r}).`;
-    return '';
-  }
-  function bocCard() {
-    const err = LF.err;
-    /* Góp ý 06/11: bóc tách và đối chiếu nằm ngay trong khối Căn cứ (bước 1), không tách khối riêng phía dưới. */
-    /* [T72 #83] hệ thống đối chiếu, không AI: bỏ dải "✦ Bước 2 · AI đã lấy dữ liệu căn cứ" và câu "Bấm ✦ Gợi ý lại…". */
-    const h = `<div class="lf-sub-h"><h4>${stepTag(5)}Đối chiếu căn cứ</h4></div>`;
-    if (!LF.v.nv) return '';
-    const em = err.boc ? `<p class="msg lf-err" role="alert">${esc(err.boc)}</p>` : '';
-    if (!LF.aiBoc || aiBocOld()) return `<div class="lf-sub ${err.boc ? 'invalid' : ''}" data-lf-boc>${h}${em}<div class="lf-empty">Chưa có dữ liệu</div></div>`;
-    const book = (i) => (i.book != null ? i.book : i.stock != null ? i.stock : null);
-    /* Góp ý 06/11: kết quả bóc tách đã điền vào bảng Loại chi phí ở trên → màn chỉ còn dòng tóm tắt; xem / sửa danh mục bóc tách trong popup (✦ Gợi ý lại). */
-    const its = D.itemsBase(), kept = its.filter((i) => !bocRow(i).bo), stock = kept.filter((i) => book(i)), warn = kept.filter((i) => i.warn), bad = its.filter((i) => bocIssue(i));
-    return `<div class="lf-sub ${err.boc ? 'invalid' : ''}" data-lf-boc>${h}
-      ${em}
-      <p data-lf-boc-sum>Hệ thống đã đối chiếu <b>${kept.length} / ${its.length}</b> hạng mục hàng hoá của căn cứ với dự toán, điền vào bảng ở trên${stock.length ? ` · ${stock.length} hạng mục có tồn kho sổ sách — Kho rà soát thực tế ở bước 7` : ''}${warn.length ? ` · <span class="t-warn">${warn.length} hạng mục không có trong dự toán / eBOM</span>` : ''}${bad.length ? ` · <span class="t-err">${bad.length} hạng mục chưa hợp lệ</span>` : ''}.
-</p></div>`;
-  }
+  /* [#91, #92 — 17/11, phương án B] bỏ bocIssue / bocCard (khối con "Đối chiếu căn cứ" + dòng tóm tắt "Hệ thống đã đối chiếu n / n hạng mục…"): màn không đối chiếu hàng hoá của căn cứ; tồn kho do Kho rà soát ở bước 7. */
   /* Huylx4 #20: thêm hạng mục từ dự toán = khoản mục người dùng tự thêm vào bảng Loại chi phí (bocOut → hangMucThem); không còn ô thêm riêng. */
   /* Bản lưu của màn (Lưu nháp / mở lại) — Flow.ui.lapDxms của hồ sơ. */
   const snap = () => JSON.parse(JSON.stringify({ v: LF.v, ai: LF.ai, aiBoc: LF.aiBoc, boc: LF.boc, add: LF.add, aseq: LF.aseq, cost: LF.cost, files: LF.files, pl: LF.pl, plFiles: LF.plFiles, rows: LF.rows, seq: LF.seq, rseq: LF.rseq }));
@@ -798,6 +780,7 @@
     const info = {
       scr: 'SCR-96', name: 'Lập đề xuất mua sắm', uc: 'UC-07-01, UC-07-12 · UR-DX-01, 02, UR-DX-20', bpmn: 'MS01 v1.1 task 01–06 (DX-11)',
       notes: [
+        '<b>Kho comment #91, #92 (17/11 — phương án B, thay cách ghép hàng hoá của D-122 Q4):</b> chọn Đề tài / dự án thì hệ thống <b>điền sẵn theo dự toán</b> — mỗi dòng dự toán Chi mua sắm còn khả dụng thành một dòng, Số lượng đề xuất = <b>SL còn được mua</b>, Giá trị dự tính = <b>Còn lại khả dụng</b>; người lập xoá dòng không mua, sửa số theo nhu cầu. Không ghép hàng hoá của căn cứ vào khoản mục (luật ghép theo tên là giả lập, eBOM chưa có mã dòng dự toán). Bỏ khối con "Đối chiếu căn cứ" và dòng tóm tắt; tồn kho do Kho rà soát ở bước 7. Gửi: cần ít nhất một dòng chi phí. Dùng chung với KĐT.',
         '<b>T72 (kho comment #75, #76, #83, #84; D-122 Q4, Q5, Q8, Q9):</b> khối <b>Căn cứ và nội dung mua sắm — Bóc tách hạng mục</b>: bỏ nút ✦ Gợi ý từ AI của khối — chọn Đề tài / dự án thì <b>hệ thống</b> bóc tách hàng hoá của căn cứ vào khoản mục dự toán Chi mua sắm còn khả dụng và điền bảng (service task bước 2, 6: tích hợp dự toán / eBOM / tồn kho, không AI); không còn luật phải bấm AI trước khi Gửi. Bảng ngay dưới ô Đề tài / dự án, hàng chọn Loại chi phí / Khoản mục xuống dưới bảng. Cột <b>SL còn được mua</b> = khối lượng dự toán − đã đăng ký − đang giữ; vượt thì cảnh báo, không chặn. Nút AI của khối Thông tin chung (P-216) giữ nguyên. Ô Giá trị dự tính theo đồng là số nguyên — dấu chấm là phân cách nghìn.',
         '<b>T56 (review Nhi 12/11):</b> khối <b>Thành phần tham gia</b> (đổi tên từ Nhân sự thực hiện, #9 — nội dung D-75 giữ nguyên); bỏ câu hướng dẫn Gợi ý từ AI ở các khối, chỉ còn ở tour Hướng dẫn (#13); ẩn <b>Loại biểu mẫu</b> (#15 — hệ thống vẫn suy theo giá trị báo giá, hiện ở Chi tiết đề xuất mua sắm). #14 đề nghị bỏ nút (i): giữ (Q5) — (i) chỉ có ở bản review, bản thật không có; bản cho khách dùng ?capture=1.',
         '<b>Review nhi 06/11 #1:</b> bỏ khối <b>Thông tin cơ bản</b> (bước 4). Nhóm mục đích mua sắm, Nguồn vốn chuyển vào khối Thông tin chung (AI bước 3 gợi ý ở popup ✦ Gợi ý từ AI của khối). Các mục nội dung Tờ trình (mục đích, phạm vi, biện pháp, kế hoạch…) không nhập ở màn này — AI gợi ý sẵn, người dùng nhập / sửa ở bước lập dự thảo Tờ trình (11 / 12) theo đúng mục của mẫu BM-01 / BM-09. Bước 4 BPMN vẫn hoàn thành khi Gửi.',
@@ -911,10 +894,9 @@
       if (!v.purposeCode) err.purposeCode = 'Bạn cần chọn Nhóm mục đích mua sắm.';
       if (!v.fund) err.fund = 'Bạn cần chọn Nguồn vốn.';
     }
-    if (send && LF.aiBoc && !err.boc) {
-      const items = D.itemsBase(), bad = items.filter((i) => bocIssue(i));
-      if (bad.length) err.boc = `Bóc tách chưa hợp lệ: ${bad.map((i) => `${i.name} — ${bocIssue(i)}`).join(' ')}`;
-      else if (!items.some((i) => !bocRow(i).bo) && !LF.add.length && !LF.cost.some((r) => r.man && !r.ai)) err.boc = 'Bạn cần giữ ít nhất một hạng mục trong ĐXMS.';
+    /* [#92, 17/11 — phương án B] không còn đối chiếu từng hàng hoá của căn cứ trên màn; Gửi chỉ cần ít nhất một dòng chi phí (như KĐT err.cost0). */
+    if (send && v.nv && !err.boc) {
+      if (!LF.cost.length && !LF.add.length) err.boc = 'Bạn cần bóc tách ít nhất một khoản mục chi phí.';
       const ae = {};
       LF.add.forEach((r) => { const q = estNum(r.sl); if (q == null || Number.isNaN(q) || q <= 0 || !Number.isInteger(q)) ae[r.id] = 'SL đề xuất là số nguyên dương.'; });
       if (Object.keys(ae).length) err.add = ae;

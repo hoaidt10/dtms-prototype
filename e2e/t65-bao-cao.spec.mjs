@@ -68,6 +68,6 @@ test('#69 #70 #71: drill-down — tiêu đề có icon ← quay lại, không c�
   await expect(det.locator('tbody tr')).toHaveCount(1);
   await det.locator('h3 .rp-back').click();
   await expect(det.locator('h3')).toHaveText('Danh sách chi tiết');
-  await expect(det.locator('tbody tr')).toHaveCount(7); // T67: + 2 hợp đồng mẫu
+  await expect(det.locator('tbody tr')).toHaveCount(10); // T67: + 2 hợp đồng mẫu; 17/11: 21 hợp đồng — trang đầu 10 dòng
   expect(page.errors).toEqual([]);
 });

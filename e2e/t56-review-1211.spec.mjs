@@ -71,7 +71,7 @@ test('C #22–#26, #31: Trình ký một danh sách, lọc Người trình ký /
   const all = await page.evaluate(() => TrinhKy.list().length);
   await expect(page.locator('[data-tkl] tbody tr[data-tk-id]')).toHaveCount(Math.min(all, 20));
   await page.locator('[data-tk-adv]').click();
-  await expect(page.locator('[data-tkadv] label')).toContainText(['Trạng thái', 'Người trình ký', 'Người ký', 'Hình thức', 'Bản ký']);
+  await expect(page.locator('[data-tkadv] label')).toContainText(['Loại đối tượng', 'Mẫu văn bản', 'Trạng thái', 'Người trình ký', 'Người ký', 'Bản ký', 'Hình thức', 'Ngày trình']); // SRS 32 thành phần 4–11
   await page.locator('[data-vsel="tkf-st"]').click();
   const opts = page.locator('.vsel-panel');
   for (const s of ['Chưa trình ký', 'Đang xử lý', 'Bị từ chối', 'Đã ký duyệt', 'Đã ban hành']) await expect(opts).toContainText(s);

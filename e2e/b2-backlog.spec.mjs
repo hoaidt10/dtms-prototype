@@ -253,8 +253,8 @@ test('Gói thầu: danh sách mở được mọi dòng; 11 hình thức; tab th
   await page.locator('.vsel-panel [data-opt="LC-X"]').click();
   await page.keyboard.press('Escape');
   await page.locator('[data-tadv="gtl"] button[type="submit"]').click();
-  await expect(page.locator('main .vtable tbody tr')).toHaveCount(1);
-  await expect(page.locator('main .vtable tbody tr')).toContainText('GT-2026-0030');
+  await expect(page.locator('main .vtable tbody tr')).toHaveCount(2); // 17/11: + GT-2026-0044 huỷ do không có nhà thầu
+  await expect(page.locator('main .vtable tbody tr', { hasText: 'GT-2026-0030' })).toHaveCount(1);
   expect(page.errors).toEqual([]);
 });
 
@@ -282,8 +282,8 @@ test('T24 B3 — KHLCNT theo hệ thống cũ: cột, lọc Quy chế / Cấp ph
   await page.locator('[data-vsel="tf-khl-qc"]').click();
   await page.locator('.vsel-panel .vsel-opt', { hasText: 'Theo luật' }).click();
   await page.locator('form[data-tadv="khl"] button[type="submit"]').click();
-  await expect(page.locator('main .vtable tbody tr')).toHaveCount(1);
-  await expect(page.locator('main .vtable tbody tr')).toContainText('KHLCNT-2026-0011');
+  await expect(page.locator('main .vtable tbody tr')).toHaveCount(2); // 17/11: + KHLCNT-2026-0002 (Theo luật, Tập đoàn)
+  await expect(page.locator('main .vtable tbody tr', { hasText: 'KHLCNT-2026-0011' })).toHaveCount(1);
   await page.locator('[data-tl="khl:reset"]').click();
   await page.locator('[data-tf="khl:from"]').fill('01/09/2026');
   await page.locator('[data-tf="khl:to"]').fill('10/09/2026');

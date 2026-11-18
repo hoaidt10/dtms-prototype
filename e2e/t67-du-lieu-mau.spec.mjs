@@ -34,7 +34,7 @@ test('Quan hệ dữ liệu và độ phủ trạng thái', async ({ page }) => 
       mau: [...new Set(HopDong.all().map((h) => (HopDong.mauHd(h) || {}).tt).filter(Boolean))].sort(),
     };
   });
-  expect(r.khl).toEqual(['KHL-01', 'KHL-04', 'KHL-05', 'KHL-06', 'KHL-08', 'KHL-10', 'KHL-X']);
+  expect(r.khl).toEqual(['KHL-01', 'KHL-02', 'KHL-04', 'KHL-05', 'KHL-06', 'KHL-07', 'KHL-08', 'KHL-10', 'KHL-X']); // 17/11: + KHL-02 (0012 đang điều chỉnh), KHL-07 (0010)
   expect(r.orphan).toEqual([]);
   expect(r.empty).toEqual([]);
   expect(r.noSrc).toEqual([]);

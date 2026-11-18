@@ -22,21 +22,21 @@ const bar = (page, card, label) => page.locator('.bc-card', { hasText: card }).l
 // [T61] Tổng quan 4 tab (D-116): bỏ phễu vòng đời, ô Loại nghiệp vụ, lọc trạng thái chi tiết; giữ quy tắc đếm T48 (không đếm nháp, giá trị bản hiệu lực).
 test('Tổng quan (T48 → T61): ĐXMS không đếm nháp, giá trị không đếm đôi chuỗi điều chỉnh; lọc Đơn vị đổi số', async ({ page }) => {
   await as(page, 'minh', '#/tong-quan');
-  // 30 ĐXMS mẫu (T58 thêm 15), 3 Chưa khởi tạo (0124, 0119, 0098) → 27
-  await expect(tileN(page, 'Tổng số ĐXMS')).toHaveText('27');
+  // 30 ĐXMS mẫu (T58 thêm 15), 3 Chưa khởi tạo (0124, 0119, 0098) → 27; 17/11: + 6 ĐXMS đã duyệt làm nguồn KHLCNT → 33
+  await expect(tileN(page, 'Tổng số ĐXMS')).toHaveText('33');
   // Giá trị: chuỗi 0084 → 0112 chỉ cộng 0112; 0077 (Đang điều chỉnh) → 0126 (đang chạy) chỉ cộng 0077
   // T58: + 1122,4 tỷ (chuỗi 0141 → 0142 → 0140 chỉ cộng 0142); T69 L1: Tổng quan hiện theo đồng
-  await expect(tileN(page, 'Tổng giá trị ĐXMS')).toContainText('1.963.600.000.000');
+  await expect(tileN(page, 'Tổng giá trị ĐXMS')).toContainText('2.145.400.000.000'); // 17/11: + 181,8 tỷ (0044, 0047, 0053, 0064, 0069, 0070)
   await pick(page, 'rp-tq-unit', 'Phòng Chất lượng');
   await page.locator('[data-rpa="tq:go"]').click();
-  await expect(tileN(page, 'Tổng số ĐXMS')).not.toHaveText('27');
+  await expect(tileN(page, 'Tổng số ĐXMS')).not.toHaveText('33');
   expect(page.errors).toEqual([]);
 });
 
 test('Báo cáo ĐXMS, KĐT (T49 R1–R7): đã phê duyệt gồm DC / SUP; phát sinh điều chỉnh theo ĐXMS gốc; KĐT theo loại hồ sơ; quá hạn có loại hồ sơ và hợp đồng', async ({ page }) => {
   await as(page, 'minh', '#/bao-cao/dxms');
-  await expect(tileN(page, 'Tổng số ĐXMS')).toHaveText('27');
-  await expect(tileN(page, 'Đã phê duyệt')).toHaveText('8'); // 0112, 0103, 0089, 0084 (SUP), 0077 (DC), 0072; T58: 0141 (SUP), 0142 (DC)
+  await expect(tileN(page, 'Tổng số ĐXMS')).toHaveText('33');
+  await expect(tileN(page, 'Đã phê duyệt')).toHaveText('14'); // 17/11: + 0044, 0047, 0053, 0064, 0069, 0070; // 0112, 0103, 0089, 0084 (SUP), 0077 (DC), 0072; T58: 0141 (SUP), 0142 (DC)
   await expect(tileN(page, 'Phát sinh điều chỉnh')).toHaveText('3'); // T58: + chuỗi 0141
   await expect(tileD(page, 'Phát sinh điều chỉnh')).toContainText('4 lần điều chỉnh'); // 0112, 0126, 0142, 0140
   await page.locator('.rp-tile', { hasText: 'Phát sinh điều chỉnh' }).click();
@@ -51,10 +51,10 @@ test('Báo cáo ĐXMS, KĐT (T49 R1–R7): đã phê duyệt gồm DC / SUP; ph�
   await expect(bar(page, 'Số lượng theo giai đoạn nghiệp vụ', 'KĐT – phê duyệt KĐT')).toHaveText('5'); // T58: + HS-2026-0039-2
   await go(page, '#/bao-cao/tien-do');
   await page.locator('[data-rptab="tien-do:qua-han"]').click();
-  await expect(page.locator('.rp-det tbody tr')).toHaveCount(6); // T58: + HS-2026-0134, HS-2026-0036 quá hạn; T67: + HĐ-2026-0035 giao hàng chậm
+  await expect(page.locator('.rp-det tbody tr')).toHaveCount(7); // T58: + HS-2026-0134, HS-2026-0036 quá hạn; T67: + HĐ-2026-0035 giao hàng chậm; 17/11: + HĐ-2026-0018
   await expect(page.locator('.rp-det tbody')).toContainText('Hồ sơ phê duyệt KĐT');
   await expect(page.locator('.rp-det tbody')).toContainText('HĐ-2025-0187');
-  await expect(tileN(page, 'Hợp đồng chậm mốc')).toHaveText('2'); // T67: + HĐ-2026-0035
+  await expect(tileN(page, 'Hợp đồng chậm mốc')).toHaveText('3'); // T67: + HĐ-2026-0035; 17/11: + HĐ-2026-0018
   expect(page.errors).toEqual([]);
 });
 
@@ -62,13 +62,17 @@ test('Báo cáo (T49 R8–R13): 2 kiểu xuất; KPI đến ký HĐ + đối tư
   await as(page, 'minh', '#/bao-cao/hop-dong');
   await page.locator('[data-rptab="hop-dong:tinh-hinh"]').click();
   await page.locator('[data-rp-export-all]').click();
-  expect(await lastToast(page)).toMatch(/Xuất báo cáo theo bộ lọc thành công \(4 chỉ tiêu, 4 chiều nhóm, 7 dòng chi tiết\)/); // T67: + 2 hợp đồng mẫu
+  expect(await lastToast(page)).toMatch(/Xuất báo cáo theo bộ lọc thành công \(4 chỉ tiêu, 4 chiều nhóm, 21 dòng chi tiết\)/); // T67: + 2 hợp đồng mẫu; 17/11: + 14
   await page.locator('[data-rp-export]').click();
-  expect(await lastToast(page)).toContain('Xuất báo cáo thành công (7 dòng)');
+  expect(await lastToast(page)).toContain('Xuất báo cáo thành công (21 dòng)');
   // Thanh toán theo đợt
   await page.locator('[data-rptab="hop-dong:thanh-toan"]').click();
+  // 17/11: 21 hợp đồng mẫu — xem 50 dòng / trang để đếm đủ hợp đồng và đợt.
+  const ps50 = async () => { await page.locator('.rp-det [data-ps-open]').first().click(); await page.locator('[data-ps="50"]').first().click(); };
+  await ps50();
   const nHd = await page.locator('.rp-det tbody tr').count();
   await page.locator('[data-rp-view="hop-dong:dot"]').click();
+  await ps50();
   await expect(page.locator('.rp-det h3')).toHaveText('Danh sách đợt thanh toán');
   await expect(page.locator('.rp-det thead')).toContainText('Thực thanh toán');
   expect(await page.locator('.rp-det tbody tr').count()).toBeGreaterThan(nHd);

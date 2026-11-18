@@ -52,15 +52,17 @@
   /* ---------- Cấu hình trình ký mẫu (SRS 32 mục 3.1.2, phụ lục A) ----------
      src: 'ME' = NGUOI_TRINH; số = NGUOI_XU_LY_BUOC (task key). Văn bản không có dòng → mặc định một dòng người trình. */
   const CFG = {
-    'BM-03': { form: 'PT', title: 'Phiếu yêu cầu thẩm định đề xuất mua sắm {ma}', rows: [['THỦ TRƯỞNG ĐƠN VỊ', 'ME', 1, 1]] },
-    'BM-04': { form: 'PT', title: 'Phiếu nhận xét đề xuất mua sắm {ma}', rows: [['CHỈ HUY CƠ QUAN CHUYÊN MÔN', 'ME', 1, 1]] },
-    'BM-09': { form: 'TTR', title: 'Thẩm định trực tiếp tờ trình đề xuất mua sắm {ma}', attach: ['BM-01'], rows: [[null, 'ME', 1, 1]] },
-    'BM-05': { form: 'BC', title: 'Báo cáo kết quả thẩm định đề xuất mua sắm {ma}', attach: ['BM-01', 'CL01'], rows: [[null, 'ME', 1, 1]] },
-    'BM-06': { form: 'CV', title: 'Báo cáo Tổng Giám đốc Tập đoàn về đề xuất mua sắm {ma}', attach: ['BM-01', 'BM-05', 'CL01'],
+    'BM-03': { name: 'Phiếu yêu cầu thẩm định', form: 'PT', title: 'Phiếu yêu cầu thẩm định đề xuất mua sắm {ma}', rows: [['THỦ TRƯỞNG ĐƠN VỊ', 'ME', 1, 1]] },
+    'BM-04': { name: 'Phiếu nhận xét', form: 'PT', title: 'Phiếu nhận xét đề xuất mua sắm {ma}', rows: [['CHỈ HUY CƠ QUAN CHUYÊN MÔN', 'ME', 1, 1]] },
+    'BM-09': { name: 'Tờ trình đề xuất mua sắm (thẩm định, phê duyệt trực tiếp)', form: 'TTR', title: 'Thẩm định trực tiếp tờ trình đề xuất mua sắm {ma}', attach: ['BM-01'], rows: [[null, 'ME', 1, 1]] },
+    'BM-05': { name: 'Báo cáo kết quả thẩm định', form: 'BC', title: 'Báo cáo kết quả thẩm định đề xuất mua sắm {ma}', attach: ['BM-01', 'CL01'], rows: [[null, 'ME', 1, 1]] },
+    'BM-06': { name: 'Công văn báo cáo Tổng Giám đốc Tập đoàn', form: 'CV', title: 'Báo cáo Tổng Giám đốc Tập đoàn về đề xuất mua sắm {ma}', attach: ['BM-01', 'BM-05', 'CL01'],
       rows: [['Người soạn thảo', 50, 0, 0], ['TỔNG GIÁM ĐỐC', 'ME', 1, 1]] },
-    'BM-08': { form: 'QD', title: 'Quyết định phê duyệt đề xuất mua sắm {ma} – {ten}', attach: ['BM-01', 'BM-05'],
+    'BM-08': { name: 'Quyết định phê duyệt ĐXMS', form: 'QD', title: 'Quyết định phê duyệt đề xuất mua sắm {ma} – {ten}', attach: ['BM-01', 'BM-05'],
       rows: [['Người soạn thảo', 58, 0, 0], ['Người trình duyệt', 59, 0, 0], ['TỔNG GIÁM ĐỐC', 'ME', 1, 1]] },
   };
+  /* Dung lượng tệp chính — GIẢ LẬP theo mã văn bản (thật: kho tệp). */
+  const sizeOf = (doc) => `${(0.6 + (String(doc).length * 7 % 13) / 10).toFixed(1).replace('.', ',')} MB`;
   const cfgOf = (doc) => CFG[String(doc).split(/\s|\+/)[0]] || { form: 'TTR', title: `${doc} — {ma}`, rows: [[null, 'ME', 1, 1]] };
   const whoOfStep = (k) => {
     const h = (Flow.state.history || []).slice().reverse().find((x) => String(x.task) === String(k) && x.who && !x.system);
@@ -173,7 +175,8 @@
             <td><input class="vctl" data-tk-pos="${i}" maxlength="200" value="${esc(r.pos)}" ${r.locked || dis ? 'disabled' : ''}></td>
             <td style="min-width:220px">${vSelect({ id: 'tk-w' + i, value: r.who, searchable: true, placeholder: 'Nhập tên để tìm', disabled: !!dis || (r.locked && !!r.who), invalid: !!err, options: dir,
               onChange: (v) => { r.who = v; r.unit = (persona(v) || {}).unit || ''; paint(); } })}${err ? `<div class="msg err">${err}</div>` : ''}</td>
-            <td>${esc(r.unit || '') || dash}</td>
+            <td style="min-width:200px">${vSelect({ id: 'tk-u' + i, value: r.unit || null, disabled: !!dis || !r.who, placeholder: 'Chọn đơn vị', options: r.who && (persona(r.who) || {}).unit ? [{ value: persona(r.who).unit, label: persona(r.who).unit }] : [],
+              onChange: (v) => { r.unit = v; paint(); } })}</td>
             <td class="c"><input type="checkbox" data-tk-show="${i}" ${r.show ? 'checked' : ''} ${r.locked || dis ? 'disabled' : ''}></td>
             <td class="c"><div class="acts">${r.locked ? `<span title="Người ký bắt buộc theo quy trình">${icon('lock')}</span>` : ''}
               <button type="button" class="vbtn icon ghost sm" data-tk="add" aria-label="Thêm" ${dis}>${icon('plus')}</button>
@@ -185,11 +188,11 @@
             <div><div class="k">Lần trình</div><div class="v">${attemptOf(c, doc)}</div></div></div>
           ${field('Hình thức trình', `<div class="vradio">${window.UI.vRadio('VOffice', soft, 'data-mode="soft"', c.secret)}${window.UI.vRadio('Ký ngoài hệ thống', !soft, 'data-mode="hard"')}</div>
             ${c.secret ? '<div class="banner-moved">Đối tượng Mật — bắt buộc ký tay, không gửi qua VOffice.</div>' : ''}`)}
-          ${soft ? `<div class="grid2">
-              ${field('Tên người dùng', `<input class="vctl" value="${esc(account(me))}" disabled>`, true)}
+          ${soft ? `<h4 class="tk-sec">Kết nối VOffice</h4><div class="grid2">
+              ${field('Tên đăng nhập', `<input class="vctl" value="${esc(account(me))}" disabled>`, true)}
               ${field('Mật khẩu', `<div class="tk-pw"><input class="vctl ${st.sub && !st.pw ? 'invalid' : ''}" id="tk-pw" type="password" autocomplete="off" placeholder="Nhập mật khẩu" value="${esc(st.pw)}">
                 ${st.conn ? badge('Đã kết nối', 'success') : badge('Chưa kết nối', 'default')}</div>${st.sub && !st.pw ? '<div class="msg">Vui lòng nhập Mật khẩu.</div>' : ''}`, true, st.sub && !st.pw ? 'invalid' : '')}</div>
-            <div class="${dis ? 'tk-off' : ''}">
+            <h4 class="tk-sec">Thông tin văn bản</h4><div class="${dis ? 'tk-off' : ''}">
               <div class="grid2">
                 ${field('Trích yếu nội dung văn bản', `<input class="vctl" data-tk-info="title" maxlength="250" value="${esc(st.info.title)}" ${dis}>${msg(st.info.title, 'Vui lòng nhập Trích yếu nội dung văn bản.')}`, true, req(st.info.title))}
                 ${field('Hình thức văn bản', sel('form', FORMS.map((f) => ({ value: f.id, label: f.title }))), true)}</div>
@@ -199,7 +202,7 @@
                 ${field('Ngành', sel('area', AREAS), true)}${field('Độ mật', sel('sec', SECS), true)}${field('Độ khẩn', sel('prio', PRIOS), true)}</div></div>`
           : `${c.kdt ? '<div class="banner-moved">Sau khi xác nhận: in và trình bản giấy theo đúng người ký, thứ tự ký (bước 77); người phụ trách hồ sơ cập nhật kết quả, đính kèm bản scan (bước 78), xong mới đi tiếp.</div>' : ''}<div class="grid2">${field('Cách ký', `<div class="vradio">${window.UI.vRadio('Ký tay', st.off === 'HAND', 'data-off="HAND"')}${window.UI.vRadio('Tự trình trên VOffice', st.off === 'SELF', 'data-off="SELF"', c.secret)}</div>`)}</div>
             ${c.secret ? '' : field('Lý do ký ngoài hệ thống', `<textarea class="vctl ta" id="hr" rows="2" maxlength="500" placeholder="Nội dung">${esc(st.reason)}</textarea>${st.sub && !st.reason ? '<div class="msg">Vui lòng nhập Lý do ký ngoài hệ thống.</div>' : ''}`, true, st.sub && !st.reason ? 'invalid' : '')}`}
-          ${field('Tệp trình ký', `<div class="tk-files"><div class="tk-file">${icon('file')} ${esc(`${doc}-${c.obj || ''}.pdf`)} <span class="faint">(tệp chính)</span></div>
+          ${field('Tệp trình ký', `<div class="tk-files"><div class="tk-file">${icon('file')} <a class="link" data-tk-file="${esc(`${doc}-${c.obj || ''}.pdf`)}" title="Xem">${esc(`${doc}-${c.obj || ''}.pdf`)}</a> <span class="faint">(tệp chính, ${sizeOf(doc)})</span></div>
             ${st.attach.map((a, i) => `<div class="tk-file">${a.cfg ? `<input type="checkbox" data-tk-att="${i}" ${a.on ? 'checked' : ''}>` : ''} ${icon('file')} ${esc(a.name)} <span class="faint">(kèm theo, không ký)</span>
               ${a.cfg ? '' : `<button type="button" class="vbtn icon ghost sm" data-tk="att-del" data-i="${i}" aria-label="Xóa">${icon('del')}</button>`}</div>`).join('')}
             ${soft ? `<button type="button" class="vbtn sm secondary" data-tk="att-up" ${dis}>${icon('upload')} Tải tệp lên</button>` : ''}</div>`)}
@@ -208,7 +211,8 @@
               <th style="width:180px">Chức danh</th><th style="width:240px">Tên người ký</th><th>Đơn vị</th><th class="c" style="width:110px">Hiển thị chữ ký</th><th class="c" style="width:110px">Hành động</th></tr></thead>
               <tbody>${signers}</tbody></table></div>${lock ? '' : ''}</div></div>`;
       }
-      const m = vModal({ title: `Trình ký VOffice — ${doc}`, size: 'xl', body: '<div id="tk-body"></div>',
+      /* SRS 32 thành phần 1: "Trình ký VOffice — {Mã biểu mẫu} {Tên văn bản}". */
+      const m = vModal({ title: `Trình ký VOffice — ${doc}${cfg.name ? ' ' + cfg.name : ''}`, size: 'xl', body: '<div id="tk-body"></div>',
         actions: '<button class="vbtn secondary" data-close>Hủy</button><button class="vbtn primary" id="go">Trình ký</button>' });
       const box = m.el.querySelector('#tk-body');
       let painting = false;
@@ -325,15 +329,17 @@
     const a = ['view'];
     if (r.st === 'PENDING_SIGN') { if (rel) a.push('sync'); if (mine) a.push('recall'); }
     if (r.st === 'SIGNED') { a.push('dl'); if (r.method === 'VOFFICE' && !r.fetched && rel) a.push('fetch'); }
-    if (r.st === 'OFFLINE_PENDING' && mine) a.push('result');
+    /* [SRS 32 V0.4] BR-TKV-04-03: Lỗi gửi / Đã hủy / Đã thu hồi / Chờ nhập kết quả → Mở công việc (Xử lý trình ký / Nhập kết quả ký) khi công việc còn mở.
+       Trước: icon Nhập kết quả ký (hộp thoại) và Gửi lại (Lỗi gửi) ngay trên dòng. */
+    if (openTask(r) && (mine || isAdmin())) a.push('task');
     /* D-112 (T58): Từ chối không Gửi lại — quy trình đã đi nhánh không đồng ý (BR-TKV-02-03, BR-TKV-04-03). */
     /* [T60 #68] Đã hủy / Đã thu hồi bỏ Gửi lại trên danh sách và khối Trình ký — trình lại từ công việc của bước (hộp thoại Trình ký, lần trình mới).
        Lỗi gửi giữ Gửi lại: lần trình lỗi chưa kết thúc (BR-TKV-C-06) nên không trình mới được. Bản cũ: ['FAILED', 'CANCELLED_SIGN', 'RECALLED'] */
-    if (r.st === 'FAILED' && mine) a.push('resend');
+    // [V0.4 → Mở công việc] if (r.st === 'FAILED' && mine) a.push('resend');
     return a;
   }
   const ACT = { view: ['file', 'Xem'], sync: ['reload', 'Cập nhật trạng thái từ VOffice'], recall: ['back', 'Thu hồi'], dl: ['download', 'Tải bản ký'],
-    fetch: ['sign', 'Lấy bản đã ký'], result: ['edit', 'Nhập kết quả ký'], resend: ['play', 'Gửi lại'] };
+    fetch: ['sign', 'Lấy bản đã ký'], result: ['edit', 'Nhập kết quả ký'], resend: ['play', 'Gửi lại'], task: ['edit', 'Mở công việc'] };
   const find = (id) => db().list.find((r) => String(r.id) === String(id));
 
   async function fetchSigned(list) {
@@ -389,20 +395,20 @@
       save(); m.close(); toast('Thực hiện hành động thành công.'); rerender();
     };
   }
-  function resend(r) {
+  function resend(r, done) {
     /* D-112: chặn Gửi lại lần trình Từ chối (SRS 32 mục 3.4, bảng trường hợp; AC-0273-17). */
     if (r.st === 'REJECTED_SIGN') { toast('Văn bản đã bị từ chối, quy trình đã chuyển sang bước sửa văn bản. Không gửi lại được lần trình này.', 'warn'); return; }
     if (r.st === 'FAILED') {
-      askPw('Gửi lại').then((ok) => { if (!ok) return; addLog(r, 'Gửi lại', 'PENDING_SIGN'); addLog(r, 'Kết quả từ VOffice — Ký duyệt thành công', 'SIGNED', '', null); r.signedAt = today(); save(); toast('Trình ký VOffice thành công'); rerender(); });
+      askPw('Gửi lại').then((ok) => { if (!ok) return; addLog(r, 'Gửi lại', 'PENDING_SIGN'); addLog(r, 'Kết quả từ VOffice — Ký duyệt thành công', 'SIGNED', '', null); r.signedAt = today(); if (done) done(); save(); toast('Trình ký VOffice thành công'); rerender(); });
       return;
     }
     /* Đã hủy, Đã thu hồi: lần trình mới (BR-TKV-03-02) — GIẢ LẬP: chép lần trước, gửi sau khi nhập mật khẩu. */
     askPw('Gửi lại').then((ok) => {
       if (!ok) return;
       const d = db(), n = JSON.parse(JSON.stringify(r));
-      Object.assign(n, { id: ++d.seq, attempt: r.attempt + 1, at: today(), by: Flow.state.persona, st: null, reason: '', fetched: false, log: [], signedAt: null, docNo: '' });
+      Object.assign(n, { task: null, id: ++d.seq, attempt: r.attempt + 1, at: today(), by: Flow.state.persona, st: null, reason: '', fetched: false, log: [], signedAt: null, docNo: '' });
       n.trans = transOf(n); addLog(n, 'Trình ký', 'PENDING_SIGN'); addLog(n, 'Kết quả từ VOffice — Ký duyệt thành công', 'SIGNED', '', null); n.signedAt = today();
-      d.list.push(n); save(); toast('Trình ký VOffice thành công'); rerender();
+      d.list.push(n); if (done) done(); save(); toast('Trình ký VOffice thành công'); rerender();
     });
   }
   function view(r) {
@@ -410,9 +416,10 @@
     const f = FORMS.find((x) => x.id === (r.info || {}).form);
     vModal({ title: `Chi tiết lần trình — ${r.doc} ${r.obj}`, size: 'xl', body: `<div class="stack">
       <div class="ginfo">${kv('Đối tượng', esc(`${objLabel(r)} — ${r.objName}`))}${kv('Bước', esc(`Bước ${r.step} ${r.stepName || ''}`))}${kv('Lần trình', esc(String(r.attempt)))}
-        ${kv('Mã giao dịch', `<code>${esc(r.trans)}</code>`)}${kv('Hình thức', esc(METHOD[r.method] + (r.offMode ? ' — ' + (r.offMode === 'HAND' ? 'Ký tay' : 'Tự trình trên VOffice') : '')))}${kv('Trạng thái', stTag(r))}
-        ${kv('Lý do', esc(r.reason || r.offReason || ''))}${kv('Số văn bản', esc(r.docNo || ''))}${kv('Ngày ký', esc(r.signedAt || ''))}</div>
-      ${r.method === 'VOFFICE' ? `<div class="ginfo">${kv('Trích yếu', esc(r.info.title || ''))}${kv('Hình thức văn bản', esc(f ? f.title : ''))}${kv('Ký hiệu', esc(r.info.symbol || ''))}
+        ${kv('Mã giao dịch', `<code>${esc(r.trans)}</code>`)}${kv('Hình thức', esc(METHOD[r.method]))}${kv('Cách ký', esc(r.offMode ? (r.offMode === 'HAND' ? 'Ký tay' : 'Tự trình trên VOffice') : ''))}${kv('Trạng thái', stTag(r))}
+        ${kv('Lý do', esc(r.reason || r.offReason || ''))}${kv('Số văn bản', esc(r.docNo || ''))}${kv('Ngày ký', esc(r.signedAt || ''))}
+        ${kv('Ngày ban hành', esc(r.publishedAt || (r.docNo && r.method === 'VOFFICE' ? r.signedAt || '' : '')))}</div>
+      ${r.method === 'VOFFICE' ? `<div class="ginfo">${kv('Trích yếu', esc(r.info.title || ''))}${kv('Hình thức văn bản', esc(f ? f.title : ''))}${kv('Ký hiệu', esc(r.info.symbol || ''))}${kv('Nội dung', esc(r.info.desc || r.info.title || ''))}
         ${kv('Ngành', esc(r.info.area || AREAS[0]))}${kv('Độ mật', esc(r.info.sec || SECS[0]))}${kv('Độ khẩn', esc(r.info.prio || PRIOS[0]))}</div>` : ''}
       <div class="vfield"><div class="lr"><label>Tệp</label></div><div class="tk-files"><div class="tk-file">${icon('file')} <a class="link" data-tk-file="${esc(r.doc)}-${esc(r.obj)}.pdf">${esc(r.doc)}-${esc(r.obj)}.pdf</a> <span class="faint">(tệp chính${r.st === 'SIGNED' ? (r.fetched ? ', đã có bản ký' : ', bản ký chưa lấy') : ''})</span> <button type="button" class="vbtn icon ghost" data-tk-file="${esc(r.doc)}-${esc(r.obj)}.pdf" aria-label="Tải xuống" title="Tải xuống">${icon('download')}</button></div>
         ${(r.attach || []).map((a) => `<div class="tk-file">${icon('file')} <a class="link" data-tk-file="${esc(a)}">${esc(a)}</a> <span class="faint">(kèm theo)</span> <button type="button" class="vbtn icon ghost" data-tk-file="${esc(a)}" aria-label="Tải xuống" title="Tải xuống">${icon('download')}</button></div>`).join('')}</div></div>
@@ -429,6 +436,7 @@
     if (k === 'fetch') return fetchSigned([r]);
     if (k === 'result') return enterResult(r);
     if (k === 'resend') return resend(r);
+    if (k === 'task') { location.hash = '#/trinh-ky/viec/' + r.id; return; }
     if (k === 'dl') { const name = `${r.doc}-${r.obj}${r.fetched ? '' : '-chua-ky'}.pdf`; if (!r.fetched) toast('Bản chưa có chữ ký. Bản đã ký chưa được lấy về từ VOffice.', 'warn'); else toast(`Đã tải ${esc(name)}`); }
   }
 
@@ -462,8 +470,119 @@
     return r ? { st: r.st, label: VST[vstOf(r)][0], tone: VST[vstOf(r)][1], r } : null;
   }
 
+  /* ---------- Công việc nền tảng Xử lý trình ký / Nhập kết quả ký (SRS 32 DTMS_CN_0273, BR-TKV-03-01, 03-07) ----------
+     Không là bước của sơ đồ: giao người trình khi lần trình Lỗi gửi / Đã hủy / Đã thu hồi (Xử lý trình ký) hoặc Chờ nhập kết quả (Nhập kết quả ký).
+     Lần trình đã có lần trình mới thay thì không có công việc. Màn #/trinh-ky/viec/<id lần trình>: thanh trạng thái có nút theo luật của loại công việc,
+     khối Yêu cầu trình ký chỉ đọc, form Nhập kết quả ký. Xong việc → r.task = { kind, doneAt, by } (tab Đã hoàn thành). */
+  const TASK_KIND = { XLTK: 'Xử lý trình ký', NKQ: 'Nhập kết quả ký' };
+  const superseded = (r) => db().list.some((x) => x !== r && x.obj === r.obj && String(x.doc) === String(r.doc) && String(x.step) === String(r.step) && x.attempt > r.attempt);
+  const taskKind = (r) => (r.st === 'OFFLINE_PENDING' ? 'NKQ' : ['FAILED', 'CANCELLED_SIGN', 'RECALLED'].includes(r.st) && !r.sysRecall ? 'XLTK' : null);
+  const openTask = (r) => (!r.task && !superseded(r) ? taskKind(r) : null);
+  const lastAt = (r) => (r.log.length ? r.log[r.log.length - 1].at : r.at);
+  const plusDays = (s, n) => {
+    const m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})/.exec(s || ''); if (!m) return s;
+    const d = new Date(+m[3], +m[2] - 1, +m[1] + n);
+    return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
+  };
+  function finishTask(r, kind) { r.task = { kind, doneAt: today(), by: Flow.state.persona }; save(); }
+  /* Dòng Việc của tôi (screens.js myTasks): cột mã hồ sơ / quy trình theo hồ sơ của đối tượng; Loại hồ sơ = "Trình ký". */
+  function taskRows(pid, all) {
+    /* Hồ sơ của đối tượng: hồ sơ mẫu (D.otherCases) hoặc bộ demo (D.demoSets: mã quy trình); Mức ưu tiên theo ĐXMS. */
+    const caseOf = (obj) => { const c = (D.otherCases || []).find((x) => x.dxms === obj) || {}, ds = (D.demoSets || []).find((x) => x.dxms === obj), x = Flow.findDxms(obj) || {};
+      return { code: c.code, flow: c.flow || (ds && ds.key), priority: c.priority || x.priority }; };
+    /* Giao người trình (BR-TKV-03-01) — vai xem tất cả (admin) không nhận. */
+    return db().list.filter((r) => r.by === pid).flatMap((r) => {
+      const kind = openTask(r) || (r.task && r.task.kind);
+      if (!kind) return [];
+      const c = caseOf(r.obj), from = lastAt(r);
+      return [{ code: c.code || '-', dxms: r.obj, title: r.objName, flow: c.flow || '-', priority: c.priority || '', type: 'Trình ký', name: `${TASK_KIND[kind]} — ${r.doc}`,
+        st: r.task ? 'HOAN_THANH' : 'CHUA_XU_LY', created: from, due: plusDays(from, 2), doneAt: r.task ? r.task.doneAt : undefined, go: 'trinh-ky/viec/' + r.id }];
+    });
+  }
+  function reqCard(r) {
+    const kv = (k, v) => `<div><div class="k">${k}</div><div class="v">${v || dash}</div></div>`;
+    return `<section class="vcard pad24" data-tk-req><div class="vcard-h"><h3>Yêu cầu trình ký</h3></div>
+      <div class="ginfo">${kv('Văn bản', `<a class="link" data-tk-file="${esc(r.doc)}-${esc(r.obj)}.pdf">${esc(r.doc)}-${esc(r.obj)}.pdf</a>`)}${kv('Đối tượng', esc(`${objLabel(r)} — ${r.objName}`))}
+        ${kv('Bước', esc(`Bước ${r.step} ${r.stepName || ''}`))}${kv('Lần trình', esc(String(r.attempt)))}
+        ${kv('Hình thức', esc(METHOD[r.method] + (r.offMode ? ' — ' + (r.offMode === 'HAND' ? 'Ký tay' : 'Tự trình trên VOffice') : '')))}${kv('Trạng thái', stTag(r))}
+        ${kv('Lý do', esc(r.reason || r.offReason || ''))}${kv('Thời điểm trình', esc(atOf(r.log[0] || { at: r.at })))}</div>
+      <div class="vfield" style="margin-top:16px"><div class="lr"><label>Người ký</label></div><div class="vtable-vp"><table class="vtable"><thead><tr><th class="c">Nhóm</th><th>Chức danh</th><th>Tên người ký</th><th>Đơn vị</th><th class="c">Trạng thái</th></tr></thead>
+        <tbody>${r.signers.map((s) => `<tr><td class="c">${s.g}</td><td>${esc(s.pos)}</td><td>${esc(s.name)}</td><td>${esc(s.unit)}</td><td class="c">${dash}</td></tr>`).join('')}</tbody></table></div></div></section>`;
+  }
+  function resultCard(r) {
+    const docs = String(r.doc).split(/\s*\+\s*/);
+    return `<section class="vcard pad24" data-tk-kq><div class="vcard-h"><h3>Kết quả ký</h3></div><div class="stack">
+      <div class="vfield"><div class="lr"><label>Kết quả</label></div><div class="vradio">${window.UI.vRadio('Đã ký', true, 'data-kq="ok"')}${window.UI.vRadio('Từ chối', false, 'data-kq="no"')}</div></div>
+      <div id="kq-ok" class="stack">${docs.map((d, i) => `<div class="vfield"><div class="lr"><label>Bản ký — ${esc(d)}</label><span class="req">*</span></div><div><button type="button" class="vbtn sm red" data-kq-up="${i}">${icon('upload')} Tải file lên</button></div></div>`).join('')}
+        <div class="grid3"><div class="vfield"><div class="lr"><label>Số văn bản</label></div><input class="vctl" id="kq-no" maxlength="50" placeholder="Nhập số văn bản"></div>
+        <div class="vfield"><div class="lr"><label>Ngày ký</label><span class="req">*</span></div>${window.UI.vDate('id="kq-date"', today())}</div>
+        ${r.offMode === 'SELF_VOFFICE' ? '<div class="vfield"><div class="lr"><label>Mã văn bản VOffice</label></div><input class="vctl" id="kq-vo" maxlength="100" placeholder="Nhập mã văn bản VOffice"></div>' : ''}</div></div>
+      <div id="kq-no-w" class="stack" style="display:none"><div class="vfield"><div class="lr"><label>Người từ chối</label><span class="req">*</span></div><input class="vctl" id="kq-who" maxlength="200" placeholder="Nhập người từ chối"></div>
+        <div class="vfield"><div class="lr"><label>Lý do từ chối</label><span class="req">*</span></div><textarea class="vctl ta" id="kq-rs" rows="3" maxlength="2000" placeholder="Nội dung"></textarea></div></div></div></section>`;
+  }
+  function taskPage(id) {
+    const r = find(id), S = window.Screens;
+    if (!r) return `<div class="pg">${S.head({ title: 'Xem chi tiết công việc', back: 'viec-cua-toi', lg: true })}<section class="vcard pad24"><div class="empty-t">Không tìm thấy công việc.</div></section></div>`;
+    const open = openTask(r), kind = (r.task && r.task.kind) || open || taskKind(r) || 'XLTK', name = TASK_KIND[kind];
+    const mine = r.by === Flow.state.persona || isAdmin(), step = `${name} — ${r.doc} ${r.obj}`;
+    const acts = kind === 'XLTK'
+      ? '<button type="button" class="vbtn secondary" data-tkt="reject">Coi như Từ chối</button><button type="button" class="vbtn primary" data-tkt="resend">Gửi lại</button>'
+      : '<button type="button" class="vbtn primary" data-tkt="result">Xác nhận kết quả ký</button>';
+    const bar = open ? S.statusBar({ who: mine ? null : nameOf(r.by), step, date: plusDays(lastAt(r), 2), acts: mine ? acts : '' })
+      : S.statusBar({ mode: 'view', step, date: r.task ? r.task.doneAt : lastAt(r) });
+    const info = { scr: 'SCR-114', name, uc: 'SRS 32 · DTMS_CN_0273', notes: [
+      'Công việc nền tảng (không là bước của sơ đồ quy trình): giao người trình khi lần trình Lỗi gửi, Đã hủy, Đã thu hồi (<b>Xử lý trình ký</b>) hoặc Chờ nhập kết quả (<b>Nhập kết quả ký</b>) — BR-TKV-03-01, 03-07. Tác vụ chờ kết quả ký vẫn chờ.',
+      '<b>Gửi lại</b>: Lỗi gửi gửi lại chính lần trình (cùng mã giao dịch); Đã hủy / Đã thu hồi tạo lần trình mới. GIẢ LẬP: chỉ hỏi mật khẩu VOffice và chép thông tin lần trước (thật: mở hộp thoại Trình ký VOffice điền sẵn để sửa).',
+      '<b>Coi như Từ chối</b>: lý do bắt buộc; quy trình đi nhánh không đồng ý (BR-TKV-03-03). GIẢ LẬP: chỉ đổi lần trình sang Từ chối.',
+      '<b>Nhập kết quả ký</b>: kết quả đi qua bộ nhận kết quả như từ VOffice (BR-TKV-02-01).'], src: 'SRS 32 · fe/repo-khcn-bpmn-fe my-task-detail (khuôn)' };
+    return `<div class="pg" data-tkt-pg="${r.id}">${S.head({ title: 'Xem chi tiết công việc', back: true, lg: true, info })}${bar}
+      ${reqCard(r)}${kind === 'NKQ' && open && mine ? resultCard(r) : ''}${block(r.obj, { pad: true })}</div>`;
+  }
+  function treatReject(r) {
+    const m = vModal({ title: 'Coi như Từ chối', body: `<p>Lần trình chuyển Từ chối, quy trình đi nhánh không đồng ý để sửa nội dung văn bản.</p>
+      <div class="vfield"><div class="lr"><label>Lý do</label><span class="req">*</span></div><textarea class="vctl ta" id="tk-cr" rows="3" maxlength="2000" placeholder="Nội dung"></textarea></div>`,
+      actions: '<button class="vbtn secondary" data-close>Hủy</button><button class="vbtn primary" id="tk-cr-ok">Xác nhận</button>' });
+    m.el.querySelector('#tk-cr-ok').onclick = () => {
+      const v = m.el.querySelector('#tk-cr').value.trim();
+      if (!v) { toast('Vui lòng nhập Lý do.', 'warn'); return; }
+      r.reason = v; addLog(r, 'Coi như Từ chối', 'REJECTED_SIGN', v); finishTask(r, 'XLTK'); m.close(); toast('Thực hiện hành động thành công.'); rerender();
+    };
+  }
+  function submitResult(r) {
+    const el = document.querySelector('[data-tk-kq]'); if (!el) return;
+    const ok = !el.querySelector('[data-kq="no"]').classList.contains('on');
+    if (ok) {
+      const dt = el.querySelector('#kq-date').value.trim();
+      if (el.querySelector('[data-kq-up]')) { toast('Vui lòng tải bản đã ký.', 'warn'); return; }
+      if (!/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(dt)) { toast('Ngày ký không hợp lệ.', 'warn'); return; }
+      r.docNo = el.querySelector('#kq-no').value.trim(); r.signedAt = dt; r.fetched = true;
+      const vo = el.querySelector('#kq-vo'); if (vo && vo.value.trim()) r.vofficeId = vo.value.trim();
+      addLog(r, 'Nhập kết quả ký — Đã ký', 'SIGNED');
+    } else {
+      const w = el.querySelector('#kq-who').value.trim(), rs = el.querySelector('#kq-rs').value.trim();
+      if (!w || !rs) { toast('Vui lòng nhập Người từ chối và Lý do từ chối.', 'warn'); return; }
+      r.reason = `${w}: ${rs}`; addLog(r, 'Nhập kết quả ký — Từ chối', 'REJECTED_SIGN', r.reason);
+    }
+    finishTask(r, 'NKQ'); toast('Thực hiện hành động thành công.'); rerender();
+  }
+  document.addEventListener('click', (e) => {
+    const pg = e.target.closest('[data-tkt-pg]'); if (!pg) return;
+    const r = find(pg.dataset.tktPg); if (!r) return;
+    const k = e.target.closest('[data-tk-kq] [data-kq]');
+    if (k) {
+      e.preventDefault(); const ok = k.dataset.kq === 'ok'; pg.querySelectorAll('[data-tk-kq] [data-kq]').forEach((x) => x.classList.toggle('on', x === k));
+      pg.querySelector('#kq-ok').style.display = ok ? '' : 'none'; pg.querySelector('#kq-no-w').style.display = ok ? 'none' : ''; return;
+    }
+    const up = e.target.closest('[data-kq-up]');
+    if (up) { const d = String(r.doc).split(/\s*\+\s*/)[+up.dataset.kqUp]; up.outerHTML = `<span class="file">${icon('file')} ${esc(d)}-${esc(r.obj)}-da-ky.pdf</span>`; return; }
+    const b = e.target.closest('[data-tkt]'); if (!b) return;
+    if (b.dataset.tkt === 'resend') resend(r, () => finishTask(r, 'XLTK'));
+    if (b.dataset.tkt === 'reject') treatReject(r);
+    if (b.dataset.tkt === 'result') submitResult(r);
+  });
+
   /* ---------- Màn Trình ký (DTMS_CN_0274) ---------- */
-  const emptyF = () => ({ st: [], method: null, fetched: null, by: null, signer: null });
+  const emptyF = () => ({ objType: [], form: null, st: [], method: null, fetched: null, by: null, signer: null, from: '', to: '' });
   const L = { kw: '', adv: false, f: emptyF(), d: emptyF(), page: 1, size: 20, psOpen: false, sel: [] };
   /* T56 Q3 (review Nhi 12/11 #26): bỏ tab Tôi trình / Tôi ký — một danh sách; lọc Người trình ký, Người ký thay tab.
      Phạm vi xem = lần trình của ĐXMS / KĐT người dùng có quyền xem (quyền xem đối tượng cha, S7).
@@ -473,7 +592,8 @@
   function rows() {
     const f = L.f, dk = (s) => { const m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})/.exec(String(s || '')); return m ? `${m[3]}${m[2].padStart(2, '0')}${m[1].padStart(2, '0')}` : ''; };
     return db().list.filter(canView).filter((r) => (!L.adv ? !L.kw || norm(`${r.obj} ${r.objName} ${(r.info || {}).title || ''} ${r.docNo || ''}`).includes(norm(L.kw))
-      : (!f.st.length || f.st.includes(vstOf(r))) && (!f.by || r.by === f.by) && (!f.signer || isSigner(r, f.signer)) && (!f.method || r.method === f.method) && (f.fetched == null || (r.st === 'SIGNED' && (f.fetched === 'y') === !!r.fetched))))
+      : (!f.objType.length || f.objType.includes(r.objType)) && (!f.form || String(r.doc).split(/\s|\+/)[0] === f.form)
+        && (!f.from || dk(r.at) >= dk(f.from)) && (!f.to || dk(r.at) <= dk(f.to)) && (!f.st.length || f.st.includes(vstOf(r))) && (!f.by || r.by === f.by) && (!f.signer || isSigner(r, f.signer)) && (!f.method || r.method === f.method) && (f.fetched == null || (r.st === 'SIGNED' && (f.fetched === 'y') === !!r.fetched))))
       /* BR-TKV-04-05: Ngày trình giảm dần → Mã đối tượng tăng dần. */
       .sort((a, b) => dk(b.at).localeCompare(dk(a.at)) || a.obj.localeCompare(b.obj) || b.id - a.id);
   }
@@ -505,11 +625,12 @@
         '<b>T72 (kho comment #90):</b> hộp nhập mật khẩu VOffice ghi <b>Tên đăng nhập</b> (tự điền theo tài khoản, khoá) + Mật khẩu. Nút <b>Lấy bản đã ký</b> / <b>Cập nhật trạng thái</b> luôn bấm được: có chọn dòng → áp cho dòng đã chọn; chưa chọn → áp cho mọi lần trình đủ điều kiện trong danh sách đang xem; không có lần trình nào đủ điều kiện → báo, không mở hộp mật khẩu.',
         '<b>T54</b> (người dùng 11/11): màn theo SRS 32 Trình ký VOffice (<code>docs/SRS/32-srs-trinh-ky-voffice</code>). Mỗi dòng là <b>một lần trình</b>.',
         '<b>T56</b> (review Nhi 12/11): <b>bỏ tab</b> Tôi trình / Tôi ký (#26) — một danh sách, lọc <b>Người trình ký</b>, <b>Người ký</b>; người không trình / không ký vẫn xem được lần trình của ĐXMS / KĐT mình có quyền xem (GIẢ LẬP: mọi vai demo xem được mọi lần trình mẫu). Lệch SRS 32 DTMS_CN_0274. <b>Trạng thái</b> (#31, Q4) chỉ còn 5 giá trị VOffice trả về (<code>be/vops-office</code> <code>VOfficeStatusEnum.fromVOfficeState</code> 0–4): Chưa trình ký, Đang xử lý, Bị từ chối, Đã ký duyệt, Đã ban hành (Đã ký duyệt + có Số văn bản). Đã hủy / Đã thu hồi / Đã hủy ban hành / Lỗi gửi hiện là Chưa trình ký, chi tiết ở <b>Lịch sử cập nhật</b> của hộp thoại (đổi tên từ Nhật ký, #22; thời điểm hh:mm:ss - dd/mm/yyyy, mới nhất trước, #23, #24; tải tệp, #25).',
-        'Thao tác theo trạng thái (BR-TKV-04-03): Chờ ký — Cập nhật trạng thái, Thu hồi (người trình); Đã ký — Tải bản ký, Lấy bản đã ký khi Chưa lấy; Từ chối — chỉ Xem (quy trình đã đi nhánh không đồng ý); Lỗi gửi — Gửi lại (Đã hủy / Đã thu hồi: trình lại từ công việc, T60); Chờ nhập kết quả — Nhập kết quả ký. Chọn nhiều dòng để Lấy bản đã ký / Cập nhật trạng thái, nhập mật khẩu VOffice một lần.',
+        'Thao tác theo trạng thái (BR-TKV-04-03): Chờ ký — Cập nhật trạng thái, Thu hồi (người trình); Đã ký — Tải bản ký, Lấy bản đã ký khi Chưa lấy; Từ chối — chỉ Xem (quy trình đã đi nhánh không đồng ý); Lỗi gửi, Đã hủy, Đã thu hồi, Chờ nhập kết quả — <b>Mở công việc</b> (Xử lý trình ký / Nhập kết quả ký, SRS 32 V0.4) khi công việc còn mở. Chọn nhiều dòng để Lấy bản đã ký / Cập nhật trạng thái, nhập mật khẩu VOffice một lần.',
         'GIẢ LẬP: mật khẩu VOffice mọi chuỗi khác rỗng là đúng (gõ <code>sai</code> để thấy lỗi); VOffice trả kết quả ngay (mã 3 — Đã ký, Bản ký Chưa lấy). Thật: cổng VOffice, bảng <code>sign_request</code> (SRS 32 mục 5).',
         'Không thu hồi được trên VOffice (VOffice không có lời gọi hủy — người dùng chốt 11/11): thu hồi chỉ có hiệu lực trên ĐTMS.',
         '<b>T58 / D-112</b> (12/11): Từ chối không Gửi lại — đi nhánh không đồng ý.',
-        '<b>T60</b> (review Nhi 12/11 #68): Đã hủy / Đã thu hồi <b>bỏ Gửi lại</b> trên danh sách — trình lại từ công việc của bước (bấm nút trình ký, hộp thoại mở lần trình mới). Chỉ Lỗi gửi còn Gửi lại (gửi lại chính lần trình lỗi). Lệch SRS 32 BR-TKV-04-03. Hộp thoại Trình ký VOffice là popup của nền tảng (#67), không phải eForm của bước: eForm (nếu nút có) xác nhận trước, hệ thống sinh văn bản rồi mới mở popup (BR-TKV-01-01).',
+        '<b>SRS 32 V0.4</b> (17/11): công việc nền tảng <b>Xử lý trình ký</b> (Gửi lại, Coi như Từ chối) và <b>Nhập kết quả ký</b> ở Việc của tôi, màn <code>#/trinh-ky/viec/&lt;lần trình&gt;</code>; dòng danh sách bỏ icon Gửi lại / Nhập kết quả ký, thay bằng Mở công việc.',
+        '[Đã thay bởi V0.4] <b>T60</b> (review Nhi 12/11 #68): Đã hủy / Đã thu hồi <b>bỏ Gửi lại</b> trên danh sách — trình lại từ công việc của bước (bấm nút trình ký, hộp thoại mở lần trình mới). Chỉ Lỗi gửi còn Gửi lại (gửi lại chính lần trình lỗi). Lệch SRS 32 BR-TKV-04-03. Hộp thoại Trình ký VOffice là popup của nền tảng (#67), không phải eForm của bước: eForm (nếu nút có) xác nhận trước, hệ thống sinh văn bản rồi mới mở popup (BR-TKV-01-01).',
       ],
       src: 'SRS 32 · fe/repo-khcn-hr-tools-fe features/signing · profile-management/profile-list (khuôn)',
     };
@@ -521,11 +642,14 @@
           ${L.adv ? '' : `<label class="vsearch" style="width:320px">${icon('search')}<input id="tk-kw" maxlength="255" placeholder="Tìm theo mã, tên đối tượng, trích yếu, số văn bản" value="${esc(L.kw)}"></label>`}
           <button type="button" class="vbtn ${L.adv ? 'active' : 'secondary'}" data-tk-adv>${L.adv ? 'Ẩn tìm kiếm nâng cao' : 'Tìm kiếm nâng cao'}</button></div></div>
         ${L.adv ? `<form class="adv" data-tkadv><div class="grid3">
+            ${sel('objType', 'Loại đối tượng', [{ value: 'ĐXMS', label: 'Đề xuất mua sắm' }, { value: 'KĐT', label: 'Khoản đầu tư' }], { multi: true })}
+            ${sel('form', 'Mẫu văn bản', [...new Set(db().list.map((r) => String(r.doc).split(/\s|\+/)[0]))].sort().map((v) => ({ value: v, label: v })), { searchable: true, placeholder: 'Chọn mẫu văn bản' })}
             ${sel('st', 'Trạng thái', Object.entries(VST).map(([v, [l]]) => ({ value: v, label: l })), { multi: true })}
             ${sel('by', 'Người trình ký', people('by'), { placeholder: 'Tất cả' })}
             ${sel('signer', 'Người ký', people('signer'), { placeholder: 'Tất cả' })}
+            ${sel('fetched', 'Bản ký', [{ value: 'y', label: 'Đã lấy' }, { value: 'n', label: 'Chưa lấy' }])}
             ${sel('method', 'Hình thức', Object.entries(METHOD).map(([v, l]) => ({ value: v, label: l })))}
-            ${sel('fetched', 'Bản ký', [{ value: 'y', label: 'Đã lấy' }, { value: 'n', label: 'Chưa lấy' }])}</div>
+            ${window.UI.vDateRange({ label: 'Ngày trình', from: ['data-tkf-d="from"', L.d.from], to: ['data-tkf-d="to"', L.d.to], err: L.dErr })}</div>
           <div class="acts"><button type="button" class="vbtn secondary" data-tk-reset>Làm mới</button><button type="submit" class="vbtn primary">Tìm kiếm</button></div></form>` : ''}
         <div class="vtable-vp"><table class="vtable"><thead><tr><th class="c" style="width:44px"><input type="checkbox" data-tk-selall></th><th class="ord">STT</th>
           ${cols.map(([h, w, a]) => `<th class="${a || ''}" style="width:${w}px;min-width:${w}px">${h}</th>`).join('')}</tr></thead>
@@ -543,7 +667,7 @@
     if (!e.target.closest('[data-tkl], [data-tkb]')) return;
     const t = e.target;
     if (t.closest('[data-tk-adv]')) { L.adv = !L.adv; L.d = JSON.parse(JSON.stringify(L.f)); L.page = 1; rerender(); return; }
-    if (t.closest('[data-tk-reset]')) { L.d = emptyF(); L.f = emptyF(); L.page = 1; rerender(); return; }
+    if (t.closest('[data-tk-reset]')) { L.d = emptyF(); L.f = emptyF(); L.dErr = ''; L.page = 1; rerender(); return; }
     const a = t.closest('[data-tk-act]'); if (a) { const r = find(a.closest('[data-tk-id]').dataset.tkId); if (r) act(a.dataset.tkAct, r); return; }
     /* Khối Trình ký: bấm dòng mở Chi tiết lần trình. */
     const rv = t.closest('[data-tk-row-view]'); if (rv && !t.closest('a, button, input')) { const r = find(rv.dataset.tkId); if (r) view(r); return; }
@@ -562,7 +686,15 @@
     if (t.dataset.tkSel) { const id = Number(t.dataset.tkSel); L.sel = t.checked ? L.sel.concat(id) : L.sel.filter((x) => x !== id); rerender(); }
     if (t.hasAttribute && t.hasAttribute('data-tk-selall')) { const ids = rows().slice((L.page - 1) * L.size, L.page * L.size).map((r) => r.id); L.sel = t.checked ? ids : []; rerender(); }
   });
-  document.addEventListener('submit', (e) => { if (!e.target.matches('[data-tkadv]')) return; e.preventDefault(); L.f = JSON.parse(JSON.stringify(L.d)); L.page = 1; rerender(); });
+  /* Ngày trình: hai ô ngày (đọc khi Tìm kiếm); ngày đầu lớn hơn ngày cuối hoặc sai định dạng → "Ngày trình không hợp lệ." */
+  document.addEventListener('input', (e) => { const k = e.target.dataset && e.target.dataset.tkfD; if (k) L.d[k] = e.target.value.trim(); }, true);
+  document.addEventListener('submit', (e) => {
+    if (!e.target.matches('[data-tkadv]')) return; e.preventDefault();
+    const ok = (v) => !v || /^\d{2}\/\d{2}\/\d{4}$/.test(v), key = (v) => v.split('/').reverse().join('');
+    L.dErr = !ok(L.d.from) || !ok(L.d.to) || (L.d.from && L.d.to && key(L.d.from) > key(L.d.to)) ? 'Ngày trình không hợp lệ.' : '';
+    if (!L.dErr) { L.f = JSON.parse(JSON.stringify(L.d)); L.page = 1; }
+    rerender();
+  });
   let kwTimer = null;
   document.addEventListener('input', (e) => {
     if (e.target.id !== 'tk-kw') return;
@@ -586,5 +718,5 @@
   };
   /* Thay hộp thoại ký cũ (app.js đọc window.UI.signDialog lúc nạp). */
   window.UI.signDialog = signDialog;
-  window.TrinhKy = { signDialog, page, block, latest, docStatus, list: () => db().list, reset, find, account, OFF_SIGN };
+  window.TrinhKy = { signDialog, page, taskPage, taskRows, block, latest, docStatus, list: () => db().list, reset, find, account, OFF_SIGN };
 })();

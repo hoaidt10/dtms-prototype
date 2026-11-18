@@ -125,7 +125,7 @@ test('F1, F2, F4: Danh sách luồng (Gộp) — Tìm kiếm nâng cao theo SRS 
   await pick(page, 'lgf-block', 'Khối 2');
   await page.locator('.adv button[type="submit"]').click({ force: true });
   const codes = await rowCodes(page);
-  expect(codes.sort()).toEqual(['ĐXMS-2026-0084', 'ĐXMS-2026-0106', 'ĐXMS-2026-0112', 'ĐXMS-2026-0121', 'ĐXMS-2026-0130'] /* T58: 0130 TT Thiết kế vi mạch */);
+  expect(codes.sort()).toEqual(['ĐXMS-2026-0047', 'ĐXMS-2026-0070', 'ĐXMS-2026-0084', 'ĐXMS-2026-0106', 'ĐXMS-2026-0112', 'ĐXMS-2026-0121', 'ĐXMS-2026-0130'] /* T58: 0130 TT Thiết kế vi mạch; 17/11: + 0047, 0070 nguồn KHLCNT */);
   expect(page.errors).toEqual([]);
 });
 

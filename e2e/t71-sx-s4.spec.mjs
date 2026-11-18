@@ -30,11 +30,15 @@ test('SX-10 danh sách theo phạm vi vai; chi tiết đề xuất mẫu có ti�
 
 test('Sản phẩm chưa qua cổng chuyển giao thì chưa lập được đề xuất', async ({ page }) => {
   await fresh(page, '#/sx/mua-sam');
-  await as(page, 'sxpm', '#/sx/mua-sam/create/DA-SX-2026-002');
-  await expect(page.locator('#sxm-title')).toHaveValue('Mua sắm vật tư sản xuất QĐ-12 — đợt 1');
+  // (b) Q2: Thêm mới dự án chỉ chọn sản phẩm đã chuyển giao; dữ liệu chuyển đổi (dự án TS-08 lập trước khi có hệ thống) vẫn bị chặn ở đề xuất mua sắm.
+  await page.evaluate(() => localStorage.setItem('sx-proto-du-an', JSON.stringify({ created: [{ code: 'DA-SX-2026-005', name: 'Sản xuất TS-08', khoi: 'K1', basis: ['NV', 'QĐ 1/QĐ-VHT'], product: 'TS-08', version: 'v1.0_HW_Rev1',
+    model: 'VHT_TU_SX', qty: 2, unitName: 'bộ', factory: null, pm: 'sxpm', start: '2026-12-01', end: '2027-09-30', status: 'PREPARING', perf: 0, cap: 1, baseline: '2026-11-10', creator: 'sxpm', created: '2026-11-01', docs: [], hist: [] }], edit: {}, docs: {}, hist: {} })));
+  await page.reload();
+  await as(page, 'sxpm', '#/sx/mua-sam/create/DA-SX-2026-005');
+  await expect(page.locator('#sxm-title')).toHaveValue('Mua sắm vật tư sản xuất TS-08 — đợt 1');
   await page.locator('[data-sxm-save]').click();
   await expect(page.locator('.hd-alert.error')).toContainText('chưa có trong Kho sản phẩm sẵn sàng sản xuất');
-  await expect(page).toHaveURL(/create\/DA-SX-2026-002$/);
+  await expect(page).toHaveURL(/create\/DA-SX-2026-005$/);
   expect(page.errors).toEqual([]);
 });
 

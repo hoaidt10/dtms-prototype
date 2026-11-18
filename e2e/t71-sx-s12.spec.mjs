@@ -57,14 +57,16 @@ test('Nhập Excel dự án: kiểm lỗi từng dòng, chỉ ghi dòng hợp l�
   await page.locator('.vmodal [data-imp-zone]').click();
   await page.locator('.vmodal #imp-go').click();
   const res = page.locator('.vmodal [data-sx-imp]');
-  await expect(res).toContainText('3/5 dòng hợp lệ');
+  await expect(res).toContainText('2/5 dòng hợp lệ');
   await expect(res).toContainText('Sản phẩm ER-9 không có trong danh sách sản phẩm.');
+  await expect(res).toContainText('Sản phẩm ONT-X2 chưa có trong Kho sản phẩm sẵn sàng sản xuất.');
   await expect(res).toContainText('Ngày kết thúc phải sau Ngày bắt đầu.');
+  await expect(res).toContainText('Phương án kinh doanh 352/PAKD-VHT đã được lập dự án DA-SX-2026-004.');
   await page.locator('.vmodal #imp-ok').click();
-  await expect(page.locator('.toast').last()).toContainText('Nhập dữ liệu thành công (3 dự án)');
-  // sxk2 thấy Khối 2: 2 mẫu + 2 dự án Khối 2 vừa nhập (dự án RĐ-40 Khối 1 vẫn ghi, ngoài phạm vi xem).
-  await expect(page.locator('.vtable tbody')).toContainText('Sản xuất thiết bị đầu cuối quang ONT-X2 năm 2027');
-  const code = await page.evaluate(() => SxDuAn.all().find((p) => p.name === 'Sản xuất thiết bị đầu cuối quang ONT-X2 năm 2027').code);
+  await expect(page.locator('.toast').last()).toContainText('Nhập dữ liệu thành công (2 dự án)');
+  // sxk2 thấy Khối 2: 2 mẫu + dự án WM-6 vừa nhập (dự án RĐ-40 Khối 1 vẫn ghi, ngoài phạm vi xem).
+  await expect(page.locator('.vtable tbody')).toContainText('Sản xuất loạt bộ phát Wi-Fi Mesh WM-6 cho thị trường trong nước');
+  const code = await page.evaluate(() => SxDuAn.all().find((p) => p.name === 'Sản xuất loạt bộ phát Wi-Fi Mesh WM-6 cho thị trường trong nước').code);
   expect(await page.evaluate((c) => SxDuAn.byCode(c).status, code)).toBe('PLANNING');
   // Dự án đã có hồ sơ luồng: không có nút Xoá.
   await as(page, 'sxk2', '#/sx/du-an/DA-SX-2026-004');
@@ -75,13 +77,13 @@ test('Nhập Excel dự án: kiểm lỗi từng dòng, chỉ ghi dòng hợp l�
   await page.locator('#cf-ok').click();
   await expect(page).toHaveURL(/#\/sx\/du-an$/);
   await expect(page.locator('.toast').last()).toContainText('Xoá dự án thành công');
-  await expect(page.locator('.vtable tbody')).not.toContainText('Sản xuất thiết bị đầu cuối quang ONT-X2 năm 2027');
+  await expect(page.locator('.vtable tbody')).not.toContainText('Sản xuất loạt bộ phát Wi-Fi Mesh WM-6 cho thị trường trong nước');
   // Dự án đã khởi tạo phê duyệt kế hoạch: hết nút Xoá.
-  const code2 = await page.evaluate(() => SxDuAn.all().find((p) => p.name.startsWith('Sản xuất loạt bộ phát Wi-Fi Mesh WM-6 cho thị trường trong nước')).code);
-  await as(page, 'sxk2', '#/sx/du-an/' + encodeURIComponent(code2));
+  const code2 = await page.evaluate(() => SxDuAn.all().find((p) => p.name.startsWith('Sản xuất đài ra-đa cảnh giới tầm thấp RĐ-40')).code);
+  await as(page, 'sxpm', '#/sx/du-an/' + encodeURIComponent(code2));
   await expect(page.locator('[data-sx-del]')).toHaveCount(1);
   await page.locator('[data-sx-kh-start]').click();
-  await as(page, 'sxk2', '#/sx/du-an/' + encodeURIComponent(code2));
+  await as(page, 'sxpm', '#/sx/du-an/' + encodeURIComponent(code2));
   await expect(page.locator('[data-sx-del]')).toHaveCount(0);
   expect(page.errors).toEqual([]);
 });
@@ -150,7 +152,7 @@ test('Dữ liệu VMMS: EBOM / MBOM theo phiên bản, lịch sử ECN, thiết 
   await page.locator('[data-vmms-part="DA-SX-2026-001|nc"]').click();
   await expect(box).toContainText('Tổ tích hợp cao tần');
   await page.locator('[data-vmms-part="DA-SX-2026-001|lsx"]').click();
-  await expect(box.locator('tbody tr')).toHaveCount(4);
+  await expect(box.locator('tbody tr')).toHaveCount(2); // T74 #97: bước 9 VMC tổng thầu còn 2 mốc (M3, M4)
   await expect(box).toContainText('LSX-001-01');
   // Chỉ xem: không có ô nhập, nút sửa / xoá.
   await expect(box.locator('input, textarea, [data-go$="/edit"], .vbtn.icon')).toHaveCount(0);
@@ -163,10 +165,7 @@ test('Dữ liệu VMMS: EBOM / MBOM theo phiên bản, lịch sử ECN, thiết 
 
 test('Ký số MySign ở bước Phê duyệt kế hoạch: huỷ thì việc chưa xong; ký xong hồ sơ, tài liệu hiện Đã ký số', async ({ page }) => {
   await fresh(page, '#/sx/viec-cua-toi');
-  await openTask(page, 'sxld', 'Xem xét kế hoạch');
-  await page.locator('[data-sx-do]', { hasText: 'Đồng ý' }).click();
-  await page.locator('.vmodal #ok').click();
-  await openTask(page, 'sxld', 'Phê duyệt kế hoạch sản xuất');
+  await openTask(page, 'sxld', 'Ban Giám đốc Khối phê duyệt kế hoạch sản xuất');
   await page.locator('[data-sx-do]', { hasText: 'Phê duyệt' }).click();
   await page.locator('.vmodal #ok').click();
   const sign = page.locator('.vmodal [data-mysign]');
@@ -175,24 +174,25 @@ test('Ký số MySign ở bước Phê duyệt kế hoạch: huỷ thì việc c
   await expect(sign).toContainText('Viettel-CA');
   // Huỷ ký: việc vẫn ở bước 4.
   await page.locator('.vmodal [data-close]').first().click();
-  await expect(page.locator('[data-sbar="process"]')).toContainText('Phê duyệt kế hoạch sản xuất');
+  await expect(page.locator('[data-sbar="process"]')).toContainText('phê duyệt kế hoạch sản xuất');
   await page.locator('[data-sx-do]', { hasText: 'Phê duyệt' }).click();
   await page.locator('.vmodal #ok').click();
   await page.locator('.vmodal [data-mysign-ok]').click();
   await expect(page).toHaveURL(/#\/sx\/viec-cua-toi$/);
   await expect(page.locator('.toast').last()).toContainText('Xử lý công việc thành công');
   // Kick-off → tài liệu kế hoạch đã phê duyệt mang nhãn Đã ký số.
-  await openTask(page, 'sxk2', 'Kick-off');
+  await openTask(page, 'sxk2', 'Họp kick-off');
   await page.locator('[data-sx-do]').click();
   await page.locator('.vmodal [data-ef="koNgay"]').fill('18/11/2026');
+  for (const f of ['koQuyetDinh', 'koBienBan']) await page.locator(`.vmodal [data-ef-file="${f}"]`).setInputFiles({ name: f + '.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF') });
   await page.locator('.vmodal #ok').click();
   await as(page, 'sxk2', '#/sx/du-an/DA-SX-2026-004');
   await page.locator('[data-ttab="kh"]').click();
   await expect(page.locator('[data-sx-kh]')).toContainText('Tài liệu đã ký số');
   await expect(page.locator('[data-sx-kh] .sx-signed')).toHaveCount(2); // thông tin hồ sơ + kết quả bước 4
   await page.locator('[data-ttab="docs"]').click();
-  await expect(page.locator('[data-sx-docs] tbody tr').first()).toContainText('Kế hoạch sản xuất 118/KH-TTSX (đã phê duyệt).pdf');
-  await expect(page.locator('[data-sx-docs] tbody tr').first()).toContainText('Đã ký số');
+  const khRow = page.locator('[data-sx-docs] tbody tr', { hasText: 'Kế hoạch sản xuất 118/KH-TTSX (đã phê duyệt).pdf' });
+  await expect(khRow).toContainText('Đã ký số');
   expect(page.errors).toEqual([]);
 });
 

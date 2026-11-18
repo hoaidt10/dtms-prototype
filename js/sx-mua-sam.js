@@ -334,7 +334,8 @@
       ${k.card('Hợp đồng', k.table([['Mã hợp đồng', 150], ['Tên hợp đồng', 340], ['Nhà thầu', 260], ['Giá trị (đồng)', 170, 'r'], ['Trạng thái', 150, 'c']], hd,
     ([, h]) => `<td>${esc(h[0])}</td><td>${k.clamp(h[1])}</td><td>${h[4] ? k.clamp(h[4]) : k.dash}</td><td class="r num">${h[5] ? num(h[5]) : k.dash}</td><td class="c">${badge(h[2], h[3])}</td>`))}
       ${k.card('Nhập kho Tổng công ty', k.table([['Số phiếu', 150], ['Nội dung', 380], ['Ngày nhập', 130], ['Trạng thái', 150, 'c']], kho,
-    ([, n]) => `<td>${esc(n[0])}</td><td>${k.clamp(n[1])}</td><td class="num">${esc(dmy(n[2]))}</td><td class="c">${badge(n[3], 'success')}</td>`))}</div>`;
+    ([, n]) => `<td>${esc(n[0])}</td><td>${k.clamp(n[1])}</td><td class="num">${esc(dmy(n[2]))}</td><td class="c">${badge(n[3], 'success')}</td>`))}
+      ${window.SxNc ? window.SxNc.supplyCard(p) : ''}</div>`;
   }
 
   async function delP(code) {

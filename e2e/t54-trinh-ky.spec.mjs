@@ -196,17 +196,20 @@ test('KĐT hồ sơ Mật: bước 47 ký ngoài hệ thống → khối Trình 
   expect(page.errors).toEqual([]);
 });
 
-test('0273: Nhập kết quả ký ngoài hệ thống ở màn Trình ký', async ({ page }) => {
+test('0273: Nhập kết quả ký ngoài hệ thống — công việc Nhập kết quả ký (SRS 32 V0.4)', async ({ page }) => {
   await fresh(page);
-  await page.evaluate(() => { Flow.setPersona('lan'); location.hash = '#/trinh-ky'; });
-  // T56 Q4: Chờ nhập kết quả hiện là Đang xử lý (trạng thái nội bộ ở Lịch sử cập nhật).
-  await page.locator('[data-tk-act="result"]').first().click();
-  await page.locator('#kq-go').click();
+  await page.evaluate(() => { Flow.setPersona('lan'); location.hash = '#/viec-cua-toi'; });
+  await page.locator('tr', { hasText: 'Nhập kết quả ký — BM-09' }).locator('a').first().click();
+  await expect(page).toHaveURL(/#\/trinh-ky\/viec\//);
+  await expect(page.locator('[data-tk-req]')).toContainText('Ký ngoài hệ thống — Ký tay');
+  await page.locator('[data-tkt="result"]').click();
   expect(await lastToast(page)).toContain('Vui lòng tải bản đã ký');
-  await page.locator('#kq-up').click();
+  await page.locator('[data-kq-up="0"]').click();
   await page.locator('#kq-no').fill('15/TTr-TTMS');
-  await page.locator('#kq-go').click();
-  await expect(page.locator('[data-tk-id]', { hasText: '15/TTr-TTMS' })).toContainText('Đã ký');
+  await page.locator('[data-tkt="result"]').click();
+  await expect(page.locator('[data-sbar="view"]')).toBeVisible();
+  await page.evaluate(() => { location.hash = '#/trinh-ky'; });
+  await expect(page.locator('[data-tk-id]', { hasText: '15/TTr-TTMS' })).toContainText('Đã ký duyệt');
   expect(page.errors).toEqual([]);
 });
 
@@ -221,16 +224,70 @@ test('T58 / D-112: lần trình Từ chối không có Gửi lại / Coi như T�
   await expect(rej.locator('[data-tk-act="resend"]')).toHaveCount(0);
   await expect(page.locator('[data-tkl] [title="Coi như Từ chối"]')).toHaveCount(0);
   expect(await page.evaluate(() => TrinhKy.list().filter((r) => r.st === 'REJECTED_SIGN').length)).toBe(1);
-  // Lần trình Lỗi gửi (ĐXMS-2026-0124 BM-03, Hải): Gửi lại cùng lần trình → Đã ký.
+  // Lần trình Lỗi gửi (ĐXMS-2026-0124 BM-03, Hải): dòng có Mở công việc → công việc Xử lý trình ký → Gửi lại cùng lần trình → Đã ký.
   await page.evaluate(() => { Flow.setPersona('hai'); App.render(); });
   const fail = page.locator('[data-tkl] tr[data-tk-id]', { hasText: 'BM-03' }).filter({ hasText: 'ĐXMS-2026-0124' });
-  await expect(fail.locator('[data-tk-act="resend"]')).toHaveCount(1);
+  await expect(fail.locator('[data-tk-act="resend"]')).toHaveCount(0);
+  await fail.locator('[data-tk-act="task"]').click();
+  await expect(page.locator('[data-tk-req]')).toContainText('Không kết nối được hệ thống VOffice');
   const n = await page.evaluate(() => TrinhKy.list().length);
-  await fail.locator('[data-tk-act="resend"]').click();
+  await page.locator('[data-tkt="resend"]').click();
   await page.locator('#tk-pw2').fill('Vht@2026');
   await page.locator('#tk-pw-ok').click();
   expect(await lastToast(page)).toContain('Trình ký VOffice thành công');
   expect(await page.evaluate(() => TrinhKy.list().length)).toBe(n); // Lỗi gửi: không tạo lần trình mới
-  await expect(fail.locator('[data-tk-act="resend"]')).toHaveCount(0);
+  await expect(page.locator('[data-sbar="view"]')).toBeVisible();
+  await page.evaluate(() => { location.hash = '#/trinh-ky'; });
+  await expect(fail.locator('[data-tk-act="task"]')).toHaveCount(0);
+  expect(page.errors).toEqual([]);
+});
+
+test('0273: công việc Xử lý trình ký — Đã thu hồi, Coi như Từ chối; Việc của tôi có dòng, xong sang Đã hoàn thành (SRS 32 V0.4)', async ({ page }) => {
+  await fresh(page);
+  await page.evaluate(() => { Flow.setPersona('tgd'); location.hash = '#/viec-cua-toi'; });
+  const row = page.locator('tr', { hasText: 'Xử lý trình ký — BM-06' });
+  await expect(row).toHaveCount(1);
+  await row.locator('a').first().click();
+  await page.locator('[data-tkt="reject"]').click();
+  await page.locator('#tk-cr-ok').click();
+  expect(await lastToast(page)).toContain('Vui lòng nhập Lý do');
+  await page.locator('#tk-cr').fill('Sửa nội dung báo cáo');
+  await page.locator('#tk-cr-ok').click();
+  await expect(page.locator('[data-sbar="view"]')).toBeVisible();
+  expect(await page.evaluate(() => TrinhKy.list().find((r) => r.obj === 'ĐXMS-2026-0072').st)).toBe('REJECTED_SIGN');
+  await page.evaluate(() => { location.hash = '#/viec-cua-toi'; });
+  await expect(page.locator('tr', { hasText: 'Xử lý trình ký — BM-06' })).toHaveCount(0);
+  // Lần trình Đã hủy đã có lần trình mới thay (ĐXMS-2026-0117 BM-04 lần 1) không có công việc.
+  expect(await page.evaluate(() => TrinhKy.taskRows('tung', false).length)).toBe(0);
+  expect(page.errors).toEqual([]);
+});
+
+test('SRS 32 V0.4: hộp thoại có tên văn bản, khối, dung lượng, Đơn vị là ô chọn; Tìm kiếm nâng cao Loại đối tượng / Mẫu văn bản / Ngày trình; Chi tiết có Cách ký, Ngày ban hành, Nội dung', async ({ page }) => {
+  await fresh(page);
+  await jump(page, 60);
+  const dlg = await openSign(page);
+  await expect(dlg.locator('.vmodal-h h3')).toHaveText('Trình ký VOffice — BM-08 Quyết định phê duyệt ĐXMS');
+  await expect(dlg.locator('.tk-sec')).toHaveText(['Kết nối VOffice', 'Thông tin văn bản']);
+  await expect(dlg.locator('.tk-file').first()).toContainText(/tệp chính, \d+,\d MB/);
+  await expect(dlg.locator('[data-vsel="tk-u0"]')).toHaveCount(1);
+  await page.locator('.overlay [data-close]').last().click();
+  await page.evaluate(() => { Flow.setPersona('lan'); location.hash = '#/trinh-ky'; });
+  await page.locator('[data-tk-adv]').click();
+  await page.locator('[data-vsel="tkf-form"]').click();
+  await page.locator('.vsel-panel [data-opt="BM-09"]').click();
+  await page.locator('[data-tkf-d="from"]').fill('05/11/2026');
+  await page.locator('[data-tkf-d="to"]').fill('10/11/2026');
+  await page.locator('[data-tkadv] button[type="submit"]').click();
+  await expect(page.locator('[data-tkl] tbody tr[data-tk-id]')).toHaveCount(2);
+  await page.locator('[data-tkf-d="from"]').fill('10/11/2026');
+  await page.locator('[data-tkf-d="to"]').fill('05/11/2026');
+  await page.locator('[data-tkadv] button[type="submit"]').click();
+  await expect(page.locator('[data-tkadv]')).toContainText('Ngày trình không hợp lệ.');
+  await page.locator('[data-tk-reset]').click();
+  await page.locator('[data-tk-adv]').click();
+  await page.locator('[data-tk-id="8"] [data-tk-act="view"]').click();
+  const m = page.locator('.overlay .vmodal').last();
+  for (const k of ['Cách ký', 'Ngày ban hành']) await expect(m).toContainText(k);
+  await expect(m).toContainText('Ký tay');
   expect(page.errors).toEqual([]);
 });

@@ -20,7 +20,8 @@ test('SX-08 danh sách: hạn theo SLA ngày làm việc, quá hạn tô đỏ, 
   await as(page, 'sxqa', '#/sx/bat-thuong');
   await expect(page.locator('.pg-title')).toContainText('Danh sách phiếu bất thường');
   await expect(page.locator('.vtable tbody tr')).toHaveCount(4);
-  await expect(row(page, 'BT-2026-002')).toContainText('Quá hạn');
+  // T74 #98: trạng thái theo bước (bước 5 triển khai = Đang xử lý); quá hạn tô đỏ ở Hạn xử lý / Còn lại.
+  await expect(row(page, 'BT-2026-002')).toContainText('Đang xử lý');
   await expect(row(page, 'BT-2026-002')).toContainText('12/11/2026');
   await expect(row(page, 'BT-2026-002')).toContainText('Quá 2 ngày');
   await expect(row(page, 'BT-2026-002')).toContainText('Phạm Thu Hằng'); // Loại 2 → R&D triển khai
@@ -42,12 +43,26 @@ test('SX-08 danh sách: hạn theo SLA ngày làm việc, quá hạn tô đỏ, 
 
 test('Luồng SX-BT: phân loại tính hạn, phê duyệt, triển khai, Không đạt quay lại bước 3, đạt thì đóng phiếu', async ({ page }) => {
   await fresh(page, '#/sx/viec-cua-toi');
+  // T74 #101 / Q10: bước 2 có Hoàn thành tiếp nhận + Trả lại người lập (bắt buộc lý do); người lập sửa phiếu ở bước 1 rồi gửi lại.
   await openTask(page, 'sxpm', 'Tiếp nhận');
-  await page.locator('[data-sx-do]').click();
+  await expect(page.locator('[data-sx-do]')).toHaveCount(2);
+  await page.locator('[data-sx-do]', { hasText: 'Trả lại người lập' }).click();
   await ok(page);
-  await expect(page.locator('.vmodal .vfield.invalid')).toHaveCount(3);
-  await pickEf(page, 'blLoai', 'L1');
-  await pickEf(page, 'blMucDo', '1');
+  await expect(page.locator('.vmodal .vfield.invalid')).toHaveCount(1);
+  await page.locator('.vmodal [data-ef="blLyDoTra"]').fill('Thiếu CO dừng cấp phát — mức độ phải là Rất nghiêm trọng.');
+  await ok(page);
+  await expect(page).toHaveURL(/#\/sx\/viec-cua-toi$/);
+  await openTask(page, 'sxqa', 'Lập phiếu');
+  await page.locator('[data-sx-do]').click();
+  await expect(page.locator('.vmodal [data-ef="btTitle"]')).toHaveValue(/thiếu chứng từ xuất xứ/);
+  await pickEf(page, 'btMucDo', '1');
+  await ok(page);
+  await expect(page).toHaveURL(/#\/sx\/viec-cua-toi$/);
+  await openTask(page, 'sxpm', 'Tiếp nhận');
+  await page.locator('[data-sx-do]', { hasText: 'Hoàn thành tiếp nhận' }).click();
+  await expect(page.locator('.vmodal [data-vsel="ef-blLoai"]')).toHaveCount(0); // loại / mức độ đã chọn ở bước 1
+  await ok(page);
+  await expect(page.locator('.vmodal .vfield.invalid')).toHaveCount(1);
   await page.locator('.vmodal [data-ef="blNguyenNhan"]').fill('Nhà cung cấp gửi thiếu CO lô 2.');
   await ok(page);
   // Rất nghiêm trọng Loại 1 = 17 ngày làm việc từ 16/11/2026 → 09/12/2026.
@@ -100,6 +115,13 @@ test('Nhà máy lập phiếu từ tab dự án: ngày phát hiện không sau h
   await page.locator('.vmodal [data-ef="btTitle"]').fill('Adapter 12V lô mới nóng bất thường');
   await page.locator('.vmodal [data-ef="btDesc"]').fill('Đo nhiệt adapter 68°C sau 30 phút.');
   await page.locator('.vmodal [data-ef="btPlace"]').fill('Trạm đóng gói — Hải Phòng');
+  // T74 #100: Phân loại, Mức độ, phiếu BM.QLBT.01 bắt buộc khi lập phiếu.
+  await ok(page);
+  await expect(page.locator('.vmodal .vfield.invalid')).toHaveCount(3);
+  await pickEf(page, 'btLoai', 'L3');
+  await pickEf(page, 'btMucDo', '4');
+  await page.locator('.vmodal [data-ef-file="btFileBm"]').setInputFiles({ name: 'BM.QLBT.01_adapter.pdf', mimeType: 'application/pdf', buffer: Buffer.from('x') });
+  await page.locator('.vmodal [data-ef="btGuess"]').fill('Adapter lô mới đổi nhà cung cấp linh kiện nguồn.');
   await ok(page);
   await expect(page.locator('.toast').last()).toContainText('không được sau ngày hiện tại');
   await page.locator('.vmodal [data-ef="btFound"]').fill('16/11/2026');
@@ -107,6 +129,9 @@ test('Nhà máy lập phiếu từ tab dự án: ngày phát hiện không sau h
   await ok(page);
   await expect(page).toHaveURL(/#\/sx\/bat-thuong\/BT-2026-005$/);
   await expect(page.locator('.ginfo')).toContainText('Chờ tiếp nhận');
+  await expect(page.locator('.ginfo')).toContainText('Ít nghiêm trọng');
+  await expect(page.locator('.ginfo')).toContainText('đổi nhà cung cấp linh kiện nguồn');
+  await expect(page.locator('main')).toContainText('BM.QLBT.01_adapter.pdf');
   await as(page, 'sxk2', '#/sx/viec-cua-toi');
   await expect(page.locator('[data-sx-tasks] tbody tr', { hasText: 'BT-2026-005' })).toContainText('Tiếp nhận');
   expect(page.errors).toEqual([]);

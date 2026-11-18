@@ -119,6 +119,41 @@
         { v: 'v2', at: '30/09/2026', why: 'Điều chỉnh giá gói dây chuyền theo dự toán được duyệt; phần vật tư dự phòng tăng tương ứng', no: '0912/QĐ-VHT' }],
       diff: [['GT-2026-0021 · Giá gói thầu', '198,00 tỷ đồng', '195,00 tỷ đồng'], ['GT-2026-0021 · Cơ sở xác định giá', 'Báo giá của 3 nhà cung cấp', 'Dự toán được duyệt sau KHLCNT (QĐ 0905/QĐ-VHT)'],
         ['Phần chưa đủ điều kiện lập KHLCNT', '18,20 tỷ đồng', '21,20 tỷ đồng']] },
+    /* 17/11 (phuctd7 "mock thêm dữ liệu cho phần Hợp đồng và Thầu"): 6 KHLCNT trên 6 ĐXMS đã phê duyệt — phủ thêm KHL-02 (đang điều chỉnh), KHL-07 (đang trình phê duyệt),
+       gói tư vấn hạn chế hai túi, gói huỷ do không có nhà thầu, gói đang mời / đánh giá / xử lý tình huống; 5 gói có hợp đồng (đang trình ký, đang thực hiện, đang thanh lý, đã thanh lý). */
+    { code: 'KHLCNT-2026-0012', src: ['DXMS', 'ĐXMS-2026-0070'], title: 'KHLCNT phần mềm quản lý vòng đời sản phẩm (PLM)', st: 'ADJ', owner: 'Lương Thị Hạnh', creator: 'Lương Thị Hạnh', created: '02/09/2026', updated: '05/10/2026',
+      adjWhy: 'Tách phần tích hợp ERP khỏi gói bản quyền theo ý kiến Ban ĐTXD; đổi hình thức gói triển khai sang chỉ định thầu thông thường (nhà thầu ERP hiện hữu).',
+      basis: 'Tách 2 gói: bản quyền phần mềm PLM (nhiều hãng đáp ứng — đấu thầu rộng rãi, hai túi hồ sơ) và triển khai, tích hợp với ERP đang vận hành.',
+      parts: { done: [], na: [], pending: [] }, pkgs: ['GT-2026-0052', 'GT-2026-0053'],
+      docs: { bm01: ['0884/TTr-TTPM', '08/09/2026', 'Lương Thị Hạnh'], bm02: ['', '16/09/2026', 'Phạm Thị Lan'], bm03: ['0902/QĐ-VHT', '25/09/2026', 'Ngô Đình Khôi'] } },
+    { code: 'KHLCNT-2026-0010', src: ['DXMS', 'ĐXMS-2026-0069'], title: 'KHLCNT máy phát tín hiệu vector và bộ khuếch đại công suất', st: 'APPROVE', owner: 'Phạm Thị Lan', creator: 'Nguyễn Văn Minh', created: '10/08/2026', updated: '30/09/2026',
+      basis: 'Tách 2 gói theo thị trường: máy phát tín hiệu vector 44 GHz (ít hãng, nhập khẩu — đấu thầu rộng rãi quốc tế) và bộ khuếch đại công suất thông dụng (chào giá trực tuyến).',
+      parts: { done: [], na: [], pending: [] }, pkgs: ['GT-2026-0050', 'GT-2026-0051'],
+      docs: { bm01: ['0802/TTr-TTVT', '14/08/2026', 'Trần Đức Hải'], bm02: ['', '26/08/2026', 'Phạm Thị Lan'] } },
+    { code: 'KHLCNT-2026-0007', src: ['DXMS', 'ĐXMS-2026-0064'], title: 'KHLCNT dịch vụ kiểm định, hiệu chuẩn thiết bị đo năm 2026', st: 'OK', owner: 'Bùi Minh Quang', creator: 'Bùi Minh Quang', created: '25/05/2026', updated: '12/06/2026', post: ['KH202606-044-00', '13/06/2026'], sap: '1000009402',
+      basis: 'Một gói: dịch vụ kiểm định, hiệu chuẩn định kỳ theo danh mục thiết bị đo, nhiều tổ chức được chỉ định đáp ứng — chào giá trực tuyến.',
+      parts: { done: [], na: [], pending: [] }, pkgs: ['GT-2026-0049'],
+      docs: { bm01: ['0402/TTr-PCL', '28/05/2026', 'Bùi Minh Quang'], bm02: ['', '04/06/2026', 'Phạm Thị Lan'], bm03: ['0431/QĐ-VHT', '11/06/2026', 'Hoàng Quốc Bình'] } },
+    { code: 'KHLCNT-2026-0005', src: ['DXMS', 'ĐXMS-2026-0053'], title: 'KHLCNT vật tư, linh kiện sản xuất thử lô RRU 5G', st: 'OK', owner: 'Phạm Thị Lan', creator: 'Phan Văn Lộc', created: '08/05/2026', updated: '16/06/2026', post: ['KH202606-021-00', '17/06/2026'], sap: '1000009415',
+      basis: 'Tách 4 gói theo nhóm hàng và nguồn cung: linh kiện bán dẫn nhập khẩu, bo mạch PCB, vỏ cơ khí (thị trường trong nước nhiều nhà cung cấp) và vận chuyển, lưu kho hàng nhập khẩu.',
+      parts: { done: [], na: [{ name: 'Kiểm tra chất lượng linh kiện đầu vào (IQC nội bộ)', value: 2.0, why: 'Nhà máy tự thực hiện bằng nguồn lực sẵn có, không hình thành gói thầu' }], pending: [] },
+      pkgs: ['GT-2026-0045', 'GT-2026-0046', 'GT-2026-0047', 'GT-2026-0048'],
+      docs: { bm01: ['0371/TTr-NMSX', '12/05/2026', 'Phan Văn Lộc'], bm02: ['', '22/05/2026', 'Phạm Thị Lan'], bm03: ['0448/QĐ-VHT', '15/06/2026', 'Ngô Đình Khôi'] },
+      versions: [{ v: 'v1', at: '29/05/2026', why: 'Phê duyệt lần đầu', no: '0398/QĐ-VHT' },
+        { v: 'v2', at: '15/06/2026', why: 'Tách gói vận chuyển, lưu kho khỏi gói linh kiện bán dẫn (nhà thầu nước ngoài không nhận giao tại kho)', no: '0448/QĐ-VHT' }],
+      diff: [['GT-2026-0045 · Giá gói thầu', '39,20 tỷ đồng', '38,00 tỷ đồng'], ['GT-2026-0045 · Phạm vi', 'Linh kiện bán dẫn, giao tại kho Nhà máy', 'Linh kiện bán dẫn, giao tại cảng Hải Phòng (CIF)'],
+        ['GT-2026-0048 · Gói thầu', 'Không có', 'Vận chuyển, lưu kho linh kiện nhập khẩu — 1,20 tỷ đồng']] },
+    { code: 'KHLCNT-2026-0002', src: ['DXMS', 'ĐXMS-2026-0047'], title: 'KHLCNT dịch vụ tư vấn thẩm tra thiết kế vi mạch ASIC', st: 'OK', level: 'TD', owner: 'Ninh Thị Hồng', creator: 'Trịnh Quốc Việt', created: '02/04/2026', updated: '06/05/2026', law: true, post: ['IB2600041127-00', '07/05/2026'], sap: '1000009188',
+      basis: 'Tách 3 gói: tư vấn thẩm tra thiết kế (yêu cầu kỹ thuật cao, chỉ một số đơn vị đủ năng lực — đấu thầu hạn chế, hai túi hồ sơ), đào tạo thiết kế vật lý, thuê máy chủ mô phỏng.',
+      parts: { done: [], na: [], pending: [] }, pkgs: ['GT-2026-0042', 'GT-2026-0043', 'GT-2026-0044'],
+      docs: { bm01: ['0288/TTr-TTVM', '06/04/2026', 'Trịnh Quốc Việt'], bm02: ['0301/BC-TTĐ', '20/04/2026', 'Hoàng Quốc Bình'], bm03: ['612/QĐ-CNVTQĐ', '05/05/2026', 'TGĐ Tập đoàn'] } },
+    { code: 'KHLCNT-2026-0001', src: ['DXMS', 'ĐXMS-2026-0044'], title: 'KHLCNT thiết bị truyền dẫn quang cho phòng lab mạng lõi', st: 'OK', owner: 'Ninh Thị Hồng', creator: 'Đặng Thu Trang', created: '16/03/2026', updated: '03/04/2026', post: ['KH202604-008-00', '04/04/2026'], sap: '1000009102',
+      basis: 'Tách 2 gói: thiết bị truyền dẫn DWDM (giá trị lớn — đấu thầu rộng rãi qua mạng) và module quang, dây nhảy (hàng thông dụng — chào giá trực tuyến).',
+      parts: { done: [{ name: 'Tư vấn khảo sát tuyến, lập đề xuất kỹ thuật', value: 0.4, legal: 'HĐ 021/2026/HĐTV ngày 12/01/2026' }],
+        na: [{ name: 'Chi phí quản lý, giám sát nội bộ', value: 0.6, why: 'Chi phí của Chủ đầu tư, không hình thành gói thầu' }],
+        pending: [{ name: 'Mở rộng tuyến kết nối liên phòng lab (giai đoạn 2)', value: 1.4, why: 'Chờ phương án mặt bằng phòng lab mới; lập KHLCNT bổ sung khi có thiết kế' }] },
+      pkgs: ['GT-2026-0040', 'GT-2026-0041'],
+      docs: { bm01: ['0211/TTr-TTML', '19/03/2026', 'Đặng Thu Trang'], bm02: ['', '26/03/2026', 'Phạm Thị Lan'], bm03: ['0247/QĐ-VHT', '02/04/2026', 'Ngô Đình Khôi'] } },
   ];
   /* Gói thầu: st = giai đoạn tổ chức LCNT; giá, hình thức, phương thức, loại HĐ, tiến độ là nội dung bắt buộc của KHLCNT (Điều 22 khoản 2). */
   const PK_ST = { KH: ['Chờ phê duyệt KHLCNT', 'default'], HS: ['Đang lập hồ sơ mời', 'info'], MOI: ['Đang mời thầu', 'info'], DG: ['Đang đánh giá', 'info'],
@@ -193,6 +228,52 @@
       start: 'Quý IV/2026', selTime: '45 ngày', execTime: '365 ngày', contract: 'TRON_GOI', st: 'KH', items: [['Bảo trì định kỳ AHU, chiller', 'Quý', 4], ['Thay lọc HEPA', 'Lần', 2]] },
     { code: 'GT-2026-0039', kh: 'KHLCNT-2026-0020', name: 'Bảo trì hệ thống điều hoà phòng sạch năm 2028', type: 'PTV', price: 7.9, priceBasis: 'Báo giá', form: 'CGTT', method: '1GD1T', intl: false, online: true,
       start: 'Quý III/2027', selTime: '15 ngày', execTime: '365 ngày', contract: 'TRON_GOI', st: 'KH', items: [['Bảo trì định kỳ AHU, chiller', 'Quý', 4], ['Thay lọc HEPA, kiểm định phòng sạch', 'Lần', 2]] },
+    /* 17/11 dữ liệu demo: gói của KHLCNT-2026-0001 / 0002 / 0005 / 0007 / 0010 / 0012. */
+    { code: 'GT-2026-0040', kh: 'KHLCNT-2026-0001', name: 'Cung cấp thiết bị truyền dẫn quang DWDM 400G', type: 'MS_HH', price: 26.4, priceBasis: 'Báo giá của 3 nhà cung cấp', form: 'DTRR', method: '1GD1T', intl: false, online: true,
+      start: 'Quý II/2026', selTime: '45 ngày', execTime: '150 ngày', contract: 'TRON_GOI', st: 'KQ', mau: '1.0',
+      items: [['Thiết bị ROADM 400G 20 hướng', 'Bộ', 4], ['Card transponder 400G', 'Card', 16], ['Phần mềm quản lý mạng quang', 'Bản quyền', 1]],
+      bidders: [['NCC-000002', 25.1, 'Đạt', 'Đạt', null], ['NCC-000001', 26.2, 'Đạt', 'Đạt', null], ['NCC-000003', 25.9, 'Đạt', 'Không đạt', null, 'Không đáp ứng yêu cầu chuyển mạch bảo vệ dưới 50 ms']],
+      winner: 'NCC-000002', kq: ['0318/QĐ-VHT', '18/05/2026'] },
+    { code: 'GT-2026-0041', kh: 'KHLCNT-2026-0001', name: 'Cung cấp module quang, dây nhảy quang', type: 'MS_HH', price: 4.2, priceBasis: 'Báo giá', form: 'CGTT', method: '1GD1T', intl: false, online: true,
+      start: 'Quý II/2026', selTime: '15 ngày', execTime: '45 ngày', contract: 'TRON_GOI', st: 'KQ', mau: '7.2',
+      items: [['Module quang QSFP-DD 400G', 'Cái', 32], ['Dây nhảy quang LC-LC 5 m', 'Sợi', 100]],
+      bidders: [['NCC-000001', 3.86, 'Đạt', 'Đạt', null], ['NCC-000002', 3.95, 'Đạt', 'Đạt', null], ['NCC-000012', 4.05, 'Đạt', 'Đạt', null]], winner: 'NCC-000001', kq: ['0296/QĐ-VHT', '06/05/2026'] },
+    { code: 'GT-2026-0042', kh: 'KHLCNT-2026-0002', name: 'Tư vấn thẩm tra thiết kế vi mạch ASIC 28 nm', type: 'TV', price: 9.5, priceBasis: 'Dự toán chi phí tư vấn', form: 'DTHC', method: '1GD2T', intl: true, online: true,
+      start: 'Quý II/2026', selTime: '50 ngày', execTime: '180 ngày', contract: 'THOI_GIAN', st: 'KQ', mau: '5', short: ['NCC-000006', 'NCC-000011', 'NCC-000008'],
+      items: [['Thẩm tra thiết kế RTL, kiểm chứng chức năng', 'Tháng chuyên gia', 20], ['Thẩm tra thiết kế vật lý, timing sign-off', 'Tháng chuyên gia', 12]],
+      bidders: [['NCC-000006', 9.2, 'Đạt', 'Đạt', 86], ['NCC-000008', 9.45, 'Đạt', 'Đạt', 82], ['NCC-000011', 8.6, 'Đạt', 'Không đạt', 64]], winner: 'NCC-000006', kq: ['0402/QĐ-VHT', '22/06/2026'] },
+    { code: 'GT-2026-0043', kh: 'KHLCNT-2026-0002', name: 'Đào tạo quy trình thiết kế vật lý (physical design)', type: 'PTV', price: 1.6, priceBasis: 'Báo giá', form: 'CDT_RG', method: '1GD1T', intl: false, online: false,
+      start: 'Quý II/2026', selTime: '10 ngày', execTime: '60 ngày', contract: 'TRON_GOI', st: 'KQ', mau: '8.2',
+      items: [['Khoá đào tạo thiết kế vật lý nâng cao', 'Khoá', 2], ['Tài liệu, bài thực hành', 'Bộ', 30]], bidders: [['NCC-000011', 1.55, 'Đạt', 'Đạt', null]], winner: 'NCC-000011', kq: ['0352/QĐ-VHT', '25/05/2026'] },
+    { code: 'GT-2026-0044', kh: 'KHLCNT-2026-0002', name: 'Thuê máy chủ mô phỏng phần cứng (emulation) 6 tháng', type: 'PTV', price: 0.9, priceBasis: 'Báo giá', form: 'CGTT', method: '1GD1T', intl: false, online: true,
+      start: 'Quý III/2026', selTime: '15 ngày', execTime: '180 ngày', contract: 'DG_CD', st: 'HUY', items: [['Thuê hệ thống emulation 100 triệu cổng', 'Tháng', 6]],
+      events: [['Không có nhà thầu tham dự', '28/07/2026', 'Hết thời hạn chào giá không có HSCG. Chủ đầu tư quyết định huỷ thầu và chuyển nhu cầu sang thuê theo hợp đồng khung của Tập đoàn.', 'Đã xử lý'],
+        ['Huỷ thầu', '30/07/2026', 'Quyết định huỷ thầu 0571/QĐ-VHT — lý do: không có nhà thầu tham dự (Điều 34).', 'Đã ban hành']] },
+    { code: 'GT-2026-0045', kh: 'KHLCNT-2026-0005', cur: 'USD', rate: 25400, name: 'Cung cấp linh kiện bán dẫn (FPGA, ADC / DAC) cho lô RRU 5G', type: 'MS_HH', price: 38.0, priceBasis: 'Báo giá và giá niêm yết của nhà phân phối', form: 'DTRR', method: '1GD1T', intl: true, online: true,
+      start: 'Quý III/2026', selTime: '50 ngày', execTime: '120 ngày', contract: 'DG_CD', st: 'DG',
+      items: [['FPGA SoC RF 16 nm', 'Con', 220], ['ADC 14 bit 3 GSPS', 'Con', 440], ['DAC 16 bit 6 GSPS', 'Con', 440]],
+      bidders: [['NCC-000009', 36.4, 'Đạt', 'Đạt', null], ['NCC-000003', 37.1, 'Đạt', null, null], ['NCC-000001', 35.2, 'Không đạt', null, null, 'Không có giấy uỷ quyền bán hàng của hãng sản xuất'], ['NCC-000010', 34.8, 'Đạt', null, null]] },
+    { code: 'GT-2026-0046', kh: 'KHLCNT-2026-0005', name: 'Cung cấp bo mạch PCB nhiều lớp cho lô RRU 5G', type: 'MS_HH', price: 14.5, priceBasis: 'Báo giá', form: 'DTRR', method: '1GD1T', intl: false, online: true,
+      start: 'Quý III/2026', selTime: '45 ngày', execTime: '90 ngày', contract: 'TRON_GOI', st: 'MOI', items: [['Bo mạch PCB 16 lớp vật liệu cao tần', 'Tấm', 220], ['Bo mạch nguồn 8 lớp', 'Tấm', 220]],
+      events: [['Làm rõ HSMT', '29/09/2026', 'Hai nhà thầu đề nghị làm rõ yêu cầu hằng số điện môi vật liệu nền; Bên mời thầu đã trả lời trên hệ thống, không thay đổi HSMT.', 'Đã xử lý']] },
+    { code: 'GT-2026-0047', kh: 'KHLCNT-2026-0005', name: 'Cung cấp vỏ cơ khí, tản nhiệt nhôm cho RRU', type: 'MS_HH', price: 8.3, priceBasis: 'Báo giá', form: 'CGTT', method: '1GD1T', intl: false, online: true,
+      start: 'Quý III/2026', selTime: '15 ngày', execTime: '75 ngày', contract: 'TRON_GOI', st: 'TH', items: [['Vỏ nhôm đúc IP65', 'Bộ', 220], ['Tản nhiệt nhôm định hình', 'Bộ', 220]],
+      bidders: [['NCC-000010', 7.6, 'Đạt', 'Đạt', null], ['NCC-000004', 8.1, 'Đạt', 'Đạt', null]],
+      events: [['Nhà thầu xếp hạng thứ nhất có tên trong danh sách hạn chế', '25/09/2026', 'Kappa đang bị hạn chế tham dự do vi phạm tiến độ (0311/QĐ-VHT). Tổ chuyên gia đề xuất xem xét nhà thầu xếp hạng thứ hai (Delta HN).', 'Chờ Chủ đầu tư quyết định']] },
+    { code: 'GT-2026-0048', kh: 'KHLCNT-2026-0005', name: 'Dịch vụ vận chuyển, lưu kho linh kiện nhập khẩu', type: 'PTV', price: 1.2, priceBasis: 'Đơn giá hợp đồng khung vận chuyển', form: 'CDT_RG', method: '1GD1T', intl: false, online: false,
+      start: 'Quý IV/2026', selTime: '10 ngày', execTime: '120 ngày', contract: 'DG_CD', st: 'HS', items: [['Vận chuyển cảng Hải Phòng – Hoà Lạc', 'Chuyến', 6], ['Lưu kho ngoại quan', 'Tháng', 4]] },
+    { code: 'GT-2026-0049', kh: 'KHLCNT-2026-0007', name: 'Dịch vụ kiểm định, hiệu chuẩn thiết bị đo năm 2026', type: 'PTV', price: 5.4, priceBasis: 'Báo giá của 3 tổ chức kiểm định', form: 'CGTT', method: '1GD1T', intl: false, online: true,
+      start: 'Quý III/2026', selTime: '15 ngày', execTime: '150 ngày', contract: 'DG_CD', st: 'KQ', mau: '3.0',
+      items: [['Hiệu chuẩn máy phân tích phổ, máy phát tín hiệu', 'Thiết bị', 46], ['Kiểm định thiết bị đo điện, nguồn', 'Thiết bị', 80]],
+      bidders: [['NCC-000004', 5.05, 'Đạt', 'Đạt', null], ['NCC-000011', 5.3, 'Đạt', 'Đạt', null], ['NCC-000006', 5.38, 'Đạt', 'Không đạt', null]], winner: 'NCC-000004', kq: ['0751/QĐ-VHT', '24/09/2026'] },
+    { code: 'GT-2026-0050', kh: 'KHLCNT-2026-0010', cur: 'EUR', rate: 27450, name: 'Cung cấp máy phát tín hiệu vector 44 GHz', type: 'MS_HH', price: 31.2, priceBasis: 'Giá niêm yết của hãng và báo giá', form: 'DTRR', method: '1GD1T', intl: true, online: true,
+      start: 'Quý IV/2026', selTime: '50 ngày', execTime: '150 ngày', contract: 'TRON_GOI', st: 'KH', items: [['Máy phát tín hiệu vector 44 GHz', 'Máy', 3], ['Phần mềm tạo tín hiệu 5G NR', 'Bản quyền', 3]] },
+    { code: 'GT-2026-0051', kh: 'KHLCNT-2026-0010', name: 'Cung cấp bộ khuếch đại công suất băng rộng', type: 'MS_HH', price: 11.4, priceBasis: 'Báo giá', form: 'CGTT', method: '1GD1T', intl: false, online: true,
+      start: 'Quý IV/2026', selTime: '15 ngày', execTime: '90 ngày', contract: 'TRON_GOI', st: 'KH', items: [['Bộ khuếch đại công suất 6–18 GHz 50 W', 'Bộ', 4], ['Bộ khuếch đại công suất 18–40 GHz 20 W', 'Bộ', 2]] },
+    { code: 'GT-2026-0052', kh: 'KHLCNT-2026-0012', name: 'Cung cấp bản quyền phần mềm PLM 200 người dùng', type: 'PM', price: 16.8, priceBasis: 'Báo giá của 3 hãng', form: 'DTRR', method: '1GD2T', intl: true, online: true,
+      start: 'Quý IV/2026', selTime: '60 ngày', execTime: '60 ngày', contract: 'TRON_GOI', st: 'KH', items: [['Bản quyền PLM người dùng thiết kế', 'Bản quyền', 80], ['Bản quyền PLM người dùng xem / phê duyệt', 'Bản quyền', 120]] },
+    { code: 'GT-2026-0053', kh: 'KHLCNT-2026-0012', name: 'Triển khai, tích hợp PLM với hệ thống ERP', type: 'PTV', price: 8.0, priceBasis: 'Dự toán triển khai', form: 'CDT_TT', method: '1GD1T', intl: false, online: false,
+      start: 'Quý I/2027', selTime: '30 ngày', execTime: '180 ngày', contract: 'TRON_GOI', st: 'KH', items: [['Triển khai, cấu hình PLM', 'Gói', 1], ['Tích hợp PLM – ERP (BOM, mã vật tư)', 'Gói', 1], ['Đào tạo người dùng', 'Khoá', 4]] },
   ];
 
   /* Trường gói theo form hệ thống cũ (HT-THAU-IMG 7213–7221) — thật là trường eForm MS18 bước 3–4; mẫu suy từ dữ liệu gói. */
@@ -239,9 +320,10 @@
     }
     const [khl, n0] = KH_MAP[k.st] || ['KHL-02', null], n = k.st === 'CHECK' && levelOf(k) === 'TD' ? 12 : n0;
     if (!n) return P(khl, { step: khl === 'KHL-01' ? 'Chưa khởi tạo quy trình' : '', issue: k.cancelWhy || '' });
-    const since = Flow.clockOf(k.updated), now = nowNlv(null), dl = due(n, since), p = persona(D.flows.MS18[n].who);
+    /* Bước dịch vụ (16 Trình ký VOffice…) không có người xử lý: hiện tác nhân của bước theo BPMN. */
+    const since = Flow.clockOf(k.updated), now = nowNlv(null), dl = due(n, since), w = D.flows.MS18[n].who, p = w ? persona(w) : null;
     const nok = Object.entries(k.checkNok || {})[0];
-    return P(khl, { step: `${n}. ${tname(n)}`, who: `${p.unit} / ${p.name}`, since: k.updated, due: Flow.dateOf(dl), late: dl < now, days: Math.max(0, now - since),
+    return P(khl, { step: `${n}. ${tname(n)}`, who: p ? `${p.unit} / ${p.name}` : (((window.BPMN_FLOWS.MS18 || { tasks: {} }).tasks[n] || {}).actor || ''), since: k.updated, due: Flow.dateOf(dl), late: dl < now, days: Math.max(0, now - since),
       issue: k.st === 'ADJ' ? 'Điều chỉnh: ' + (k.adjWhy || '') : k.st === 'OPINION' ? 'Chờ Phiếu nhận xét của Ban ĐTXD Tập đoàn' : nok ? `${nok[0]}: ${nok[1]}` : '' });
   }
   const khOf = (code) => khAll().find((k) => k.code === code) || null;
@@ -1080,5 +1162,5 @@
   const lcCase = (code) => { const g = pkOf(code); if (!g) return null; const k = khOf(g.kh) || {};
     const s = k.src ? ((k.src[0] === 'KDT' ? Flow.findKdt(k.src[1]) : Flow.findDxms(k.src[1])) || {}) : {};
     return { title: g.name, unit: s.unit, value: g.price, owner: k.code ? ownerOf(k) : '', levelText: cat('hinh-thuc-lcnt', g.form), g }; };
-  window.Thau = { KH_SAMPLE, PK_SAMPLE, route, enter, reset, khBy, srcInfo, khAll, khOf, khCase, khFlowDone, lcCase, lcFlowDone, mauGoiY, totals, pkgsOf, pkOf, get PK() { return PK.map(pkM); }, KH_ST, PK_ST, KHL, LC, khStLabel, pkStLabel, khProg, pkRow, srcHref, kit, LEVEL, levelOf };
+  window.Thau = { KH_SAMPLE, PK_SAMPLE, route, enter, reset, khBy, srcInfo, pkExtra, khAll, khOf, khCase, khFlowDone, lcCase, lcFlowDone, mauGoiY, totals, pkgsOf, pkOf, get PK() { return PK.map(pkM); }, KH_ST, PK_ST, KHL, LC, khStLabel, pkStLabel, khProg, pkRow, srcHref, kit, LEVEL, levelOf };
 })();

@@ -45,9 +45,10 @@ test('B19: mỗi khối có nút Gợi ý từ AI riêng → popup chỉ trả t
   await expect(page.locator('[data-lf-chung] [data-vsel="lf-purpose"]')).toContainText('Triển khai các hoạt động KHCN');
   await expect(page.locator('[data-lf-chung] [data-lf-ai-sec="chung"]')).toHaveCount(1);
   await expect(page.locator('[data-lf-basis] [data-lf-ai-sec="legal"]')).toHaveCount(1);
-  await expect(page.locator('[data-lf-cost] [data-lf-boc] h4')).toContainText('Đối chiếu căn cứ');
-  await expect(page.locator('[data-lf-boc-sum]')).toContainText('Hệ thống đã đối chiếu 5 / 5 hạng mục');
-  await expect(page.locator('[data-lf-citem]')).toHaveCount(2);
+  await expect(page.locator('[data-lf-cost] [data-lf-boc]')).toHaveCount(0); // #91 (17/11): bỏ khối con Đối chiếu căn cứ
+  await expect(page.locator('[data-lf-boc-sum]')).toHaveCount(0); // #91 (17/11, phương án B): bỏ dòng tóm tắt đối chiếu
+  // #92 (17/11, phương án B): mỗi dòng dự toán Chi mua sắm còn khả dụng một dòng (trước: 2 dòng theo luật ghép hàng hoá) — đề tài mẫu có 5 dòng Chi mua sắm, 1 dòng đã dùng hết nên không điền.
+  await expect(page.locator('[data-lf-citem]')).toHaveCount(4);
   await expect(page.locator('[data-lf-citem]').first()).toContainText('Thiết bị, máy đo chuyên dụng');
   await expect(page.locator('[data-lf-cqty]').first()).not.toHaveValue('');
   await expect(page.locator('[data-lf-cval]').first()).not.toHaveValue('');
@@ -78,8 +79,8 @@ test('B19 + T72 #83: đổi đề tài → hệ thống bóc tách lại theo đ
   await step1(page);
   await page.locator('[data-vsel="lf-nv"]').click();
   await page.locator('.vsel-panel [data-opt]:not([data-opt="NV-KHCN-2026-014"])').first().click();
-  await expect(page.locator('[data-lf-boc]')).not.toContainText('Đề tài / dự án đã đổi');
-  await expect(page.locator('[data-lf-boc-sum]')).toContainText('Hệ thống đã đối chiếu');
+  await expect(page.locator('[data-lf-citem]').first()).toBeVisible(); // #92 B: điền lại theo dự toán của đề tài mới
+  await expect(page.locator('[data-lf-boc-sum]')).toHaveCount(0); // #91 (17/11, phương án B): bỏ dòng tóm tắt đối chiếu
   await page.locator('#lf-save').click();
   await expect(page.locator('[data-lf-boc] .lf-err')).toHaveCount(0);
   expect(page.errors).toEqual([]);
@@ -88,8 +89,7 @@ test('B19 + T72 #83: đổi đề tài → hệ thống bóc tách lại theo đ
 test('B19 + T72 #83: hệ thống bóc tách đủ hạng mục của căn cứ; Gửi xong bước 01–05 → 5.1', async ({ page }) => {
   await gop(page, '#/luong/create');
   await step1(page, false);
-  await expect(page.locator('[data-lf-boc-sum]')).toContainText('5 / 5');
-  await expect(page.locator('[data-lf-boc-sum]')).toContainText('1 hạng mục có tồn kho sổ sách');
+  await expect(page.locator('[data-lf-citem]')).toHaveCount(4); // #92 B: mỗi dòng dự toán Chi mua sắm còn khả dụng một dòng
   await aiApply(page, ['basic']);
   await page.locator('#lf-save').click();
   await expect(page).toHaveURL(/#\/viec-cua-toi$/);

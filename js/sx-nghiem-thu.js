@@ -18,7 +18,7 @@
 
   /* ---------- Lưu ---------- */
   const KEY = 'sx-proto-nt';
-  const blank = () => ({ created: [], edit: {} });
+  const blank = () => ({ created: [], edit: {}, ipqc: [], trial: {} });
   let U = blank();
   try { U = Object.assign(U, JSON.parse(localStorage.getItem(KEY) || '{}')); } catch (e) { /* bỏ qua */ }
   const persist = () => { try { localStorage.setItem(KEY, JSON.stringify(U)); } catch (e) { /* bỏ qua */ } };
@@ -59,8 +59,14 @@
   Object.assign(F().GUARD, {
     'nt.minutes': (c) => { const x = byCode(c.obj); return x && x.bb && x.cert ? null : 'Lô chưa có biên bản nghiệm thu đạt và chứng chỉ chất lượng, chưa đề nghị nhập kho được.'; },
   });
+  /* (b) Q12: trạng thái dự án theo nghiệm thu — đủ số lượng dự án đã vào nghiệm thu → Nghiệm thu; đủ số lượng đã nhập kho → PM Đóng dự án (bước 15) → Hoàn thành. */
+  const lotQty = (code) => all().filter((x) => x.project === code && x.oqc !== 'NOK').reduce((a, x) => a + x.qty, 0);
+  const stockQty = (code) => all().filter((x) => x.project === code && x.stocked).reduce((a, x) => a + x.qty, 0);
   Object.assign(F().ACT, {
-    'nt.start': () => {},
+    'nt.start': (c) => {
+      const x = byCode(c.obj), p = x && P().byCode(x.project);
+      if (p && p.status === 'IN_PRODUCTION' && lotQty(p.code) >= p.qty) P().patch(p.code, { status: 'ACCEPTANCE' }, 'Chuyển nghiệm thu', `Đủ ${num(p.qty)} ${p.unitName} đã vào nghiệm thu`);
+    },
     'nt.oqc': (c, ch, x) => {
       const it = byCode(c.obj), v = x.values || {};
       if (ch && ch[2] === 'no') {
@@ -72,14 +78,20 @@
     },
     'nt.cert': (c, ch) => {
       if (ch && ch[2] === 'no') return;
-      const it = byCode(c.obj), cert = nextCode(all(), 'cert', 'CQ-2026-', 4);
-      patch(c.obj, { bb: c.vars.bbSo, cert });
+      const it = byCode(c.obj), cert = nextCode(all(), 'cert', 'CQ-2026-', 4), v = c.vars;
+      patch(c.obj, { bb: v.bbSo, cert });
+      if (v.bbFile) P().addDoc(it.project, [v.bbFile, 'NT', it.code, pid(), D.sxToday]);
+      if (v.bbHoc) P().addDoc(it.project, [v.bbHoc, 'HOC', it.code, pid(), D.sxToday]);
+      if (v.bbCoCq) P().addDoc(it.project, [v.bbCoCq, 'COCQ', it.code, pid(), D.sxToday]);
       P().log(it.project, 'Phê duyệt nghiệm thu, cấp chứng chỉ chất lượng', `${it.code}: ${cert}`);
     },
     'nt.stock': (c) => {
       const it = byCode(c.obj), pnk = nextCode(allPnk(), 'pnk', 'PNK-2026-', 4);
       patch(c.obj, { pnk, stocked: D.sxToday });
+      if (c.vars.nkBbBaoGoi) P().addDoc(it.project, [c.vars.nkBbBaoGoi, 'NT', `${it.code} · sau bao gói`, pid(), D.sxToday]);
       P().log(it.project, 'Nhập kho Tổng công ty', `${it.code}: ${pnk} (${num(it.qty)} ${it.unitName})`);
+      const p = P().byCode(it.project);
+      if (p && stockQty(p.code) >= p.qty) P().log(p.code, 'Đủ số lượng nhập kho', 'Sẵn sàng đóng dự án, lưu hồ sơ sản xuất');
     },
   });
 
@@ -185,10 +197,87 @@
   }
 
   /* ---------- Tab Chất lượng & nghiệm thu của dự án ---------- */
+  /* ---------- (b) Q9 IPQC — kiểm soát chất lượng công đoạn ---------- */
+  const ipqcAll = () => (U.ipqc || []).concat(D.sxIpqc || []);
+  const canQa = (p) => RUN.includes(p.status) && (isAdmin() || D.roleOf(pid()) === 'R-SX-QA');
+  function ipqcCard(p) {
+    const k = K(), l = ipqcAll().filter((x) => x.project === p.code).sort((a, b) => (a.at < b.at ? 1 : -1)), items = itemsOf(p);
+    const itName = (key) => (items.find((i) => i.key === key) || {}).name || key;
+    return `<section class="vcard pad24" data-sxnt-ipqc><div class="vcard-h"><h3>Kiểm soát chất lượng công đoạn (IPQC)</h3>${canQa(p) ? `<button type="button" class="vbtn secondary" data-sxnt-ipqc-new="${esc(p.code)}">${icon('add')} Thêm kết quả IPQC</button>` : ''}</div>
+      ${k.table([['Mã', 130], ['Hạng mục / lô', 220], ['Công đoạn', 200], ['Số kiểm', 100, 'r'], ['Số đạt', 100, 'r'], ['Kết quả', 120, 'c'], ['Nội dung', 300], ['Phiếu bất thường', 150], ['Người kiểm', 170], ['Ngày', 110]], l,
+    (x) => `<td>${esc(x.code)}</td><td>${k.clamp(itName(x.item))}</td><td>${k.clamp(x.stage)}</td><td class="r num">${num(x.n)}</td><td class="r num">${num(x.ok)}</td>
+      <td class="c">${x.kq === 'DAT' ? badge('Đạt', 'success') : badge('Không đạt', 'error')}</td><td>${x.note ? k.clamp(x.note) : k.dash}</td>
+      <td>${x.issue ? `<a class="link" data-go="sx/bat-thuong/${encodeURIComponent(x.issue)}">${esc(x.issue)}</a>` : k.dash}</td><td>${k.clamp(pName(x.who))}</td><td class="num">${esc(dmy(x.at))}</td>`)}</section>`;
+  }
+  async function ipqcDlg(code) {
+    const p = P().byCode(code), { txt, sel, num: n, rad, ta, file, req, opts } = window.EForms.b, L = (c) => ({ layout: { columns: c } });
+    const r = await window.EFormRun.open({ title: 'Thêm kết quả IPQC', schema: { id: 'sx-ipqc', components: [
+      txt(`Dự án **${p.code}** — ${p.name}. Đánh giá theo lưu trình đo kiểm từng module, bán thành phẩm và Hướng dẫn kiểm soát chất lượng trong sản xuất.`),
+      sel('item', 'Hạng mục / lô', req(Object.assign(L(8), { values: opts(itemsOf(p).map((i) => [i.key, i.name])) }))),
+      sel('stage', 'Công đoạn', req(Object.assign(L(8), { values: opts(D.sxIpqcStages) }))),
+      n('n', 'Số lượng kiểm tra', req(Object.assign(L(8), { validate: { required: true, min: 1 } }))), n('ok', 'Số lượng đạt', req(Object.assign(L(8), { validate: { required: true, min: 0 } }))),
+      rad('kq', 'Kết quả', req({ values: opts([['DAT', 'Đạt'], ['NOK', 'Không đạt — lập phiếu bất thường']]) })),
+      ta('note', 'Mô tả lỗi (ghi vào phiếu bất thường)', req({ rows: 2, conditional: { hide: '=kq != "NOK"' } })), ta('noteOk', 'Ghi chú', { rows: 2, conditional: { hide: '=kq = "NOK"' } }),
+      file('file', 'Hồ sơ đo kiểm, đánh giá chất lượng công đoạn', L(16))] },
+    values: { kq: 'DAT' }, check: (v) => (Number(v.ok) > Number(v.n) ? 'Số lượng đạt không lớn hơn số lượng kiểm tra.' : null) });
+    if (!r || !r.submit) return;
+    const v = r.values, x = { code: nextCode(ipqcAll(), 'code', 'IPQC-2026-', 3), project: code, item: v.item, stage: v.stage, n: Number(v.n), ok: Number(v.ok), kq: v.kq, who: pid(), at: D.sxToday, note: (v.kq === 'NOK' ? v.note : v.noteOk) || '' };
+    if (v.kq === 'NOK') x.issue = window.SxBt.createAuto({ project: code, title: `IPQC ${v.stage} không đạt — ${(itemsOf(p).find((i) => i.key === v.item) || {}).name || v.item}`, desc: v.note || '', place: `Kiểm soát chất lượng công đoạn: ${v.stage}`, qty: x.n - x.ok });
+    U.ipqc = [x].concat(U.ipqc || []); persist();
+    if (v.file) P().addDoc(code, [v.file, 'IPQC', x.code, pid(), D.sxToday]);
+    P().log(code, 'Ghi kết quả IPQC', `${x.code}: ${v.stage} ${x.ok}/${x.n}${x.issue ? ` → phiếu bất thường ${x.issue}` : ''}`);
+    toast(`<b>Thành công</b><br>${x.issue ? `Đã ghi kết quả và lập phiếu bất thường ${x.issue}.` : 'Thêm mới thành công!'}`); rerender();
+  }
+  /* ---------- (b) Q10 Thử nghiệm thực tế (bước 11, ĐV NCPT chủ trì) ---------- */
+  const trialOf = (p) => Object.assign({}, (D.sxTrial || {})[p.code], (U.trial || {})[p.code]);
+  const trialPct = (p) => { if (!p.trial) return null; const t = trialOf(p); return t.kq === 'DAT' ? 100 : t.duyet ? 50 : t.kb ? 20 : null; };
+  const canTrial = (p) => p.trial && ['PREPARING', 'IN_PRODUCTION', 'ACCEPTANCE'].includes(p.status) && (isAdmin() || D.roleOf(pid()) === 'R-SX-RD');
+  function trialCard(p) {
+    if (!p.trial) return '';
+    const k = K(), t = trialOf(p);
+    const st = t.kq === 'DAT' ? badge('Đạt', 'success') : t.kq === 'NOK' ? badge('Không đạt', 'error') : t.duyet ? badge('Đã duyệt kịch bản, kế hoạch', 'info') : badge('Chưa lập', 'default');
+    return `<section class="vcard pad24" data-sxnt-trial><div class="vcard-h"><h3>Thử nghiệm thực tế</h3>${canTrial(p) ? `<button type="button" class="vbtn secondary" data-sxnt-trial-up="${esc(p.code)}">Cập nhật thử nghiệm</button>` : ''}</div>
+      <div class="ginfo c3">${k.kv('Trạng thái', st)}${k.kv('Địa điểm thử nghiệm', t.place ? esc(t.place) : null)}${k.kv('Thời gian', t.from ? esc(`${dmy(t.from)} – ${dmy(t.to || '')}`) : null)}
+        ${k.kv('Kịch bản thử nghiệm', t.kb ? esc(t.kb) : null)}${k.kv('Kế hoạch thử nghiệm', t.kh ? esc(t.kh) : null)}${k.kv('Ngày phê duyệt kịch bản, kế hoạch', t.duyet ? esc(dmy(t.duyet)) : null)}
+        ${k.kv('Kết quả thử nghiệm', t.kqFile ? esc(t.kqFile) : null)}${k.kv('Đánh giá', t.kqNote ? esc(t.kqNote) : null, 'span2')}
+        ${k.kv('Phiếu bất thường', t.issue ? `<a class="link" data-go="sx/bat-thuong/${encodeURIComponent(t.issue)}">${esc(t.issue)}</a>` : null)}${k.kv('Đơn vị chủ trì', 'Đơn vị Nghiên cứu phát triển')}</div></section>`;
+  }
+  async function trialDlg(code) {
+    const p = P().byCode(code), t = trialOf(p), { txt, tf, dt, rad, ta, file, req, opts } = window.EForms.b, L = (c) => ({ layout: { columns: c } });
+    const r = await window.EFormRun.open({ title: 'Cập nhật thử nghiệm thực tế', schema: { id: 'sx-trial', components: [
+      txt('Khảo sát vị trí, thống nhất kịch bản với đơn vị sử dụng, lập kế hoạch thử nghiệm; đánh giá kết quả theo Bộ tài liệu Phương pháp đo kiểm chỉ tiêu, đánh giá tính năng.'),
+      tf('place', 'Địa điểm thử nghiệm', req(L(16))), dt('from', 'Từ ngày', req(L(8))), dt('to', 'Đến ngày', req(L(8))),
+      file('kb', 'Kịch bản thử nghiệm', req(L(8))), file('kh', 'Kế hoạch thử nghiệm', req(L(8))), dt('duyet', 'Ngày phê duyệt kịch bản, kế hoạch', L(8)),
+      rad('kq', 'Kết quả thử nghiệm', { values: opts([['', 'Chưa có kết quả'], ['DAT', 'Đạt'], ['NOK', 'Không đạt — lập phiếu bất thường']]) }),
+      file('kqFile', 'Kết quả thử nghiệm tại đơn vị', req(Object.assign(L(16), { conditional: { hide: '=kq = ""' } }))), ta('kqNote', 'Đánh giá, nội dung lỗi', { rows: 2, conditional: { hide: '=kq = ""' } })] },
+    values: { place: t.place || '', from: t.from ? dmy(t.from) : '', to: t.to ? dmy(t.to) : '', kb: t.kb || '', kh: t.kh || '', duyet: t.duyet ? dmy(t.duyet) : '', kq: t.kq || '', kqFile: t.kqFile || '', kqNote: t.kqNote || '' } });
+    if (!r || !r.submit) return;
+    const v = r.values, iso = (s) => { const m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(String(s || '')); return m ? `${m[3]}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}` : null; };
+    const x = { place: v.place, from: iso(v.from), to: iso(v.to), kb: v.kb, kh: v.kh, duyet: iso(v.duyet), kq: v.kq || null, kqFile: v.kq ? v.kqFile : '', kqNote: v.kq ? v.kqNote : '', issue: t.issue || null, who: pid() };
+    if (v.kq === 'NOK' && t.kq !== 'NOK') x.issue = window.SxBt.createAuto({ project: code, title: `Thử nghiệm thực tế không đạt — ${p.product}`, desc: v.kqNote || '', place: v.place, qty: 1 });
+    U.trial = Object.assign({}, U.trial, { [code]: x }); persist();
+    if (v.kq && v.kqFile && v.kqFile !== t.kqFile) P().addDoc(code, [v.kqFile, 'TN', 'v1.0', pid(), D.sxToday]);
+    P().log(code, 'Cập nhật thử nghiệm thực tế', v.kq === 'DAT' ? 'Kết quả: Đạt' : v.kq === 'NOK' ? `Kết quả: Không đạt → phiếu bất thường ${x.issue}` : 'Kịch bản, kế hoạch thử nghiệm');
+    toast('<b>Thành công</b><br>Cập nhật thành công!'); rerender();
+  }
+  /* ---------- (b) Q12 Đóng dự án — bước 15 Lưu hồ sơ sản xuất và thông tin truy xuất lô hàng ---------- */
+  const canClose = (p) => p.status === 'ACCEPTANCE' && stockQty(p.code) >= p.qty && (isAdmin() || p.pm === pid());
+  const headBtn = (p) => (canClose(p) ? `<button type="button" class="vbtn primary" data-sxnt-close="${esc(p.code)}">Đóng dự án</button>` : '');
+  async function closeDlg(code) {
+    const p = P().byCode(code), { txt, file, ta, chk, req } = window.EForms.b;
+    const r = await window.EFormRun.open({ title: 'Đóng dự án, lưu hồ sơ sản xuất', schema: { id: 'sx-close', components: [
+      txt(`**${p.code}** — ${p.name}
+Đã nhập kho ${num(stockQty(code))} / ${num(p.qty)} ${p.unitName}. Hồ sơ phát sinh ở các bước (theo từng lô và toàn dự án) được tập hợp ở Hồ sơ dự án; thông tin truy xuất tra theo số sê-ri.`),
+      chk('ok', '', req({ text: 'Đã tập hợp đủ hồ sơ sản xuất và thông tin truy xuất lô hàng' })), file('file', 'Danh mục hồ sơ sản xuất của dự án', { layout: { columns: 12 } }), ta('note', 'Ghi chú', { rows: 2 })] }, values: {} });
+    if (!r || !r.submit) return;
+    if (r.values.file) P().addDoc(code, [r.values.file, 'KHAC', 'v1.0', pid(), D.sxToday]);
+    P().patch(code, { status: 'DONE', closed: D.sxToday }, 'Đóng dự án', 'Lưu hồ sơ sản xuất và thông tin truy xuất lô hàng');
+    toast('<b>Thành công</b><br>Dự án đã hoàn thành!'); rerender();
+  }
   function projectTab(p) {
     const k = K(), l = all().filter((x) => x.project === p.code).map((x) => Object.assign(x, { st: stOf(x) }));
     const iqc = D.sxIqc[p.code] || [];
-    return `<div data-sx-nt>
+    return `<div data-sx-nt>${ipqcCard(p)}${trialCard(p)}
       <section class="vcard pad24"><div class="vcard-h"><h3>Nghiệm thu theo lô</h3>${canRequest(p) ? `<button type="button" class="vbtn secondary" data-sxnt-new="${esc(p.code)}">${icon('add')} Đề nghị nghiệm thu</button>` : ''}</div>
         ${k.table([['Mã đề nghị', 120], ['Hạng mục / lô', 220], ['Số lượng', 100, 'r'], ['Dải sê-ri', 220], ['Chứng chỉ', 130], ['Phiếu nhập kho', 140], ['Trạng thái', 150, 'c']], l,
     (x) => `<td><a class="link" data-go="${href(x)}">${esc(x.code)}</a></td><td>${k.clamp(x.itemText)}</td><td class="r num">${num(x.qty)}</td><td class="num">${esc(x.serials)}</td>
@@ -201,6 +290,9 @@
   document.addEventListener('click', (e) => {
     const t = e.target;
     if (!t.closest) return;
+    const q = t.closest('[data-sxnt-ipqc-new]'); if (q) { ipqcDlg(q.dataset.sxntIpqcNew); return; }
+    const tr = t.closest('[data-sxnt-trial-up]'); if (tr) { trialDlg(tr.dataset.sxntTrialUp); return; }
+    const cl = t.closest('[data-sxnt-close]'); if (cl) { closeDlg(cl.dataset.sxntClose); return; }
     const n = t.closest('[data-sxnt-new]');
     if (n) { create(n.dataset.sxntNew); return; }
     if (t.closest('[data-sxnt-find]')) { const i = document.getElementById('sxnt-seri'); M.seri = i ? i.value.trim() : ''; M.res = M.seri ? lookup(M.seri) : null; rerender(); }
@@ -210,5 +302,5 @@
   function enter(parts) { if (parts[0] === 'nghiem-thu' && parts[1]) K().setTab(tabKey(decodeURIComponent(parts[1])), 'info'); }
   function reset() { U = blank(); persist(); M.seri = ''; M.res = null; }
 
-  window.SxNt = { route, enter, reset, all, byCode, detail, ctx, tabKey, viewTitle: 'Xem chi tiết đề nghị nghiệm thu', projectTab, lookup, available };
+  window.SxNt = { route, enter, reset, all, byCode, detail, ctx, tabKey, viewTitle: 'Xem chi tiết đề nghị nghiệm thu', stOf, projectTab, lookup, available, headBtn, trialPct, ipqcAll };
 })();

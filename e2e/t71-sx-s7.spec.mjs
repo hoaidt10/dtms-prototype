@@ -14,15 +14,14 @@ const openTask = async (page, pid, step) => {
   await expect(page.locator('[data-sbar="process"]')).toContainText(step);
 };
 const done = (page) => expect(page).toHaveURL(/#\/sx\/viec-cua-toi$/);
-const tokens = (page) => page.evaluate(() => SxFlow.caseOf('HSTD-ECR-2026-002-01').tokens.map((t) => [String(t.step), t.who]));
+const tokens = (page) => page.evaluate(() => SxFlow.caseOf('HSTD-ECR-2026-003-01').tokens.map((t) => [String(t.step), t.who]));
 
 test('SX-09 danh sách + thay đổi mẫu đã hoàn thành; Nhật ký quản lý dự án ở tab dự án', async ({ page }) => {
   await fresh(page, '#/sx/thay-doi');
   await as(page, 'sxqa', '#/sx/thay-doi');
   await expect(page.locator('.pg-title')).toContainText('Danh sách yêu cầu thay đổi kỹ thuật');
-  await expect(page.locator('.vtable tbody tr')).toHaveCount(1);
-  await expect(page.locator('.vtable tbody tr')).toContainText('ECO-2026-001');
-  await expect(page.locator('.vtable tbody tr')).toContainText('Hoàn thành');
+  await expect(page.locator('.vtable tbody tr')).toHaveCount(2); // T71 S12: thêm ECR-2026-002 nhận từ hệ thống KHCN
+  await expect(page.locator('.vtable tbody tr', { hasText: 'ECO-2026-001' })).toContainText('Hoàn thành');
   expect(await page.locator('main').innerText()).not.toMatch(BA);
   await as(page, 'sxpm', '#/sx/du-an/DA-SX-2026-001');
   await page.locator('[data-ttab="bt"]').click();
@@ -39,7 +38,7 @@ test('Cảnh E: bất thường Loại 2 mở ECR; cấp C3 trả lại, chọn 
   await expect(page.locator('.vmodal [data-ef="tdTitle"]')).toHaveValue(/BT-2026-002/);
   await page.locator('.vmodal [data-ef="tdNoiDung"]').fill('Thiết kế lại gá đỡ cụm thấu kính, tăng gân cứng.');
   await ok(page);
-  await expect(page).toHaveURL(/#\/sx\/thay-doi\/ECR-2026-002$/);
+  await expect(page).toHaveURL(/#\/sx\/thay-doi\/ECR-2026-003$/);
   await expect(page.locator('.ginfo')).toContainText('BT-2026-002');
   expect(await tokens(page)).toEqual([['2', 'sxrd']]);
   // Phiếu nguồn: liên kết ECR, hết nút mở.
@@ -72,7 +71,7 @@ test('Cảnh E: bất thường Loại 2 mở ECR; cấp C3 trả lại, chọn 
   await openTask(page, 'sxgdtt', 'Phê duyệt ECO');
   await page.locator('[data-sx-do]', { hasText: 'Phê duyệt' }).click();
   await ok(page); await done(page);
-  expect(await page.evaluate(() => SxTd.byCode('ECR-2026-002').eco)).toBe('ECO-2026-002');
+  expect(await page.evaluate(() => SxTd.byCode('ECR-2026-003').eco)).toBe('ECO-2026-002');
   const ecn = async () => {
     await openTask(page, 'sxrd', 'Cập nhật bản vẽ');
     await page.locator('[data-sx-do]').click();
@@ -91,7 +90,7 @@ test('Cảnh E: bất thường Loại 2 mở ECR; cấp C3 trả lại, chọn 
   await openTask(page, 'sxqa', 'Đo kiểm mẫu');
   await page.locator('[data-sx-do]', { hasText: 'Đạt' }).first().click();
   await ok(page); await done(page);
-  expect(await page.evaluate(() => [SxTd.byCode('ECR-2026-002').ecn, SxDuAn.byCode('DA-SX-2026-002').version])).toEqual(['ECN-2026-002', 'v1.1_HW_Rev2']);
+  expect(await page.evaluate(() => [SxTd.byCode('ECR-2026-003').ecn, SxDuAn.byCode('DA-SX-2026-002').version])).toEqual(['ECN-2026-002', 'v1.1_HW_Rev2']);
   await openTask(page, 'sxpm', 'Bàn giao nhà máy');
   await page.locator('[data-sx-do]').click();
   await page.locator('.vmodal [data-ef="bgNgay"]').fill('20/11/2026');
@@ -102,11 +101,11 @@ test('Cảnh E: bất thường Loại 2 mở ECR; cấp C3 trả lại, chọn 
   await ok(page); await done(page);
   await as(page, 'sxpm', '#/sx/du-an/DA-SX-2026-002');
   await page.locator('[data-ttab="bt"]').click();
-  await expect(page.locator('[data-sx-td] tbody tr')).toContainText('Hoàn thành');
+  await expect(page.locator('[data-sx-td] tbody tr', { hasText: 'ECR-2026-003' })).toContainText('Hoàn thành');
   await expect(page.locator('[data-sx-log] tbody tr')).toHaveCount(2);
   await expect(page.locator('[data-sx-log]')).toContainText('ECO-2026-002');
   await expect(page.locator('[data-sx-log]')).toContainText('v1.1_HW_Rev2');
-  await as(page, 'sxpm', '#/sx/thay-doi/ECR-2026-002');
+  await as(page, 'sxpm', '#/sx/thay-doi/ECR-2026-003');
   await page.locator('[data-ttab="tt"]').click();
   await expect(page.locator('main')).toContainText('Hệ thống cấp mã ECN');
   expect(await page.locator('main').innerText()).not.toMatch(BA);

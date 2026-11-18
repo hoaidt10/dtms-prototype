@@ -21,7 +21,7 @@
 
   /* ---------- Dữ liệu ---------- */
   const KEY = 'sx-proto-nc';
-  const blank = () => ({ rows: null, stockAt: null });
+  const blank = () => ({ rows: null, stockAt: null, sup: {} });
   let U = blank();
   try { U = Object.assign(U, JSON.parse(localStorage.getItem(KEY) || '{}')); } catch (e) { /* bỏ qua */ }
   const persist = () => { try { localStorage.setItem(KEY, JSON.stringify(U)); } catch (e) { /* bỏ qua */ } };
@@ -43,14 +43,22 @@
   const stockOf = (code) => D.sxStock[code] || 0;
   /* Đề xuất mua sắm của cùng dự án có vật tư này (mới nhất). */
   const propOf = (r) => window.SxMs.all().filter((x) => x.project === r.project && x.lines.some((l) => l[0] === r.mat)).sort((a, b) => (a.code < b.code ? 1 : -1))[0] || null;
+  /* (b) Q7 — Bên mua sắm (QT-TTSX-4A11 §5.4 bước 4, ghi chú): VHT ký hợp đồng trực tiếp với nhà cung cấp → đề xuất mua sắm sang ĐTMS;
+     mua qua đối tác trung gian (tổng thầu, gia công) → đối tác ký hợp đồng với nhà cung cấp, QLSX chỉ theo dõi tập kết. Mặc định theo mô hình tổ chức:
+     VHT tự sản xuất → VHT mua; VMC tổng thầu / thuê gia công → đối tác mua, trừ vật tư leadtime dài (≥ 20 tuần) hoặc cần Export License → VHT mua trước. Sửa được ở Chỉnh sửa. */
+  const BUYER = { VHT: 'VHT mua trực tiếp', DT: 'Đối tác mua' };
+  const buyerOf = (r) => { if (r.buyer) return r.buyer; const p = P().byCode(r.project), m = matOf(r); return !p || p.model === 'VHT_TU_SX' || m.lt >= 20 || m.el ? 'VHT' : 'DT'; };
+  /* Tập kết vật tư (QT bước 4 đầu ra: báo cáo tiến độ tập kết NVL, biên bản bàn giao / trả hàng với nhà cung cấp). VHT mua: thật đọc phiếu nhập kho (API-04); đối tác mua: PM / nhà máy cập nhật. GIẢ LẬP — nhập tay cả hai. */
+  const supOf = (r) => U.sup[r.code] || { qty: 0, date: null, note: '', file: '', ret: 0 };
   function decorate(r) {
-    const m = matOf(r), short = Math.max(0, r.qty - stockOf(r.mat)), order = iso(ms(r.need) - (m.lt || 0) * 7 * DAY), prop = propOf(r);
+    const m = matOf(r), short = Math.max(0, r.qty - stockOf(r.mat)), order = iso(ms(r.need) - (m.lt || 0) * 7 * DAY), prop = propOf(r), buyer = buyerOf(r);
     let st;
     if (prop) st = prop.sent ? ['Đã đề xuất', 'success'] : ['Đang đề xuất', 'info'];
+    else if (buyer === 'DT') st = ['Đối tác mua', 'default'];
     else if (!short) st = ['Đủ tồn kho', 'default'];
     else if (order < D.sxToday) st = ['Trễ hạn đặt hàng', 'error'];
     else st = ['Chưa đề xuất', 'warning'];
-    return Object.assign({}, r, { m, short, order, prop, st, free: !prop && short > 0 });
+    return Object.assign({}, r, { m, short, order, prop, st, buyer, sup: supOf(r), free: !prop && short > 0 && buyer === 'VHT' });
   }
   const visibleProjects = () => P().visible();
   const all = () => { const ids = new Set(visibleProjects().map((p) => p.code)); return rows().filter((r) => ids.has(r.project)).map(decorate); };
@@ -72,6 +80,7 @@
         '<b>Tạo từ MBOM</b>: thêm các vật tư MBOM chưa có dòng của một dự án. Chọn dòng còn thiếu (cùng dự án) → <b>Lập đề xuất mua sắm</b>: mở màn lập đề xuất chọn sẵn các vật tư đó, số lượng = còn thiếu.',
         '<b>Nhập Excel</b> (T71 S12): file mẫu (Dự án, Mã vật tư, Số lượng, Ngày cần), kiểm lỗi từng dòng — vật tư phải thuộc MBOM của dự án, chưa có dòng nhu cầu, người nhập quản lý dự án; chỉ ghi khi Xác nhận nhập. <b>Xuất Excel</b> đúng các cột đang hiện, mọi dòng thỏa bộ lọc.',
         'Thêm mới / Sửa / Xem bằng hộp thoại (như danh mục). Xoá chỉ dòng chưa đưa vào đề xuất. Người quản lý: PM của dự án, Sub PM (Khối 1).',
+        '<b>Bên mua sắm</b> (QT-TTSX-4A11 bước 4): VHT mua trực tiếp → lập đề xuất sang ĐTMS; Đối tác mua (tổng thầu, gia công ký hợp đồng với nhà cung cấp) → không lập đề xuất, theo dõi tập kết ở tab Mua sắm & hợp đồng của dự án. Mặc định theo mô hình tổ chức; vật tư leadtime dài / Export License mặc định VHT mua trước.',
       ],
       q: ['P-260', 'P-248', 'P-262'], src: 'task-management/task-management.component · /task-management; ecat catalog-form-dialog',
     };
@@ -89,12 +98,12 @@
       adv: (txt, sel) => `${sel('project', 'Dự án', { options: visibleProjects().map((p) => ({ value: p.code, label: `${p.code} — ${p.name}` })) })}${txt('mat', 'Vật tư')}
         ${sel('st', 'Trạng thái', { multi: true, searchable: false, options: ST.map((x) => ({ value: x, label: x })) })}
         ${sel('lt', 'Leadtime', { searchable: false, options: [{ value: 'DAI', label: 'Dài (từ 16 tuần)' }, { value: 'NGAN', label: 'Dưới 16 tuần' }] })}`,
-      cols: [['', 48, 'c'], ['Thao tác', 100, 'c'], ['Trạng thái', 170, 'c'], ['Mã nhu cầu', 140], ['Dự án', 140], ['Mã vật tư', 150], ['Tên vật tư', 260], ['ĐVT', 70], ['Nhu cầu', 110, 'r'],
+      cols: [['', 48, 'c'], ['Thao tác', 100, 'c'], ['Trạng thái', 170, 'c'], ['Mã nhu cầu', 140], ['Dự án', 140], ['Mã vật tư', 150], ['Tên vật tư', 260], ['Bên mua sắm', 150], ['ĐVT', 70], ['Nhu cầu', 110, 'r'],
         ['Tồn kho TCT', 120, 'r'], ['Còn thiếu', 110, 'r'], ['Ngày cần', 120], ['Leadtime (tuần)', 120, 'r'], ['Hạn đặt hàng', 130], ['Đề xuất mua sắm', 150]],
       href: () => 'sx/nhu-cau',
       cell: (r) => `<td class="c">${r.free && canManage(r.project) ? `<input type="checkbox" data-sxnc-sel="${esc(r.code)}" ${SEL.has(r.code) ? 'checked' : ''} aria-label="Chọn ${esc(r.code)}">` : ''}</td>
         <td class="c"><div class="acts">${canManage(r.project) ? iconBtn('edit', 'Sửa', `data-sxnc-edit="${esc(r.code)}"`) : ''}${canManage(r.project) && !r.prop ? `<span class="sep"></span>${iconBtn('del', 'Xoá', `data-sxnc-del="${esc(r.code)}"`)}` : ''}</div></td>
-        <td class="c">${badge(...r.st)}</td><td><a class="link" data-sxnc-view="${esc(r.code)}">${esc(r.code)}</a></td><td>${esc(r.project)}</td><td>${esc(r.mat)}</td><td>${k.clamp(r.m.name)}</td><td>${esc(r.m.unit)}</td>
+        <td class="c">${badge(...r.st)}</td><td><a class="link" data-sxnc-view="${esc(r.code)}">${esc(r.code)}</a></td><td>${esc(r.project)}</td><td>${esc(r.mat)}</td><td>${k.clamp(r.m.name)}</td><td>${esc(BUYER[r.buyer])}</td><td>${esc(r.m.unit)}</td>
         <td class="r num">${num(r.qty)}</td><td class="r num">${num(stockOf(r.mat))}</td><td class="r num">${r.short ? num(r.short) : k.dash}</td><td class="num">${esc(dmy(r.need))}</td>
         <td class="r num">${r.m.lt}</td><td class="num${r.st[0] === 'Trễ hạn đặt hàng' ? ' due-over' : ''}">${esc(dmy(r.order))}</td>
         <td>${r.prop ? `<a class="link" data-go="sx/mua-sam/${encodeURIComponent(r.prop.code)}">${esc(r.prop.code)}</a>` : k.dash}</td>`,
@@ -114,14 +123,17 @@
   async function edit(code) {
     const list = rows(), r = list.find((x) => x.code === code);
     if (!r) return;
-    const m = matOf(r), { txt, num: n, dt, ta, req } = B(), L = (k) => ({ layout: { columns: k } });
+    const m = matOf(r), { txt, num: n, dt, ta, req, sel, opts } = B(), L = (k) => ({ layout: { columns: k } });
+    const locked = !!propOf(r);
     const res = await window.EFormRun.open({ title: 'Chỉnh sửa nhu cầu vật tư', schema: { id: 'sx-nc-edit', components: [
       txt(`**${r.code}** — ${m.name} (${r.mat}) · Dự án ${r.project}`),
-      n('ncQty', `Số lượng nhu cầu (${m.unit})`, req(Object.assign(L(8), { validate: { required: true, min: 1 } }))), dt('ncNeed', 'Ngày cần', req(L(8))), ta('ncNote', 'Ghi chú', { rows: 2 })] },
-    values: { ncQty: r.qty, ncNeed: dmy(r.need), ncNote: r.note || '' },
+      n('ncQty', `Số lượng nhu cầu (${m.unit})`, req(Object.assign(L(8), { validate: { required: true, min: 1 } }))), dt('ncNeed', 'Ngày cần', req(L(8))),
+      locked ? txt(`Bên mua sắm: **${BUYER[buyerOf(r)]}** (đã đưa vào đề xuất mua sắm)`) : sel('ncBuyer', 'Bên mua sắm', req(Object.assign(L(8), { values: opts(Object.entries(BUYER)) }))),
+      ta('ncNote', 'Ghi chú', { rows: 2 })] },
+    values: { ncQty: r.qty, ncNeed: dmy(r.need), ncNote: r.note || '', ncBuyer: buyerOf(r) },
     check: (v) => (!fromDmy(v.ncNeed) ? 'Ngày cần phải đúng định dạng DD/MM/YYYY.' : null) });
     if (!res || !res.submit) return;
-    Object.assign(r, { qty: Number(res.values.ncQty), need: fromDmy(res.values.ncNeed), note: (res.values.ncNote || '').trim() });
+    Object.assign(r, { qty: Number(res.values.ncQty), need: fromDmy(res.values.ncNeed), note: (res.values.ncNote || '').trim() }, locked ? {} : { buyer: res.values.ncBuyer });
     save(list);
     toast('<b>Thành công</b><br>Cập nhật thành công!');
     rerender();
@@ -231,5 +243,36 @@
 
   function route() { return list(); }
   function reset() { U = blank(); persist(); SEL.clear(); }
-  window.SxNc = { route, reset, all };
+  /* ---------- Tab Mua sắm & hợp đồng của dự án: tiến độ tập kết vật tư (QT bước 4 đầu ra) ---------- */
+  function supplyCard(p) {
+    const k = K(), l = all().filter((r) => r.project === p.code), can = canManage(p.code);
+    const stS = (r) => { const q = r.sup.qty - r.sup.ret; return q >= r.qty ? ['Đã tập kết đủ', 'success'] : q > 0 ? ['Đang tập kết', 'info'] : r.need < D.sxToday ? ['Chậm tập kết', 'error'] : ['Chưa về', 'default']; };
+    const done = l.filter((r) => r.sup.qty - r.sup.ret >= r.qty).length;
+    return `<section class="vcard pad24" data-sxnc-sup><div class="vcard-h"><h3>Tiến độ tập kết vật tư</h3><span class="cap">${done} / ${l.length} vật tư đã tập kết đủ</span></div>
+      ${k.table([['Mã vật tư', 150], ['Tên vật tư', 260], ['Bên mua sắm', 150], ['Nhu cầu', 110, 'r'], ['Đã về', 110, 'r'], ['Trả hàng', 100, 'r'], ['Ngày cần', 120], ['Ngày về gần nhất', 140], ['Biên bản bàn giao / trả hàng', 240], ['Trạng thái', 150, 'c']].concat(can ? [['', 110, 'c']] : []), l,
+    (r) => `<td>${esc(r.mat)}</td><td>${k.clamp(r.m.name)}</td><td>${esc(BUYER[r.buyer])}</td><td class="r num">${num(r.qty)}</td><td class="r num">${num(r.sup.qty)}</td><td class="r num">${r.sup.ret ? num(r.sup.ret) : k.dash}</td>
+      <td class="num">${esc(dmy(r.need))}</td><td class="num">${r.sup.date ? esc(dmy(r.sup.date)) : k.dash}</td><td>${r.sup.file ? k.clamp(r.sup.file) : k.dash}</td><td class="c">${badge(...stS(r))}</td>
+      ${can ? `<td class="c"><button type="button" class="vbtn sm secondary" data-sxnc-sup-up="${esc(r.code)}">Cập nhật</button></td>` : ''}`)}</section>`;
+  }
+  async function supDlg(code) {
+    const r = all().find((x) => x.code === code);
+    if (!r) return;
+    const { txt, num: n, dt, ta, file, req } = B(), L = (k) => ({ layout: { columns: k } }), s = r.sup;
+    const res = await window.EFormRun.open({ title: 'Cập nhật tập kết vật tư', schema: { id: 'sx-nc-sup', components: [
+      txt(`**${r.mat}** — ${r.m.name} · Dự án ${r.project} · ${BUYER[r.buyer]}\nNhu cầu ${num(r.qty)} ${r.m.unit}`),
+      n('supQty', `Số lượng đã về (${r.m.unit})`, req(Object.assign(L(8), { validate: { required: true, min: 0 } }))), n('supRet', 'Số lượng trả hàng (không đạt IQC)', L(8)),
+      dt('supDate', 'Ngày về', req(L(8))), file('supFile', 'Biên bản bàn giao hàng hóa với nhà cung cấp / biên bản trả hàng', L(16)),
+      ta('supNote', 'Ghi chú; không phù hợp thì ghi nguyên nhân, biện pháp khắc phục', { rows: 2 })] },
+    values: { supQty: s.qty, supRet: s.ret || 0, supDate: s.date ? dmy(s.date) : dmy(D.sxToday), supFile: s.file || '', supNote: s.note || '' },
+    check: (v) => (!fromDmy(v.supDate) ? 'Ngày về phải đúng định dạng DD/MM/YYYY.' : null) });
+    if (!res || !res.submit) return;
+    const v = res.values;
+    U.sup[code] = { qty: Number(v.supQty || 0), ret: Number(v.supRet || 0), date: fromDmy(v.supDate), file: v.supFile || '', note: (v.supNote || '').trim() };
+    persist();
+    if (v.supFile && v.supFile !== s.file) P().addDoc(r.project, [v.supFile, 'NCC', 'v1.0', pid(), D.sxToday]);
+    P().log(r.project, 'Cập nhật tập kết vật tư', `${r.mat}: đã về ${num(v.supQty)}${Number(v.supRet) ? `, trả ${num(v.supRet)}` : ''} / ${num(r.qty)}`);
+    toast('<b>Thành công</b><br>Cập nhật thành công!'); rerender();
+  }
+  document.addEventListener('click', (e) => { const b = e.target.closest && e.target.closest('[data-sxnc-sup-up]'); if (b) supDlg(b.dataset.sxncSupUp); });
+  window.SxNc = { route, reset, all, supplyCard, buyerOf };
 })();

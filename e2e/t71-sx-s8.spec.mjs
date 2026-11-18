@@ -50,13 +50,16 @@ test('Luồng nghiệm thu đạt: OQC, biên bản, Lãnh đạo cấp chứng 
   await page.locator('.vmodal [data-ef="bbSo"]').fill('85/BB-NT');
   await page.locator('.vmodal [data-ef="bbKetLuan"]').fill('Đồng ý nghiệm thu 12 bộ đợt 1.');
   await page.locator('.vmodal [data-ef-file="bbFile"]').setInputFiles({ name: 'BB.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF') });
+  await page.locator('.vmodal [data-ef-file="bbHoc"]').setInputFiles({ name: 'HOC.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF') });
   await ok(page); await done(page);
   await openTask(page, 'sxld', 'Phê duyệt nghiệm thu');
   await page.locator('[data-sx-do]', { hasText: 'Phê duyệt' }).click();
-  await ok(page); await done(page);
+  await ok(page); await page.locator('.vmodal [data-mysign-ok]').click(); await done(page);
   expect(await page.evaluate(() => SxNt.byCode('NT-2026-005').cert)).toBe('CQ-2026-0151');
-  await openTask(page, 'sxpm', 'Đề nghị nhập kho');
+  await openTask(page, 'sxpm', 'Bao gói, nghiệm thu sau bao gói');
   await page.locator('[data-sx-do]').click();
+  await page.locator('.vmodal [data-ef-chk="nkBaoGoi"]').check();
+  await page.locator('.vmodal [data-ef-file="nkBbBaoGoi"]').setInputFiles({ name: 'BB-bao-goi.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF') });
   await page.locator('.vmodal [data-ef="nkKho"]').fill('Kho thành phẩm Tổng công ty');
   await ok(page); await done(page);
   expect(await page.evaluate(() => { const x = SxNt.byCode('NT-2026-005'); return [x.pnk, x.stocked]; })).toEqual(['PNK-2026-0562', '2026-11-16']);

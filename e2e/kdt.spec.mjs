@@ -78,7 +78,7 @@ test('SCR-55: Thêm mới — bắt buộc, không có trường Quy trình, Lư
   await expect(page.locator('.pg-title')).toHaveText('Thêm mới khoản đầu tư');
   await expect(page.locator('main label', { hasText: /^Quy trình$/ })).toHaveCount(0);
   await page.locator('#k-save').click();
-  await expect(page.locator('.vfield.invalid .msg')).toHaveText(['Bạn cần nhập Tên KĐT.', 'Bạn cần chọn Đề tài / dự án.', 'Bạn cần chọn Lĩnh vực.', 'Bạn cần chọn Loại KĐT.', 'Bạn cần chọn Tính chất tài sản.']);
+  await expect(page.locator('.vfield.invalid .msg')).toHaveText(['Bạn cần chọn Đề tài / dự án.', 'Bạn cần nhập Tên KĐT.', 'Bạn cần chọn Lĩnh vực.', 'Bạn cần chọn Loại KĐT.', 'Bạn cần chọn Tính chất tài sản.']);
   await page.locator('#k-title').fill('Đầu tư hệ thống đo kiểm OTA tích hợp phục vụ nhiệm vụ KHCN 5G-A');
   // D-45: chọn nhiệm vụ / đề tài → Lĩnh vực mặc định theo nhiệm vụ
   await pick(page, 'k-nv', 'DT-KHCN-2027-002');

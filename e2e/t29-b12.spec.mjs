@@ -177,7 +177,7 @@ test('D-81, #4 + B19: bước 1 mở màn Lập ĐXMS (không popup), căn cứ 
   // T72 #83 (D-122 Q4): khối Căn cứ không còn nút AI — hệ thống bóc tách sẵn.
   await expect(page.locator('[data-lf-ai-sec="boc"]')).toHaveCount(0);
   await aiApply(page);
-  await expect(page.locator('[data-lf-boc-sum]')).toContainText('Hệ thống đã đối chiếu');
+  await expect(page.locator('[data-lf-boc-sum]')).toHaveCount(0); // #91 (17/11, phương án B): bỏ dòng tóm tắt đối chiếu
   await page.locator('#lf-save').click();
   await expect(page).toHaveURL(/#\/viec-cua-toi$/);
   // Bước 5.1 (Chỉ huy ĐVĐX): Thông tin chung có Giá trị dự kiến, Tổng giá trị trống, phần khả dụng.
@@ -201,7 +201,7 @@ test('#20 + B19: bóc tách trên màn Lập ĐXMS — bớt hạng mục, thêm
   await expect(page.locator('[data-luong-form]')).toHaveCount(1);
   // Góp ý 06/11: bóc tách sửa trong popup (✦ Gợi ý lại) — bỏ hạng mục 5; thêm hạng mục từ dự toán = tự thêm khoản mục vào bảng Loại chi phí.
   // T72 #83 (D-122 Q4): bỏ popup AI (trước: bỏ chọn hạng mục 5 trong popup → 4 / 5) — hệ thống bóc tách đủ hạng mục của căn cứ.
-  await expect(page.locator('[data-lf-boc-sum]')).toContainText('5 / 5');
+  await expect(page.locator('[data-lf-boc-sum]')).toHaveCount(0); // #91 (17/11, phương án B): bỏ dòng tóm tắt đối chiếu
   await pickSel(page, 'lf-ctype', 'PL2');
   await page.locator('[data-vsel="lf-cline"]').click();
   await page.locator('.vsel-panel .vsel-opt').first().click();

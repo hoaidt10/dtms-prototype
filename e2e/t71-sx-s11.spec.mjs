@@ -22,8 +22,9 @@ test('Biểu mẫu tài liệu: danh mục trong phân hệ, mẫu chưa có t�
   await expect(page.locator('.vmodal [data-sx-tpl-use]')).toHaveCount(7);
   await expect(page.locator('.vmodal')).not.toContainText('BM.QLHDSX.02');
   await page.locator('.vmodal [data-sx-tpl-use="BM.QLBT.02"]').click();
-  await expect(page.locator('[data-sx-docs] tbody tr').first()).toContainText('Phương án xử lý bất thường — DA-SX-2026-002.docx');
-  await expect(page.locator('[data-sx-docs] tbody tr').first()).toContainText('Phương án xử lý bất thường (BM.QLBT.02)');
+  // T74 #97: tab Tài liệu chia theo loại — dòng mới nằm dưới nhóm loại của mẫu.
+  await expect(page.locator('[data-sx-docs] tbody tr', { hasText: 'Phương án xử lý bất thường — DA-SX-2026-002.docx' })).toHaveCount(1);
+  await expect(page.locator('[data-sx-docs] h4', { hasText: 'Phương án xử lý bất thường (BM.QLBT.02)' })).toHaveCount(1);
   // Dừng hoạt động mẫu trong danh mục → không còn trong Chọn mẫu.
   await page.evaluate(() => { Catalog.rows('sx-bieu-mau').find((r) => r.code === 'BM.QLBT.02').active = false; });
   await page.locator('[data-sx-tpl]').click();

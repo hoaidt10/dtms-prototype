@@ -7,19 +7,37 @@
   const L = (n) => ({ layout: { columns: n } });
   const head = () => txt('**{{phieu.code}}** — {{phieu.title}}\nDự án {{phieu.project}} · {{phieu.typeText}} · {{phieu.sevText}}');
   const F = {
-    lap: { id: 'sx-bt-t01-phieu-bao-cao', write: ['btProject', 'btTitle', 'btDesc', 'btFound', 'btPlace', 'btQty', 'btFile'],
+    /* T74 #100: thêm Phân loại bất thường, Mức độ nghiêm trọng (bắt buộc), Dự đoán sơ bộ nguyên nhân; đính kèm chia theo mục của BM.QLBT.01 — chỉ phiếu BM.QLBT.01 bắt buộc (Q9).
+       Dùng cả khi Thêm mới và khi người lập sửa phiếu bị trả lại (bước 1 mở lại). */
+    lap: { id: 'sx-bt-t01-phieu-bao-cao', write: ['btProject', 'btTitle', 'btLoai', 'btMucDo', 'btDesc', 'btFound', 'btPlace', 'btQty', 'btGuess',
+      'btFileBm', 'btFileIqc', 'btFileQc', 'btFileKd', 'btFile'],
+      note: (v) => (window.SxBt && v.btLoai ? window.SxBt.classText(v.btLoai, v.btMucDo) : ''),
       schema: (ctx) => ({ components: [
         sel('btProject', 'Dự án sản xuất', req(Object.assign(L(16), { searchable: true, values: opts(ctx.projects || []) }))),
         tf('btTitle', 'Tiêu đề bất thường', req({ validate: { required: true, maxLength: 500 } })),
+        sel('btLoai', 'Phân loại bất thường', req(Object.assign(L(8), { values: opts(ctx.types || []), description: 'Loại quyết định đơn vị xử lý (Loại 1 QLSX, Loại 2 R&D, Loại 3 Nhà máy)' }))),
+        sel('btMucDo', 'Mức độ nghiêm trọng', req(Object.assign(L(8), { values: opts(ctx.sevs || []), description: 'Mức độ quyết định thời hạn xử lý (SLA)' }))),
         ta('btDesc', 'Mô tả hiện tượng', req({ rows: 3 })),
         dt('btFound', 'Ngày phát hiện', req(L(6))), tf('btPlace', 'Nơi phát hiện (công đoạn, trạm, nhà máy)', req(L(10))),
-        num('btQty', 'Số lượng ảnh hưởng', Object.assign({ validate: { min: 0 } }, L(6))), file('btFile', 'Ảnh, tệp đính kèm', L(10))] }) },
-    pl: { id: 'sx-bt-t02-tiep-nhan', write: ['blLoai', 'blMucDo', 'blNguyenNhan'], note: (v) => (window.SxBt ? window.SxBt.classText(v.blLoai, v.blMucDo) : ''),
-      schema: (ctx) => ({ components: [head(),
-        sel('blLoai', 'Loại bất thường', req(Object.assign(L(8), { values: opts(ctx.types || []) }))),
-        sel('blMucDo', 'Mức độ nghiêm trọng', req(Object.assign(L(8), { values: opts(ctx.sevs || []) }))),
-        txt('Thời hạn xử lý theo danh mục Loại bất thường và SLA, tính từ ngày tiếp nhận theo ngày làm việc.'),
-        ta('blNguyenNhan', 'Phân tích nguyên nhân', req({ rows: 3 }))] }) },
+        num('btQty', 'Số lượng ảnh hưởng', Object.assign({ validate: { min: 0 } }, L(6))),
+        ta('btGuess', 'Dự đoán sơ bộ nguyên nhân', { rows: 2 }),
+        txt('**Hồ sơ đính kèm theo BM.QLBT.01** — thông tin cần thiết để phân tích nguyên nhân'),
+        file('btFileBm', 'Phiếu báo cáo bất thường (BM.QLBT.01)', req(Object.assign(L(8), { description: 'Mẫu ở Hồ sơ, tài liệu › Biểu mẫu tài liệu' }))),
+        file('btFileIqc', 'Hồ sơ IQC vật tư, linh kiện, bán thành phẩm (CO, CQ, CoC, kết quả thử nghiệm bên thứ 3 nếu có)', L(8)),
+        file('btFileQc', 'Hồ sơ kiểm soát chất lượng trong quá trình sản xuất', L(8)),
+        file('btFileKd', 'Hồ sơ kiểm định / hiệu chuẩn phương tiện đo', L(8)),
+        file('btFile', 'Ảnh, tài liệu khác', L(8))] }) },
+    /* T74 #101: bỏ Loại / Mức độ (đã chọn ở bước 1), thêm đính kèm; Trả lại người lập cần lý do. Phiếu hệ thống tự lập (OQC không đạt) chưa có loại → hiện lại 2 ô chọn. */
+    pl: { id: 'sx-bt-t02-tiep-nhan', write: ['blLoai', 'blMucDo', 'blNguyenNhan', 'blFile', 'blLyDoTra'],
+      note: (v) => v.blNguyenNhan || v.blLyDoTra || '',
+      schema: (ctx, ch) => ({ components: ch && ch[2] === 'no'
+        ? [head(), ta('blLyDoTra', 'Lý do trả lại (phân loại, mức độ hoặc thông tin phiếu cần sửa)', req({ rows: 3 }))]
+        : [head()].concat(ctx.phieu.type ? [] : [
+          sel('blLoai', 'Loại bất thường', req(Object.assign(L(8), { values: opts(ctx.types || []) }))),
+          sel('blMucDo', 'Mức độ nghiêm trọng', req(Object.assign(L(8), { values: opts(ctx.sevs || []) })))], [
+          txt('Thời hạn xử lý theo danh mục Loại bất thường và SLA, tính từ ngày tiếp nhận theo ngày làm việc. Phân loại hoặc mức độ chưa đúng thì chọn **Trả lại người lập**.'),
+          ta('blNguyenNhan', 'Phân tích nguyên nhân', req({ rows: 3 })),
+          file('blFile', 'Tài liệu đính kèm')]) }) },
     pa: { id: 'sx-bt-t03-phuong-an', write: ['paBienPhap', 'paHan'], note: (v) => v.paBienPhap || '',
       schema: () => ({ components: [head(), txt('Nguyên nhân: {{blNguyenNhan}}\nĐơn vị triển khai theo loại: **{{phieu.handlerText}}**'),
         ta('paBienPhap', 'Biện pháp xử lý', req({ rows: 4 })), dt('paHan', 'Hạn hoàn thành dự kiến', req(L(6)))] }) },

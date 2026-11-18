@@ -20,10 +20,11 @@ test('Nhu cầu vật tư: còn thiếu, hạn đặt hàng, trạng thái theo 
   await as(page, 'sxpm', '#/sx/nhu-cau');
   await expect(page.locator('.pg-title')).toContainText('Danh sách nhu cầu vật tư');
   await expect(page.locator('.sb-nav [data-go="sx/nhu-cau"]')).toHaveClass(/active/);
-  // Pin VT-25: nhu cầu 2 × 40 = 80, tồn 30, thiếu 50; ngày cần đã qua hạn đặt hàng (leadtime 12 tuần).
+  // Pin VT-25: nhu cầu 2 × 40 = 80, tồn 30, thiếu 50; dự án VMC tổng thầu, leadtime 12 tuần → mặc định Đối tác mua ((b) Q7).
   await expect(ncRow(page, 'DA-SX-2026-001', 'BAT-LI-12V')).toContainText('80');
   await expect(ncRow(page, 'DA-SX-2026-001', 'BAT-LI-12V')).toContainText('50');
-  await expect(ncRow(page, 'DA-SX-2026-001', 'BAT-LI-12V')).toContainText('Trễ hạn đặt hàng');
+  await expect(ncRow(page, 'DA-SX-2026-001', 'BAT-LI-12V')).toContainText('Đối tác mua');
+  await expect(ncRow(page, 'DA-SX-2026-001', 'BAT-LI-12V').locator('[data-sxnc-sel]')).toHaveCount(0);
   await expect(ncRow(page, 'DA-SX-2026-001', 'FPGA-XC7K325')).toContainText('Đã đề xuất');
   await expect(ncRow(page, 'DA-SX-2026-001', 'FPGA-XC7K325')).toContainText('ĐXSX-2026-001');
   await expect(ncRow(page, 'DA-SX-2026-001', 'FPGA-XC7K325').locator('[data-sxnc-sel]')).toHaveCount(0);
@@ -34,10 +35,13 @@ test('Nhu cầu vật tư: còn thiếu, hạn đặt hàng, trạng thái theo 
   await expect(page.locator('.vmodal')).toContainText('Xem chi tiết nhu cầu vật tư');
   await page.locator('.vmodal [data-close]').first().click();
   // Sửa số lượng: thiếu tăng.
+  // Sửa: số lượng và chuyển sang VHT mua trực tiếp → ngày cần đã qua hạn đặt hàng.
   await ncRow(page, 'DA-SX-2026-001', 'BAT-LI-12V').locator('[data-sxnc-edit]').click();
   await page.locator('.vmodal [data-ef="ncQty"]').fill('90');
+  await page.locator('.vmodal [data-vsel="ef-ncBuyer"]').click(); await page.locator('.vsel-panel [data-opt="VHT"]').click();
   await page.locator('.vmodal #ok').click();
   await expect(ncRow(page, 'DA-SX-2026-001', 'BAT-LI-12V')).toContainText('60');
+  await expect(ncRow(page, 'DA-SX-2026-001', 'BAT-LI-12V')).toContainText('Trễ hạn đặt hàng');
   // Khối 2: thêm mới dòng cho dự án chưa có nhu cầu, xoá; tạo từ MBOM thêm phần còn lại.
   await as(page, 'sxk2', '#/sx/nhu-cau');
   const n0 = await page.locator('.vtable tbody tr.click').count();
@@ -64,6 +68,12 @@ test('Nhu cầu vật tư: còn thiếu, hạn đặt hàng, trạng thái theo 
 test('Lập đề xuất từ nhu cầu; Lãnh đạo Khối từ chối (bắt buộc lý do), sửa gửi lại, duyệt → gửi sang ĐTMS', async ({ page }) => {
   await fresh(page, '#/sx/nhu-cau');
   await as(page, 'sxpm', '#/sx/nhu-cau');
+  // Dự án VMC: pin, vỏ cơ khí mặc định đối tác mua — chuyển sang VHT mua trực tiếp để lập đề xuất.
+  for (const mat of ['BAT-LI-12V', 'MECH-VT25']) {
+    await ncRow(page, 'DA-SX-2026-001', mat).locator('[data-sxnc-edit]').click();
+    await page.locator('.vmodal [data-vsel="ef-ncBuyer"]').click(); await page.locator('.vsel-panel [data-opt="VHT"]').click();
+    await page.locator('.vmodal #ok').click();
+  }
   await ncRow(page, 'DA-SX-2026-001', 'BAT-LI-12V').locator('[data-sxnc-sel]').check();
   // Hai dự án khác nhau → cảnh báo; bỏ dòng thứ hai.
   await ncRow(page, 'DA-SX-2026-002', 'IR-DET-640').locator('[data-sxnc-sel]').check();

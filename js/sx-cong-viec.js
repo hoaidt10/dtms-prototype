@@ -89,8 +89,9 @@
   const canPlan = (p) => !!p.baseline && p.status !== 'DONE' && (isAdmin() || p.pm === pid());
   /* Cột Công việc của bảng Kế hoạch & mốc: số công việc gắn hạng mục + nút Giao việc (hạng mục lá, trừ bước 9 — bước 9 giao theo bán thành phẩm / mốc / lô ở tab Bán thành phẩm). */
   function planCell(p, r) {
-    if (r.children) return '';
-    const key = r.key.split('.').slice(1).join('.') || r.key, n = all().filter((x) => x.project === p.code && x.plan === key && !x.parent).length;
+    const key = r.key.split('.').slice(1).join('.') || r.key;
+    if (r.children && key !== 'B4') return '';
+    const n = all().filter((x) => x.project === p.code && x.plan === key && !x.parent).length;
     const cnt = n ? `<a class="link" data-go="sx/cong-viec/don-vi" data-sxcv-plan="${esc(p.code)}|${esc(key)}">${n} việc</a>` : '';
     const btn = canPlan(p) && !/^B9/.test(key) ? `<button type="button" class="vbtn sm secondary" data-go="sx/cong-viec/create/DV/du-an/${encodeURIComponent(p.code)}/${encodeURIComponent(key)}">Giao việc</button>` : '';
     return `<span class="row" style="gap:8px;justify-content:flex-end">${cnt}${btn}</span>`;
@@ -100,7 +101,7 @@
   function fromPlan(code) {
     const p = P().byCode(code);
     if (!p) return 0;
-    const g = P().planOf(p), steps = g[1].children.concat(g[2].children.filter((x) => x.key === 'B8'));
+    const g = P().planOf(p, true), steps = g[1].children.concat(g[2].children.filter((x) => x.key === 'B8'));
     let n = 0;
     steps.forEach((r) => {
       if (all().some((x) => x.project === code && x.plan === r.key && x.src === 'KH')) return;
@@ -145,7 +146,10 @@
   const tileOk = (t, x) => ({ all: true, open: !x.done, done: x.done, over: !x.done && x.due < D.sxToday, soon: soon(x), mine: x.owner === pid() })[t || 'all'];
   const base = (kind) => all().filter((x) => x.kind === kind && canSee(x));
   const rowsOf = (kind) => base(kind).filter((x) => tileOk(TILE[kind], x)).map((x) => Object.assign(x, { st: stOf(x) })).sort((a, b) => (a.due < b.due ? -1 : a.due > b.due ? 1 : a.code < b.code ? -1 : 1));
-  const planName = (x) => { if (!x.plan || !x.project) return ''; const p = P().byCode(x.project); const r = p && P().leaves(P().planOf(p)).find((y) => y.key === x.plan || y.key.endsWith('.' + x.plan)); return r ? r.name : x.plan; };
+  /* T74 #97: bước 4 là nhóm (2 mục con) nhưng vẫn giao việc được ở cấp bước — hạng mục giao việc = lá (trừ mốc bước 9) + nhóm bước 4. */
+  const flat = (rows) => rows.flatMap((r) => [r].concat(r.children ? flat(r.children) : []));
+  const assignable = (p) => flat(P().planOf(p)).filter((r) => !/^G\d$/.test(r.key) && !/^B9\./.test(r.key) && (!r.children || r.key === 'B4'));
+  const planName = (x) => { if (!x.plan || !x.project) return ''; const p = P().byCode(x.project); const r = p && assignable(p).find((y) => y.key === x.plan || y.key.endsWith('.' + x.plan)); return r ? r.name : x.plan; };
   const leftCell = (x, k) => { if (x.done) return k.dash; const d = daysLeft(x.due); return `<span class="num ${d < 0 ? 't-err' : ''}"${d >= 0 && soon(x) ? ' style="color:#B54708"' : ''}>${d < 0 ? `Quá ${-d} ngày` : `${d} ngày`}</span>`; };
   const iconBtn = (ic, label, attrs) => `<button type="button" class="vbtn icon ghost" aria-label="${label}" title="${label}" ${attrs}>${icon(ic)}</button>`;
   const ID = (kind) => 'sxcv-' + kind;
@@ -156,6 +160,17 @@
   const kwText = (x) => `${x.code} ${x.title} ${x.project || ''} ${pName(x.owner)}`;
   const match = (x, f, k) => k.has(f.code, x.code) && k.has(f.title, x.title) && (!f.project || x.project === f.project) && (!f.owner || x.owner === f.owner)
     && k.inSet(f.st, x.st[0]) && (!f.prio || x.prio === f.prio) && (!f.src || x.src === f.src);
+  /* T74 #94 / #96: dòng Nhiệm vụ đơn vị. Độ trễ (ngày) = ngày hoàn thành (chưa xong: hôm nay) trừ hạn, không trễ để trống (P-269). */
+  const lateDays = (x) => { const end = x.done ? (x.doneAt || x.due) : D.sxToday; const d = Math.round((ms(String(end).slice(0, 10)) - ms(x.due)) / DAY); return d > 0 ? d : 0; };
+  function dvCell(x, k) {
+    const st = window.SxDuAn.stageName(x.plan), late = lateDays(x);
+    return `<td class="c"><div class="acts">${canEdit(x) ? iconBtn('edit', 'Sửa', `data-go="${href(x)}/edit"`) : ''}${canDel(x) ? `<span class="sep"></span>${iconBtn('del', 'Xoá', `data-sxcv-del="${esc(x.code)}"`)}` : ''}</div></td>
+      <td class="c">${badge(...x.st)}</td><td><a class="link" data-go="${href(x)}">${esc(x.code)}</a><div>${k.clamp(x.title)}</div>${x.project ? `<div class="faint">Dự án ${esc(x.project)}</div>` : ''}</td>
+      <td>${k.clamp(pName(x.owner))}<div class="faint">${k.clamp(unitOf(x.owner))}</div></td><td>${st ? k.clamp(st) : k.dash}</td>
+      <td><div style="display:flex;align-items:center;gap:8px"><div class="hd-bar" style="flex:1" role="img" aria-label="Tiến độ ${x.pct}%"><span style="width:${x.pct}%"></span></div><span class="num">${x.pct}%</span></div></td>
+      <td class="num">${esc(dmy(x.created || x.start))}</td><td class="num${x.st[0] === 'Quá hạn' ? ' due-over' : ''}">${esc(dmy(x.due))}</td>
+      <td class="r num ${late ? 't-err' : ''}">${late ? late : k.dash}</td>`;
+  }
   function list(kind) {
     // Theo: fe/repo-khcn-bpmn-fe/src/app/features/task-management/task-management.component.html (công việc; cột Thao tác Sửa / Xoá như B5); ô chỉ số theo ecat common-catalog/overview như SCR-92
     const k = K(), dv = kind === 'DV', b = base(kind), cur = TILE[kind] || 'all';
@@ -164,11 +179,12 @@
       notes: [
         dv ? '<b>Nhiệm vụ đơn vị</b>: việc giao cho một đơn vị (người đầu mối), thường gắn dự án và hạng mục kế hoạch. Kick-off (bước 5 luồng Phê duyệt kế hoạch) tự giao nhiệm vụ cho bước 4–8 của kế hoạch gốc; PM giao thêm bằng nút <b>Giao việc</b> ở tab Kế hoạch & mốc của dự án. Phạm vi xem: người thực hiện, người giao, cùng đơn vị với người đầu mối, PM dự án, Lãnh đạo Khối.'
           : '<b>Việc cá nhân</b>: việc của một người — tự tạo, hoặc được giao làm việc con của nhiệm vụ đơn vị. Chỉ người thực hiện và người giao thấy.',
+        ...(dv ? ['<b>T74 (comment #94 / #96):</b> mục con của nhóm <b>Quản lý nhiệm vụ</b>; cột như Quản lý nhiệm vụ KHCN — Nhiệm vụ (mã, tên), Chủ nhiệm · Đơn vị (người đầu mối, đơn vị), <b>Giai đoạn</b> (giai đoạn QT.VHT.TTSX.4A.1.1 của hạng mục kế hoạch gắn nhiệm vụ), Tiến độ (thanh %), Ngày nhận nhiệm vụ (ngày giao), Hạn xử lý, <b>Độ trễ (ngày)</b> = ngày hoàn thành (chưa xong: hôm nay) trừ hạn, không trễ để trống (GIẢ LẬP P-269).'] : []),
         'Công việc con nhiều cấp (Thêm công việc con ở Chi tiết): % việc cha = trung bình việc con; việc cha chỉ hoàn thành khi mọi việc con hoàn thành. % hạng mục kế hoạch (trừ bước 9 đọc nhật ký sản lượng) lấy từ công việc cấp 1 gắn hạng mục.',
         'Ô chỉ số = lọc nhanh (bấm lại ô đang chọn hoặc Tổng số để bỏ lọc). Quá hạn: chưa xong, đã qua hạn. Sắp đến hạn: còn trong số ngày <b>Nhắc trước hạn</b> của việc (mặc định 2) — cũng hiện ở chuông và Việc của tôi của người thực hiện.',
         'Xoá: chỉ việc chưa cập nhật tiến độ, không có việc con, không sinh từ kế hoạch; người giao. Xuất Excel theo bộ lọc đang áp dụng (BE xuất .xlsx; prototype tải .csv). Nhập Excel: file mẫu, kiểm lỗi từng dòng, chỉ ghi khi Xác nhận nhập.',
       ],
-      q: ['P-254', 'P-241'], src: 'task-management/task-management.component · /task-management; ecat common-catalog/overview (ô chỉ số); vht-import-dialog',
+      q: ['P-254', 'P-241', 'P-269'], src: 'task-management/task-management.component · /task-management; ecat common-catalog/overview (ô chỉ số); vht-import-dialog',
     };
     const tiles = `<div class="rp-tiles tq-metrics" data-sxcv-tiles>${TILES.map(([t, l, d, c]) => `<button type="button" class="ov-tile rp-tile tq-m ${cur === t ? 'on' : ''}" data-sxcv-tile="${kind}|${t}" aria-pressed="${cur === t}">
       <span class="ov-tx"><span class="t">${esc(l)}</span><span class="d">${esc(d)}</span></span><span class="ov-n"><span class="n num ${c || ''}">${b.filter((x) => tileOk(t, x)).length}</span></span></button>`).join('')}</div>`;
@@ -187,15 +203,18 @@
         ${sel('st', 'Trạng thái', { multi: true, searchable: false, options: ST.map((x) => ({ value: x, label: x })) })}
         ${sel('prio', 'Mức ưu tiên', { searchable: false, options: Object.entries(D.sxPrio).map(([value, v]) => ({ value, label: v[0] })) })}
         ${sel('src', 'Nguồn', { searchable: false, options: Object.entries(D.sxWorkSrc).map(([value, label]) => ({ value, label })) })}`,
-      cols: [['Thao tác', 100, 'c'], ['Trạng thái', 150, 'c'], ['Mã công việc', 150], ['Tên công việc', 300], ['Dự án', 140], ['Hạng mục kế hoạch', 220], ['Công việc cha', 150],
+      /* T74 #94 / #96: Nhiệm vụ đơn vị theo bộ cột của KHCN — Trạng thái, Nhiệm vụ, Chủ nhiệm · Đơn vị, Giai đoạn, Tiến độ, Ngày nhận nhiệm vụ, Hạn xử lý, Độ trễ (ngày).
+         Việc cá nhân giữ bộ cột cũ. */
+      cols: dv ? [['Thao tác', 100, 'c'], ['Trạng thái', 150, 'c'], ['Nhiệm vụ', 340], ['Chủ nhiệm · Đơn vị', 240], ['Giai đoạn', 220], ['Tiến độ', 170], ['Ngày nhận nhiệm vụ', 150], ['Hạn xử lý', 120], ['Độ trễ (ngày)', 120, 'r']]
+        : [['Thao tác', 100, 'c'], ['Trạng thái', 150, 'c'], ['Mã công việc', 150], ['Tên công việc', 300], ['Dự án', 140], ['Hạng mục kế hoạch', 220], ['Công việc cha', 150],
         [dv ? 'Đơn vị thực hiện' : 'Người thực hiện', 220], [dv ? 'Người đầu mối' : 'Người giao', 170], ['Ngày bắt đầu', 120], ['Hạn hoàn thành', 130], ['Còn lại', 110, 'r'], ['Hoàn thành', 110, 'r'], ['Mức ưu tiên', 120, 'c'], ['Nguồn', 130]],
       href,
-      cell: (x) => `<td class="c"><div class="acts">${canEdit(x) ? iconBtn('edit', 'Sửa', `data-go="${href(x)}/edit"`) : ''}${canDel(x) ? `<span class="sep"></span>${iconBtn('del', 'Xoá', `data-sxcv-del="${esc(x.code)}"`)}` : ''}</div></td>
+      cell: (x) => (dv ? dvCell(x, k) : `<td class="c"><div class="acts">${canEdit(x) ? iconBtn('edit', 'Sửa', `data-go="${href(x)}/edit"`) : ''}${canDel(x) ? `<span class="sep"></span>${iconBtn('del', 'Xoá', `data-sxcv-del="${esc(x.code)}"`)}` : ''}</div></td>
         <td class="c">${badge(...x.st)}</td><td><a class="link" data-go="${href(x)}">${esc(x.code)}</a></td><td>${k.clamp(x.title)}</td><td>${x.project ? esc(x.project) : k.dash}</td>
         <td>${x.plan ? k.clamp(planName(x)) : k.dash}</td><td>${x.parent ? `<a class="link" data-go="${href({ code: x.parent })}">${esc(x.parent)}</a>` : k.dash}</td>
         <td>${k.clamp(dv ? unitOf(x.owner) : pName(x.owner))}</td><td>${k.clamp(pName(dv ? x.owner : x.assigner))}</td><td class="num">${esc(dmy(x.start))}</td>
         <td class="num${x.st[0] === 'Quá hạn' ? ' due-over' : ''}">${esc(dmy(x.due))}</td><td class="r">${leftCell(x, k)}</td><td class="r num">${x.pct}%</td>
-        <td class="c">${badge(...D.sxPrio[x.prio || 'TB'])}</td><td>${esc(D.sxWorkSrc[x.src] || '')}</td>`,
+        <td class="c">${badge(...D.sxPrio[x.prio || 'TB'])}</td><td>${esc(D.sxWorkSrc[x.src] || '')}</td>`),
     });
   }
 
@@ -282,7 +301,7 @@
     if (o.plan) F.lock.plan = true;
     if (par) { F.lock.project = !!par.project; F.lock.parent = true; }
   }
-  const leafOpts = (code) => { const p = code && P().byCode(code); return p ? P().leaves(P().planOf(p)).filter((r) => !/^B9\./.test(r.key)).map((r) => ({ value: r.key, label: r.name })) : []; };
+  const leafOpts = (code) => { const p = code && P().byCode(code); return p ? assignable(p).map((r) => ({ value: r.key, label: r.name })) : []; };
   function form(code) {
     // Theo: fe/repo-khcn-bpmn-fe/src/app/features/task-management/components/task-create/task-create.component.html (mode create / edit)
     const k = K(), v = F.v, err = F.err, x = code ? byCode(code) : null, kind = x ? x.kind : F.kind, dv = kind === 'DV';

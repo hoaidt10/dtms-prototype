@@ -170,5 +170,5 @@
   function enter(parts) { if (parts[0] === 'thay-doi' && parts[1]) K().setTab(tabKey(decodeURIComponent(parts[1])), 'info'); }
   function reset() { U = blank(); persist(); }
 
-  window.SxTd = { route, enter, reset, all, byCode, detail, ctx, tabKey, viewTitle: 'Xem chi tiết yêu cầu thay đổi kỹ thuật', projectPart, issueBtn, ecrOf, logOf };
+  window.SxTd = { route, enter, reset, all, byCode, detail, ctx, tabKey, viewTitle: 'Xem chi tiết yêu cầu thay đổi kỹ thuật', stOf, projectPart, issueBtn, ecrOf, logOf };
 })();

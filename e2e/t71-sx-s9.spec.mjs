@@ -22,7 +22,7 @@ test('Danh sách nhiệm vụ đơn vị và việc cá nhân: ô chỉ số, l�
   await expect(tile(page, 'all').locator('.n')).toHaveText('3');
   await expect(tile(page, 'done').locator('.n')).toHaveText('1');
   await expect(row(page, 'NV-SX-2026-001')).toContainText('63%'); // trung bình 3 việc con 50 / 40 / 100
-  await expect(row(page, 'NV-SX-2026-001')).toContainText('7. Bảo đảm máy móc');
+  await expect(row(page, 'NV-SX-2026-001')).toContainText('2. Chuẩn bị sản xuất (4M)'); // T74 #94/#96: cột Giai đoạn thay Hạng mục kế hoạch
   await expect(row(page, 'NV-SX-2026-002')).toContainText('Hoàn thành');
   // Việc từ kế hoạch không có nút Xoá.
   await expect(row(page, 'NV-SX-2026-001').locator('[data-sxcv-del]')).toHaveCount(0);
@@ -139,7 +139,8 @@ test('Giao việc từ kế hoạch, công việc con (hạn không sau việc c
   expect(n).toBe(5);
   await as(page, 'sxk2', '#/sx/cong-viec/don-vi');
   await expect(page.locator('.vtable tbody tr', { hasText: 'DA-SX-2026-004' })).toHaveCount(5);
-  await expect(page.locator('.vtable tbody tr', { hasText: 'Thống nhất phương án tổ chức sản xuất' })).toContainText('Từ kế hoạch');
+  // T74 #94/#96: bỏ cột Nguồn khỏi Nhiệm vụ đơn vị (bộ cột KHCN); nhiệm vụ bước 8 thuộc giai đoạn 3.
+  await expect(page.locator('.vtable tbody tr', { hasText: 'Thống nhất phương án tổ chức sản xuất' })).toContainText('3. Tổ chức sản xuất và giao hàng');
   expect(await page.locator('main').innerText()).not.toMatch(BA);
   expect(page.errors).toEqual([]);
 });

@@ -36,7 +36,7 @@ test('Menu: Thông báo, Hợp đồng, Báo cáo mở màn thật; route cũ #/
 test('Hợp đồng: danh sách mở được mọi dòng; 10 tab chi tiết không lỗi; cảnh báo bảo đảm, chậm tiến độ, tạm dừng ký', async ({ page }) => {
   await as(page, 'minh', '#/hop-dong');
   const codes = await page.locator('main .vtable tbody tr[data-code]').evaluateAll((r) => r.map((x) => x.dataset.code));
-  expect(codes.length).toBe(7); // T67: + HĐ-2026-0058, HĐ-2026-0035
+  expect(codes.length).toBe(10); // 17/11: 21 hợp đồng mẫu — trang 1 (10 dòng); mọi hợp đồng mở mọi tab ở t67-du-lieu-mau
   for (const c of codes) {
     await go(page, '#/hop-dong/' + encodeURIComponent(c));
     await expect(page.locator('.pg-title')).toHaveText('Xem chi tiết hợp đồng');
@@ -99,14 +99,14 @@ test('Hợp đồng: phụ lục vượt giới hạn bị chặn; tạo hồ s�
   await page.locator('[data-vsel="tf-hdl-prog"]').click();
   await page.locator('.vsel-panel [data-opt="Chậm tiến độ"]').click();
   await page.locator('[data-tadv="hdl"] button[type="submit"]').click();
-  await expect(rows(page)).toHaveCount(2); // T67: + HĐ-2026-0035 giao hàng đợt 2 quá hạn
+  await expect(rows(page)).toHaveCount(3); // T67: + HĐ-2026-0035 giao hàng đợt 2 quá hạn; 17/11: + HĐ-2026-0018 báo cáo RTL đợt 2 quá hạn
   await expect(rows(page).filter({ hasText: 'HĐ-2025-0187' })).toHaveCount(1);
   expect(page.errors).toEqual([]);
 });
 
 test('Thỏa thuận khung: giá trị đã gọi / còn lại; mở chi tiết đơn hàng', async ({ page }) => {
   await as(page, 'minh', '#/thoa-thuan-khung');
-  await expect(rows(page)).toHaveCount(3);
+  await expect(rows(page)).toHaveCount(5); // 17/11: + TTK-2026-0008, TTK-2025-0004
   await go(page, '#/thoa-thuan-khung/TTK-2026-0003');
   await expect(card(page, 'Giá trị thỏa thuận khung')).toContainText('26,70 tỷ đồng');
   await expect(card(page, 'Giá trị thỏa thuận khung')).toContainText('3,30 tỷ đồng');
@@ -180,8 +180,8 @@ test('Tổng quan: 4 tab không lỗi; ô chỉ số khớp dữ liệu; hợp �
     await page.locator(`[data-tq4="${t}"]`).click();
     expect(await mainText(page)).not.toMatch(BA);
   }
-  await expect(page.locator('.rp-tile', { hasText: 'Tổng số hợp đồng' }).locator('.n')).toHaveText('7');
-  await expect(page.locator('.rp-tile', { hasText: 'Hợp đồng chậm tiến độ' }).locator('.n')).toHaveText('2'); // T67: + HĐ-2026-0035
+  await expect(page.locator('.rp-tile', { hasText: 'Tổng số hợp đồng' }).locator('.n')).toHaveText('21'); // 17/11: + 14 hợp đồng mẫu
+  await expect(page.locator('.rp-tile', { hasText: 'Hợp đồng chậm tiến độ' }).locator('.n')).toHaveText('3'); // T67: + HĐ-2026-0035; 17/11: + HĐ-2026-0018
   await page.locator('[data-rp-refresh="tq"]').click();
   expect(await lastToast(page)).toContain('Đã cập nhật số liệu Dashboard');
   expect(page.errors).toEqual([]);
@@ -207,12 +207,12 @@ test('Báo cáo: 6 nhóm, mọi báo cáo dựng không lỗi; drill-down lọc 
   await expect(page.locator('.rp-det h3')).toContainText('Chi tiết — Theo trạng thái: Đang thương thảo');
   await expect(page.locator('.rp-det tbody tr')).toHaveCount(1);
   await page.locator('[data-drill-clear]').click();
-  await expect(page.locator('.rp-det tbody tr')).toHaveCount(7);
+  await expect(page.locator('.rp-det tbody tr')).toHaveCount(10); // 17/11: 21 hợp đồng — trang đầu 10 dòng
   // Sắp xếp theo giá trị
   await page.locator('.rp-det th', { hasText: 'Giá trị (đồng)' }).click(); // T70: tiền theo đồng (SRS 30 BR-BCC-C-06)
-  await expect(page.locator('.rp-det tbody tr').first()).toContainText('HĐ-2026-0035'); // T67: hợp đồng mẫu nhỏ nhất 2,40 tỷ
+  await expect(page.locator('.rp-det tbody tr').first()).toContainText('HĐ-2025-0241'); // 17/11: hợp đồng mẫu nhỏ nhất 1,25 tỷ
   await page.locator('[data-rp-export]').click();
-  expect(await lastToast(page)).toContain('Xuất báo cáo thành công (7 dòng)');
+  expect(await lastToast(page)).toContain('Xuất báo cáo thành công (21 dòng)');
   // KPI xử lý theo bước (nhóm C comment Figma)
   await go(page, '#/bao-cao/tien-do');
   await page.locator('[data-rptab="tien-do:kpi-buoc"]').click();

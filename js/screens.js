@@ -100,7 +100,9 @@
     const kdtPend = D.kdtCases.filter((c) => Flow.canRunSample(c) && !Flow.state.kdtCases.some((o) => o.code === c.code))
       .flatMap((c) => sampleTodo(c).filter((x) => all || x.who === pid).map((x) => pendRow(c, x, { dxms: c.kdt, title: c.title || (Flow.findKdt(c.kdt) || {}).title,
         flow: c.flow || 'Chưa xác định nhóm', priority: '', type: kdtKindText(c.kind) })));
-    return hdTasks(pid, all).concat(kho, todo, samplePend, kdtPend, done, sample, kdtSample);
+    /* SRS 32 V0.4: công việc nền tảng Xử lý trình ký / Nhập kết quả ký (trinh-ky.js). */
+    const tk = window.TrinhKy ? window.TrinhKy.taskRows(pid, all) : [];
+    return hdTasks(pid, all).concat(tk, kho, todo, samplePend, kdtPend, done, sample, kdtSample);
   }
   /* Việc trên hồ sơ con của hợp đồng (D-47): mỗi hồ sơ một S, đọc từ kho, mã việc đã kèm mã hồ sơ. Cột mã đối tượng cha hiện mã hợp đồng. */
   function hdTasks(pid, all) {

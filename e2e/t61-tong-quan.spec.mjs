@@ -28,12 +28,12 @@ test('4 tab, mỗi tab 3 khối; số chỉ số khớp ngăn chi tiết; thẻ 
     await dr.locator('[data-close]').first().click();
     await expect(dr).toHaveCount(0);
   }
-  // ĐXMS: Tổng số không đếm nháp (27, như T48); thẻ trạng thái run + wait + done ≤ tổng; Quá hạn đếm chéo.
+  // ĐXMS: Tổng số không đếm nháp (27, như T48; 17/11: + 6 ĐXMS nguồn KHLCNT → 33); thẻ trạng thái run + wait + done ≤ tổng; Quá hạn đếm chéo.
   await page.locator('[data-tq4="dxms"]').click();
-  await expect(tileN(page, 'Tổng số ĐXMS')).toHaveText('27');
-  await expect(tileN(page, 'Tổng giá trị ĐXMS')).toContainText('1.963.600.000.000'); // T69 L1: đồng
+  await expect(tileN(page, 'Tổng số ĐXMS')).toHaveText('33');
+  await expect(tileN(page, 'Tổng giá trị ĐXMS')).toContainText('2.145.400.000.000'); // T69 L1: đồng
   const n = async (l) => Number((await stN(page, l).textContent()).trim());
-  expect((await n('Đang xử lý')) + (await n('Chờ phê duyệt')) + (await n('Đã phê duyệt'))).toBeLessThanOrEqual(27);
+  expect((await n('Đang xử lý')) + (await n('Chờ phê duyệt')) + (await n('Đã phê duyệt'))).toBeLessThanOrEqual(33);
   expect(await n('Quá hạn')).toBeGreaterThan(0);
   expect(await n('Quá hạn')).toBe(Number((await tileN(page, 'ĐXMS quá hạn xử lý').textContent()).trim()));
   // Hồ sơ cần chú ý: có quá hạn, gấp nhất lên đầu.

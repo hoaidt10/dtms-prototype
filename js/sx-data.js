@@ -13,8 +13,8 @@
     { id: 'sxld', name: 'Nguyễn Hữu Phong', short: 'Phong', role: 'Phó Giám đốc Khối 1', unit: 'Ban Giám đốc Khối 1', urd: 'R-SX-LD', actor: '—', sx: true },
     { id: 'sxpm', name: 'Trần Quốc Việt', short: 'Việt', role: 'Giám đốc dự án sản xuất (PM)', unit: 'Trung tâm Sản xuất — Khối 1', urd: 'R-SX-PM', actor: '—', sx: true },
     { id: 'sxsub', name: 'Lê Minh Đức', short: 'Đức', role: 'Cán bộ phụ trách bán thành phẩm (Sub PM)', unit: 'Trung tâm Sản xuất — Khối 1', urd: 'R-SX-SUBPM', actor: '—', sx: true },
-    { id: 'sxrd', name: 'Phạm Thu Hằng', short: 'Hằng', role: 'Kỹ sư thiết kế (R&D)', unit: 'Trung tâm Nghiên cứu thiết kế — Khối 1', urd: 'R-SX-RD', actor: '—', sx: true },
-    { id: 'sxqa', name: 'Đoàn Văn Khải', short: 'Khải', role: 'Chuyên viên Đảm bảo chất lượng', unit: 'Trung tâm Đảm bảo chất lượng', urd: 'R-SX-QA', actor: '—', sx: true },
+    { id: 'sxrd', name: 'Phạm Thu Hằng', short: 'Hằng', role: 'PM sản phẩm (Nghiên cứu phát triển)', unit: 'Trung tâm Nghiên cứu thiết kế — Khối 1', urd: 'R-SX-RD', actor: '—', sx: true },
+    { id: 'sxqa', name: 'Đoàn Văn Khải', short: 'Khải', role: 'Kỹ sư Quản lý chất lượng', unit: 'Trung tâm Đảm bảo chất lượng', urd: 'R-SX-QA', actor: '—', sx: true },
     { id: 'sxk2', name: 'Vũ Thị Hương', short: 'Hương', role: 'Chuyên viên Quản lý sản xuất', unit: 'Phòng Quản lý sản xuất — Khối 2', urd: 'R-SX-PM', actor: '—', sx: true },
     { id: 'sxnm', name: 'Hoàng Văn Lực', short: 'Lực', role: 'Cán bộ điều hành sản xuất (nhà máy)', unit: 'Nhà máy đối tác', urd: 'R-SX-NM', actor: '—', sx: true },
     { id: 'sxgdtt', name: 'Bùi Thanh Sơn', short: 'Sơn', role: 'Giám đốc Trung tâm Nghiên cứu thiết kế', unit: 'Trung tâm Nghiên cứu thiết kế — Khối 1', urd: 'R-SX-GDTT', actor: '—', sx: true },
@@ -25,11 +25,13 @@
   /* ---------- Sidebar phân hệ (màn SX-xx theo plan T71 §4; lát dựng ghi ở `slice`) ---------- */
   const soon = (slice, scr) => [`Màn ${scr} dựng ở lát ${slice} của plan T71 (docs/sx/T71-prototype-qlsx-ke-hoach.md §5).`];
   D.sxMenu = [
-    { label: 'Việc của tôi', icon: 'view_list', path: 'sx/viec-cua-toi', scr: 'SX-15', badge: 'sx-tasks' },
-    { label: 'Công việc', icon: 'menu_square', open: true, children: [
-      { label: 'Việc cá nhân', path: 'sx/cong-viec/ca-nhan', scr: 'SX-16' },
-      { label: 'Nhiệm vụ đơn vị', path: 'sx/cong-viec/don-vi', scr: 'SX-16' }] },
-    { label: 'Tổng quan', icon: 'tong_quan', path: 'sx/tong-quan', scr: 'SX-01', notes: soon('S13', 'SX-01') },
+    /* T74 #95: Tổng quan đổi tên Dashboard, đứng đầu menu như KHCN (repo-khcn-bpmn-fe management-sidebar). */
+    { label: 'Dashboard', icon: 'tong_quan', path: 'sx/tong-quan', scr: 'SX-01' },
+    /* T74 #94 / #96 (Q1): Việc của tôi thành mục con (giữ số việc) của nhóm Quản lý nhiệm vụ, cùng Nhiệm vụ đơn vị và Việc cá nhân — như KHCN. */
+    { label: 'Quản lý nhiệm vụ', icon: 'menu_square', open: true, children: [
+      { label: 'Việc của tôi', path: 'sx/viec-cua-toi', scr: 'SX-15', badge: 'sx-tasks' },
+      { label: 'Nhiệm vụ đơn vị', path: 'sx/cong-viec/don-vi', scr: 'SX-16' },
+      { label: 'Việc cá nhân', path: 'sx/cong-viec/ca-nhan', scr: 'SX-16' }] },
     { label: 'Dự án sản xuất', icon: 'view_list', path: 'sx/du-an', scr: 'SX-02', notes: soon('S1', 'SX-02…04') },
     { label: 'Chuyển giao từ nghiên cứu', icon: 'view_flow', open: true, children: [
       { label: 'Hồ sơ chuyển giao', path: 'sx/chuyen-giao', scr: 'SX-06', notes: soon('S3', 'SX-06') },
@@ -46,9 +48,15 @@
       { label: 'Biểu mẫu tài liệu', path: 'sx/bieu-mau', scr: 'SX-19' },
       { label: 'Bài học kinh nghiệm', path: 'sx/bai-hoc', scr: 'SX-20' }] },
     { label: 'Báo cáo', icon: 'view_grid', children: [
-      { label: 'Tiến độ dự án', path: 'sx/bao-cao/tien-do', scr: 'SX-14', notes: soon('S13', 'SX-14') },
-      { label: 'Bất thường theo SLA', path: 'sx/bao-cao/bat-thuong', scr: 'SX-14', notes: soon('S13', 'SX-14') },
-      { label: 'Vật tư leadtime dài', path: 'sx/bao-cao/vat-tu', scr: 'SX-14', notes: soon('S13', 'SX-14') }] },
+      /* T71 S13: 7 dashboard của SX-ULNL (dòng 2531–2537) + Đối chiếu quyết toán (công đoạn 6, mức nhẹ) — sx-bao-cao.js. */
+      { label: 'Tiến độ sản xuất', path: 'sx/bao-cao/tien-do', scr: 'SX-14' },
+      { label: 'Chất lượng', path: 'sx/bao-cao/chat-luong', scr: 'SX-14' },
+      { label: 'Bất thường theo dự án', path: 'sx/bao-cao/bat-thuong', scr: 'SX-14' },
+      { label: 'Thay đổi kỹ thuật', path: 'sx/bao-cao/thay-doi', scr: 'SX-14' },
+      { label: 'Vật tư theo ngày cần', path: 'sx/bao-cao/vat-tu', scr: 'SX-14' },
+      { label: 'KPI quy trình', path: 'sx/bao-cao/kpi', scr: 'SX-14' },
+      { label: 'Thời gian chờ theo bên xử lý', path: 'sx/bao-cao/cho-xu-ly', scr: 'SX-14' },
+      { label: 'Đối chiếu quyết toán', path: 'sx/bao-cao/quyet-toan', scr: 'SX-14' }] },
     /* T71 S12 (D-124): Mẫu thông báo của phân hệ (SX-ULNL "QL thông báo") — màn notification-template dùng chung. */
     { label: 'Mẫu thông báo', icon: 'view_list', path: 'sx/mau-thong-bao', scr: 'SX-21' },
   ];
@@ -61,7 +69,10 @@
   /* Loại tài liệu của dự án (T71 S11): dùng ở danh mục Biểu mẫu, tab Tài liệu, Hồ sơ dự án. */
   const DOC_KIND = { KH: 'Kế hoạch sản xuất (BM.QLHDSX.01)', PA: 'Báo cáo phương án sản xuất', M4: 'Kiểm tra điều kiện sản xuất 4M (BM.QLHDSX.02)', BB: 'Biên bản làm việc với nhà máy (BM.QLHDSX.04)',
     BT: 'Phiếu báo cáo bất thường (BM.QLBT.01)', BTPA: 'Phương án xử lý bất thường (BM.QLBT.02)', ECR: 'Yêu cầu thay đổi kỹ thuật (SXL.07)', ECO: 'Lệnh thay đổi kỹ thuật (SXL.08)',
-    ECN: 'Thông báo thay đổi kỹ thuật (SXL.09)', LOG: 'Nhật ký quản lý dự án (SXL.10)', NT: 'Biên bản nghiệm thu', PAKD: 'Phương án kinh doanh', NV: 'Quyết định giao nhiệm vụ', HD: 'Hợp đồng với khách hàng', KHAC: 'Khác' };
+    ECN: 'Thông báo thay đổi kỹ thuật (SXL.09)', LOG: 'Nhật ký quản lý dự án (SXL.10)', NT: 'Biên bản nghiệm thu', PAKD: 'Phương án kinh doanh', NV: 'Quyết định giao nhiệm vụ', HD: 'Hợp đồng với khách hàng',
+    /* (b) theo QT-TTSX-4A11 §5.4: đầu ra bước 3, 4, 5, 6, 10, 11, 13 */
+    KO: 'Biên bản kick-off', QDGV: 'Quyết định giao nhiệm vụ PM, nhóm dự án', BGNM: 'Checklist bàn giao tài liệu cho nhà máy (BM.QLHDSX.03)', DT: 'Biên bản xác nhận nội dung đào tạo',
+    NCC: 'Biên bản bàn giao, trả hàng với nhà cung cấp', IPQC: 'Hồ sơ kiểm soát chất lượng công đoạn (IPQC)', TN: 'Kết quả thử nghiệm thực tế', HOC: 'Biên bản bàn giao hàng hóa (HOC)', COCQ: 'Chứng nhận xuất xứ, chất lượng (CO, CQ)', KHAC: 'Khác' };
   const DOCK = Object.entries(DOC_KIND).map(([value, label]) => ({ value, label }));
   const UNIT = [{ value: 'QLSX', label: 'Đơn vị Quản lý sản xuất' }, { value: 'RD', label: 'Đơn vị Nghiên cứu phát triển' }, { value: 'NM', label: 'Nhà máy' }];
   const KHOI = [{ value: 'K1', label: 'Khối 1' }, { value: 'K2', label: 'Khối 2' }];
@@ -70,14 +81,20 @@
   const KIND = [{ value: 'NOI_BO', label: 'Nội bộ Tập đoàn' }, { value: 'DOI_TAC', label: 'Đối tác ngoài' }];
   const sla = (key, label) => ({ key, label, type: 'num', max: 3, placeholder: 'Ngày làm việc', width: 130 });
 
-  /* Danh mục hồ sơ chuyển giao — Khối 1: 27 hồ sơ theo SX-KS-K1 §4 Bảng 10; Khối 2: 20 hồ sơ, SX-KS-K2 §2.1 nêu 8 tên, 12 tên còn lại GIẢ LẬP (P-239). */
-  const K1 = { I: ['Tờ trình và phương án sản xuất kinh doanh đã được phê duyệt'],
-    II: ['Sản phẩm mẫu, phụ kiện', 'Cấu hình sản phẩm', 'eBOM và vòng đời linh kiện', 'Danh mục linh kiện leadtime dài, Export License', 'Vật tư bảo hành',
-      'Chỉ tiêu kỹ thuật ngoại', 'Bài đo, phương pháp đo', 'Kết quả đo', 'Kết quả thử nghiệm thực tế', 'Hướng dẫn sử dụng', 'Hướng dẫn sửa chữa, bảo dưỡng'],
-    III: ['Thuyết minh kỹ thuật', 'Chỉ tiêu nội bộ', 'Chỉ tiêu và phương pháp đo module', 'Bài đo và bảng đánh giá chỉ tiêu nội', 'Hồ sơ sản xuất thử nghiệm',
-      'Lưu trình đo kiểm module, bán thành phẩm', 'Hồ sơ thiết kế (bản vẽ hệ thống, sơ đồ nguyên lý, Gerber, bản vẽ cơ khí)', 'Thiết kế tem nhãn, bao bì'],
-    IV: ['Quy trình công nghệ', 'Firmware và hướng dẫn nạp', 'Phần mềm và hướng dẫn cài đặt', 'Hồ sơ kiểm soát chất lượng', 'Danh mục Jig, Stencil và hướng dẫn',
-      'Danh mục công cụ dụng cụ', 'Biên bản thống nhất thành phần đủ điều kiện sản xuất giữa QLSX và R&D'] };
+  /* Danh mục hồ sơ chuyển giao — Khối 1: 27 hạng mục đầu vào của QT-TTSX-4A11 §5.2, đúng tên và thứ tự; dấu * = bắt buộc (cột "x" của QT, 14 hạng mục — (b) Q3).
+     Khối 2: 20 hồ sơ, SX-KS-K2 §2.1 nêu 8 tên, 12 tên còn lại GIẢ LẬP (P-239), đều bắt buộc. */
+  const K1 = { I: ['*Tờ trình phương án sản xuất kinh doanh được cấp có thẩm quyền phê duyệt'],
+    II: ['Sản phẩm mẫu và phụ kiện đồng bộ', '*Cấu hình đồng bộ 1 sản phẩm', '*Danh mục VTHH (eBOM) đồng nhất với cấu hình, kèm thời gian hỗ trợ của nhà sản xuất (Active time)',
+      '*Danh mục VTHH yêu cầu export license, leadtime dài', '*Danh mục VTHH và bán thành phẩm dùng cho bảo hành sản phẩm', 'Chỉ tiêu ngoại (chỉ tiêu, tính năng chiến-kỹ thuật sản phẩm)',
+      'Bài đo, phương pháp đo chỉ tiêu ngoại', 'Bảng đánh giá đo kiểm theo chỉ tiêu ngoại', 'Kết quả thử nghiệm thực tế sản phẩm', 'Hướng dẫn sử dụng (User manual)',
+      'Hướng dẫn sửa chữa và bảo dưỡng (Factory service manual)'],
+    III: ['*Thuyết minh kỹ thuật', '*Chỉ tiêu nội (chỉ tiêu sản xuất)', '*Chỉ tiêu và phương pháp kiểm tra cho các module cấu thành sản phẩm', '*Bài đo, phương pháp đo chỉ tiêu nội',
+      '*Bảng đánh giá đo kiểm theo chỉ tiêu nội', 'Bộ tài liệu báo cáo giai đoạn sản xuất thử nghiệm', '*Lưu trình đo kiểm cho từng module, bán thành phẩm', '*Hồ sơ thiết kế'],
+    IV: ['*Quy trình công nghệ lắp ráp, gia công, tích hợp, đồng điều chỉnh', 'Firmware và hướng dẫn nạp', 'Phần mềm và hướng dẫn cài đặt', 'Hồ sơ kiểm soát chất lượng sản xuất',
+      '*Công cụ hỗ trợ chế thử, sản xuất (Jig, stencil…): công cụ, thiết kế, hướng dẫn cấu hình, sử dụng', 'Danh mục công cụ dụng cụ trong sản xuất thử nghiệm và sản xuất loạt',
+      'Biên bản thống nhất thành phần đủ điều kiện sản xuất giữa QLSX và R&D'] };
+  /* Mô tả hạng mục 20 theo QT: chỉ các phần có (*) là bắt buộc. */
+  const K1DESC = { 'Hồ sơ thiết kế': 'Bắt buộc: thiết kế hệ thống tổng thể, thiết kế khối chức năng, hồ sơ thiết kế mạch in (gerbers, fab…), hồ sơ thiết kế cơ khí (3D, 2D). Không bắt buộc: thiết kế nguyên lý, hồ sơ quản lý điều chỉnh thiết kế, thiết kế tem nhãn, bao bì và đóng gói.' };
   const K2 = { II: ['Bản vẽ thiết kế phần cứng', 'Sơ đồ nguyên lý', 'Gerber file', 'BOM vật tư', 'Firmware, phần mềm đính kèm', 'Tài liệu hướng dẫn lắp ráp',
     'Quy trình đo kiểm', 'Hộp test, sân test mô phỏng', 'Chỉ tiêu kỹ thuật', 'Kết quả thử nghiệm', 'Hướng dẫn sử dụng', 'Thiết kế cơ khí vỏ', 'Thiết kế tem nhãn, bao bì'],
   III: ['Báo cáo đánh giá chất lượng sản phẩm', 'Ghi chú phát hành phiên bản'],
@@ -85,8 +102,11 @@
   D.sxK2Simulated = 12;
   const hsRows = (khoi, src) => {
     const out = []; let n = 0;
-    /* buoc 4 = hồ sơ lập ở bước 4 luồng chuyển giao (biên bản thống nhất), không bắt buộc khi R&D gửi thẩm định. */
-    Object.entries(src).forEach(([nhom, names]) => names.forEach((t) => { n += 1; out.push([`${khoi}-HS${String(n).padStart(2, '0')}`, t, '', true, 0, Object.assign({ khoi, nhom }, /^Biên bản thống nhất/.test(t) ? { buoc: 4 } : {})]); }));
+    /* buoc 4 = hồ sơ lập ở bước 4 luồng chuyển giao (biên bản thống nhất), không tính khi R&D gửi thẩm định. bb = Bắt buộc (Y / N): Khối 1 theo dấu *, Khối 2 đều Y. */
+    Object.entries(src).forEach(([nhom, names]) => names.forEach((t0) => {
+      n += 1; const star = t0[0] === '*', t = star ? t0.slice(1) : t0;
+      out.push([`${khoi}-HS${String(n).padStart(2, '0')}`, t, K1DESC[t] || '', true, 0, Object.assign({ khoi, nhom, bb: khoi === 'K2' || star ? 'Y' : 'N' }, /^Biên bản thống nhất/.test(t) ? { buoc: 4 } : {})]);
+    }));
     return out;
   };
 
@@ -102,10 +122,11 @@
         ['L3', 'Loại 3 — Lỗi tại nhà máy', 'Lỗi thao tác, máy móc gia công, hàn dán SMT, phương tiện đo tại nhà máy; thời hạn theo quy trình của nhà máy', true, 1, { unit: 'NM' }],
       ] },
     { key: 'sx-ho-so-chuyen-giao', scr: 'SX-13', title: 'Danh mục hồ sơ chuyển giao', entity: 'hồ sơ chuyển giao', icon: 'view_list', roles: ['sxpm', 'sxrd', 'sxqa'], built: true, q: ['P-239'],
-      use: 'Hồ sơ bắt buộc của gói chuyển giao từ nghiên cứu sang sản xuất; gói chỉ gửi thẩm định được khi đủ hồ sơ của khối. Khối 1: 27 hồ sơ (SX-KS-K1 §4 Bảng 10); Khối 2: 20 hồ sơ (SX-KS-K2 §2.1).',
+      use: 'Hồ sơ của gói chuyển giao từ nghiên cứu sang sản xuất; gói chỉ gửi thẩm định được khi đủ hồ sơ Bắt buộc của khối. Khối 1: 27 hạng mục, 14 bắt buộc (QT-TTSX-4A11 §5.2); Khối 2: 20 hồ sơ (SX-KS-K2 §2.1).',
       fields: [code('Mã hồ sơ', 120), name('Tên hồ sơ', 360),
         { key: 'khoi', label: 'Khối', type: 'select', required: true, options: KHOI, width: 110 },
-        { key: 'nhom', label: 'Nhóm', type: 'select', required: true, options: NHOM, width: 280 }, desc()],
+        { key: 'nhom', label: 'Nhóm', type: 'select', required: true, options: NHOM, width: 280 },
+        { key: 'bb', label: 'Bắt buộc', type: 'select', required: true, options: [{ value: 'Y', label: 'Có' }, { value: 'N', label: 'Không' }], width: 110 }, desc()],
       seed: hsRows('K1', K1).concat(hsRows('K2', K2)) },
     { key: 'sx-cap-duyet', scr: 'SX-13', title: 'Cấp phê duyệt thay đổi kỹ thuật', entity: 'cấp phê duyệt', icon: 'phan_he_quy_trinh', roles: ['sxpm', 'sxrd'], built: true,
       use: 'Cổng chọn người phê duyệt lệnh thay đổi kỹ thuật (ECO) theo phạm vi thay đổi. Căn cứ SX-KS-K1 §3.3.1 Bảng 8.',
@@ -170,24 +191,24 @@
   /* T71 S1: thông tin bổ sung của dự án mẫu. perf = mức bám kế hoạch (sinh % hoàn thành theo ngày, xem sx-du-an.js planOf); cap = giai đoạn cuối đã bắt đầu
      (dự án chưa sản xuất thì giai đoạn sau 0%); baseline = ngày chốt kế hoạch gốc (luồng SX-KH bước 5, S2). Tài liệu / lịch sử hư cấu. */
   const EXTRA = {
-    'DA-SX-2026-001': { basis: ['PAKD', 'PAKD số 214/PAKD-VHT ngày 12/01/2026'], customer: 'Đơn vị sử dụng thuộc Bộ Quốc phòng', perf: 0.95, cap: 4, baseline: '2026-03-10',
+    'DA-SX-2026-001': { basis: ['PAKD', 'PAKD số 214/PAKD-VHT ngày 12/01/2026'], pakd: 'PAKD-2026-214', khsxkd: 'KHSXKD-K1-2026', trial: true, customer: 'Đơn vị sử dụng thuộc Bộ Quốc phòng', perf: 0.95, cap: 4, baseline: '2026-03-10',
       goal: 'Sản xuất, tích hợp, nghiệm thu 40 bộ đài thu phát VT-25 phiên bản v2.1 đạt chỉ tiêu kỹ thuật đã phê duyệt; bàn giao trước 15/12/2026.',
       creator: 'sxpm', created: '2026-02-20',
       docs: [['Kế hoạch sản xuất VT-25 đợt 1 (đã phê duyệt).pdf', 'KH', 'v1.2', 'sxpm', '2026-03-10'], ['Biên bản làm việc thống nhất phương án tổ chức sản xuất với VMC.pdf', 'BB', 'v1.0', 'sxpm', '2026-04-02'],
         ['PAKD 214-PAKD-VHT.pdf', 'PAKD', 'v1.0', 'sxpm', '2026-02-20']],
       hist: [['2026-02-20 09:12', 'sxpm', 'Tạo dự án', ''], ['2026-03-05 16:40', 'sxld', 'Phê duyệt kế hoạch sản xuất', 'Kế hoạch v1.2'], ['2026-03-10 10:00', 'sxpm', 'Chốt kế hoạch gốc', 'Kick-off dự án'],
         ['2026-04-02 15:20', 'sxpm', 'Cập nhật tài liệu', 'Biên bản làm việc với VMC'], ['2026-09-18 08:30', 'sxpm', 'Cập nhật kế hoạch', 'Điều chỉnh mốc hoàn thành tích hợp do vật tư leadtime dài về chậm']] },
-    'DA-SX-2026-002': { basis: ['NV', 'Nhiệm vụ sản xuất giao tại Quyết định số 1520/QĐ-VHT ngày 15/05/2026'], customer: 'Đơn vị sử dụng thuộc Bộ Quốc phòng', perf: 0.6, cap: 2, baseline: '2026-06-12',
+    'DA-SX-2026-002': { trial: true, basis: ['NV', 'Nhiệm vụ sản xuất giao tại Quyết định số 1520/QĐ-VHT ngày 15/05/2026'], customer: 'Đơn vị sử dụng thuộc Bộ Quốc phòng', perf: 0.6, cap: 2, baseline: '2026-06-12',
       goal: 'Tự tổ chức sản xuất 12 tổ hợp QĐ-12: mua linh kiện, thuê gia công bo mạch và cơ khí, tích hợp, đo kiểm, thử nghiệm thực tế tại trận địa.',
       creator: 'sxpm', created: '2026-05-20',
       docs: [['Kế hoạch sản xuất QĐ-12 (đã phê duyệt).pdf', 'KH', 'v1.0', 'sxpm', '2026-06-12'], ['Quyết định giao nhiệm vụ 1520-QĐ-VHT.pdf', 'NV', 'v1.0', 'sxpm', '2026-05-20']],
       hist: [['2026-05-20 14:05', 'sxpm', 'Tạo dự án', ''], ['2026-06-10 11:30', 'sxld', 'Phê duyệt kế hoạch sản xuất', 'Kế hoạch v1.0'], ['2026-06-12 09:00', 'sxpm', 'Chốt kế hoạch gốc', 'Kick-off dự án; giao Sub PM phụ trách bán thành phẩm']] },
-    'DA-SX-2026-003': { basis: ['HD', 'Hợp đồng cung cấp thiết bị số 88/2026/HĐ-VTL ngày 20/03/2026'], customer: 'Viettel Lào (khách hàng thị trường)', perf: 1, cap: 4, baseline: '2026-04-20', lot: 20000,
+    'DA-SX-2026-003': { trial: false, basis: ['HD', 'Hợp đồng cung cấp thiết bị số 88/2026/HĐ-VTL ngày 20/03/2026'], customer: 'Viettel Lào (khách hàng thị trường)', perf: 1, cap: 4, baseline: '2026-04-20', lot: 20000,
       goal: 'Thuê gia công trọn gói 120.000 bộ phát WM-6, nghiệm thu theo lô 20.000 thiết bị, nhập kho Tổng công ty để giao khách hàng trước 30/11/2026.',
       creator: 'sxk2', created: '2026-04-01',
       docs: [['Kế hoạch sản xuất WM-6 Lào (đã phê duyệt).pdf', 'KH', 'v1.1', 'sxk2', '2026-04-20'], ['Hợp đồng 88-2026-HĐ-VTL.pdf', 'HD', 'v1.0', 'sxk2', '2026-04-01']],
       hist: [['2026-04-01 08:45', 'sxk2', 'Tạo dự án', ''], ['2026-04-17 17:10', 'sxld', 'Phê duyệt kế hoạch sản xuất', 'Kế hoạch v1.1'], ['2026-04-20 10:00', 'sxk2', 'Chốt kế hoạch gốc', 'Kick-off dự án']] },
-    'DA-SX-2026-004': { basis: ['PAKD', 'PAKD số 352/PAKD-VHT ngày 28/10/2026'], customer: 'Tổng Công ty Viễn thông (khách hàng nội bộ Tập đoàn)', perf: 0, cap: 0, baseline: null,
+    'DA-SX-2026-004': { basis: ['PAKD', 'PAKD số 352/PAKD-VHT ngày 28/10/2026'], pakd: 'PAKD-2026-352', khsxkd: 'KHSXKD-K2-2027', trial: false, customer: 'Tổng Công ty Viễn thông (khách hàng nội bộ Tập đoàn)', perf: 0, cap: 0, baseline: null,
       goal: 'Tổ chức sản xuất 3.000 trạm 5G Macro gNB-M3 qua VMC tổng thầu, triển khai theo kế hoạch năm 2027.',
       creator: 'sxk2', created: '2026-11-10', docs: [['PAKD 352-PAKD-VHT.pdf', 'PAKD', 'v1.0', 'sxk2', '2026-11-10']], hist: [['2026-11-10 10:20', 'sxk2', 'Tạo dự án', '']] },
   };
@@ -195,16 +216,33 @@
   D.sxStatus = { PLANNING: 'Lập kế hoạch', PREPARING: 'Chuẩn bị sản xuất', IN_PRODUCTION: 'Đang sản xuất', ACCEPTANCE: 'Nghiệm thu', DONE: 'Hoàn thành' };
   D.sxStatusV = { PLANNING: 'default', PREPARING: 'warning', IN_PRODUCTION: 'info', ACCEPTANCE: 'warning', DONE: 'success' };
   D.sxBasis = { PAKD: 'Phương án kinh doanh', NV: 'Nhiệm vụ được giao', HD: 'Hợp đồng với khách hàng' };
+  /* (b) Q14 — Phương án kinh doanh đã phê duyệt: nguồn căn cứ chọn khi Thêm mới dự án (QT-TTSX-4A11 §5.1 sự kiện bắt đầu, §5.2 đầu vào mục 1).
+     GIẢ LẬP P-264: hệ thống nguồn của PAKD chưa rõ — thật: API tra cứu PAKD đã duyệt (hệ thống Kinh doanh / VOffice). Một PAKD lập một dự án. */
+  D.sxPakd = [
+    { code: 'PAKD-2026-214', no: '214/PAKD-VHT', date: '2026-01-12', title: 'Phương án kinh doanh đài thu phát VT-25 năm 2026', khoi: 'K1', product: 'VT-25', qty: 40, unitName: 'bộ', customer: 'Đơn vị sử dụng thuộc Bộ Quốc phòng', due: '2026-12-15', kh: 'KHSXKD-K1-2026' },
+    { code: 'PAKD-2026-352', no: '352/PAKD-VHT', date: '2026-10-28', title: 'Phương án kinh doanh trạm 5G Macro gNB-M3 năm 2027', khoi: 'K2', product: 'gNB-M3', qty: 3000, unitName: 'trạm', customer: 'Tổng Công ty Viễn thông (khách hàng nội bộ Tập đoàn)', due: '2027-06-30', kh: 'KHSXKD-K2-2027' },
+    { code: 'PAKD-2026-388', no: '388/PAKD-VHT', date: '2026-11-03', title: 'Phương án kinh doanh thiết bị đầu cuối quang ONT-X2 năm 2027', khoi: 'K2', product: 'ONT-X2', qty: 80000, unitName: 'thiết bị', customer: 'Tổng Công ty Viễn thông (khách hàng nội bộ Tập đoàn)', due: '2027-09-30', kh: 'KHSXKD-K2-2027' },
+    { code: 'PAKD-2026-401', no: '401/PAKD-VHT', date: '2026-11-06', title: 'Phương án kinh doanh thiết bị định tuyến biên ER-9', khoi: 'K2', product: 'ER-9', qty: 2000, unitName: 'thiết bị', customer: 'Viettel Campuchia (khách hàng thị trường)', due: '2027-08-31', kh: 'KHSXKD-K2-2027' },
+    { code: 'PAKD-2026-409', no: '409/PAKD-VHT', date: '2026-11-09', title: 'Phương án kinh doanh đài ra-đa cảnh giới tầm thấp RĐ-40 đợt 2', khoi: 'K1', product: 'RĐ-40', qty: 6, unitName: 'bộ', customer: 'Đơn vị sử dụng thuộc Bộ Quốc phòng', due: '2027-10-31', kh: 'KHSXKD-K1-2027' },
+    { code: 'PAKD-2026-415', no: '415/PAKD-VHT', date: '2026-11-12', title: 'Phương án kinh doanh bộ phát Wi-Fi Mesh WM-6 thị trường Campuchia', khoi: 'K2', product: 'WM-6', qty: 50000, unitName: 'thiết bị', customer: 'Viettel Campuchia (khách hàng thị trường)', due: '2027-05-31', kh: 'KHSXKD-K2-2027' },
+  ];
+  /* Kế hoạch sản xuất kinh doanh năm (QT bước 1 đầu vào "KHSXKD năm (nếu có)") — GIẢ LẬP P-264. */
+  D.sxKhsxkd = [
+    { code: 'KHSXKD-K1-2026', title: 'Kế hoạch sản xuất kinh doanh năm 2026 — Khối 1', khoi: 'K1' }, { code: 'KHSXKD-K1-2027', title: 'Kế hoạch sản xuất kinh doanh năm 2027 — Khối 1', khoi: 'K1' },
+    { code: 'KHSXKD-K2-2026', title: 'Kế hoạch sản xuất kinh doanh năm 2026 — Khối 2', khoi: 'K2' }, { code: 'KHSXKD-K2-2027', title: 'Kế hoạch sản xuất kinh doanh năm 2027 — Khối 2', khoi: 'K2' },
+  ];
   D.sxDocKind = DOC_KIND;
   /* Nhóm hồ sơ của Hồ sơ dự án (SX-18) theo loại tài liệu. */
   D.sxDocGroup = { KH: 'Kế hoạch và căn cứ', PA: 'Kế hoạch và căn cứ', PAKD: 'Kế hoạch và căn cứ', NV: 'Kế hoạch và căn cứ', HD: 'Kế hoạch và căn cứ', M4: 'Chuẩn bị sản xuất', BB: 'Chuẩn bị sản xuất',
-    BT: 'Bất thường và thay đổi', BTPA: 'Bất thường và thay đổi', ECR: 'Bất thường và thay đổi', ECO: 'Bất thường và thay đổi', ECN: 'Bất thường và thay đổi', LOG: 'Bất thường và thay đổi', NT: 'Nghiệm thu', KHAC: 'Khác' };
+    BT: 'Bất thường và thay đổi', BTPA: 'Bất thường và thay đổi', ECR: 'Bất thường và thay đổi', ECO: 'Bất thường và thay đổi', ECN: 'Bất thường và thay đổi', LOG: 'Bất thường và thay đổi', NT: 'Nghiệm thu',
+    KO: 'Kế hoạch và căn cứ', QDGV: 'Kế hoạch và căn cứ', BGNM: 'Chuẩn bị sản xuất', DT: 'Chuẩn bị sản xuất', NCC: 'Chuẩn bị sản xuất', IPQC: 'Nghiệm thu', TN: 'Nghiệm thu', HOC: 'Nghiệm thu', COCQ: 'Nghiệm thu', KHAC: 'Khác' };
   /* Ngày hiện tại của phân hệ (tính chậm mốc). GIẢ LẬP — thật: ngày hệ thống. */
   D.sxToday = '2026-11-16';
   /* Sản phẩm và phiên bản (S3 nối vào danh sách Sản phẩm sẵn sàng sản xuất; ready = đã qua cổng chuyển giao). */
   D.sxProducts = [
     { code: 'VT-25', name: 'Đài thu phát vô tuyến chiến thuật VT-25', version: 'v2.1_HW_Rev3', khoi: 'K1', ready: true, rel: '2026-01-28' },
-    { code: 'QĐ-12', name: 'Tổ hợp quan sát quang điện tử QĐ-12', version: 'v1.0_HW_Rev2', khoi: 'K1', ready: false },
+    { code: 'QĐ-12', name: 'Tổ hợp quan sát quang điện tử QĐ-12', version: 'v1.0_HW_Rev2', khoi: 'K1', ready: true, rel: '2026-05-28' },
+    { code: 'TS-08', name: 'Tổ hợp trinh sát điện tử TS-08', version: 'v1.0_HW_Rev1', khoi: 'K1', ready: false },
     { code: 'RĐ-40', name: 'Đài ra-đa cảnh giới tầm thấp RĐ-40', version: 'v1.3', khoi: 'K1', ready: true, rel: '2026-09-15' },
     { code: 'WM-6', name: 'Bộ phát Wi-Fi Mesh WM-6', version: 'v3.0.1_HW_Rev2', khoi: 'K2', ready: true, rel: '2026-03-30' },
     { code: 'gNB-M3', name: 'Trạm 5G Macro gNB-M3', version: 'v1.2', khoi: 'K2', ready: true, rel: '2026-10-25' },
@@ -218,13 +256,16 @@
        choices [nhãn, tới, kiểu?] — kiểu 'no' = nút từ chối (ý kiến bắt buộc); action = bộ xử lý hành động (SxFlow.ACT) chạy khi xong bước / theo lựa chọn;
        form = khoá eForm (js/eforms/sx-kh.js). Hồ sơ: mã HSKH-<mã dự án>-<lần>; onStart / onEnd = bộ xử lý lúc khởi tạo / kết thúc.
        T71 S12: sign = tên tài liệu ký số MySign ở bước (biến {{…}} theo ngữ cảnh hồ sơ) — bộ chạy mở hộp thoại ký trước khi hoàn thành bước (GIẢ LẬP P-258). */
-    'SX-KH': { name: 'Phê duyệt kế hoạch sản xuất', short: 'HSKH', obj: 'project', tab: 'kh', src: 'SX-KS-K1 §3.1 bước 1–3 (QT.VHT.TTSX.4A.1.1); BM-QLHDSX-01',
+    'SX-KH': { name: 'Phê duyệt kế hoạch sản xuất', short: 'HSKH', obj: 'project', tab: 'kh', src: 'QT-TTSX-4A11 §5.4 bước 1–3, §5.5; BM-QLHDSX-01',
       onStart: 'kh.start', onEnd: 'kh.baseline', endText: 'Kết thúc — kế hoạch gốc đã chốt, dự án chuyển Chuẩn bị sản xuất', steps: [
-      [1, 'Lập báo cáo phương án sản xuất', 'R-SX-PM', { next: 2, nlv: 3, label: 'Hoàn thành', form: 'pa' }],
-      [2, 'Lập kế hoạch sản xuất dự án (BM.QLHDSX.01 và 6 phụ lục)', 'R-SX-PM', { next: 3, nlv: 5, label: 'Trình xem xét', form: 'kh', action: 'kh.submit' }],
-      [3, 'Xem xét kế hoạch', 'R-SX-LD', { nlv: 2, form: 'yk', choices: [['Đồng ý', 4], ['Yêu cầu chỉnh sửa', 2, 'no']], action: 'kh.review' }],
-      [4, 'Phê duyệt kế hoạch sản xuất', 'R-SX-LD', { nlv: 2, form: 'yk', choices: [['Phê duyệt', 5], ['Trả lại', 2, 'no']], action: 'kh.approve', sign: 'Kế hoạch sản xuất số {{khSo}}' }],
-      [5, 'Kick-off, giao nhiệm vụ PM / Sub PM, chốt mốc kế hoạch gốc', 'R-SX-PM', { next: 'end', nlv: 3, label: 'Chốt kế hoạch gốc', form: 'ko' }]] },
+      /* (b) Q1: bước 1 không bắt buộc (QT lưu ý) — lựa chọn thứ hai bỏ qua bước 2, đi thẳng lập kế hoạch; form đổi theo lựa chọn (lý do bỏ qua). */
+      [1, 'Lập báo cáo phương án sản xuất (không bắt buộc)', 'R-SX-PM', { nlv: 3, form: 'pa', choices: [['Trình Ban Giám đốc Khối', 2], ['Không lập báo cáo, lập kế hoạch ngay', 3]], action: 'kh.pa' }],
+      [2, 'Ban Giám đốc Khối cho ý kiến chỉ đạo phương án sản xuất', 'R-SX-LD', { nlv: 2, form: 'cd', choices: [['Đồng ý phương án', 3], ['Yêu cầu chỉnh sửa', 1, 'no']], action: 'kh.direct' }],
+      [3, 'Lập kế hoạch sản xuất dự án (BM.QLHDSX.01 và 6 phụ lục)', 'R-SX-PM', { next: 4, nlv: 5, label: 'Trình phê duyệt', form: 'kh', action: 'kh.submit' }],
+      /* (b) Q5: một lần Ban Giám đốc Khối phê duyệt (QT §5.5: BGĐ Khối A) — bỏ bước Xem xét riêng. */
+      [4, 'Ban Giám đốc Khối phê duyệt kế hoạch sản xuất', 'R-SX-LD', { nlv: 2, form: 'yk', choices: [['Phê duyệt', 5], ['Trả lại', 3, 'no']], action: 'kh.approve', sign: 'Kế hoạch sản xuất số {{khSo}}' }],
+      /* (b) Q6: kick-off do Ban Giám đốc Khối chủ trì; biên bản kick-off, quyết định giao nhiệm vụ là đầu ra / đầu vào bắt buộc. */
+      [5, 'Họp kick-off, giao nhiệm vụ PM và nhóm dự án, chốt mốc kế hoạch gốc', 'R-SX-PM', { next: 'end', nlv: 3, label: 'Chốt kế hoạch gốc', form: 'ko' }]] },
     /* T71 S3: đối tượng cha = gói chuyển giao (sx-chuyen-giao.js). Bước 2 song song 3a ‖ 3b; bước 4 hợp nhánh (join). guard bg.full = thiếu hồ sơ thì không gửi được. */
     'SX-BG': { name: 'Chuyển giao từ nghiên cứu sang sản xuất', short: 'HSCG', obj: 'package', tab: 'hs', src: 'SX-KS-K2 §4.1; SX-KS-K1 §4 (cổng chuyển giao)',
       onStart: 'bg.start', endText: 'Kết thúc — sản phẩm vào Kho sản phẩm sẵn sàng sản xuất', steps: [
@@ -234,11 +275,21 @@
       ['3b', 'Thẩm định hồ sơ (Đảm bảo chất lượng)', 'R-SX-QA', { nlv: 3, form: 'td', choices: [['Đạt', 4], ['Yêu cầu bổ sung', 1, 'no']], action: 'bg.assess' }],
       [4, 'Lập biên bản thống nhất thành phần đủ điều kiện sản xuất', 'R-SX-PM', { next: 5, nlv: 2, join: true, label: 'Hoàn thành', form: 'bb', action: 'bg.minutes', sign: 'Biên bản thống nhất số {{bbSo}}' }],
       [5, 'Ghi vào danh sách sản phẩm sẵn sàng sản xuất, cấp mã phiên bản', 'svc', { next: 'end', label: 'Hệ thống ghi Kho sản phẩm sẵn sàng sản xuất', action: 'bg.release' }]] },
+    /* (b) Q4: bàn giao tài liệu sản xuất cho đơn vị sản xuất (QT-TTSX-4A11 §5.4 bước 5, BM.QLHDSX.03) — sau cổng chuyển giao R&D → QLSX. Đối tượng cha = dự án.
+       QT §5.5 bước 5: BGĐ Khối A (phê duyệt), QLSX R, NCPT S. Đơn vị sản xuất tiếp nhận (R-SX-NM). Xong thì tiêu chí 4M MD2 tự đạt. */
+    'SX-BGNM': { name: 'Bàn giao tài liệu sản xuất cho đơn vị sản xuất', short: 'HSBGNM', obj: 'project', tab: 'cg', src: 'QT-TTSX-4A11 §5.4 bước 5, §5.5; BM-QLHDSX-XLS (BM.QLHDSX.03 ❓)',
+      onStart: 'nm.start', endText: 'Kết thúc — tài liệu sản xuất đã bàn giao, lưu trên VMMS', steps: [
+      [1, 'Lập checklist bàn giao tài liệu cho đơn vị sản xuất (BM.QLHDSX.03)', 'R-SX-PM', { next: 2, nlv: 3, label: 'Gửi đơn vị sản xuất', form: 'ck', guard: 'nm.factory', action: 'nm.send' }],
+      [2, 'Đơn vị sản xuất tiếp nhận, rà soát tài liệu', 'R-SX-NM', { nlv: 2, form: 'tn', choices: [['Xác nhận tiếp nhận', 3], ['Yêu cầu bổ sung', 1, 'no']] }],
+      [3, 'Kiểm tra quy trình công nghệ do đơn vị sản xuất thực hiện', 'R-SX-PM', { nlv: 5, form: 'kt', choices: [['Đạt', 4], ['Yêu cầu điều chỉnh', 2, 'no']] }],
+      [4, 'Ban Giám đốc Khối phê duyệt bàn giao tài liệu sản xuất', 'R-SX-LD', { nlv: 2, form: 'yk', choices: [['Phê duyệt', 5], ['Trả lại', 3, 'no']] }],
+      [5, 'Lưu tài liệu đã bàn giao lên VMMS, cập nhật điều kiện 4M', 'svc', { next: 'end', label: 'Hệ thống lưu tài liệu lên VMMS, cập nhật điều kiện 4M', action: 'nm.done' }]] },
     /* T71 S6: đối tượng cha = phiếu bất thường (sx-bat-thuong.js). Bước 1 = lập phiếu (người báo cáo, R-SX-REP), xong ngay khi Thêm mới; bước 5 giao theo loại (R-SX-XL: đơn vị xử lý của danh mục). */
     'SX-BT': { name: 'Xử lý bất thường trong sản xuất', short: 'HSBT', obj: 'issue', tab: 'xl', src: 'SX-KS-K1 §3.2 (QT.VHT.TTSX.4A.1.2), Bảng 6, Bảng 7',
       onStart: 'bt.start', endText: 'Kết thúc — phiếu bất thường đã đóng', steps: [
-      [1, 'Lập phiếu báo cáo bất thường (BM.QLBT.01)', 'R-SX-REP', { next: 2, nlv: 1, label: 'Gửi', form: 'lap' }],
-      [2, 'Tiếp nhận (trong 24 giờ làm việc), phân tích nguyên nhân, phân loại và mức độ', 'R-SX-PM', { next: 3, nlv: 1, label: 'Hoàn thành tiếp nhận', form: 'pl', action: 'bt.classify' }],
+      /* T74 #100, #101: người lập chọn loại + mức độ ngay ở bước 1; bước 2 chỉ tiếp nhận, phân tích nguyên nhân, đính kèm — sai phân loại thì trả lại người lập (Q10). */
+      [1, 'Lập phiếu báo cáo bất thường (BM.QLBT.01), phân loại và mức độ', 'R-SX-REP', { next: 2, nlv: 1, label: 'Gửi', form: 'lap', action: 'bt.lap' }],
+      [2, 'Tiếp nhận (trong 24 giờ làm việc), phân tích nguyên nhân', 'R-SX-PM', { nlv: 1, form: 'pl', action: 'bt.classify', choices: [['Hoàn thành tiếp nhận', 3], ['Trả lại người lập', 1, 'no']] }],
       [3, 'Đề xuất phương án xử lý (BM.QLBT.02)', 'R-SX-PM', { next: 4, nlv: 2, label: 'Trình phê duyệt', form: 'pa' }],
       [4, 'Phê duyệt phương án', 'R-SX-LD', { nlv: 1, form: 'yk', choices: [['Phê duyệt', 5], ['Trả lại', 3, 'no']] }],
       [5, 'Triển khai theo loại: Loại 1 QLSX · Loại 2 R&D (có thể mở thay đổi kỹ thuật) · Loại 3 Nhà máy', 'R-SX-XL', { next: 6, nlv: 5, label: 'Hoàn thành triển khai', form: 'tk' }],
@@ -259,13 +310,13 @@
       [9, 'Bàn giao nhà máy áp dụng, thu hồi tài liệu cũ', 'R-SX-PM', { next: 'end', nlv: 2, label: 'Hoàn thành bàn giao', form: 'bg', action: 'td.close' }]] },
     /* T71 S8: đối tượng cha = đề nghị nghiệm thu lô (sx-nghiem-thu.js). OQC Không đạt → kết thúc hồ sơ, hệ thống lập phiếu bất thường (nt.oqc); bước 5 chặn khi chưa có biên bản đạt (guard nt.minutes);
        bước 6 service task nhận phiếu nhập kho TCT (API-04 — GIẢ LẬP) và lưu hồ sơ theo số sê-ri. */
-    'SX-NT': { name: 'Nghiệm thu sản phẩm', short: 'HSNT', obj: 'lot', tab: 'kq', src: 'SX-KS-K1 §3.1 bước 12–14; SX-KS-K2 §4.3 bước 4–5 (nghiệm thu theo lô, API-04)',
+    'SX-NT': { name: 'Nghiệm thu sản phẩm', short: 'HSNT', obj: 'lot', tab: 'kq', src: 'QT-TTSX-4A11 §5.4 bước 12–14; SX-KS-K2 §4.3 bước 4–5 (nghiệm thu theo lô, API-04)',
       onStart: 'nt.start', endText: (c) => (c.vars.oqcNok ? 'Kết thúc — lô không đạt đánh giá xuất xưởng, đã lập phiếu bất thường' : 'Kết thúc — lô đã nhập kho, hồ sơ lưu theo số sê-ri'), steps: [
       [1, 'Đề nghị nghiệm thu lô (số lượng, danh sách số sê-ri)', 'R-SX-REP', { next: 2, nlv: 1, label: 'Gửi', form: 'dn' }],
       [2, 'Đánh giá chất lượng xuất xưởng (OQC)', 'R-SX-QA', { nlv: 2, form: 'oqc', choices: [['Đạt', 3], ['Không đạt — lập phiếu bất thường', 'end', 'no']], action: 'nt.oqc' }],
-      [3, 'Lập biên bản nghiệm thu (cấp Tổng công ty hoặc theo lô)', 'R-SX-QA', { next: 4, nlv: 2, label: 'Trình phê duyệt', form: 'bb' }],
+      [3, 'Lập biên bản nghiệm thu cấp Tổng công ty (theo lô), BBBG hàng hóa (HOC), CO, CQ', 'R-SX-QA', { next: 4, nlv: 2, label: 'Trình phê duyệt', form: 'bb' }],
       [4, 'Phê duyệt nghiệm thu, phát hành chứng chỉ chất lượng', 'R-SX-LD', { nlv: 1, form: 'yk', choices: [['Phê duyệt', 5], ['Trả lại', 3, 'no']], action: 'nt.cert', sign: 'Chứng chỉ chất lượng lô {{lo.code}}' }],
-      [5, 'Đề nghị nhập kho Tổng công ty', 'R-SX-PM', { next: 6, nlv: 1, label: 'Gửi đề nghị nhập kho', form: 'nk', guard: 'nt.minutes' }],
+      [5, 'Bao gói, nghiệm thu sau bao gói, đề nghị nhập kho Tổng công ty', 'R-SX-PM', { next: 6, nlv: 1, label: 'Gửi đề nghị nhập kho', form: 'nk', guard: 'nt.minutes' }],
       [6, 'Nhận phiếu nhập kho đã duyệt (ĐTMS / ERP Kho), lưu hồ sơ theo số sê-ri', 'svc', { next: 'end', label: 'Hệ thống nhận phiếu nhập kho, lưu hồ sơ theo số sê-ri', action: 'nt.stock' }]] },
     /* T71 S10 (D-124): đối tượng cha = đề xuất mua sắm từ sản xuất (sx-mua-sam.js). Gửi phê duyệt ở màn đề xuất khởi tạo hồ sơ; Từ chối kết thúc hồ sơ, đề xuất về Bị từ chối để sửa và gửi lại;
        Duyệt → service task gửi sang ĐTMS (API-01) tạo ĐXMS. Cấp duyệt GIẢ LẬP P-255 (Lãnh đạo Khối). */
@@ -278,19 +329,25 @@
   /* Người xử lý theo vai của bước (GIẢ LẬP P-244: thật = cấu hình nhân sự theo bước / vai của quy trình, như Nhân sự thực hiện ĐXMS).
      Giám đốc dự án = PM của dự án; Lãnh đạo = Ban Giám đốc Khối 1 cho cả hai khối (chưa có vai lãnh đạo Khối 2). */
   D.sxAssign = (role, p) => ({ 'R-SX-PM': p && p.pm, 'R-SX-LD': 'sxld', 'R-SX-QA': 'sxqa', 'R-SX-RD': (p && p.rd) || 'sxrd', 'R-SX-NM': 'sxnm', 'R-SX-REP': p && p.creator, 'R-SX-XL': p && p.handler, 'R-SX-CAP': p && p.approver }[role] || null);
-  /* T71 S3 — gói chuyển giao mẫu: QĐ-12 (dùng cho DA-SX-2026-002) R&D đang lập, còn thiếu 3 hồ sơ (cảnh B). pm = cán bộ Quản lý sản xuất của khối thẩm định. */
-  D.sxPackages = [{ code: 'GCG-QĐ-12-01', product: 'QĐ-12', version: 'v1.0_HW_Rev2', khoi: 'K1', rd: 'sxrd', pm: 'sxpm', created: '2026-10-20', missing: ['K1-HS19', 'K1-HS22', 'K1-HS25'] }];
-  /* Điều kiện 4M (SX-KS-K1 §1.3, §3.1 bước 4–7; biểu mẫu BM.QLHDSX.02 chưa có — tiêu chí GIẢ LẬP P-246). Phần tử thứ 3 = tiêu chí hệ thống tự xác định. */
+  /* T71 S3 — gói chuyển giao mẫu: TS-08 R&D đang lập, còn thiếu 3 hồ sơ (cảnh B). (b) Q2: chuyển giao xong trước khi lập dự án (QT-TTSX-4A11 §5.2 mục 27) — chưa có dự án nào của TS-08. pm = cán bộ Quản lý sản xuất của khối thẩm định. */
+  D.sxPackages = [{ code: 'GCG-TS-08-01', product: 'TS-08', version: 'v1.0_HW_Rev1', khoi: 'K1', rd: 'sxrd', pm: 'sxpm', created: '2026-10-20', missing: ['K1-HS19', 'K1-HS22', 'K1-HS25'] }];
+  /* Điều kiện 4M theo QT-TTSX-4A11 §5.4 bước 4, 6, 7 (kết quả ghi theo BM.QLHDSX.02 — biểu mẫu chưa có, tiêu chí GIẢ LẬP P-246; (b) Q8 bổ sung theo QT).
+     Phần tử thứ 3 = tiêu chí hệ thống tự xác định; thứ 4 = loại tài liệu bắt buộc đính kèm khi xác nhận Đạt (ghi vào tab Tài liệu). */
   D.sxM4 = [
-    ['MAN', 'Nhân lực (Man)', [['MAN1', 'Bố trí nhân lực sản xuất, đo kiểm'], ['MAN2', 'Đào tạo chuyển giao công nghệ hoàn thành']]],
-    ['MACHINE', 'Máy móc, thiết bị (Machine)', [['MC1', 'Máy móc, thiết bị, phương tiện đo sẵn sàng'], ['MC2', 'Jig, Stencil, công cụ dụng cụ theo danh mục chuyển giao'], ['MC3', 'Điều kiện môi trường sản xuất (ESD, nhiệt độ, độ ẩm)']]],
-    ['MATERIAL', 'Vật tư, kinh phí (Material)', [['MT1', 'Kinh phí sản xuất được bảo đảm'], ['MT2', 'Vật tư, linh kiện đợt 1 về kho, đạt kiểm tra đầu vào (IQC)']]],
-    ['METHOD', 'Tài liệu, phương pháp công nghệ (Method)', [['MD1', 'Phiên bản sản phẩm có trong Kho sản phẩm sẵn sàng sản xuất (gói chuyển giao đã duyệt)', 'release'], ['MD2', 'Quy trình công nghệ, lưu trình đo kiểm ban hành cho nhà máy']]],
+    ['MAN', 'Nhân lực (Man)', [['MAN1', 'Nhân sự phục vụ sản xuất bảo đảm theo yêu cầu hồ sơ công nghệ'],
+      ['MAN2', 'Đào tạo về sản phẩm, quy trình sản xuất, công cụ sản xuất cho đơn vị sản xuất', null, 'DT']]],
+    ['MACHINE', 'Máy móc, thiết bị (Machine)', [['MC1', 'Số lượng, tình trạng máy móc, trang bị theo hợp đồng sản xuất, tài liệu thiết kế và yêu cầu của Tổng công ty'],
+      ['MC4', 'Phương tiện đo lường, thử nghiệm còn hạn kiểm định / hiệu chuẩn'], ['MC5', 'Trạm đo, phần mềm đo kiểm tự động đã cài đặt (VMMS)'],
+      ['MC2', 'Công cụ dụng cụ, Jig, Stencil do VHT bảo đảm đã qua QC dự án kiểm tra trước khi bàn giao đối tác'], ['MC3', 'Điều kiện môi trường sản xuất tại các công đoạn (ESD, nhiệt độ, độ ẩm)'],
+      ['MC6', 'Nhà xưởng, vị trí công nghệ sản xuất, đo kiểm, thử nghiệm theo yêu cầu hồ sơ công nghệ']]],
+    ['MATERIAL', 'Vật tư, kinh phí (Material)', [['MT1', 'Tờ trình kinh phí sản xuất được Tổng Giám đốc phê duyệt'], ['MT2', 'Vật tư, linh kiện đợt 1 về kho, đạt kiểm tra đầu vào (IQC)'],
+      ['MT3', 'Điều kiện lưu trữ vật tư hàng hóa sau kiểm tra đầu vào đúng quy định, an toàn, sắp xếp phù hợp']]],
+    ['METHOD', 'Tài liệu, phương pháp công nghệ (Method)', [['MD1', 'Phiên bản sản phẩm có trong Kho sản phẩm sẵn sàng sản xuất (gói chuyển giao đã duyệt)', 'release'], ['MD2', 'Tài liệu sản xuất, quy trình công nghệ bàn giao cho đơn vị sản xuất (BM.QLHDSX.03)', 'handover']]],
   ];
-  /* Kết quả 4M đã xác nhận của DA-SX-2026-002: còn thiếu Jig / Stencil và chưa có gói chuyển giao đã duyệt. */
-  D.sxM4Seed = { 'DA-SX-2026-002': Object.fromEntries(['MAN1', 'MAN2', 'MC1', 'MC3', 'MT1', 'MT2', 'MD2'].map((k) => [k, { ok: true, note: '', who: 'sxpm', at: '2026-10-28 10:00' }])
+  /* Kết quả 4M đã xác nhận của DA-SX-2026-002: còn thiếu Jig / Stencil (sản phẩm QĐ-12 đã chuyển giao 28/05/2026, trước khi lập dự án). */
+  D.sxM4Seed = { 'DA-SX-2026-002': Object.fromEntries(['MAN1', 'MAN2', 'MC1', 'MC3', 'MC4', 'MC5', 'MC6', 'MT1', 'MT2', 'MT3', 'MD2'].map((k) => [k, { ok: true, note: '', who: 'sxpm', at: '2026-10-28 10:00' }])
     .concat([['MC2', { ok: false, note: 'Stencil khối nguồn đang gia công, dự kiến 25/11/2026', who: 'sxpm', at: '2026-10-28 10:00' }]])) };
-  /* Hồ sơ mẫu: DA-SX-2026-004 đã trình kế hoạch, đang chờ Lãnh đạo xem xét (bước 3). Ba dự án còn lại đã phê duyệt trước khi có hệ thống (chỉ có Lịch sử). */
+  /* Hồ sơ mẫu: DA-SX-2026-004 đã trình kế hoạch, đang chờ Ban Giám đốc Khối phê duyệt (bước 4). Ba dự án còn lại đã phê duyệt trước khi có hệ thống (chỉ có Lịch sử). */
   D.sxCases = [
     /* T71 S8 — đề nghị nghiệm thu mẫu: DA-003 lô 1–4 đã nhập kho (khớp phiếu nhập kho S4); DA-001 đợt 1 (12 bộ) chờ OQC. */
     { code: 'HSNT-NT-2026-001-01', flow: 'SX-NT', obj: 'NT-2026-001', status: 'done', started: '2026-06-16 08:00', ended: '2026-06-20 16:00', tokens: [], vars: { oqcKetQua: 'Đạt — lấy mẫu 125 / 20.000 theo AQL 0,65', bbSo: '41/BB-NT', bbKetLuan: 'Lô đạt yêu cầu, đồng ý nghiệm thu' },
@@ -341,7 +398,7 @@
         { step: 4, who: 'sxld', act: 'Phê duyệt', since: '2026-11-06 10:00', at: '2026-11-07 08:30' }, { step: 5, who: 'sxnm', act: 'Hoàn thành triển khai', since: '2026-11-07 08:30', at: '2026-11-14 11:00' }] },
     { code: 'HSBT-BT-2026-004-01', flow: 'SX-BT', obj: 'BT-2026-004', status: 'running', started: '2026-11-16 08:10', tokens: [{ id: 's5', step: 2, who: 'sxpm', since: '2026-11-16 08:10' }], vars: {},
       hist: [{ step: null, who: 'sxqa', act: 'Khởi tạo hồ sơ', at: '2026-11-16 08:10' }, { step: 1, who: 'sxqa', act: 'Gửi', since: '2026-11-16 08:10', at: '2026-11-16 08:10' }] },
-    { code: 'HSCG-GCG-QĐ-12-01-01', flow: 'SX-BG', obj: 'GCG-QĐ-12-01', status: 'running', started: '2026-10-20 08:30',
+    { code: 'HSCG-GCG-TS-08-01-01', flow: 'SX-BG', obj: 'GCG-TS-08-01', status: 'running', started: '2026-10-20 08:30',
       tokens: [{ id: 's2', step: 1, who: 'sxrd', since: '2026-11-05 09:00' }], vars: {},
       hist: [{ step: null, who: 'sxrd', act: 'Khởi tạo hồ sơ', at: '2026-10-20 08:30' }] },
     /* T71 S12: ECR nhận từ KHCN — bước 1 do hệ thống ghi khi nhận yêu cầu (API), đang ở bước 2 Phân tích của R&D. */
@@ -350,9 +407,11 @@
         tdNoiDung: 'Cập nhật firmware bộ xử lý ảnh i.MX 8M Plus lên v1.4 (bộ lọc ổn định ảnh mới); không đổi phần cứng.' },
       hist: [{ step: null, who: null, act: 'Khởi tạo hồ sơ', note: 'Nhận yêu cầu YCTĐ-KHCN-2026-014 từ hệ thống KHCN', at: '2026-11-12 14:20' }, { step: 1, who: null, act: 'Nhận từ hệ thống KHCN', note: 'YCTĐ-KHCN-2026-014', since: '2026-11-12 14:20', at: '2026-11-12 14:20' }] },
     { code: 'HSKH-DA-SX-2026-004-01', flow: 'SX-KH', obj: 'DA-SX-2026-004', status: 'running', started: '2026-11-10 10:25',
-      tokens: [{ id: 's1', step: 3, who: 'sxld', since: '2026-11-13 16:05' }],
+      tokens: [{ id: 's1', step: 4, who: 'sxld', since: '2026-11-13 16:05' }],
       vars: { paTomTat: 'VMC tổng thầu chế tạo, tích hợp, đo kiểm 3.000 trạm gNB-M3; VHT mua sắm linh kiện leadtime dài (FPGA, khối RF) trước để bảo đảm tiến độ 2027.',
-        paFile: 'Bao cao phuong an san xuat gNB-M3.pdf', khSo: '118/KH-TTSX', khMucTieu: 'Sản xuất, nghiệm thu 3.000 trạm 5G Macro gNB-M3 đáp ứng kế hoạch triển khai mạng năm 2027.',
+        paFile: 'Bao cao phuong an san xuat gNB-M3.pdf', paRangBuoc: [{ noiDung: 'FPGA Kintex-7 leadtime 40 tuần, cần Export License', anhHuong: 'Mốc ký hợp đồng tổng thầu 31/12/2026 trễ nếu chờ VMC tự mua', deXuat: 'VHT mua trước FPGA, khối RF bằng nguồn dự án 2026' }],
+        paGoiMs: 'Gói 1: FPGA, khối RF (VHT mua, đợt 1). Gói 2: tổng thầu chế tạo, tích hợp, đo kiểm (VMC).', paPhoiHop: ['TTMS', 'NCPT'],
+        cdNoiDung: 'Đồng ý VHT mua trước vật tư leadtime dài; Trung tâm Mua sắm lập kế hoạch lựa chọn nhà thầu ngay trong tháng 11.', khSo: '118/KH-TTSX', khMucTieu: 'Sản xuất, nghiệm thu 3.000 trạm 5G Macro gNB-M3 đáp ứng kế hoạch triển khai mạng năm 2027.',
         khKr1: 'Ký hợp đồng tổng thầu với VMC trước 31/12/2026', khKr2: '100% linh kiện leadtime dài về kho trước 31/03/2027', khKr3: 'Nghiệm thu đủ 3.000 trạm trước 30/06/2027',
         khYeuCau: 'Trạm đạt chỉ tiêu kỹ thuật phiên bản v1.2; tỷ lệ lỗi xuất xưởng dưới 0,5%.',
         khPhuongAn: 'VMC tổng thầu; VHT giám sát theo 4 mốc tổng; Trung tâm ĐBCL kiểm soát IQC, IPQC, OQC tại nhà máy VMC.',
@@ -361,8 +420,9 @@
         khMoc: [{ ten: 'Ký hợp đồng tổng thầu với VMC', han: '31/12/2026' }, { ten: 'Linh kiện leadtime dài về đủ', han: '31/03/2027' }, { ten: 'Hoàn thành chế tạo, tích hợp', han: '31/05/2027' }, { ten: 'Nghiệm thu, nhập kho', han: '30/06/2027' }],
         khRuiRo: 'FPGA có leadtime 40 tuần: đề xuất mua trước bằng nguồn dự án 2026.', khPl1: 'Phu luc I - Cau hinh san pham.pdf', khPl6: 'Phu luc VI - Ke hoach chi tiet.xlsx' },
       hist: [{ step: null, who: 'sxk2', act: 'Khởi tạo hồ sơ', at: '2026-11-10 10:25' },
-        { step: 1, who: 'sxk2', act: 'Hoàn thành', since: '2026-11-10 10:25', at: '2026-11-11 15:40' },
-        { step: 2, who: 'sxk2', act: 'Trình xem xét', since: '2026-11-11 15:40', at: '2026-11-13 16:05' }] },
+        { step: 1, who: 'sxk2', act: 'Trình Ban Giám đốc Khối', since: '2026-11-10 10:25', at: '2026-11-11 09:40', note: '1 ràng buộc cần xin ý kiến' },
+        { step: 2, who: 'sxld', act: 'Đồng ý phương án', since: '2026-11-11 09:40', at: '2026-11-11 15:40', note: 'Đồng ý VHT mua trước vật tư leadtime dài; Trung tâm Mua sắm lập kế hoạch lựa chọn nhà thầu ngay trong tháng 11.' },
+        { step: 3, who: 'sxk2', act: 'Trình phê duyệt', since: '2026-11-11 15:40', at: '2026-11-13 16:05', note: 'Kế hoạch số 118/KH-TTSX' }] },
   ];
 
   /* ---------- T71 S4 — Mua sắm (SX-10) ----------
@@ -417,7 +477,8 @@
       { code: 'HL-XLA-01', name: 'Trạm đo kiểm khối xử lý ảnh', item: 'BTP2', ok: 6, ng: 0, at: '2026-11-15 17:00' }],
   };
 
-  /* ---------- T71 S6 — Phiếu bất thường mẫu (BM.QLBT.01). type / sev / received: kết quả bước 2 (loại theo danh mục sx-bat-thuong, mức độ 1–4 = cột sla1–sla4). ---------- */
+  /* ---------- T71 S6 — Phiếu bất thường mẫu (BM.QLBT.01). type / sev: người lập chọn ở bước 1 (T74 #100; loại theo danh mục sx-bat-thuong, mức độ 1–4 = cột sla1–sla4);
+     received: ngày tiếp nhận ở bước 2; guess: dự đoán sơ bộ nguyên nhân; files: tệp đính kèm theo mục BM.QLBT.01 (bm, iqc, qc, kd, khac). ---------- */
   D.sxSev = { 1: 'Rất nghiêm trọng', 2: 'Nghiêm trọng', 3: 'Trung bình', 4: 'Ít nghiêm trọng' };
   D.sxIssues = [
     { code: 'BT-2026-001', project: 'DA-SX-2026-001', title: 'Sai lệch cấu hình máy đo công suất RF tại trạm đo VMC', desc: '8 bộ VT-25 đo công suất phát thấp hơn chỉ tiêu 0,8 dB, đo lại bằng máy khác đạt.',
@@ -427,7 +488,8 @@
     { code: 'BT-2026-003', project: 'DA-SX-2026-003', title: 'Lỗi hàn thiếu thiếc chân chip Wi-Fi, lô 5', desc: 'AOI phát hiện 64 thiết bị thiếu thiếc chân chip MT7981 trong ca đêm 04/11.',
       found: '2026-11-05', place: 'Dây chuyền SMT 2 — Nhà máy Hải Phòng', qty: 64, creator: 'sxnm', type: 'L3', sev: 4, received: '2026-11-05' },
     { code: 'BT-2026-004', project: 'DA-SX-2026-001', title: 'Module khuếch đại công suất về thiếu chứng từ xuất xứ (CO)', desc: '28 module PA của lô hàng thứ 2 không kèm CO; IQC tạm dừng cấp phát.',
-      found: '2026-11-16', place: 'Kho vật tư — VMC', qty: 28, creator: 'sxqa' },
+      found: '2026-11-16', place: 'Kho vật tư — VMC', qty: 28, creator: 'sxqa', type: 'L1', sev: 2,
+      guess: 'Nhà cung cấp giao thiếu chứng từ lô 2; cần xác minh với nhà cung cấp trước khi cấp phát.', files: { bm: 'BM.QLBT.01_BT-2026-004.pdf', iqc: 'IQC_lo2_module_PA.pdf' } },
   ];
 
   /* ---------- T71 S7 — Thay đổi kỹ thuật (SX-09) ---------- */
@@ -448,6 +510,16 @@
      Tiền tố số sê-ri theo dự án (dải sê-ri của lô cấp liên tiếp — GIẢ LẬP P-253). */
   D.sxSerial = { 'DA-SX-2026-001': ['VT25-', 4], 'DA-SX-2026-002': ['QD12-', 4], 'DA-SX-2026-003': ['WM6-', 6], 'DA-SX-2026-004': ['GNB-', 5] };
   /* Đề nghị nghiệm thu mẫu: item = hạng mục bước 9; from / to = số thứ tự sê-ri; bb / cert / pnk = biên bản, chứng chỉ chất lượng, phiếu nhập kho (khớp phiếu nhập kho ở tab Mua sắm). */
+  /* (b) Q9 — Kết quả kiểm soát chất lượng công đoạn IPQC (QT-TTSX-4A11 §5.4 bước 10; ĐV ĐBCL chủ trì, QC đơn vị sản xuất phối hợp). Không đạt → phiếu bất thường. */
+  D.sxIpqcStages = ['Gia công bo mạch (SMT)', 'Gia công cơ khí', 'Đo kiểm module, bán thành phẩm', 'Lắp ráp, tích hợp', 'Đồng điều chỉnh', 'Đo kiểm sản phẩm hoàn chỉnh'];
+  D.sxIpqc = [
+    { code: 'IPQC-2026-001', project: 'DA-SX-2026-001', item: 'M3', stage: 'Lắp ráp, tích hợp', n: 12, ok: 12, kq: 'DAT', who: 'sxqa', at: '2026-10-05', note: '12 bộ tích hợp đầu tiên tại VMC đạt lưu trình đo kiểm.' },
+    { code: 'IPQC-2026-002', project: 'DA-SX-2026-002', item: 'BTP1', stage: 'Đo kiểm module, bán thành phẩm', n: 4, ok: 1, kq: 'NOK', who: 'sxqa', at: '2026-10-19', note: '3 / 4 khối quang học lệch trục quang sau thử rung.', issue: 'BT-2026-002' },
+    { code: 'IPQC-2026-003', project: 'DA-SX-2026-003', item: 'L4', stage: 'Gia công bo mạch (SMT)', n: 20000, ok: 19980, kq: 'DAT', who: 'sxqa', at: '2026-09-20', note: 'Tỷ lệ lỗi AOI 0,1%, trong ngưỡng.' },
+    { code: 'IPQC-2026-004', project: 'DA-SX-2026-003', item: 'L5', stage: 'Gia công bo mạch (SMT)', n: 12500, ok: 12436, kq: 'NOK', who: 'sxqa', at: '2026-11-05', note: 'AOI phát hiện 64 thiết bị thiếu thiếc chân chip MT7981.', issue: 'BT-2026-003' },
+  ];
+  /* (b) Q10 — Thử nghiệm thực tế (QT bước 11, ĐV NCPT chủ trì): kịch bản, kế hoạch thử nghiệm được phê duyệt, kết quả. Chỉ dự án Có thử nghiệm thực tế. */
+  D.sxTrial = { 'DA-SX-2026-001': { kb: 'Kich ban thu nghiem thuc te VT-25.pdf', kh: 'Ke hoach thu nghiem thuc te VT-25.pdf', duyet: '2026-10-20', place: 'Thao trường huấn luyện — đơn vị sử dụng', from: '2026-11-25', to: '2026-12-05', kq: null, who: 'sxrd' } };
   D.sxLots = [
     { code: 'NT-2026-001', project: 'DA-SX-2026-003', item: 'L1', qty: 20000, from: 1, to: 20000, creator: 'sxnm', created: '2026-06-16', oqc: 'DAT', bb: '41/BB-NT', cert: 'CQ-2026-0101', pnk: 'PNK-2026-0402', stocked: '2026-06-20' },
     { code: 'NT-2026-002', project: 'DA-SX-2026-003', item: 'L2', qty: 20000, from: 20001, to: 40000, creator: 'sxnm', created: '2026-07-21', oqc: 'DAT', bb: '52/BB-NT', cert: 'CQ-2026-0117', pnk: 'PNK-2026-0455', stocked: '2026-07-25' },
@@ -456,6 +528,16 @@
     { code: 'NT-2026-005', project: 'DA-SX-2026-001', item: 'M3', qty: 12, from: 1, to: 12, creator: 'sxpm', created: '2026-11-13' },
   ];
   /* Kết quả kiểm tra vật tư đầu vào IQC (đồng bộ VMMS, chỉ xem — GIẢ LẬP P-253): [lô vật tư, mã vật tư, số lượng, kết quả, ngày]. */
+  /* T71 S13 (Q16) — mã vật tư tương đương có thể đổi chéo cho VTLK leadtime dài / Export License (QT-TTSX-4A11 §5.8: "dựa trên dữ liệu mua sắm các dự án").
+     [mã, tên, ghi chú điều kiện đổi]. GIẢ LẬP P-267: thật = danh mục mã tương đương do ĐV NCPT xác nhận, nguồn dữ liệu mua sắm (ĐTMS) / VMMS. */
+  D.sxAlt = {
+    'FPGA-XC7K325': [['FPGA-XC7K410', 'FPGA Kintex-7 XC7K410T', 'Cùng chân, cần biên dịch lại bitstream']],
+    'RF-PA-25W': [['RF-PA-25W-B', 'Module PA 25W nhà cung cấp B', 'Đã đo kiểm tương thích ở dự án VT-25 năm 2025']],
+    'IR-DET-640': [['IR-DET-640-HD', 'Đầu thu hồng ngoại 640×512 bước điểm ảnh 12 µm', 'Cần hiệu chỉnh lại ống kính']],
+    'FPGA-ZU9EG': [['FPGA-ZU7EV', 'FPGA Zynq UltraScale+ ZU7EV', 'Đủ tài nguyên cho bản firmware hiện tại']],
+    'FPGA-ZU47DR': [['FPGA-ZU48DR', 'RFSoC Zynq ZU48DR', 'Cùng chân; khác số kênh ADC, cần cập nhật cấu hình']],
+    'SOC-MT7981': [['SOC-MT7986', 'Chip Wi-Fi 6 MT7986', 'Đổi bo mạch, chỉ áp dụng từ phiên bản phần cứng mới']],
+  };
   D.sxIqc = {
     'DA-SX-2026-001': [['IQC-2026-0712', 'FPGA-XC7K325', 34, 'Đạt', '2026-08-12'], ['IQC-2026-0713', 'RF-PA-25W', 52, 'Đạt', '2026-08-12'], ['IQC-2026-0901', 'RF-PA-25W', 28, 'Tạm dừng — thiếu CO', '2026-11-16']],
     'DA-SX-2026-003': [['IQC-2026-0455', 'SOC-MT7981', 105000, 'Đạt', '2026-05-20'], ['IQC-2026-0456', 'DDR4-512M', 98000, 'Đạt', '2026-05-20'], ['IQC-2026-0470', 'ADAPTER-12V', 120000, 'Đạt có điều kiện — 0,3% lỗi vỏ', '2026-05-28']],
@@ -510,8 +592,17 @@
 
   /* ---------- Điểm ❓ của phân hệ (P-237…, D-121 Q10) ---------- */
   Object.assign(D.openPoints, {
+    'P-270': { q: 'Kế hoạch dự án sản xuất (comment #97): cách đánh số mục 2.1 / 3.1 / 3.2.1 / 3.2.2 của người review; % mục Đề xuất mua sắm, Tiến độ cung ứng của bước 4 lấy từ đâu; thêm hạng mục kế hoạch sau khi kế hoạch gốc đã duyệt thì duyệt qua luồng nào, ai duyệt', src: 'Kho comment prototype #97 (hoaidt10, 17/11); QT-TTSX-4A11 §5.4 bước 4, 9', def: 'GIẢ LẬP — hiểu số mục theo cây Kế hoạch & mốc (giai đoạn.hạng mục); Đề xuất mua sắm = % dòng nhu cầu VHT mua đã gửi ĐTMS, Tiến độ cung ứng = % số lượng đã tập kết (Nhu cầu vật tư SX-17); Thêm kế hoạch gom thành lần bổ sung, PM trình, Lãnh đạo Khối phê duyệt / trả lại ngay trên danh sách', scr: 'SX-04' },
+    'P-271': { q: 'Hồ sơ chuyển giao "đồng bộ từ mục QL hồ sơ của KHCN" (comment #97): API nào, đồng bộ lúc nào, phiên bản tài liệu lấy theo trường nào; COP1 có đúng là đơn vị nghiên cứu', src: 'Kho comment prototype #97; CDS-BT-03COP', def: 'GIẢ LẬP — tệp có sẵn của gói coi là đồng bộ từ Quản lý hồ sơ KHCN (v1.0), tệp tải lên ở QLSX ghi nguồn tải lên (v1.1); COP1 = đơn vị nghiên cứu', scr: 'SX-04, SX-06' },
+    'P-269': { q: 'Độ trễ của việc / nhiệm vụ (comment #94 / #96): tính theo giờ đồng hồ hay giờ làm việc; mốc tính là cuối ngày hạn hay giờ cụ thể; làm tròn ngày thế nào', src: 'Kho comment prototype #94, #96 (hoaidt10, 17/11)', def: 'GIẢ LẬP — giờ đồng hồ, mốc = cuối ngày Hạn xử lý; dưới 24 giờ ghi số giờ (làm tròn lên), từ 24 giờ làm tròn số ngày; Nhiệm vụ đơn vị chỉ ghi số ngày', scr: 'SX-15, SX-16' },
+    'P-268': { q: 'Dashboard "tự gợi ý" (comment #95): gợi ý theo quy tắc cố định hay do AI sinh; danh sách quy tắc, thứ tự ưu tiên, số gợi ý tối đa; người dùng có ẩn gợi ý không', src: 'Kho comment prototype #95 (hoaidt10, 17/11)', def: 'GIẢ LẬP — khối Gợi ý cho bạn trên Dashboard, tối đa 5 gợi ý theo quy tắc cố định, xếp theo mức khẩn: việc quá hạn / chưa xử lý của người đăng nhập, phiếu bất thường quá hạn hoặc sắp đến hạn, dự án chậm từ 15 điểm so với kế hoạch, vật tư trễ hạn đặt hàng, lô chờ nghiệm thu; thật: một dòng cấu hình quy tắc (cùng hướng D-117 AI gợi ý hồ sơ KĐT, có thể thay bằng AI)', scr: 'SX-01' },
+    'P-267': { q: 'Báo cáo, KPI của phân hệ: mẫu báo cáo tiến độ định kỳ / đột xuất (kỳ, người nhận, gửi tự động); KPI bất thường đúng hạn ≥ 80% và thay đổi kỹ thuật đúng hạn ≥ 90% tính thế nào, hạn thay đổi kỹ thuật theo cấp; ngưỡng "dự án mới mở", "sắp đến hạn"; danh mục mã vật tư tương đương do ai xác nhận', src: 'SX-ULNL (Báo cáo thống kê, Dashboard điều hành dự án, Báo cáo tiến độ đột xuất / định kỳ); QT-TTSX-4A11 §5.4 bước 9, §5.7, §5.8', def: 'GIẢ LẬP — KPI tiến độ = thực hiện / kế hoạch đến ngày, trung bình dự án đang thực hiện; bất thường đúng hạn = đóng trong SLA / (đã đóng + đang quá hạn); thay đổi kỹ thuật hạn C1 10 / C2 20 / C3 40 / C4 60 ngày làm việc; mới mở = tạo trong 30 ngày; sắp đến hạn = dưới 3 ngày làm việc; kỳ báo cáo Đột xuất / tuần / tháng / quý xem và xuất trên màn, chưa gửi tự động; mã tương đương là dữ liệu mẫu', scr: 'SX-01, SX-14' },
+    'P-263': { q: 'Có trường hợp lập dự án, kế hoạch sản xuất khi R&D chưa chuyển giao xong (biên bản thành phần đủ điều kiện sản xuất chưa ký) không', src: 'QT-TTSX-4A11 §5.2 đầu vào mục 27, §5.4 bước 1 cột (f)', def: 'GIẢ LẬP — theo QT: Thêm mới dự án chỉ chọn sản phẩm đã có trong Kho sản phẩm sẵn sàng sản xuất; tiêu chí 4M MD1 giữ làm kiểm tra lại', scr: 'SX-03' },
+    'P-264': { q: 'Phương án kinh doanh đã phê duyệt và kế hoạch sản xuất kinh doanh năm nằm ở hệ thống nào; dữ liệu nào lấy sang dự án (sản phẩm, số lượng, khách hàng, thời hạn); một PAKD có lập nhiều dự án không', src: 'QT-TTSX-4A11 §5.1, §5.2 mục 1, §5.4 bước 1', def: 'GIẢ LẬP — danh sách PAKD đã duyệt (6 bản ghi); chọn PAKD tự điền sản phẩm, số lượng, khách hàng, ngày kết thúc, kế hoạch SXKD năm; một PAKD một dự án; căn cứ Nhiệm vụ / Hợp đồng nhập số văn bản và đính kèm tệp', scr: 'SX-03' },
+    'P-265': { q: '"Có sản xuất đợt tiếp theo" sau bước 15: lặp lại từ bước nào; trong cùng dự án hay lập dự án mới', src: 'QT-TTSX-4A11-LD (lưu đồ)', def: 'GIẢ LẬP — lập dự án mới có liên kết Dự án đợt trước; dự án Hoàn thành có nút Lập dự án đợt tiếp theo (chép thông tin, chọn căn cứ mới)', scr: 'SX-03, SX-04' },
+    'P-266': { q: 'Bước 1 báo cáo phương án: TT Mua sắm, ĐV NCPT, ĐV ĐBCL (S — hỗ trợ) góp ý trên hệ thống trước khi trình hay chỉ phối hợp ngoài hệ thống', src: 'QT-TTSX-4A11 §5.4 bước 1, §5.5', def: 'GIẢ LẬP — PM ghi Đơn vị đã phối hợp trên form; không mở việc góp ý cho các đơn vị', scr: 'SX-05' },
     'P-237': { q: 'Phân hệ Quản lý sản xuất chưa có trong danh sách phân hệ của nền tảng (core-fe subsystem.constants.ts có 6 phân hệ); tên, mô tả, icon, mã phân hệ', src: 'core-fe subsystem-list; CDS-DH-1210 §4.2', def: 'GIẢ LẬP — thêm thẻ "Quản lý sản xuất", mã QLSX, icon hàng hoá; thật: thêm một dòng SUBSYSTEMS + app con', scr: 'SCR-101' },
-    'P-238': { q: 'Chưa có BPMN cho sản xuất: các luồng Phê duyệt kế hoạch, Chuyển giao, Bất thường, Thay đổi kỹ thuật, Nghiệm thu dựng nháp từ báo cáo khảo sát; ba quy trình QT.VHT.TTSX.4A.1.1–1.3 chưa có bản gốc (C17)', src: 'SX-KS-K1 §3, SX-KS-K2 §4; INDEX C17', def: 'GIẢ LẬP — 5 luồng nháp SX-KH / SX-BG / SX-BT / SX-TD / SX-NT theo docs/sx/prototype-qlsx-chuan-bi.md §4, chờ BA vẽ bản chuẩn', scr: 'SX-05, 06, 08, 09, 12' },
+    'P-238': { q: 'Chưa có BPMN cho sản xuất: các luồng Phê duyệt kế hoạch, Chuyển giao, Bất thường, Thay đổi kỹ thuật, Nghiệm thu dựng nháp từ báo cáo khảo sát; QT.VHT.TTSX.4A.1.2, 4A.1.3 chưa có bản gốc; 4A.1.1 đã có (QT-TTSX-4A11, nhận 16/11) nhưng chưa có BPMN', src: 'QT-TTSX-4A11 §5.4; SX-KS-K1 §3, SX-KS-K2 §4; INDEX C17', def: 'GIẢ LẬP — luồng nháp SX-KH / SX-BG / SX-BGNM / SX-BT / SX-TD / SX-NT / SX-MS; SX-KH, bàn giao nhà máy, nghiệm thu chỉnh theo QT-TTSX-4A11 (plan T71 §10); chờ BA vẽ bản chuẩn', scr: 'SX-05, 06, 08, 09, 12' },
     'P-239': { q: 'Danh mục 20 hồ sơ chuyển giao Khối 2: báo cáo chỉ nêu 8 tên; 12 tên còn lại và cách chia nhóm', src: 'SX-KS-K2 §2.1, §4.1', def: 'GIẢ LẬP — 8 tên theo báo cáo + 12 tên theo bộ hồ sơ Khối 1 (SX-KS-K1 Bảng 10); nhóm theo cách chia 4 nhóm của Khối 1', scr: 'SX-13' },
     'P-240': { q: 'SLA bất thường Loại 3 "theo quy trình nhà máy": số ngày lấy từ đâu; ngày làm việc tính theo lịch nào', src: 'SX-KS-K1 §3.2.2 Bảng 7', def: 'GIẢ LẬP — Loại 3 không có số ngày trong danh mục, hạn = ngày nhà máy cam kết nhập trên phiếu; ngày làm việc theo lịch làm việc chung (trừ thứ 7, chủ nhật, ngày lễ)', scr: 'SX-13, SX-08' },
     'P-241': { q: 'Tài khoản nhà máy / đối tác gia công: cổng riêng hay dùng chung hệ thống với quyền hạn chế; dữ liệu Khối 1 (mật) có cho đối tác truy cập ngoài mạng nội bộ không', src: 'SX-KS-K1 §2.6, §6.3; SX-KS-K2 §5.1', def: 'GIẢ LẬP — vai Nhà máy đăng nhập chung hệ thống, chỉ thấy dự án được giao (phân quyền theo dữ liệu); không dựng cổng riêng (D-121 Q7)', scr: 'SX-13, SX-04' },

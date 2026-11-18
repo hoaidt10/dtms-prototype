@@ -58,6 +58,8 @@ test('SX-03: Thêm mới báo lỗi trường bắt buộc, lưu thành dự án
   await page.locator('#sxf-name').fill('Sản xuất đài ra-đa cảnh giới tầm thấp RĐ-40 đợt 1');
   await pick(page, 'sxf-basis', 'NV');
   await page.locator('#sxf-basisNo').fill('Quyết định số 2001/QĐ-VHT ngày 02/11/2026');
+  await page.locator('#sxf-basisFile').setInputFiles({ name: 'QD-2001.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF') });
+  await pick(page, 'sxf-trial', 'Y');
   await pick(page, 'sxf-product', 'RĐ-40');
   await expect(page.locator('[data-sx-form]')).toContainText('Phiên bản');
   await pick(page, 'sxf-model', 'VHT_TU_SX');
@@ -75,7 +77,7 @@ test('SX-03: Thêm mới báo lỗi trường bắt buộc, lưu thành dự án
   await page.locator('[data-ttab="plan"]').click();
   await expect(page.locator('[data-sx-plan] .cap')).toContainText('Chưa có kế hoạch gốc');
   await expect(page.locator('[data-sx-plan]')).toContainText('Bán thành phẩm: Khối quang học');
-  await expect(page.locator('[data-sx-plan]')).toContainText('11. Thử nghiệm thực tế tại trận địa');
+  await expect(page.locator('[data-sx-plan]')).toContainText('11. Thử nghiệm thực tế');
   expect(await page.evaluate(() => SxDuAn.progressOf(SxDuAn.byCode('DA-SX-2026-005')))).toBe(0);
   await page.locator('[data-go="sx/du-an/DA-SX-2026-005/edit"]').click();
   await expect(page.locator('#sxf-name')).toHaveValue('Sản xuất đài ra-đa cảnh giới tầm thấp RĐ-40 đợt 1');
@@ -97,7 +99,10 @@ test('SX-04 Kế hoạch & mốc: bước 9 theo mô hình tổ chức; giai đo
     const g3 = SxDuAn.planOf(SxDuAn.byCode(c))[2];
     return [c, { b9: g3.children.find((x) => x.key === 'B9').children.map((x) => x.key), b11: g3.children.some((x) => x.key === 'B11') }];
   })));
-  expect(kids['DA-SX-2026-001']).toEqual({ b9: ['B9.M1', 'B9.M2', 'B9.M3', 'B9.M4'], b11: true });
+  // T74 #97: VMC tổng thầu — M1 Ký hợp đồng tổng thầu lên đầu giai đoạn 3, bỏ M2 Vật tư về đủ (trùng Tiến độ cung ứng của bước 4).
+  expect(kids['DA-SX-2026-001']).toEqual({ b9: ['B9.M3', 'B9.M4'], b11: true });
+  expect(await page.evaluate(() => SxDuAn.planOf(SxDuAn.byCode('DA-SX-2026-001'))[2].children.map((x) => x.key).slice(0, 2))).toEqual(['M1', 'B8']);
+  expect(await page.evaluate(() => SxDuAn.planOf(SxDuAn.byCode('DA-SX-2026-003'))[1].children[0].children.map((x) => x.name))).toEqual(['Đề xuất mua sắm', 'Tiến độ cung ứng']);
   expect(kids['DA-SX-2026-002'].b9).toEqual(['B9.BTP1', 'B9.BTP2', 'B9.BTP3', 'B9.BTP4', 'B9.BTP5']);
   expect(kids['DA-SX-2026-003']).toEqual({ b9: ['B9.L1', 'B9.L2', 'B9.L3', 'B9.L4', 'B9.L5', 'B9.L6'], b11: false });
   const g1 = await page.evaluate(() => SxDuAn.planOf(SxDuAn.byCode('DA-SX-2026-002'))[0].pct);
@@ -115,12 +120,14 @@ test('SX-04 Kế hoạch & mốc: bước 9 theo mô hình tổ chức; giai đo
 test('SX-04 Tài liệu: Chọn mẫu tài liệu thêm dòng từ mẫu BM.QLHDSX.04 và ghi lịch sử', async ({ page }) => {
   await fresh(page, '#/sx/du-an/DA-SX-2026-001');
   await page.locator('[data-ttab="docs"]').click();
-  await expect(page.locator('[data-sx-docs] tbody tr')).toHaveCount(3);
+  // T74 #97: tài liệu chia theo loại; bảng "Loại tài liệu chưa có" không tính.
+  const docRows = page.locator('[data-sx-docs] tbody tr', { hasNotText: 'Chưa có tài liệu' });
+  await expect(docRows).toHaveCount(3);
   await page.locator('[data-sx-tpl]').click();
   // T71 S11: mẫu lấy từ danh mục Biểu mẫu tài liệu sản xuất, chọn theo mã biểu mẫu.
   await page.locator('.vmodal [data-sx-tpl-use="BM.QLHDSX.04"]').click();
-  await expect(page.locator('[data-sx-docs] tbody tr')).toHaveCount(4);
-  await expect(page.locator('[data-sx-docs] tbody tr').first()).toContainText('Biên bản làm việc Tổng công ty với nhà máy — DA-SX-2026-001.docx');
+  await expect(docRows).toHaveCount(4);
+  await expect(page.locator('[data-sx-docs] tbody tr', { hasText: 'Biên bản làm việc Tổng công ty với nhà máy — DA-SX-2026-001.docx' })).toHaveCount(1);
   await page.locator('[data-ttab="hist"]').click();
   await expect(page.locator('main .vtable tbody tr').first()).toContainText('Tạo tài liệu từ mẫu');
   expect(page.errors).toEqual([]);
