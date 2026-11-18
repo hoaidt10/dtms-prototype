@@ -180,9 +180,17 @@
   const href = (p) => 'sx/du-an/' + encodeURIComponent(p.code);
   const rowOf = (p) => Object.assign({}, p, { pmN: pName(p.pm), facN: p.factory ? catName('sx-don-vi', p.factory) : '', modelN: catName('sx-mo-hinh', p.model),
     prog: progressOf(p), late: lateCount(p), prodN: `${p.product} · ${p.version}` });
+  /* Ô tổng hợp số lượng (nhánh hoaidt10): lọc nhanh như Nhiệm vụ đơn vị — bấm lại ô đang chọn hoặc Tổng số để bỏ lọc. */
+  const DTILE = { cur: 'all' };
+  const DTILES = [['all', 'Tổng số', 'Mọi dự án trong phạm vi xem'], ['PLANNING', 'Lập kế hoạch', 'Chưa phê duyệt kế hoạch'], ['PREPARING', 'Chuẩn bị sản xuất', 'Chuyển giao, mua sắm, bàn giao nhà máy'],
+    ['IN_PRODUCTION', 'Đang sản xuất', 'Tổ chức sản xuất và giao hàng'], ['ACCEPTANCE', 'Nghiệm thu', 'Có lô nghiệm thu, nhập kho'], ['DONE', 'Hoàn thành', 'Đã hoàn thành các giai đoạn'], ['late', 'Có mốc chậm', 'Còn hạng mục chậm kế hoạch', 't-err']];
+  const dTileOk = (t, p) => (t === 'all' ? true : t === 'late' ? p.late > 0 : p.status === t);
   function list() {
     // Theo: fe/repo-khcn-bpmn-fe/src/app/features/task-management/task-management.component.html (dự án sản xuất = đối tượng cha, như ĐXMS / KĐT / KHLCNT)
     const k = K();
+    const all = visible().map(rowOf), cur = DTILE.cur;
+    const tiles = `<div class="rp-tiles tq-metrics" data-sxda-tiles>${DTILES.map(([t, l, d, c]) => `<button type="button" class="ov-tile rp-tile tq-m ${cur === t ? 'on' : ''}" data-sxda-tile="${t}" aria-pressed="${cur === t}">
+      <span class="ov-tx"><span class="t">${esc(l)}</span><span class="d">${esc(d)}</span></span><span class="ov-n"><span class="n num ${c && all.some((p) => dTileOk(t, p)) ? c : ''}">${all.filter((p) => dTileOk(t, p)).length}</span></span></button>`).join('')}</div>`;
     const info = {
       scr: 'SX-02', name: 'Danh sách dự án sản xuất', uc: 'CDS-BT-03COP COP2 A01 (quản lý nhiệm vụ từ khi hình thành), B1; SX-KS-K1 §2.3; SX-KS-K2 §2.2, RBAC MOD-04 F4.1',
       notes: [
@@ -198,7 +206,8 @@
     return k.listPage({
       id: 'sxda', exp: 'Danh sach du an san xuat', title: 'Danh sách dự án sản xuất', ph: 'Tìm kiếm theo mã, tên dự án, sản phẩm', info,
       right: canCreate() ? `<button type="button" class="vbtn secondary" data-sxda-import>${icon('upload')} Nhập Excel</button><button class="vbtn primary" data-go="sx/du-an/create">${icon('add')} Thêm mới</button>` : '',
-      rows: () => visible().map(rowOf), kwText: (p) => `${p.code} ${p.name} ${p.prodN}`,
+      top: `<div data-sxda-list>${tiles}</div>`,
+      rows: () => visible().map(rowOf).filter((p) => dTileOk(DTILE.cur, p)), kwText: (p) => `${p.code} ${p.name} ${p.prodN}`,
       empty: () => ({ code: '', name: '', khoi: null, model: null, st: [], factory: null, pm: null, late: null }),
       match: (p, f) => k.has(f.code, p.code) && k.has(f.name, p.name) && (!f.khoi || p.khoi === f.khoi) && (!f.model || p.model === f.model) && k.inSet(f.st, p.status)
         && (!f.factory || p.factory === f.factory) && (!f.pm || p.pm === f.pm) && (!f.late || (f.late === 'CO') === p.late > 0),
@@ -579,6 +588,12 @@
       } });
   }
   document.addEventListener('click', (e) => { if (e.target.closest && e.target.closest('[data-sxda-import]')) importDlg(); });
+  document.addEventListener('click', (e) => {
+    const t = e.target.closest && e.target.closest('[data-sxda-tile]'); if (!t) return;
+    const v = t.dataset.sxdaTile; DTILE.cur = DTILE.cur === v ? 'all' : v;
+    if (K().LST.sxda) K().LST.sxda.page = 1;
+    rerender();
+  });
 
   /* Router con: parts sau 'du-an'. */
   function route(parts) {
