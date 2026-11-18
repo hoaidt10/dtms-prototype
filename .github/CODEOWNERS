@@ -1,0 +1,18 @@
+# SINH TỰ ĐỘNG từ modules.json bằng `node tools/codeowners.mjs` — không sửa tay.
+* @thaiphuc22
+
+# luong-dxms — Luồng / ĐXMS (MS01, MS02), YCBG: chưa giao BA (thuộc người tích hợp)
+
+# kdt — Khoản đầu tư (MS13, MS14): chưa giao BA (thuộc người tích hợp)
+
+# thau — Thầu (MS18, MS19): chưa giao BA (thuộc người tích hợp)
+
+# hop-dong — Hợp đồng (MS22–MS24): chưa giao BA (thuộc người tích hợp)
+
+# de-tai — Đề tài / dự án: chưa giao BA (thuộc người tích hợp)
+
+# bao-cao — Báo cáo: chưa giao BA (thuộc người tích hợp)
+
+# quan-tri — Quản trị (quy trình, ma trận, eForm, DMDC, thông báo, trình ký): chưa giao BA (thuộc người tích hợp)
+
+# sx — Quản lý sản xuất: chưa giao BA (thuộc người tích hợp)
