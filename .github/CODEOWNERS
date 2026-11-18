@@ -15,4 +15,11 @@
 
 # quan-tri — Quản trị (quy trình, ma trận, eForm, DMDC, thông báo, trình ký): chưa giao BA (thuộc người tích hợp)
 
-# sx — Quản lý sản xuất: chưa giao BA (thuộc người tích hợp)
+# sx — Quản lý sản xuất
+/changelog/sx.md @Akira2201 @thaiphuc22
+/state/sx.md @Akira2201 @thaiphuc22
+/js/sx*.js @Akira2201 @thaiphuc22
+/js/eforms/sx-*.js @Akira2201 @thaiphuc22
+/e2e/sx-*.spec.mjs @Akira2201 @thaiphuc22
+/e2e/t71-*.spec.mjs @Akira2201 @thaiphuc22
+/e2e/t74-*.spec.mjs @Akira2201 @thaiphuc22
