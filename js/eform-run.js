@@ -214,7 +214,7 @@
           ? `<button type="button" class="vbtn sm secondary lf-ai-btn" data-ef-ai="${esc(c.path)}">✦ ${form.aiDone[c.path] ? 'Gợi ý lại' : 'Gợi ý từ AI'}</button>` : '';
         const gh = c.label || ai ? `<div class="ef-gh${ai ? ' ef-gh-ai' : ''}"><span>${esc(c.label || '')}</span>${ai}</div>` : '';
         return `<div class="ef-dl" ${span(c)}>${gh}<div class="ef-list">
-          ${rows.map((r, i) => (rh && feel(rh, ctx, r) ? '' : `<div class="ef-row"><div class="ef-grid">${renderList(c.components, ctx, form, r, `${c.path}::${i}::`)}</div>
+          ${rows.map((r, i) => (rh && feel(rh, ctx, r) ? '' : `<div class="ef-row">${c.properties && c.properties.rowNo ? `<div class="ef-rowno" style="font-weight:600;margin-bottom:6px">TT ${i + 1}</div>` : ''}<div class="ef-grid">${renderList(c.components, ctx, form, r, `${c.path}::${i}::`)}</div>
             ${add ? `<div class="row end"><button type="button" class="vbtn sm secondary red-t" data-ef-dup="${esc(c.path)}" data-i="${i}">Nhân bản</button><button type="button" class="vbtn sm ghost" data-ef-del="${esc(c.path)}" data-i="${i}">Xoá</button></div>` : ''}</div>`)).join('')}
           ${add ? `<div><button type="button" class="vbtn sm secondary" data-ef-add="${esc(c.path)}">Thêm dòng</button></div>` : ''}
           ${!rows.length && !add ? '<div class="empty-t">Chưa có dữ liệu</div>' : ''}</div></div>`;
