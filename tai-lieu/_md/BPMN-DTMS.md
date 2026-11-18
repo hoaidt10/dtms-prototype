@@ -1,0 +1,1414 @@
+<!-- pk-source: 03. Thiết kế (Tài liệu BA)/BPMN/ĐTMS-121026.drawio -->
+<!-- pk-sha256: f9b01e102f7e493ba26951781898d791df1fc1f19b93f45659bded2349de837d -->
+<!-- pk-generated: 2026-10-12 bởi scripts/pk-md.py — KHÔNG sửa tay; sửa/thay tệp nguồn rồi chạy lại. -->
+
+# BPMN-DTMS — bản đọc máy sinh
+
+> Nguồn: `project-knowledge/03. Thiết kế (Tài liệu BA)/BPMN/ĐTMS-121026.drawio`. Trích dẫn thì ghi mã **BPMN-DTMS** và tệp nguồn, không trích bản đọc này. Bảng/định dạng có thể lệch so với bản gốc — khi số liệu quan trọng, mở tệp gốc để đối chiếu.
+
+
+## Trang: MS01
+
+151 nhãn (theo thứ tự trong tệp, không phải thứ tự luồng):
+
+- Cơ sở tài liệu đầu vào chưa được Chủ tịch/Tổng Giám đốc Tập đoàn phê duyệt · Bản thảo cập nhật theo nội dung làm rõ bổ sung
+- Xanh dương: User Task | Xanh lá: Service Task | X: chọn một nhánh | +: xử lý/chờ song song | Đỏ: nhánh trả lại | Vàng: cần xác nhận
+- Mở tab GHI CHÚ HỌP để xem Q01 / Q02 và các quy ước; tab TRA CỨU TASK chứa ID, actor, biểu mẫu và mapping số cũ → mới.
+- 01. Căn cứ • Tồn kho • Báo giá • Dự thảo
+- 02. Góp ý CQCM • BM-04
+- 03. Hoàn chỉnh • Giải trình • Họp
+- 04. Rà soát lại • Checklist • BM-05
+- 05. Báo cáo Tập đoàn • Quyết định phê duyệt
+- Cơ quan chủ trì đầu tư mua sắm (TTMS)
+- 29. Tổ chức họp thống nhất các bên Tác nhân: Cơ quan chủ trì đầu tư mua sắm (TTMS) Thực hiện: Tổ chức họp giữa đơn vị đề xuất, CQCM/TTMS và các bên liên quan để thống nhất nội dung còn vướng mắc. Biểu mẫu: Không quy định mẫu riêng trong 3 tài liệu
+- 30. Cập nhật kết quả cuộc họp Tác nhân: Cơ quan chủ trì đầu tư mua sắm (TTMS) Thực hiện: Cập nhật kết luận cuộc họp và các nội dung đã/chưa thống nhất vào hồ sơ xử lý. Biểu mẫu: Kết quả cuộc họp; không có BM chuẩn trong 3 tài liệu
+- 31. Trình cấp cao hơn kết luận Tác nhân: Cơ quan chủ trì đầu tư mua sắm (TTMS) Thực hiện: Trình nội dung chưa thống nhất cùng hồ sơ/kết quả họp lên cấp cao hơn để xin kết luận. Biểu mẫu: Hồ sơ ĐXMS; BM-02; kết quả họp (nếu có)
+- 38. Xác nhận hồ sơ đủ điều kiện trình ký Tác nhân: Cơ quan chủ trì đầu tư mua sắm (TTMS) Thực hiện: TTMS xác nhận hồ sơ đủ điều kiện để trình ký BM-05 sau khi hoàn tất các kiểm tra theo luồng TO-BE. Biểu mẫu: BM-05; Checklist 01
+- 44. Rà soát, cập nhật Công văn báo cáo TGĐ Tác nhân: Cơ quan chủ trì đầu tư mua sắm (TTMS) Thực hiện: TTMS rà soát, cập nhật dự thảo BM-06 trước khi trình Thủ trưởng đơn vị ký. Biểu mẫu: BM-06
+- 52. Rà soát, xác nhận dự thảo Quyết định phê duyệt Tác nhân: Cơ quan chủ trì đầu tư mua sắm (TTMS) Thực hiện: TTMS rà soát, cập nhật dự thảo BM-08 và Checklist 01 trước khi trình phê duyệt. Biểu mẫu: BM-08; Checklist 01
+- 53. Trình Quyết định phê duyệt ĐXMS Tác nhân: Cơ quan chủ trì đầu tư mua sắm (TTMS) Thực hiện: TTMS trình BM-08 kèm Checklist 01 và hồ sơ thẩm định tới Người có thẩm quyền phê duyệt. Biểu mẫu: BM-08; Checklist 01; hồ sơ thẩm định
+- X
+- Sau họp đã thống nhất?
+- Đồng ý?
+- Đồng ý
+- 37. Rà soát, cập nhật Báo cáo kết quả thẩm định Tác nhân: Cơ quan chủ trì đầu tư mua sắm (TTMS) Thực hiện: TTMS với vai trò CQCM chủ trì về ĐTXD rà soát, cập nhật dự thảo Báo cáo kết quả thẩm định trước khi trình ký. Biểu mẫu: BM-05
+- Có cần báo cáo TGĐ Tập đoàn?
+- 42. Xác định có cần báo cáo TGĐ Tập đoàn Tác nhân: Cơ quan chủ trì đầu tư mua sắm (TTMS) Thực hiện: TTMS xác định hồ sơ có thuộc nhánh cần báo cáo TGĐ Tập đoàn trước khi phê duyệt hay không theo thiết kế TO-BE. Biểu mẫu: Không có mẫu riêng; căn cứ hồ sơ/BM-05
+- Chưa thống nhất
+- 34. Xác nhận ký thẩm định trực tiếp BM-09 Tác nhân: Cơ quan chuyên môn chủ trì Thực hiện: CQCM chủ trì thẩm định trực tiếp trên trên tờ trình BM-09 Biểu mẫu: BM-09.
+- +
+- Đồng ý BM-09?
+- Hệ thống ĐTMS/Tích hợp/ AI
+- 2. Lấy dữ liệu căn cứ đã phê duyệt Tác nhân: Hệ thống ĐTMS/Tích hợp/ AI Thực hiện: Lấy thông tin từ các nguồn căn cứ đã chọn (kế hoạch, eBOM/mBOM và dữ liệu liên quan) để hỗ trợ lập ĐXMS. Biểu mẫu: Không có
+- 3. AI gợi ý thông tin cơ bản ĐXMS Tác nhân: Hệ thống ĐTMS/Tích hợp/ AI Thực hiện: AI tổng hợp/gợi ý thông tin cơ bản của ĐXMS từ tài liệu đầu vào; kết quả để người dùng rà soát, xác nhận. Biểu mẫu: Không có
+- 6. Đối chiếu Dự toán + eBOM + mBOM và thông tin tồn kho từ module Quản lý kho Tác nhân: Hệ thống ĐTMS/Tích hợp/ AI Thực hiện: Tổng hợp/kiểm tra Dự toán, eBOM, mBOM và tồn kho; tính phần căn cứ còn được phép sử dụng, loại phần đã dùng hoặc đang hold. Biểu mẫu: Không có; dữ liệu Dự toán/eBOM/mBOM/Quản lý kho
+- 9. Gửi yêu cầu báo giá thay TTMS Tác nhân: Hệ thống ĐTMS/Tích hợp/ AI Thực hiện: Tự động gửi yêu cầu báo giá theo thông tin người dùng đã lập tới nhà cung cấp/đầu mối theo tích hợp. Biểu mẫu: Yêu cầu báo giá theo Quy định TTMS
+- 13. AI lọc nội dung chưa đạt và hướng dẫn sửa dự thảo Tác nhân: Hệ thống ĐTMS/Tích hợp/ AI Thực hiện: AI xác định nội dung chưa đạt và hướng dẫn sửa dự thảo theo tiêu chuẩn/phụ lục áp dụng. Biểu mẫu: BM-01; Checklist 01; phụ lục (nếu có)
+- 14. Tạo dự thảo yêu cầu thẩm định, trình ký và thông báo Tác nhân: Hệ thống ĐTMS/Tích hợp/ AI Thực hiện: Tự động tạo dự thảo yêu cầu thẩm định/trình ký và thông báo để người dùng kiểm tra, cập nhật. Biểu mẫu: BM-03
+- 20. Tạo/gửi trình ký BM-04 và thông báo qua VOffice Tác nhân: Hệ thống ĐTMS/Tích hợp/ AI Thực hiện: Tạo/gửi yêu cầu trình ký BM-04 và thông báo qua tích hợp VOffice; không mô hình hóa xử lý nội bộ VOffice. Biểu mẫu: BM-04
+- 21. Tổng hợp BM-04 đã ký của các CQCM Tác nhân: Hệ thống ĐTMS/Tích hợp/ AI Thực hiện: Theo dõi và tổng hợp BM-04 đã ký; chỉ chuyển tiếp khi đủ ý kiến hợp lệ của toàn bộ CQCM theo danh sách. Biểu mẫu: BM-04
+- 23. AI tóm tắt nội dung NOK và gửi đơn vị đề xuất Tác nhân: Hệ thống ĐTMS/Tích hợp/ AI Thực hiện: AI tóm tắt nội dung NOK/ý kiến cần xử lý từ các BM-04 và gửi đơn vị đề xuất mua sắm. Biểu mẫu: BM-04
+- 27. Tăng số vòng xử lý lại Tác nhân: Hệ thống ĐTMS/Tích hợp/ AI Thực hiện: Ghi tăng số vòng xử lý lại của hồ sơ để theo dõi số lần chỉnh sửa/giải trình theo quy tắc của luồng. Biểu mẫu: Không có
+- 28. Gửi cảnh báo và yêu cầu họp Tác nhân: Hệ thống ĐTMS/Tích hợp/ AI Thực hiện: Gửi cảnh báo và yêu cầu tổ chức họp khi số vòng xử lý vượt ngưỡng của luồng. Biểu mẫu: Không có
+- 35. Gửi trình ký và tổng hợp Tác nhân: Hệ thống ĐTMS/Tích hợp/ AI Thực hiện: Tạo/gửi trình ký và tổng hợp kết quả ký BM-04, Checklist 01 trên VOffice; chỉ tiếp tục khi đủ kết quả hợp lệ. Biểu mẫu: BM-04; Checklist 01 (>160 tỷ); Checklist 02 (<160 tỷ).
+- 39. Thông báo/giao việc ký BM-05 theo phân công Tác nhân: Hệ thống ĐTMS/Tích hợp/ AI Thực hiện: Tự động giao việc/thông báo yêu cầu ký BM-05 tới các thành phần ký theo phân công qua VOffice. Biểu mẫu: BM-05
+- 43. AI soạn Công văn báo cáo TGĐ Tập đoàn Tác nhân: Hệ thống ĐTMS/Tích hợp/ AI Thực hiện: AI tạo dự thảo Công văn báo cáo TGĐ Tập đoàn về nội dung ĐXMS cho nhánh cần báo cáo. Biểu mẫu: BM-06
+- 46. Trình ký BM-06 qua VOffice và chuyển Ban ĐTXD Tác nhân: Hệ thống ĐTMS/Tích hợp/ AI Thực hiện: Tự động chuyển BM-06 sang VOffice để ký/phát hành và gửi Ban ĐTXD Tập đoàn. Biểu mẫu: BM-06
+- 51. Tự động sinh dự thảo Quyết định phê duyệt ĐXMS Tác nhân: Hệ thống ĐTMS/Tích hợp/ AI Thực hiện: Tự động sinh dự thảo Quyết định phê duyệt ĐXMS từ hồ sơ và kết quả thẩm định đã hoàn tất. Biểu mẫu: BM-08
+- 55. Tạo/gửi ký duyệt trên VOffice Tác nhân: Hệ thống ĐTMS/Tích hợp/ AI Thực hiện: Tự động chuyển BM-08 đã được xác nhận sang VOffice để ký duyệt/phát hành và cập nhật kết quả. Biểu mẫu: BM-08 (>160 tỷ); BM-09 (<160 tỷ).
+- Số vòng xử lý lại > 2?
+- Hợp nhất nhánh báo cáo
+- Đã xác nhận phê duyệt và chuyển VO
+- Đủ BM-04 đã ký hợp lệ?
+- Đủ kết quả ký phiên bản hiện tại?
+- 16. Gửi yêu cầu thẩm định, trình ký và thông báo Tác nhân: Hệ thống ĐTMS/Tích hợp/ AI Thực hiện: Tự động gửi yêu cầu góp ý/thẩm định và thông báo tới danh sách CQCM đã chọn qua tích hợp. Biểu mẫu: BM-03
+- 22. AI kiểm tra xung đột BM-04 giữa các CQCM Tác nhân: Hệ thống ĐTMS/Tích hợp/ AI Thực hiện: AI kiểm tra các BM-04 để phát hiện nội dung nhận xét mâu thuẫn/xung đột giữa các CQCM phối hợp. Biểu mẫu: BM-04
+- Đủ
+- Không
+- Có xung đột?
+- > 2 vòng
+- 35. Gửi trình ký và tổng hợp Tác nhân: Hệ thống ĐTMS/Tích hợp/ AI Thực hiện: Tạo/gửi trình ký và tổng hợp kết quả ký BM-09 trên VOffice; chỉ tiếp tục khi đủ kết quả hợp lệ. Biểu mẫu: BM-09.
+- Giá trị
+- Cơ quan chuyên môn phối hợp (Tài chính/CQCM khác)
+- 17. Rà soát, hoàn thiện BM-04 Tác nhân: Cơ quan chuyên môn phối hợp (Tài chính/CQCM khác) Thực hiện: Nghiên cứu hồ sơ, lập/hoàn thiện ý kiến thẩm định; nêu rõ nội dung OK/NOK và yêu cầu chỉnh sửa. Biểu mẫu: BM-04
+- 33. Kiểm tra lại nội dung hồ sơ đã hoàn chỉnh Tác nhân: Cơ quan chuyên môn phối hợp (Tài chính/CQCM khác) Thực hiện: CQCM kiểm tra lại hồ sơ đã hoàn chỉnh, xác nhận các yêu cầu thẩm định trước đó đã được xử lý. Biểu mẫu: BM-01 (>160 tỷ); BM-09 (<160 tỷ); BM-02; BM-04; Checklist 01 (>160 tỷ); Checklist 02 (<160 tỷ).
+- 34. Xác nhận ký Tác nhân: Cơ quan chuyên môn phối hợp (Tài chính/CQCM khác) Thực hiện: CQCM phối hợp xác nhận/ký BM-04 và Checklist 01 theo phiên bản hồ sơ hiện tại trước khi chuyển bước tiếp theo. Biểu mẫu: BM-04; Checklist 01 (>160 tỷ); Checklist 02 (<160 tỷ).
+- 40. Xác nhận trình ký BM-05 Tác nhân: Cơ quan chuyên môn phối hợp (Tài chính/CQCM khác) Thực hiện: CQCM liên quan xác nhận trình ký BM-05 trên ĐTMS để chuyển xử lý ký qua VOffice. Biểu mẫu: BM-05
+- Đồng ý trình ký BM-04?
+- ✉
+- Chờ BM-04 còn thiếu
+- Hồ sơ hoàn chỉnh đạt?
+- Đạt
+- Chờ ký BM-04 / Checklist 01 (>160 tỷ)Chờ ký Tờ trình BM-09 / Checklist 02 (<160 tỷ)
+- Đơn vị đề xuất mua sắm
+- 1. Chọn căn cứ và nội dung mua sắm Tác nhân: Đơn vị đề xuất mua sắm Thực hiện: Chọn tài liệu đầu vào/căn cứ lập ĐXMS đã được phê duyệt ở cấp áp dụng và xác định phạm vi nội dung mua sắm. Biểu mẫu: Không có mẫu riêng; Tài liệu đầu vào
+- 4. Rà soát và xác nhận thông tin cơ bản Tác nhân: Đơn vị đề xuất mua sắm Thực hiện: Rà soát, xác nhận mục đích, phạm vi/quy mô, giá trị, nguồn vốn, thời gian, biện pháp/kế hoạch thực hiện và độ Mật của ĐXMS. Biểu mẫu: Không có mẫu riêng; thông tin là đầu vào BM-01
+- 5. Chọn/bóc tách căn cứ mua sắm Tác nhân: Đơn vị đề xuất mua sắm Thực hiện: Bóc tách căn cứ theo dữ liệu có sẵn đến dòng/hạng mục dùng để lập nhu cầu mua sắm. Biểu mẫu: Không có
+- 7. Nhận thông tin rà soát tồn kho khả dụng Tác nhân: Đơn vị đề xuất mua sắm Thực hiện: Nhận kết quả rà soát tồn kho khả dụng để đánh giá phần hàng tồn có thể sử dụng cho nhu cầu mua sắm. Biểu mẫu: Kết quả rà soát tồn kho theo Quy định QLTS
+- 8. Khởi tạo yêu cầu báo giá Tác nhân: Đơn vị đề xuất mua sắm Thực hiện: Căn cứ kết quả tồn kho, xác định danh mục/số lượng cần mua và lập yêu cầu báo giá. Biểu mẫu: Yêu cầu báo giá theo Quy định TTMS
+- 10. Tổng hợp và kiểm tra báo giá Tác nhân: Đơn vị đề xuất mua sắm Thực hiện: Tổng hợp các báo giá nhận được và kiểm tra/đánh giá mức độ đáp ứng của báo giá. Biểu mẫu: Báo giá/Kết quả lấy báo giá
+- 11. Hoàn thiện dự thảo ĐXMS Tác nhân: Đơn vị đề xuất mua sắm Thực hiện: Hoàn thiện dự thảo hồ sơ ĐXMS trên cơ sở kết quả tồn kho, báo giá và các căn cứ liên quan. Biểu mẫu: BM-01; Checklist 01
+- 12. Thẩm định cấp đơn vị Tác nhân: Đơn vị đề xuất mua sắm Thực hiện: Chỉ huy đơn vị đề xuất kiểm duyệt/xác nhận dự thảo hồ sơ trước khi gửi các CQCM thẩm định. Biểu mẫu: BM-01; Checklist 01 (đối với luồng >160 tỷ) - BM-09; Checklist 02 (đối với luồng <160 tỷ).
+- 24. Rà soát toàn bộ BM-04 và yêu cầu chỉnh sửa BM-01 (>160 tỷ); BM-09 (<160 tỷ) Tác nhân: Đơn vị đề xuất mua sắm Thực hiện: Rà soát toàn bộ ý kiến BM-04, xác định nội dung cần cập nhật BM-01 và lựa chọn tiếp thu hoặc giải trình. Biểu mẫu: BM-04; BM-01 (>160 tỷ); BM-09 (<160 tỷ)
+- 25. Hoàn chỉnh hồ sơ trình ĐXMS Tác nhân: Đơn vị đề xuất mua sắm Thực hiện: Hoàn chỉnh BM-01 theo ý kiến CQCM; hoàn thiện nội dung giải trình/bảo lưu nếu có và chuẩn bị hồ sơ trình. Biểu mẫu: BM-01 (>160 tỷ); BM-09 (<160 tỷ); BM-02; Checklist 01 (>160 tỷ); Checklist 02 (<160 tỷ).
+- 26. Lập nội dung giải trình Tác nhân: Đơn vị đề xuất mua sắm Thực hiện: Lập Phiếu trình giải quyết công việc và phụ lục giải trình, nêu rõ ý kiến tiếp thu/bảo lưu và lý do. Biểu mẫu: BM-02; Phụ lục 1 giải trình ý kiến CQCM
+- Đủ thông tin căn cứ?
+- Đồng ý với yêu cầu chỉnh sửa?
+- Phát sinh nhu cầu lập ĐXMS
+- Thẩm định cấp đơn vị đạt?
+- Báo giá đạt yêu cầu?
+- 15. Lập phiếu yêu cầu thẩm định và chọn CQCM Tác nhân: Đơn vị đề xuất mua sắm Thực hiện: Kiểm tra/cập nhật nội dung yêu cầu thẩm định và lựa chọn các CQCM liên quan cần góp ý, thẩm định. Biểu mẫu: BM-03
+- Không đủ
+- Đồng ý sửa
+- Không đồng ý
+- Giá trị?
+- >160 tỷ
+- 11. Hoàn thiện dự thảo ĐXMS Tác nhân: Đơn vị đề xuất mua sắm Thực hiện: Hoàn thiện dự thảo hồ sơ ĐXMS trên cơ sở kết quả tồn kho, báo giá và các căn cứ liên quan. Biểu mẫu: BM-09; Checklist 02
+- <160 tỷ
+- Phó TGĐ/Phó GĐ chuyên trách
+- 41. Xác nhận BM-05 Tác nhân: Phó TGĐ/Phó GĐ chuyên trách Thực hiện: Phó TGĐ/Phó GĐ chuyên trách xem xét và xác nhận BM-05 theo thành phần ký thẩm định (nếu có). Biểu mẫu: BM-05
+- Đồng ý BM-05?
+- 34. Xác nhận ký thẩm định trực tiếp BM-09 Tác nhân: Phó TGĐ/Phó GĐ chuyên trách Thực hiện: CQCM chủ trì thẩm định trực tiếp trên trên tờ trình BM-09 Biểu mẫu: BM-09.
+- Thủ trưởng đơn vị VHT
+- 32. Xem xét, kết luận nội dung chưa thống nhất Tác nhân: Thủ trưởng đơn vị VHT Thực hiện: Xem xét và kết luận phương án xử lý đối với nội dung các bên chưa thống nhất. Biểu mẫu: Không quy định mẫu riêng trong 3 tài liệu
+- 45. Xem xét, xác nhận trình ký Công văn báo cáo TGĐ Tác nhân: Thủ trưởng đơn vị VHT Thực hiện: Thủ trưởng đơn vị VHT xem xét và xác nhận BM-06 để chuyển ký/phát hành; văn bản do người đứng đầu đơn vị ký. Biểu mẫu: BM-06
+- 54. Xem xét, xác nhận phê duyệt ĐXMS Tác nhân: Thủ trưởng đơn vị VHT Thực hiện: Thủ trưởng đơn vị VHT xem xét và xác nhận/phê duyệt Quyết định ĐXMS theo thẩm quyền. Biểu mẫu: BM-08 (>160 tỷ); Checklist 01 (>160 tỷ); BM-09 (<160 tỷ); Checklist 02 (<160 tỷ).
+- Đồng ý trình ký BM-06?
+- Kết thúc theo chỉ đạo khác
+- Kết luận xử lý?
+- Chỉ đạo khác
+- Kết quả xem xét?
+- Ban Đầu tư - Xây dựng Tập đoàn
+- 47. Xem xét hồ sơ, lập Báo cáo gửi TGĐ Tập đoàn Tác nhân: Ban Đầu tư - Xây dựng Tập đoàn Thực hiện: Ban ĐTXD xem xét hồ sơ/BM-06; nếu đủ điều kiện thì lập báo cáo gửi TGĐ Tập đoàn. Biểu mẫu: BM-06; BM-07
+- 48. Gửi BM-07 đến TGĐ Tập đoàn Tác nhân: Ban Đầu tư - Xây dựng Tập đoàn Thực hiện: Gửi BM-07 đến Tổng GĐ Tập đoàn để theo dõi, quản lý theo quy trình. Biểu mẫu: BM-07
+- Ban ĐTXD chấp nhận hồ sơ?
+- Chấp nhận
+- Tổng GĐ Tập đoàn
+- 50. Xem xét và cho ý kiến về nội dung ĐXMS Tác nhân: Tổng GĐ Tập đoàn Thực hiện: Tiếp nhận, xem xét nội dung BM-07 theo thiết kế TO-BE; tài liệu quy trình xác định BM-07 được gửi TGĐ để theo dõi, quản lý. Biểu mẫu: BM-07; tham chiếu hồ sơ/BM-06
+- Ý kiến TGĐ Tập đoàn? [Q02]
+- Cụm lặp theo từng CQCM được yêu cầu · mỗi CQCM có BM-04 riêng
+- Không đạt
+- Sửa dự thảo (>160 tỷ)
+- Sửa BM-04
+- Chưa đủ
+- Có kết quả mới
+- <= 2 vòng
+- Đã thống nhất
+- Thống nhất phương án
+- Yêu cầu xử lý lại Số vòng = 0
+- Chưa đạt
+- Có
+- Yêu cầu hoàn chỉnh
+- 19. AI lọc nội dung cần sửa trên BM-04 Tác nhân: Hệ thống ĐTMS/Tích hợp/ AI Thực hiện: AI tóm tắt các nội dung cần sửa trên BM-04 khi kết quả xác nhận không đạt để CQCM hoàn thiện lại. Biểu mẫu: BM-04; phụ lục (nếu có)
+- 18. Xác nhận trình ký BM-04 Tác nhân: Cơ quan chuyên môn phối hợp (Tài chính/CQCM khác) Thực hiện: Chỉ huy CQCM xác nhận nội dung BM-04 trên ĐTMS trước khi chuyển ký qua VOffice. Biểu mẫu: BM-04
+- Trả lại
+- Sửa dự thảo (<160 tỷ)
+- 36. AI soạn thảo Báo cáo kết quả thẩm định Tác nhân: Hệ thống ĐTMS/Tích hợp/ AI Thực hiện: AI tạo dự thảo Báo cáo kết quả thẩm định từ hồ sơ hoàn chỉnh và các ý kiến thẩm định. Biểu mẫu: BM-05
+- N01 · PHẠM VI — TO-BE và biên tích hợp VOffice Người dùng xác nhận trên ĐTMS trước; hệ thống tạo/gửi sang VO sau. Không vẽ các bước nội bộ VO, SSO/ủy quyền, tài khoản intern trong luồng chính. Kết quả BM-04/Checklist đã ký được nhận từ tích hợp để tổng hợp đủ. Tạo yêu cầu ký không đồng nghĩa ký thành công. End Event cuối phản ánh đã xác nhận trên ĐTMS và đã chuyển VO, không chứng nhận pháp lý về trạng thái ký bên VO.
+- N02 · CĂN CỨ / KHO / BÁO GIÁ Task 6 chỉ tính phần còn được phép sử dụng: loại phần đã dùng và danh mục đang hold ở luồng khác; không bổ sung nghiệp vụ giữ chỗ mới. Quản lý kho chỉ là biên gửi/nhận kết quả. Hệ thống gửi yêu cầu báo giá thay TTMS. Không đủ căn cứ quay task 4; báo giá không đạt quay task 9. Mapping API và tiêu chí dữ liệu đủ theo từng loại căn cứ tiếp tục là chi tiết chưa chốt.
+- Liên quan task: 6, 7, 9
+- N03 · BM-04 HỢP LỆ KHÔNG ĐỒNG NGHĨA KHÔNG CÓ NOK Cụm 16–19 áp dụng cho từng CQCM được yêu cầu; các CQCM có phiếu riêng. Chỉ tổng hợp tiếp khi đủ các BM-04 đã ký hợp lệ. Phiếu đã ký có thể vẫn có nhận xét NOK về ĐXMS. Thiếu phiếu thì chờ kết quả, không quay về gửi lại toàn bộ. Task AI gửi toàn bộ hồ sơ kèm tóm tắt NOK nếu có.
+- Liên quan task: 16, 17, 20, 21
+- N04 · GIỮ VÒNG GIẢI TRÌNH BẢN CŨ Giữ: Không đồng ý sửa → giải trình → TTMS xem xét → tăng vòng → >2 vòng cảnh báo/họp → chưa thống nhất thì trình cấp cao hơn. Bổ sung task 30 Cập nhật kết quả cuộc họp. Không tự thay bằng hai điều kiện đếm riêng ở KPI trang 8–9. Đây là lựa chọn TO-BE theo câu trả lời 13; khác biệt với KPI được lưu để truy vết.
+- Liên quan task: 24, 25, 26, 27, 28, 29, 30, 31, 32
+- Q01 · CẦN XÁC NHẬN — Trách nhiệm và chữ ký BM-05 Task 37 tạm nằm tại CQCM phối hợp theo mô tả mong muốn, KHÔNG phải phân công đã chốt. Cần xác nhận: TTMS hay CQCM phối hợp chủ trì rà soát/hoàn thiện BM-05? Chữ ký CQCM về ĐTXD (TTMS) nằm ở đâu? Nút xác nhận hồ sơ đủ điều kiện không tự thay thế chữ ký BM-05. Nguồn: PDF Biểu mẫu, trang 6 và 16–17; PDF KPI, trang 9, mục 1.4. Nội dung được tô nổi bật để xác nhận với VHT.
+- Liên quan task: 36, 37, 40, 42
+- Q03 · CẦN LÀM RÕ — Một bên từ chối khi bên kia còn đang xử lý Đã rõ: giao việc song song, thiếu một phản hồi thì chờ; chỉ đi tiếp khi cả hai đồng ý trên cùng phiên bản. Thời điểm trả hồ sơ khi một bên từ chối chưa được xác định rõ: trả ngay hay chờ đủ hai kết quả. Bản vẽ TẠM DÙNG chờ đủ hai kết quả rồi kiểm tra cả hai đồng ý. Nếu chọn trả ngay phải hủy việc chờ còn lại; không chạy đồng thời vòng sửa mới và vòng xác nhận cũ.
+- Liên quan task: 38, 39
+- N05 · CHECKLIST VÀ KÝ LẠI SAU CHỈNH SỬA CQCM phối hợp kiểm tra lại và xác nhận ký BM-04/Checklist 01 trước khối Tài chính–TTMS kiểm tra nội dung. Các hồ sơ đã sửa phải ký lại theo phiên bản hiện tại, không tái dùng kết quả ký cũ để vượt bước. BM-02 là Phiếu trình giải quyết công việc, khác Checklist 01. Hồ sơ trình cuối vẫn đính kèm Checklist đã ký, BM-02 và đủ BM-04. Cách tổ chức đầu mối ký checklist theo yêu cầu TO-BE không được tự xem là đã thay đổi hướng dẫn ban hành.
+- Liên quan task: 23, 33, 34, 35, 38, 39
+- Q02 · CẦN XÁC NHẬN — Có phải chờ Tổng GĐ Tập đoàn đồng ý? Giữ Ban ĐTXD và BM-07. Tạm vẽ: Ban ĐTXD gửi BM-07 → Tổng GĐ Tập đoàn cho ý kiến → Đồng ý mới sinh BM-08; Trả lại về AI tổng hợp NOK. Cần xác nhận điểm chờ và hai nhánh này. PDF KPI trang 10 mục 1.5b ghi gửi TGĐ để theo dõi, quản lý; biểu mẫu BM-07 trang 20–21 chưa chứng minh bắt buộc chờ TGĐ chấp thuận. Đây là phương án để xác nhận, không phải kết luận đã chốt.
+- Liên quan task: 53
+- N06 · TTMS QUYẾT ĐỊNH NHÁNH BÁO CÁO TTMS ghi Có/Không cần báo cáo TGĐ Tập đoàn tại task 39. Gateway sau BM-05 chỉ sử dụng lựa chọn đó, không tự tạo quy tắc giá trị/ủy quyền. Giữ Ban ĐTXD lập BM-07, có quyền trả lại, và thông báo cho hai đầu mối. Vai trò TGĐ trong Q02 còn chờ xác nhận.
+- Liên quan task: 39, 45, 46, 54
+- 49. Thông báo đồng thời cho hai đầu mối Tác nhân: Ban Đầu tư - Xây dựng Tập đoàn Thực hiện: Gửi thông tin/BM-07 đồng thời cho TTMS và đầu mối đơn vị đề xuất để thực hiện các thủ tục tiếp theo. Biểu mẫu: BM-07; không có mẫu thông báo riêng
+
+
+## Trang: MS01 v1.1
+
+156 nhãn (theo thứ tự trong tệp, không phải thứ tự luồng):
+
+- Cơ sở tài liệu đầu vào chưa được Chủ tịch/Tổng Giám đốc Tập đoàn phê duyệt · Bản thảo cập nhật theo nội dung làm rõ bổ sung
+- Xanh dương: User Task | Xanh lá: Service Task | X: chọn một nhánh | +: xử lý/chờ song song | Đỏ: nhánh trả lại | Vàng: task được chuẩn hóa/thay đổi nội dung hoặc cần lưu ý
+- Mở tab GHI CHÚ HỌP để xem Q01 / Q02 và các quy ước; tab TRA CỨU TASK chứa ID, actor, biểu mẫu và mapping số cũ → mới.
+- 01. Căn cứ • Tồn kho • Báo giá • Dự thảo
+- 02. Góp ý CQCM • BM-04
+- 03. Hoàn chỉnh • Giải trình • Họp
+- 04. Rà soát lại • Checklist • BM-09 / BM-05
+- 05. Báo cáo Tập đoàn • Quyết định phê duyệt
+- Cơ quan chủ trì đầu tư mua sắm (TTMS)
+- 31. Tổ chức họp thống nhất các bên Tác nhân: Cơ quan chủ trì đầu tư mua sắm (TTMS) Thực hiện: Tổ chức họp giữa đơn vị đề xuất, CQCM/TTMS và các bên liên quan để thống nhất nội dung còn vướng mắc. Biểu mẫu: Không quy định mẫu riêng trong 3 tài liệu
+- 32. Cập nhật kết quả cuộc họp Tác nhân: Cơ quan chủ trì đầu tư mua sắm (TTMS) Thực hiện: Cập nhật kết luận cuộc họp và các nội dung đã/chưa thống nhất vào hồ sơ xử lý. Biểu mẫu: Kết quả cuộc họp; không có BM chuẩn trong 3 tài liệu
+- 33. Trình cấp cao hơn kết luận Tác nhân: Cơ quan chủ trì đầu tư mua sắm (TTMS) Thực hiện: Trình nội dung chưa thống nhất cùng hồ sơ/kết quả họp lên cấp cao hơn để xin kết luận. Biểu mẫu: Hồ sơ ĐXMS; BM-02; kết quả họp (nếu có)
+- 43. Xác nhận hồ sơ đủ điều kiện giao ký BM-05 Tác nhân: Cơ quan chủ trì đầu tư mua sắm (TTMS) Thực hiện: Sau khi BM-05 đã được rà soát, cập nhật đầy đủ, TTMS xác nhận hồ sơ đủ điều kiện để Hệ thống ĐTMS thực hiện trình ký BM-05 cho TTMS qua VOffice. Biểu mẫu: BM-05; Checklist 01; hồ sơ thẩm định
+- 50. Rà soát, cập nhật Công văn báo cáo TGĐ Tác nhân: Cơ quan chủ trì đầu tư mua sắm (TTMS) Thực hiện: TTMS rà soát, cập nhật dự thảo BM-06 trước khi trình Thủ trưởng đơn vị ký. Biểu mẫu: BM-06
+- 58. Rà soát, xác nhận dự thảo Quyết định phê duyệt Tác nhân: Cơ quan chủ trì đầu tư mua sắm (TTMS) Thực hiện: TTMS rà soát, cập nhật dự thảo BM-08 và Checklist 01 trước khi trình phê duyệt. Biểu mẫu: BM-08; Checklist 01
+- 59. Trình Quyết định phê duyệt ĐXMS Tác nhân: Cơ quan chủ trì đầu tư mua sắm (TTMS) Thực hiện: TTMS trình BM-08 kèm Checklist 01 và hồ sơ thẩm định tới Người có thẩm quyền phê duyệt. Biểu mẫu: BM-08; Checklist 01; hồ sơ thẩm định
+- X
+- Sau họp đã thống nhất?
+- Đồng ý?
+- Đồng ý
+- 42. Rà soát, cập nhật BM-05 Tác nhân: Cơ quan chủ trì đầu tư mua sắm (TTMS) Thực hiện: TTMS với vai trò CQCM chủ trì về ĐTXD rà soát, cập nhật dự thảo Báo cáo kết quả thẩm định BM-05, bảo đảm nội dung đầy đủ và phù hợp với hồ sơ thẩm định trước khi xác nhận đủ điều kiện trình ký. Biểu mẫu: BM-05; hồ sơ ĐXMS; Checklist 01
+- Có cần báo cáo TGĐ Tập đoàn?
+- 48. Xác định có cần báo cáo TGĐ Tập đoàn Tác nhân: Cơ quan chủ trì đầu tư mua sắm (TTMS) Thực hiện: TTMS xác định hồ sơ có thuộc nhánh cần báo cáo TGĐ Tập đoàn trước khi phê duyệt hay không theo thiết kế TO-BE. Biểu mẫu: Không có mẫu riêng; căn cứ hồ sơ/BM-05
+- Chưa thống nhất
+- 38. Ký thẩm định trực tiếp BM-09 Tác nhân: Cơ quan chủ trì đầu tư mua sắm (TTMS) Thực hiện: TTMS với vai trò CQCM chủ trì về ĐTXD xem xét và ký thẩm định trực tiếp trên Tờ trình ĐXMS BM-09 trước khi chuyển bước phê duyệt. Biểu mẫu/Hồ sơ: BM-09; Checklist 02
+- +
+- Đồng ý BM-09?
+- 17. Xác nhận danh sách CQCM thẩm định Tác nhân: Cơ quan chủ trì đầu tư mua sắm (TTMS) Thực hiện: Kiểm tra danh sách CQCM do Đơn vị ĐXMS lựa chọn đã đúng chức năng, đúng phạm vi và đầy đủ các CQCM cần tham gia thẩm định hay chưa. Nếu chưa đúng/đủ, trả lại Đơn vị ĐXMS cập nhật danh sách. Biểu mẫu/Hồ sơ: BM-03; Danh sách CQCM được chọn
+- Danh sách CQCM đúng và đủ?
+- 44. Trình ký BM-05 của TTMS Tác nhân: Hệ thống ĐTMS/Tích hợp/ AI Thực hiện: Hệ thống ĐTMS tạo/gửi yêu cầu trình ký BM-05 qua VOffice để TTMS thực hiện ký BM-05 với tư cách CQCM về ĐTXD. Chỉ sau khi nhận kết quả TTMS ký thành công, hệ thống mới chuyển sang thông báo/giao việc ký BM-05 cho các thành phần còn lại theo phân công. Biểu mẫu: BM-05
+- Hệ thống ĐTMS/Tích hợp/ AI
+- 2. Lấy dữ liệu căn cứ đã phê duyệt Tác nhân: Hệ thống ĐTMS/Tích hợp/ AI Thực hiện: Lấy thông tin từ các nguồn căn cứ đã chọn (kế hoạch, eBOM/mBOM và dữ liệu liên quan) để hỗ trợ lập ĐXMS. Biểu mẫu: Không có
+- 3. AI gợi ý thông tin cơ bản ĐXMS Tác nhân: Hệ thống ĐTMS/Tích hợp/ AI Thực hiện: AI tổng hợp/gợi ý thông tin cơ bản của ĐXMS từ tài liệu đầu vào; kết quả để người dùng rà soát, xác nhận. Biểu mẫu: Không có
+- 6. Đối chiếu Dự toán + eBOM + mBOM và thông tin tồn kho từ module Quản lý kho Tác nhân: Hệ thống ĐTMS/Tích hợp/ AI Thực hiện: Tổng hợp/kiểm tra Dự toán, eBOM, mBOM và tồn kho; tính phần căn cứ còn được phép sử dụng, loại phần đã dùng hoặc đang hold. Biểu mẫu: Không có; dữ liệu Dự toán/eBOM/mBOM/Quản lý kho
+- 9. Gửi yêu cầu báo giá thay TTMS Tác nhân: Hệ thống ĐTMS/Tích hợp/ AI Thực hiện: Tự động gửi yêu cầu báo giá theo thông tin người dùng đã lập tới nhà cung cấp/đầu mối theo tích hợp. Biểu mẫu: Yêu cầu báo giá theo Quy định TTMS
+- 14. AI lọc nội dung chưa đạt và hướng dẫn sửa dự thảo Tác nhân: Hệ thống ĐTMS/Tích hợp/ AI Thực hiện: AI xác định nội dung chưa đạt và gợi ý nội dung cần chỉnh sửa trên dự thảo tương ứng với từng luồng; người dùng rà soát trước khi cập nhật lại hồ sơ. Biểu mẫu/Hồ sơ: BM-01 + Checklist 01 (≥160 tỷ); BM-09 + Checklist 02 (<160 tỷ); phụ lục (nếu có)
+- 15. Tạo dự thảo yêu cầu thẩm định, trình ký và thông báo Tác nhân: Hệ thống ĐTMS/Tích hợp/ AI Thực hiện: Tự động tạo dự thảo yêu cầu thẩm định/trình ký và thông báo để người dùng kiểm tra, cập nhật. Biểu mẫu: BM-03
+- 22. Tạo/gửi trình ký BM-04 và thông báo qua VOffice Tác nhân: Hệ thống ĐTMS/Tích hợp/ AI Thực hiện: Tạo/gửi yêu cầu trình ký BM-04 và thông báo qua tích hợp VOffice; không mô hình hóa xử lý nội bộ VOffice. Biểu mẫu: BM-04
+- 23. Tổng hợp BM-04 đã ký của các CQCM Tác nhân: Hệ thống ĐTMS/Tích hợp/ AI Thực hiện: Theo dõi và tổng hợp BM-04 đã ký; chỉ chuyển tiếp khi đủ ý kiến hợp lệ của toàn bộ CQCM theo danh sách. Biểu mẫu: BM-04
+- 25. AI tóm tắt nội dung NOK và gửi đơn vị đề xuất Tác nhân: Hệ thống ĐTMS/Tích hợp/ AI Thực hiện: AI tóm tắt nội dung NOK/ý kiến cần xử lý từ các BM-04 và gửi đơn vị đề xuất mua sắm. Biểu mẫu: BM-04
+- 29. Tăng số vòng xử lý lại Tác nhân: Hệ thống ĐTMS/Tích hợp/ AI Thực hiện: Ghi tăng số vòng xử lý lại của hồ sơ để theo dõi số lần chỉnh sửa/giải trình theo quy tắc của luồng. Biểu mẫu: Không có
+- 30. Gửi cảnh báo và yêu cầu họp Tác nhân: Hệ thống ĐTMS/Tích hợp/ AI Thực hiện: Gửi cảnh báo và yêu cầu tổ chức họp khi số vòng xử lý vượt ngưỡng của luồng. Biểu mẫu: Không có
+- 37. Gửi trình ký và tổng hợp BM-04/Checklist theo luồng Tác nhân: Hệ thống ĐTMS/Tích hợp/ AI Thực hiện: Tạo/gửi trình ký và tổng hợp kết quả ký BM-04 cùng Checklist tương ứng trên VOffice; chỉ chuyển tiếp khi đủ kết quả hợp lệ của phiên bản hồ sơ hiện tại. Biểu mẫu/Hồ sơ: BM-04; Checklist 01 (≥160 tỷ) / Checklist 02 (<160 tỷ)
+- 45. Thông báo/giao việc ký BM-05 theo phân công Tác nhân: Hệ thống ĐTMS/Tích hợp/ AI Thực hiện: Sau khi Hệ thống ĐTMS nhận kết quả TTMS ký BM-05 thành công qua VOffice, tự động thông báo/giao việc ký BM-05 tới các thành phần ký còn lại theo phân công. Biểu mẫu: BM-05
+- 49. AI soạn Công văn báo cáo TGĐ Tập đoàn Tác nhân: Hệ thống ĐTMS/Tích hợp/ AI Thực hiện: AI tạo dự thảo Công văn báo cáo TGĐ Tập đoàn về nội dung ĐXMS cho nhánh cần báo cáo. Biểu mẫu: BM-06
+- 52. Trình ký BM-06 qua VOffice và chuyển Ban ĐTXD Tác nhân: Hệ thống ĐTMS/Tích hợp/ AI Thực hiện: Tự động chuyển BM-06 sang VOffice để ký/phát hành và gửi Ban ĐTXD Tập đoàn. Biểu mẫu: BM-06
+- 57. Tự động sinh dự thảo Quyết định phê duyệt ĐXMS Tác nhân: Hệ thống ĐTMS/Tích hợp/ AI Thực hiện: Tự động sinh dự thảo Quyết định phê duyệt ĐXMS từ hồ sơ và kết quả thẩm định đã hoàn tất. Biểu mẫu: BM-08
+- 61. Tạo/gửi ký duyệt trên VOffice Tác nhân: Hệ thống ĐTMS/Tích hợp/ AI Thực hiện: Tự động chuyển BM-08 đã được xác nhận sang VOffice để ký duyệt/phát hành và cập nhật kết quả. Biểu mẫu: BM-08 (>160 tỷ); BM-09 (<160 tỷ).
+- Số vòng xử lý lại > 2?
+- Hợp nhất nhánh báo cáo
+- Đã xác nhận phê duyệt và chuyển VO
+- Đủ BM-04 đã ký hợp lệ?
+- Đủ kết quả ký phiên bản hiện tại?
+- 18. Gửi yêu cầu thẩm định, trình ký và thông báo Tác nhân: Hệ thống ĐTMS/Tích hợp/ AI Thực hiện: Sau khi TTMS xác nhận danh sách CQCM đúng và đủ, hệ thống gửi yêu cầu góp ý/thẩm định, trình ký và thông báo tới các CQCM đã được xác nhận. Biểu mẫu/Hồ sơ: BM-03; Danh sách CQCM đã được TTMS xác nhận
+- 24. AI kiểm tra xung đột BM-04 giữa các CQCM Tác nhân: Hệ thống ĐTMS/Tích hợp/ AI Thực hiện: AI kiểm tra các BM-04 để phát hiện nội dung nhận xét mâu thuẫn/xung đột giữa các CQCM phối hợp. Biểu mẫu: BM-04
+- Đủ
+- Không
+- Có xung đột?
+- > 2 vòng
+- 40. Gửi trình ký và tổng hợp BM-09 Tác nhân: Hệ thống ĐTMS/Tích hợp/ AI Thực hiện: Tạo/gửi trình ký BM-09 trên VOffice và tổng hợp kết quả ký thẩm định của luồng <160 tỷ; chỉ chuyển tiếp khi đủ kết quả hợp lệ. Biểu mẫu/Hồ sơ: BM-09; Checklist 02
+- Giá trị
+- Cơ quan chuyên môn phối hợp (Tài chính/CQCM khác)
+- 19. Rà soát, hoàn thiện BM-04 Tác nhân: Cơ quan chuyên môn phối hợp (Tài chính/CQCM khác) Thực hiện: CQCM nghiên cứu hồ sơ, lập ý kiến thẩm định bằng BM-04, nêu rõ nội dung đạt/chưa đạt và yêu cầu chỉnh sửa; Chuyên quản ký nháy/ký trình, Chỉ huy CQCM ký duyệt trước khi phản hồi. Biểu mẫu/Hồ sơ: BM-04; hồ sơ ĐXMS theo luồng tương ứng
+- 35. Kiểm tra lại nội dung hồ sơ đã hoàn chỉnh Tác nhân: Cơ quan chuyên môn phối hợp (Tài chính/CQCM khác) Thực hiện: CQCM kiểm tra lại hồ sơ đã hoàn chỉnh, xác nhận các yêu cầu thẩm định trước đó đã được xử lý. Biểu mẫu: BM-01 (>160 tỷ); BM-09 (160 tỷ); Checklist 02 (<160 tỷ).
+- 36. Xác nhận ký BM-04 và Checklist theo luồng Tác nhân: Cơ quan chuyên môn phối hợp (Tài chính/CQCM khác) Thực hiện: CQCM phối hợp xác nhận/ký lại BM-04 và Checklist theo phiên bản hồ sơ hiện tại trước khi chuyển bước tiếp theo; không sử dụng lại kết quả ký của phiên bản cũ. Biểu mẫu/Hồ sơ: BM-04; Checklist 01 (≥160 tỷ) / Checklist 02 (<160 tỷ)
+- 46. Xem xét, ký BM-05 Tác nhân: Cơ quan chuyên môn phối hợp (Tài chính/CQCM khác) Thực hiện: CQCM Tài chính kế toán và các CQCM liên quan xem xét, xác nhận và ký BM-05 theo chức năng, nhiệm vụ được giao. Biểu mẫu/Hồ sơ: BM-05
+- Đồng ý trình ký BM-04?
+- ✉
+- Chờ BM-04 còn thiếu
+- Hồ sơ hoàn chỉnh đạt?
+- Đạt
+- Chờ ký BM-04 / Checklist 01 (>160 tỷ)Chờ ký Tờ trình BM-09 / Checklist 02 (<160 tỷ)
+- Đơn vị đề xuất mua sắm
+- 1. Chọn căn cứ và nội dung mua sắm Tác nhân: Đơn vị đề xuất mua sắm Thực hiện: Chọn tài liệu đầu vào/căn cứ lập ĐXMS đã được phê duyệt ở cấp áp dụng và xác định phạm vi nội dung mua sắm. Biểu mẫu: Không có mẫu riêng; Tài liệu đầu vào
+- 4. Rà soát và xác nhận thông tin cơ bản Tác nhân: Đơn vị đề xuất mua sắm Thực hiện: Rà soát, xác nhận mục đích; phạm vi/quy mô; giá trị, nguồn vốn, thời gian; biện pháp/kế hoạch thực hiện và độ Mật của ĐXMS trước khi lập dự thảo hồ sơ. Biểu mẫu/Hồ sơ: Thông tin cơ bản; đầu vào BM-01 (≥160 tỷ) / BM-09 (<160 tỷ)
+- 5. Chọn/bóc tách căn cứ mua sắm Tác nhân: Đơn vị đề xuất mua sắm Thực hiện: Bóc tách căn cứ theo dữ liệu có sẵn đến dòng/hạng mục dùng để lập nhu cầu mua sắm. Biểu mẫu: Không có
+- 7. Nhận thông tin rà soát tồn kho khả dụng Tác nhân: Đơn vị đề xuất mua sắm Thực hiện: Nhận kết quả RSTK theo số liệu sổ sách và kết quả RSTK thực tế đủ điều kiện xuất kho; phối hợp kiểm đếm/đánh giá chất lượng thực tế trước khi chốt phần hàng có thể sử dụng. Biểu mẫu/Hồ sơ: Kết quả rà soát tồn kho theo Quy định QLTS
+- 8. Khởi tạo yêu cầu báo giá Tác nhân: Đơn vị đề xuất mua sắm Thực hiện: Căn cứ kết quả tồn kho, xác định danh mục/số lượng cần mua và lập yêu cầu báo giá. Biểu mẫu: Yêu cầu báo giá theo Quy định TTMS
+- 10. Tổng hợp và kiểm tra báo giá Tác nhân: Đơn vị đề xuất mua sắm Thực hiện: Tổng hợp các báo giá nhận được và kiểm tra/đánh giá mức độ đáp ứng của báo giá. Biểu mẫu: Báo giá/Kết quả lấy báo giá
+- 12. Hoàn thiện dự thảo ĐXMS (≥160 tỷ) Tác nhân: Đơn vị đề xuất mua sắm Thực hiện: Hoàn thiện dự thảo hồ sơ ĐXMS trên cơ sở kết quả RSTK, báo giá và các căn cứ liên quan; chuẩn bị hồ sơ để kiểm duyệt trước khi gửi CQCM. Biểu mẫu/Hồ sơ: BM-01; Checklist 01; Kết quả RSTK; Báo giá
+- 13. Thẩm định cấp đơn vị Tác nhân: Đơn vị đề xuất mua sắm Thực hiện: Chỉ huy đơn vị đề xuất kiểm duyệt/xác nhận dự thảo hồ sơ trước khi gửi các CQCM thẩm định. Biểu mẫu: BM-01; Checklist 01 (đối với luồng >160 tỷ) - BM-09; Checklist 02 (đối với luồng <160 tỷ).
+- 26. Rà soát BM-04 và xác định nội dung cần cập nhật ĐXMS Tác nhân: Đơn vị đề xuất mua sắm Thực hiện: Rà soát toàn bộ ý kiến BM-04, xác định nội dung cần cập nhật trên BM-01 đối với luồng ≥160 tỷ hoặc BM-09 đối với luồng <160 tỷ; lựa chọn tiếp thu hoặc lập giải trình/bảo lưu. Biểu mẫu/Hồ sơ: BM-04; BM-01 (≥160 tỷ) / BM-09 (<160 tỷ)
+- 27. Hoàn chỉnh hồ sơ trình ĐXMS Tác nhân: Đơn vị đề xuất mua sắm Thực hiện: Hoàn chỉnh hồ sơ theo ý kiến CQCM và nội dung giải trình/bảo lưu: cập nhật BM-01 đối với luồng ≥160 tỷ hoặc BM-09 đối với luồng <160 tỷ; chuẩn bị BM-02, BM-04 và Checklist tương ứng. Biểu mẫu/Hồ sơ: ≥160 tỷ: BM-01, BM-02, BM-04, Checklist 01; <160 tỷ: BM-09, BM-02, BM-04, Checklist 02
+- 28. Lập nội dung giải trình Tác nhân: Đơn vị đề xuất mua sắm Thực hiện: Lập Phiếu trình giải quyết công việc và phụ lục giải trình, nêu rõ ý kiến tiếp thu/bảo lưu và lý do. Biểu mẫu: BM-02; Phụ lục 1 giải trình ý kiến CQCM
+- Đủ thông tin căn cứ?
+- Đồng ý với yêu cầu chỉnh sửa?
+- Phát sinh nhu cầu lập ĐXMS
+- Thẩm định cấp đơn vị đạt?
+- Báo giá đạt yêu cầu?
+- 16. Lập phiếu yêu cầu thẩm định và chọn CQCM Tác nhân: Đơn vị đề xuất mua sắm Thực hiện: Kiểm tra/cập nhật nội dung yêu cầu thẩm định và lựa chọn các CQCM cần tham gia theo chức năng, nhiệm vụ; danh sách lựa chọn được chuyển TTMS xác nhận trước khi hệ thống gửi yêu cầu. Biểu mẫu/Hồ sơ: BM-03; Danh sách CQCM được chọn
+- Không đủ
+- Đồng ý sửa
+- Không đồng ý
+- Giá trị?
+- >160 tỷ
+- 11. Hoàn thiện dự thảo ĐXMS (<160 tỷ) Tác nhân: Đơn vị đề xuất mua sắm Thực hiện: Hoàn thiện dự thảo Tờ trình ĐXMS ký trực tiếp trên cơ sở kết quả RSTK, báo giá và các căn cứ liên quan; chuẩn bị hồ sơ để kiểm duyệt trước khi gửi CQCM. Biểu mẫu/Hồ sơ: BM-09; Checklist 02; Kết quả RSTK; Báo giá
+- <160 tỷ
+- Phó TGĐ/Phó GĐ chuyên trách
+- 47. Xem xét, ký BM-05 Tác nhân: Phó TGĐ/Phó GĐ chuyên trách Thực hiện: Phó TGĐ/Phó GĐ chuyên trách xem xét và ký BM-05 theo thành phần ký thẩm định áp dụng. Biểu mẫu/Hồ sơ: BM-05
+- Đồng ý BM-05?
+- 39. Ký thẩm định trực tiếp BM-09 Tác nhân: Phó TGĐ/Phó GĐ chuyên trách Thực hiện: Phó TGĐ/Phó GĐ chuyên trách xem xét và ký thẩm định trực tiếp trên Tờ trình ĐXMS BM-09 theo thành phần ký áp dụng. Biểu mẫu/Hồ sơ: BM-09; Checklist 02
+- Thủ trưởng đơn vị VHT
+- 34. Xem xét, kết luận nội dung chưa thống nhất Tác nhân: Thủ trưởng đơn vị VHT Thực hiện: Xem xét và kết luận phương án xử lý đối với nội dung các bên chưa thống nhất. Biểu mẫu: Không quy định mẫu riêng trong 3 tài liệu
+- 51. Xem xét, xác nhận trình ký Công văn báo cáo TGĐ Tác nhân: Thủ trưởng đơn vị VHT Thực hiện: Thủ trưởng đơn vị VHT xem xét và xác nhận BM-06 để chuyển ký/phát hành; văn bản do người đứng đầu đơn vị ký. Biểu mẫu: BM-06
+- 60. Xem xét, phê duyệt ĐXMS Tác nhân: Thủ trưởng đơn vị VHT Thực hiện: Xem xét hồ sơ theo thẩm quyền: ký Quyết định phê duyệt BM-08 đối với luồng ≥160 tỷ; hoặc ký duyệt trực tiếp Tờ trình BM-09 đối với luồng <160 tỷ. Biểu mẫu/Hồ sơ: ≥160 tỷ: BM-08, Checklist 01, BM-04, BM-02; <160 tỷ: BM-09, Checklist 02, BM-04, BM-02
+- Đồng ý trình ký BM-06?
+- Kết thúc theo chỉ đạo khác
+- Kết luận xử lý?
+- Chỉ đạo khác
+- Kết quả xem xét?
+- Ban Đầu tư - Xây dựng Tập đoàn
+- 53. Xem xét hồ sơ, lập Báo cáo gửi TGĐ Tập đoàn Tác nhân: Ban Đầu tư - Xây dựng Tập đoàn Thực hiện: Ban ĐTXD xem xét hồ sơ/BM-06; nếu đủ điều kiện thì lập báo cáo gửi TGĐ Tập đoàn. Biểu mẫu: BM-06; BM-07
+- 54. Gửi BM-07 đến TGĐ Tập đoàn Tác nhân: Ban Đầu tư - Xây dựng Tập đoàn Thực hiện: Gửi BM-07 đến Tổng GĐ Tập đoàn để theo dõi, quản lý theo quy trình. Biểu mẫu: BM-07
+- Ban ĐTXD chấp nhận hồ sơ?
+- Chấp nhận
+- 55. Thông báo đồng thời cho hai đầu mối Tác nhân: Ban Đầu tư - Xây dựng Tập đoàn Thực hiện: Gửi thông tin/BM-07 đồng thời cho TTMS và đầu mối đơn vị đề xuất để thực hiện các thủ tục tiếp theo. Biểu mẫu: BM-07; không có mẫu thông báo riêng
+- Tổng GĐ Tập đoàn
+- 56. Xem xét và cho ý kiến về nội dung ĐXMS Tác nhân: Tổng GĐ Tập đoàn Thực hiện: Tiếp nhận, xem xét nội dung BM-07 theo thiết kế TO-BE; tài liệu quy trình xác định BM-07 được gửi TGĐ để theo dõi, quản lý. Biểu mẫu: BM-07; tham chiếu hồ sơ/BM-06
+- Ý kiến TGĐ Tập đoàn? [Q02]
+- Cụm lặp theo từng CQCM được yêu cầu · mỗi CQCM có BM-04 riêng
+- Không đạt
+- Sửa dự thảo (>160 tỷ)
+- Sửa BM-04
+- Chưa đủ
+- Có kết quả mới
+- <= 2 vòng
+- Đã thống nhất
+- Thống nhất phương án
+- Yêu cầu xử lý lại
+- Chưa đạt
+- Có
+- Yêu cầu hoàn chỉnh
+- 21. AI lọc nội dung cần sửa trên BM-04 Tác nhân: Hệ thống ĐTMS/Tích hợp/ AI Thực hiện: AI tóm tắt các nội dung cần sửa trên BM-04 khi kết quả xác nhận không đạt để CQCM hoàn thiện lại. Biểu mẫu: BM-04; phụ lục (nếu có)
+- 20. Xác nhận trình ký BM-04 Tác nhân: Cơ quan chuyên môn phối hợp (Tài chính/CQCM khác) Thực hiện: Chỉ huy CQCM xác nhận nội dung BM-04 trên ĐTMS trước khi chuyển ký qua VOffice. Biểu mẫu: BM-04
+- Trả lại
+- Sửa dự thảo (<160 tỷ)
+- 41. AI soạn thảo Báo cáo kết quả thẩm định Tác nhân: Hệ thống ĐTMS/Tích hợp/ AI Thực hiện: AI tạo dự thảo Báo cáo kết quả thẩm định từ hồ sơ hoàn chỉnh và các ý kiến thẩm định. Biểu mẫu: BM-05
+- N01 · PHẠM VI — TO-BE và biên tích hợp VOffice Người dùng xác nhận trên ĐTMS trước; hệ thống tạo/gửi sang VO sau. Không vẽ các bước nội bộ VO, SSO/ủy quyền, tài khoản intern trong luồng chính. Kết quả BM-04/Checklist đã ký được nhận từ tích hợp để tổng hợp đủ. Tạo yêu cầu ký không đồng nghĩa ký thành công. End Event cuối phản ánh đã xác nhận trên ĐTMS và đã chuyển VO, không chứng nhận pháp lý về trạng thái ký bên VO.
+- N02 · CĂN CỨ / KHO / BÁO GIÁ Task 6 chỉ tính phần còn được phép sử dụng: loại phần đã dùng và danh mục đang hold ở luồng khác; không bổ sung nghiệp vụ giữ chỗ mới. Quản lý kho chỉ là biên gửi/nhận kết quả. Hệ thống gửi yêu cầu báo giá thay TTMS. Không đủ căn cứ quay task 4; báo giá không đạt quay task 9. Mapping API và tiêu chí dữ liệu đủ theo từng loại căn cứ tiếp tục là chi tiết chưa chốt.
+- Liên quan task: 6, 7, 9
+- N03 · BM-04 HỢP LỆ KHÔNG ĐỒNG NGHĨA KHÔNG CÓ NOK Cụm 18–21 áp dụng cho từng CQCM được yêu cầu; các CQCM có phiếu riêng. Chỉ tổng hợp tiếp khi đủ các BM-04 đã ký hợp lệ. Phiếu đã ký có thể vẫn có nhận xét NOK về ĐXMS. Thiếu phiếu thì chờ kết quả, không quay về gửi lại toàn bộ. Task AI gửi toàn bộ hồ sơ kèm tóm tắt NOK nếu có.
+- Liên quan task: 18, 19, 22, 23
+- N04 · GIỮ VÒNG GIẢI TRÌNH BẢN CŨ Giữ: Không đồng ý sửa → giải trình → TTMS xem xét → tăng vòng → >2 vòng cảnh báo/họp → chưa thống nhất thì trình cấp cao hơn. Task 32 cập nhật kết quả cuộc họp. Không tự thay bằng hai điều kiện đếm riêng ở KPI. Đây là lựa chọn TO-BE đã được giữ nguyên để truy vết.
+- Liên quan task: 26, 27, 28, 29, 30, 31, 32, 33, 34
+- Q01 · ĐÃ CHỐT — TTMS trực tiếp ký BM-05 TTMS là CQCM chủ trì về ĐTXD, trực tiếp rà soát/cập nhật và ký BM-05 với tư cách CQCM về ĐTXD. Sau đó hệ thống giao việc ký BM-05 cho CQCM Tài chính/CQCM liên quan và Phó TGĐ/Phó GĐ chuyên trách. Việc xác nhận hồ sơ đủ điều kiện không thay thế chữ ký BM-05 của TTMS.
+- Liên quan task: 41, 42, 43, 44, 45, 46
+- Q03 · CẦN LÀM RÕ — Một bên từ chối khi bên kia còn đang xử lý Đã rõ: giao việc song song, thiếu một phản hồi thì chờ; chỉ đi tiếp khi cả hai đồng ý trên cùng phiên bản. Thời điểm trả hồ sơ khi một bên từ chối chưa được xác định rõ: trả ngay hay chờ đủ hai kết quả. Bản vẽ TẠM DÙNG chờ đủ hai kết quả rồi kiểm tra cả hai đồng ý. Nếu chọn trả ngay phải hủy việc chờ còn lại; không chạy đồng thời vòng sửa mới và vòng xác nhận cũ.
+- Liên quan task: 44, 45, 46
+- N05 · CHECKLIST VÀ KÝ LẠI SAU CHỈNH SỬA CQCM phối hợp kiểm tra lại và xác nhận ký BM-04 cùng Checklist tương ứng theo phiên bản hồ sơ hiện tại. Luồng ≥160 tỷ dùng Checklist 01; luồng <160 tỷ dùng Checklist 02. Hồ sơ đã sửa phải ký lại theo phiên bản hiện tại, không tái dùng kết quả ký cũ để vượt bước. BM-02 là Phiếu trình giải quyết công việc, khác Checklist.
+- Liên quan task: 25, 35, 36, 37, 38, 39, 40, 43, 44
+- Q02 · TO-BE GIỮ NGUYÊN — Tổng GĐ Tập đoàn xem xét/cho ý kiến BM-07 Theo tài liệu, BM-07 được gửi Tổng GĐ Tập đoàn để theo dõi, quản lý. Theo phương án TO-BE đã chốt, vẫn giữ bước Tổng GĐ Tập đoàn xem xét/cho ý kiến và gateway trước khi sinh BM-08. Task liên quan được tô vàng để nhận biết đây là nội dung giữ theo TO-BE dù tài liệu không quy định rõ điểm chờ này.
+- Liên quan task: 52, 53, 54, 55, 56
+- N06 · TTMS QUYẾT ĐỊNH NHÁNH BÁO CÁO TTMS xác định Có/Không cần báo cáo TGĐ Tập đoàn tại task 47. Gateway sau BM-05 chỉ sử dụng lựa chọn đó, không tự tạo quy tắc giá trị/ủy quyền. Giữ Ban ĐTXD lập BM-07, có quyền trả lại và thông báo cho hai đầu mối. Vai trò TGĐ tiếp tục theo phương án TO-BE tại Q02.
+- Liên quan task: 47, 48, 49, 50, 51, 52, 53, 54, 55
+- N07 · BỔ SUNG KIỂM SOÁT DANH SÁCH CQCM Sau khi Đơn vị ĐXMS lập BM-03 và chọn CQCM, TTMS kiểm tra danh sách đã đúng chức năng/phạm vi và đủ thành phần hay chưa. Đúng/đủ mới gửi yêu cầu thẩm định; chưa đúng/đủ quay lại task 16 để cập nhật.
+- Liên quan task: 16, 17, 18
+
+
+## Trang: MS02 ver1.1
+
+237 nhãn (theo thứ tự trong tệp, không phải thứ tự luồng):
+
+- 01. Căn cứ • Tồn kho • Báo giá • Dự thảo
+- 02. Góp ý CQCM • BM-04
+- 03. Hoàn chỉnh • Giải trình • Họp
+- 04. Rà soát lại • Checklist • BM-09 / BM-05
+- 05. Báo cáo Tập đoàn • Quyết định phê duyệt
+- Cơ quan chủ trì đầu tư mua sắm (TTMS)
+- 31. Tổ chức họp thống nhất các bên Tác nhân: Cơ quan chủ trì đầu tư mua sắm (TTMS) Thực hiện: Tổ chức họp giữa đơn vị đề xuất, CQCM/TTMS và các bên liên quan để thống nhất nội dung còn vướng mắc. Biểu mẫu: Không quy định mẫu riêng trong 3 tài liệu
+- 32. Cập nhật kết quả cuộc họp Tác nhân: Cơ quan chủ trì đầu tư mua sắm (TTMS) Thực hiện: Cập nhật kết luận cuộc họp và các nội dung đã/chưa thống nhất vào hồ sơ xử lý. Biểu mẫu: Kết quả cuộc họp; không có BM chuẩn trong 3 tài liệu
+- 33. Trình cấp cao hơn kết luận Tác nhân: Cơ quan chủ trì đầu tư mua sắm (TTMS) Thực hiện: Trình nội dung chưa thống nhất cùng hồ sơ/kết quả họp lên cấp cao hơn để xin kết luận. Biểu mẫu: Hồ sơ ĐXMS; BM-02; kết quả họp (nếu có)
+- 43. Xác nhận hồ sơ đủ điều kiện giao ký BM-05 Tác nhân: Cơ quan chủ trì đầu tư mua sắm (TTMS) Thực hiện: Sau khi BM-05 đã được rà soát, cập nhật đầy đủ, TTMS xác nhận hồ sơ đủ điều kiện để Hệ thống ĐTMS thực hiện trình ký BM-05 cho TTMS qua VOffice. Biểu mẫu: BM-05; Checklist 01; hồ sơ thẩm định
+- 50. Rà soát, cập nhật Công văn báo cáo TGĐ Tác nhân: Cơ quan chủ trì đầu tư mua sắm (TTMS) Thực hiện: TTMS rà soát, cập nhật dự thảo BM-06 trước khi trình Thủ trưởng đơn vị ký. Biểu mẫu: BM-06
+- 58. Rà soát, xác nhận dự thảo Quyết định phê duyệt Tác nhân: Cơ quan chủ trì đầu tư mua sắm (TTMS) Thực hiện: TTMS rà soát, cập nhật dự thảo BM-08 và Checklist 01 trước khi trình phê duyệt. Biểu mẫu: BM-08; Checklist 01
+- 59. Trình Quyết định phê duyệt ĐXMS Tác nhân: Cơ quan chủ trì đầu tư mua sắm (TTMS) Thực hiện: TTMS trình BM-08 kèm Checklist 01 và hồ sơ thẩm định tới Người có thẩm quyền phê duyệt. Biểu mẫu: BM-08; Checklist 01; hồ sơ thẩm định
+- X
+- Sau họp đã thống nhất?
+- Đồng ý?
+- Đồng ý
+- 42. Rà soát, cập nhật BM-05 Tác nhân: Cơ quan chủ trì đầu tư mua sắm (TTMS) Thực hiện: TTMS với vai trò CQCM chủ trì về ĐTXD rà soát, cập nhật dự thảo Báo cáo kết quả thẩm định BM-05, bảo đảm nội dung đầy đủ và phù hợp với hồ sơ thẩm định trước khi xác nhận đủ điều kiện trình ký. Biểu mẫu: BM-05; hồ sơ ĐXMS; Checklist 01
+- Có cần báo cáo TGĐ Tập đoàn?
+- 48. Xác định có cần báo cáo TGĐ Tập đoàn Tác nhân: Cơ quan chủ trì đầu tư mua sắm (TTMS) Thực hiện: TTMS xác định hồ sơ có thuộc nhánh cần báo cáo TGĐ Tập đoàn trước khi phê duyệt hay không theo thiết kế TO-BE. Biểu mẫu: Không có mẫu riêng; căn cứ hồ sơ/BM-05
+- Chưa thống nhất
+- 38. Ký thẩm định trực tiếp BM-09 Tác nhân: Cơ quan chủ trì đầu tư mua sắm (TTMS) Thực hiện: TTMS với vai trò CQCM chủ trì về ĐTXD xem xét và ký thẩm định trực tiếp trên Tờ trình ĐXMS BM-09 trước khi chuyển bước phê duyệt. Biểu mẫu/Hồ sơ: BM-09; Checklist 02
+- +
+- Đồng ý BM-09?
+- 17. Xác nhận danh sách CQCM thẩm định Tác nhân: Cơ quan chủ trì đầu tư mua sắm (TTMS) Thực hiện: Kiểm tra danh sách CQCM do Đơn vị ĐXMS lựa chọn đã đúng chức năng, đúng phạm vi và đầy đủ các CQCM cần tham gia thẩm định hay chưa. Nếu chưa đúng/đủ, trả lại Đơn vị ĐXMS cập nhật danh sách. Biểu mẫu/Hồ sơ: BM-03; Danh sách CQCM được chọn
+- Danh sách CQCM đúng và đủ?
+- 44. Trình ký BM-05 của TTMS Tác nhân: Hệ thống ĐTMS/Tích hợp/ AI Thực hiện: Hệ thống ĐTMS tạo/gửi yêu cầu trình ký BM-05 qua VOffice để TTMS thực hiện ký BM-05 với tư cách CQCM về ĐTXD. Chỉ sau khi nhận kết quả TTMS ký thành công, hệ thống mới chuyển sang thông báo/giao việc ký BM-05 cho các thành phần còn lại theo phân công. Biểu mẫu: BM-05
+- Hệ thống ĐTMS/Tích hợp/ AI
+- 2. Lấy dữ liệu căn cứ đã phê duyệt Tác nhân: Hệ thống ĐTMS/Tích hợp/ AI Thực hiện: Lấy thông tin từ các nguồn căn cứ đã chọn (kế hoạch, eBOM/mBOM và dữ liệu liên quan) để hỗ trợ lập ĐXMS. Biểu mẫu: Không có
+- 3. AI gợi ý thông tin cơ bản ĐXMS Tác nhân: Hệ thống ĐTMS/Tích hợp/ AI Thực hiện: AI tổng hợp/gợi ý thông tin cơ bản của ĐXMS từ tài liệu đầu vào; kết quả để người dùng rà soát, xác nhận. Biểu mẫu: Không có
+- 6. Đối chiếu Dự toán + eBOM + mBOM và thông tin tồn kho từ module Quản lý kho Tác nhân: Hệ thống ĐTMS/Tích hợp/ AI Thực hiện: Tổng hợp/kiểm tra Dự toán, eBOM, mBOM và tồn kho; tính phần căn cứ còn được phép sử dụng, loại phần đã dùng hoặc đang hold. Biểu mẫu: Không có; dữ liệu Dự toán/eBOM/mBOM/Quản lý kho
+- 9. Gửi yêu cầu báo giá thay TTMS Tác nhân: Hệ thống ĐTMS/Tích hợp/ AI Thực hiện: Tự động gửi yêu cầu báo giá theo thông tin người dùng đã lập tới nhà cung cấp/đầu mối theo tích hợp. Biểu mẫu: Yêu cầu báo giá theo Quy định TTMS
+- 14. AI lọc nội dung chưa đạt và hướng dẫn sửa dự thảo Tác nhân: Hệ thống ĐTMS/Tích hợp/ AI Thực hiện: AI xác định nội dung chưa đạt và gợi ý nội dung cần chỉnh sửa trên dự thảo tương ứng với từng luồng; người dùng rà soát trước khi cập nhật lại hồ sơ. Biểu mẫu/Hồ sơ: BM-01 + Checklist 01 (≥160 tỷ); BM-09 + Checklist 02 (<160 tỷ); phụ lục (nếu có)
+- 15. Tạo dự thảo yêu cầu thẩm định, trình ký và thông báo Tác nhân: Hệ thống ĐTMS/Tích hợp/ AI Thực hiện: Tự động tạo dự thảo yêu cầu thẩm định/trình ký và thông báo để người dùng kiểm tra, cập nhật. Biểu mẫu: BM-03
+- 22. Tạo/gửi trình ký BM-04 và thông báo qua VOffice Tác nhân: Hệ thống ĐTMS/Tích hợp/ AI Thực hiện: Tạo/gửi yêu cầu trình ký BM-04 và thông báo qua tích hợp VOffice; không mô hình hóa xử lý nội bộ VOffice. Biểu mẫu: BM-04
+- 23. Tổng hợp BM-04 đã ký của các CQCM Tác nhân: Hệ thống ĐTMS/Tích hợp/ AI Thực hiện: Theo dõi và tổng hợp BM-04 đã ký; chỉ chuyển tiếp khi đủ ý kiến hợp lệ của toàn bộ CQCM theo danh sách. Biểu mẫu: BM-04
+- 25. AI tóm tắt nội dung NOK và gửi đơn vị đề xuất Tác nhân: Hệ thống ĐTMS/Tích hợp/ AI Thực hiện: AI tóm tắt nội dung NOK/ý kiến cần xử lý từ các BM-04 và gửi đơn vị đề xuất mua sắm. Biểu mẫu: BM-04
+- 29. Tăng số vòng xử lý lại Tác nhân: Hệ thống ĐTMS/Tích hợp/ AI Thực hiện: Ghi tăng số vòng xử lý lại của hồ sơ để theo dõi số lần chỉnh sửa/giải trình theo quy tắc của luồng. Biểu mẫu: Không có
+- 30. Gửi cảnh báo và yêu cầu họp Tác nhân: Hệ thống ĐTMS/Tích hợp/ AI Thực hiện: Gửi cảnh báo và yêu cầu tổ chức họp khi số vòng xử lý vượt ngưỡng của luồng. Biểu mẫu: Không có
+- 37. Gửi trình ký và tổng hợp BM-04/Checklist theo luồng Tác nhân: Hệ thống ĐTMS/Tích hợp/ AI Thực hiện: Tạo/gửi trình ký và tổng hợp kết quả ký BM-04 cùng Checklist tương ứng trên VOffice; chỉ chuyển tiếp khi đủ kết quả hợp lệ của phiên bản hồ sơ hiện tại. Biểu mẫu/Hồ sơ: BM-04; Checklist 01 (≥160 tỷ) / Checklist 02 (<160 tỷ)
+- 45. Thông báo/giao việc ký BM-05 theo phân công Tác nhân: Hệ thống ĐTMS/Tích hợp/ AI Thực hiện: Sau khi Hệ thống ĐTMS nhận kết quả TTMS ký BM-05 thành công qua VOffice, tự động thông báo/giao việc ký BM-05 tới các thành phần ký còn lại theo phân công. Biểu mẫu: BM-05
+- 49. AI soạn Công văn báo cáo TGĐ Tập đoàn Tác nhân: Hệ thống ĐTMS/Tích hợp/ AI Thực hiện: AI tạo dự thảo Công văn báo cáo TGĐ Tập đoàn về nội dung ĐXMS cho nhánh cần báo cáo. Biểu mẫu: BM-06
+- 52. Trình ký BM-06 qua VOffice và chuyển Ban ĐTXD Tác nhân: Hệ thống ĐTMS/Tích hợp/ AI Thực hiện: Tự động chuyển BM-06 sang VOffice để ký/phát hành và gửi Ban ĐTXD Tập đoàn. Biểu mẫu: BM-06
+- 57. Tự động sinh dự thảo Quyết định phê duyệt ĐXMS Tác nhân: Hệ thống ĐTMS/Tích hợp/ AI Thực hiện: Tự động sinh dự thảo Quyết định phê duyệt ĐXMS từ hồ sơ và kết quả thẩm định đã hoàn tất. Biểu mẫu: BM-08
+- 61. Tạo/gửi ký duyệt trên VOffice Tác nhân: Hệ thống ĐTMS/Tích hợp/ AI Thực hiện: Tự động chuyển BM-08 đã được xác nhận sang VOffice để ký duyệt/phát hành và cập nhật kết quả. Biểu mẫu: BM-08 (>160 tỷ); BM-09 (<160 tỷ).
+- Số vòng xử lý lại > 2?
+- Hợp nhất nhánh báo cáo
+- Đã xác nhận phê duyệt và chuyển VO
+- Đủ BM-04 đã ký hợp lệ?
+- Đủ kết quả ký phiên bản hiện tại?
+- 18. Gửi yêu cầu thẩm định, trình ký và thông báo Tác nhân: Hệ thống ĐTMS/Tích hợp/ AI Thực hiện: Sau khi TTMS xác nhận danh sách CQCM đúng và đủ, hệ thống gửi yêu cầu góp ý/thẩm định, trình ký và thông báo tới các CQCM đã được xác nhận. Biểu mẫu/Hồ sơ: BM-03; Danh sách CQCM đã được TTMS xác nhận
+- 24. AI kiểm tra xung đột BM-04 giữa các CQCM Tác nhân: Hệ thống ĐTMS/Tích hợp/ AI Thực hiện: AI kiểm tra các BM-04 để phát hiện nội dung nhận xét mâu thuẫn/xung đột giữa các CQCM phối hợp. Biểu mẫu: BM-04
+- Đủ
+- Không
+- Có xung đột?
+- > 2 vòng
+- 40. Gửi trình ký và tổng hợp BM-09 Tác nhân: Hệ thống ĐTMS/Tích hợp/ AI Thực hiện: Tạo/gửi trình ký BM-09 trên VOffice và tổng hợp kết quả ký thẩm định của luồng <160 tỷ; chỉ chuyển tiếp khi đủ kết quả hợp lệ. Biểu mẫu/Hồ sơ: BM-09; Checklist 02
+- Giá trị
+- Cơ quan chuyên môn phối hợp (Tài chính/CQCM khác)
+- 19. Rà soát, hoàn thiện BM-04 Tác nhân: Cơ quan chuyên môn phối hợp (Tài chính/CQCM khác) Thực hiện: CQCM nghiên cứu hồ sơ, lập ý kiến thẩm định bằng BM-04, nêu rõ nội dung đạt/chưa đạt và yêu cầu chỉnh sửa; Chuyên quản ký nháy/ký trình, Chỉ huy CQCM ký duyệt trước khi phản hồi. Biểu mẫu/Hồ sơ: BM-04; hồ sơ ĐXMS theo luồng tương ứng
+- 35. Kiểm tra lại nội dung hồ sơ đã hoàn chỉnh Tác nhân: Cơ quan chuyên môn phối hợp (Tài chính/CQCM khác) Thực hiện: CQCM kiểm tra lại hồ sơ đã hoàn chỉnh, xác nhận các yêu cầu thẩm định trước đó đã được xử lý. Biểu mẫu: BM-01 (>160 tỷ); BM-09 (160 tỷ); Checklist 02 (<160 tỷ).
+- 36. Xác nhận ký BM-04 và Checklist theo luồng Tác nhân: Cơ quan chuyên môn phối hợp (Tài chính/CQCM khác) Thực hiện: CQCM phối hợp xác nhận/ký lại BM-04 và Checklist theo phiên bản hồ sơ hiện tại trước khi chuyển bước tiếp theo; không sử dụng lại kết quả ký của phiên bản cũ. Biểu mẫu/Hồ sơ: BM-04; Checklist 01 (≥160 tỷ) / Checklist 02 (<160 tỷ)
+- 46. Xem xét, ký BM-05 Tác nhân: Cơ quan chuyên môn phối hợp (Tài chính/CQCM khác) Thực hiện: CQCM Tài chính kế toán và các CQCM liên quan xem xét, xác nhận và ký BM-05 theo chức năng, nhiệm vụ được giao. Biểu mẫu/Hồ sơ: BM-05
+- Đồng ý trình ký BM-04?
+- ✉
+- Chờ BM-04 còn thiếu
+- Hồ sơ hoàn chỉnh đạt?
+- Đạt
+- Chờ ký BM-04 / Checklist 01 (>160 tỷ)Chờ ký Tờ trình BM-09 / Checklist 02 (<160 tỷ)
+- Đơn vị đề xuất mua sắm
+- 1. Chọn căn cứ và nội dung mua sắm Tác nhân: Đơn vị đề xuất mua sắm Thực hiện: Chọn tài liệu đầu vào/căn cứ lập ĐXMS đã được phê duyệt ở cấp áp dụng và xác định phạm vi nội dung mua sắm. Biểu mẫu: Không có mẫu riêng; Tài liệu đầu vào
+- 4. Rà soát và xác nhận thông tin cơ bản Tác nhân: Đơn vị đề xuất mua sắm Thực hiện: Rà soát, xác nhận mục đích; phạm vi/quy mô; giá trị, nguồn vốn, thời gian; biện pháp/kế hoạch thực hiện và độ Mật của ĐXMS trước khi lập dự thảo hồ sơ. Biểu mẫu/Hồ sơ: Thông tin cơ bản; đầu vào BM-01 (≥160 tỷ) / BM-09 (<160 tỷ)
+- 5. Chọn/bóc tách căn cứ mua sắm Tác nhân: Đơn vị đề xuất mua sắm Thực hiện: Bóc tách căn cứ theo dữ liệu có sẵn đến dòng/hạng mục dùng để lập nhu cầu mua sắm. Biểu mẫu: Không có
+- 7. Nhận thông tin rà soát tồn kho khả dụng Tác nhân: Đơn vị đề xuất mua sắm Thực hiện: Nhận kết quả RSTK theo số liệu sổ sách và kết quả RSTK thực tế đủ điều kiện xuất kho; phối hợp kiểm đếm/đánh giá chất lượng thực tế trước khi chốt phần hàng có thể sử dụng. Biểu mẫu/Hồ sơ: Kết quả rà soát tồn kho theo Quy định QLTS
+- 8. Khởi tạo yêu cầu báo giá Tác nhân: Đơn vị đề xuất mua sắm Thực hiện: Căn cứ kết quả tồn kho, xác định danh mục/số lượng cần mua và lập yêu cầu báo giá. Biểu mẫu: Yêu cầu báo giá theo Quy định TTMS
+- 10. Tổng hợp và kiểm tra báo giá Tác nhân: Đơn vị đề xuất mua sắm Thực hiện: Tổng hợp các báo giá nhận được và kiểm tra/đánh giá mức độ đáp ứng của báo giá. Biểu mẫu: Báo giá/Kết quả lấy báo giá
+- 12. Hoàn thiện dự thảo ĐXMS (≥160 tỷ) Tác nhân: Đơn vị đề xuất mua sắm Thực hiện: Hoàn thiện dự thảo hồ sơ ĐXMS trên cơ sở kết quả RSTK, báo giá và các căn cứ liên quan; chuẩn bị hồ sơ để kiểm duyệt trước khi gửi CQCM. Biểu mẫu/Hồ sơ: BM-01; Checklist 01; Kết quả RSTK; Báo giá
+- 13. Thẩm định cấp đơn vị Tác nhân: Đơn vị đề xuất mua sắm Thực hiện: Chỉ huy đơn vị đề xuất kiểm duyệt/xác nhận dự thảo hồ sơ trước khi gửi các CQCM thẩm định. Biểu mẫu: BM-01; Checklist 01 (đối với luồng >160 tỷ) - BM-09; Checklist 02 (đối với luồng <160 tỷ).
+- 26. Rà soát BM-04 và xác định nội dung cần cập nhật ĐXMS Tác nhân: Đơn vị đề xuất mua sắm Thực hiện: Rà soát toàn bộ ý kiến BM-04, xác định nội dung cần cập nhật trên BM-01 đối với luồng ≥160 tỷ hoặc BM-09 đối với luồng <160 tỷ; lựa chọn tiếp thu hoặc lập giải trình/bảo lưu. Biểu mẫu/Hồ sơ: BM-04; BM-01 (≥160 tỷ) / BM-09 (<160 tỷ)
+- 27. Hoàn chỉnh hồ sơ trình ĐXMS Tác nhân: Đơn vị đề xuất mua sắm Thực hiện: Hoàn chỉnh hồ sơ theo ý kiến CQCM và nội dung giải trình/bảo lưu: cập nhật BM-01 đối với luồng ≥160 tỷ hoặc BM-09 đối với luồng <160 tỷ; chuẩn bị BM-02, BM-04 và Checklist tương ứng. Biểu mẫu/Hồ sơ: ≥160 tỷ: BM-01, BM-02, BM-04, Checklist 01; <160 tỷ: BM-09, BM-02, BM-04, Checklist 02
+- 28. Lập nội dung giải trình Tác nhân: Đơn vị đề xuất mua sắm Thực hiện: Lập Phiếu trình giải quyết công việc và phụ lục giải trình, nêu rõ ý kiến tiếp thu/bảo lưu và lý do. Biểu mẫu: BM-02; Phụ lục 1 giải trình ý kiến CQCM
+- Đủ thông tin căn cứ?
+- Đồng ý với yêu cầu chỉnh sửa?
+- Phát sinh nhu cầu lập ĐXMS
+- Thẩm định cấp đơn vị đạt?
+- Báo giá đạt yêu cầu?
+- 16. Lập phiếu yêu cầu thẩm định và chọn CQCM Tác nhân: Đơn vị đề xuất mua sắm Thực hiện: Kiểm tra/cập nhật nội dung yêu cầu thẩm định và lựa chọn các CQCM cần tham gia theo chức năng, nhiệm vụ; danh sách lựa chọn được chuyển TTMS xác nhận trước khi hệ thống gửi yêu cầu. Biểu mẫu/Hồ sơ: BM-03; Danh sách CQCM được chọn
+- Không đủ
+- Đồng ý sửa
+- Không đồng ý
+- Giá trị?
+- >160 tỷ
+- 11. Hoàn thiện dự thảo ĐXMS (<160 tỷ) Tác nhân: Đơn vị đề xuất mua sắm Thực hiện: Hoàn thiện dự thảo Tờ trình ĐXMS ký trực tiếp trên cơ sở kết quả RSTK, báo giá và các căn cứ liên quan; chuẩn bị hồ sơ để kiểm duyệt trước khi gửi CQCM. Biểu mẫu/Hồ sơ: BM-09; Checklist 02; Kết quả RSTK; Báo giá
+- <160 tỷ
+- Phó TGĐ/Phó GĐ chuyên trách
+- 47. Xem xét, ký BM-05 Tác nhân: Phó TGĐ/Phó GĐ chuyên trách Thực hiện: Phó TGĐ/Phó GĐ chuyên trách xem xét và ký BM-05 theo thành phần ký thẩm định áp dụng. Biểu mẫu/Hồ sơ: BM-05
+- Đồng ý BM-05?
+- 39. Ký thẩm định trực tiếp BM-09 Tác nhân: Phó TGĐ/Phó GĐ chuyên trách Thực hiện: Phó TGĐ/Phó GĐ chuyên trách xem xét và ký thẩm định trực tiếp trên Tờ trình ĐXMS BM-09 theo thành phần ký áp dụng. Biểu mẫu/Hồ sơ: BM-09; Checklist 02
+- Thủ trưởng đơn vị VHT
+- 34. Xem xét, kết luận nội dung chưa thống nhất Tác nhân: Thủ trưởng đơn vị VHT Thực hiện: Xem xét và kết luận phương án xử lý đối với nội dung các bên chưa thống nhất. Biểu mẫu: Không quy định mẫu riêng trong 3 tài liệu
+- 51. Xem xét, xác nhận trình ký Công văn báo cáo TGĐ Tác nhân: Thủ trưởng đơn vị VHT Thực hiện: Thủ trưởng đơn vị VHT xem xét và xác nhận BM-06 để chuyển ký/phát hành; văn bản do người đứng đầu đơn vị ký. Biểu mẫu: BM-06
+- 60. Xem xét, phê duyệt ĐXMS Tác nhân: Thủ trưởng đơn vị VHT Thực hiện: Xem xét hồ sơ theo thẩm quyền: ký Quyết định phê duyệt BM-08 đối với luồng ≥160 tỷ; hoặc ký duyệt trực tiếp Tờ trình BM-09 đối với luồng <160 tỷ. Biểu mẫu/Hồ sơ: ≥160 tỷ: BM-08, Checklist 01, BM-04, BM-02; <160 tỷ: BM-09, Checklist 02, BM-04, BM-02
+- Đồng ý trình ký BM-06?
+- Kết thúc theo chỉ đạo khác
+- Kết luận xử lý?
+- Chỉ đạo khác
+- Kết quả xem xét?
+- Ban Đầu tư - Xây dựng Tập đoàn
+- 53. Xem xét hồ sơ, lập Báo cáo gửi TGĐ Tập đoàn Tác nhân: Ban Đầu tư - Xây dựng Tập đoàn Thực hiện: Ban ĐTXD xem xét hồ sơ/BM-06; nếu đủ điều kiện thì lập báo cáo gửi TGĐ Tập đoàn. Biểu mẫu: BM-06; BM-07
+- 54. Gửi BM-07 đến TGĐ Tập đoàn Tác nhân: Ban Đầu tư - Xây dựng Tập đoàn Thực hiện: Gửi BM-07 đến Tổng GĐ Tập đoàn để theo dõi, quản lý theo quy trình. Biểu mẫu: BM-07
+- Ban ĐTXD chấp nhận hồ sơ?
+- Chấp nhận
+- 55. Thông báo đồng thời cho hai đầu mối Tác nhân: Ban Đầu tư - Xây dựng Tập đoàn Thực hiện: Gửi thông tin/BM-07 đồng thời cho TTMS và đầu mối đơn vị đề xuất để thực hiện các thủ tục tiếp theo. Biểu mẫu: BM-07; không có mẫu thông báo riêng
+- Tổng GĐ Tập đoàn
+- 56. Xem xét và cho ý kiến về nội dung ĐXMS Tác nhân: Tổng GĐ Tập đoàn Thực hiện: Tiếp nhận, xem xét nội dung BM-07 theo thiết kế TO-BE; tài liệu quy trình xác định BM-07 được gửi TGĐ để theo dõi, quản lý. Biểu mẫu: BM-07; tham chiếu hồ sơ/BM-06
+- Ý kiến TGĐ Tập đoàn? [Q02]
+- Cụm lặp theo từng CQCM được yêu cầu · mỗi CQCM có BM-04 riêng
+- Không đạt
+- Sửa dự thảo (>160 tỷ)
+- Sửa BM-04
+- Chưa đủ
+- Có kết quả mới
+- <= 2 vòng
+- Đã thống nhất
+- Thống nhất phương án
+- Yêu cầu xử lý lại
+- Chưa đạt
+- Có
+- Yêu cầu hoàn chỉnh
+- 21. AI lọc nội dung cần sửa trên BM-04 Tác nhân: Hệ thống ĐTMS/Tích hợp/ AI Thực hiện: AI tóm tắt các nội dung cần sửa trên BM-04 khi kết quả xác nhận không đạt để CQCM hoàn thiện lại. Biểu mẫu: BM-04; phụ lục (nếu có)
+- 20. Xác nhận trình ký BM-04 Tác nhân: Cơ quan chuyên môn phối hợp (Tài chính/CQCM khác) Thực hiện: Chỉ huy CQCM xác nhận nội dung BM-04 trên ĐTMS trước khi chuyển ký qua VOffice. Biểu mẫu: BM-04
+- Trả lại
+- Sửa dự thảo (<160 tỷ)
+- 41. AI soạn thảo Báo cáo kết quả thẩm định Tác nhân: Hệ thống ĐTMS/Tích hợp/ AI Thực hiện: AI tạo dự thảo Báo cáo kết quả thẩm định từ hồ sơ hoàn chỉnh và các ý kiến thẩm định. Biểu mẫu: BM-05
+- N01 · PHẠM VI — TO-BE và biên tích hợp VOffice Người dùng xác nhận trên ĐTMS trước; hệ thống tạo/gửi sang VO sau. Không vẽ các bước nội bộ VO, SSO/ủy quyền, tài khoản intern trong luồng chính. Kết quả BM-04/Checklist đã ký được nhận từ tích hợp để tổng hợp đủ. Tạo yêu cầu ký không đồng nghĩa ký thành công. End Event cuối phản ánh đã xác nhận trên ĐTMS và đã chuyển VO, không chứng nhận pháp lý về trạng thái ký bên VO.
+- N02 · CĂN CỨ / KHO / BÁO GIÁ Task 6 chỉ tính phần còn được phép sử dụng: loại phần đã dùng và danh mục đang hold ở luồng khác; không bổ sung nghiệp vụ giữ chỗ mới. Quản lý kho chỉ là biên gửi/nhận kết quả. Hệ thống gửi yêu cầu báo giá thay TTMS. Không đủ căn cứ quay task 4; báo giá không đạt quay task 9. Mapping API và tiêu chí dữ liệu đủ theo từng loại căn cứ tiếp tục là chi tiết chưa chốt.
+- Liên quan task: 6, 7, 9
+- N03 · BM-04 HỢP LỆ KHÔNG ĐỒNG NGHĨA KHÔNG CÓ NOK Cụm 18–21 áp dụng cho từng CQCM được yêu cầu; các CQCM có phiếu riêng. Chỉ tổng hợp tiếp khi đủ các BM-04 đã ký hợp lệ. Phiếu đã ký có thể vẫn có nhận xét NOK về ĐXMS. Thiếu phiếu thì chờ kết quả, không quay về gửi lại toàn bộ. Task AI gửi toàn bộ hồ sơ kèm tóm tắt NOK nếu có.
+- Liên quan task: 18, 19, 22, 23
+- N04 · GIỮ VÒNG GIẢI TRÌNH BẢN CŨ Giữ: Không đồng ý sửa → giải trình → TTMS xem xét → tăng vòng → >2 vòng cảnh báo/họp → chưa thống nhất thì trình cấp cao hơn. Task 32 cập nhật kết quả cuộc họp. Không tự thay bằng hai điều kiện đếm riêng ở KPI. Đây là lựa chọn TO-BE đã được giữ nguyên để truy vết.
+- Liên quan task: 26, 27, 28, 29, 30, 31, 32, 33, 34
+- Q01 · ĐÃ CHỐT — TTMS trực tiếp ký BM-05 TTMS là CQCM chủ trì về ĐTXD, trực tiếp rà soát/cập nhật và ký BM-05 với tư cách CQCM về ĐTXD. Sau đó hệ thống giao việc ký BM-05 cho CQCM Tài chính/CQCM liên quan và Phó TGĐ/Phó GĐ chuyên trách. Việc xác nhận hồ sơ đủ điều kiện không thay thế chữ ký BM-05 của TTMS.
+- Liên quan task: 41, 42, 43, 44, 45, 46
+- Q03 · CẦN LÀM RÕ — Một bên từ chối khi bên kia còn đang xử lý Đã rõ: giao việc song song, thiếu một phản hồi thì chờ; chỉ đi tiếp khi cả hai đồng ý trên cùng phiên bản. Thời điểm trả hồ sơ khi một bên từ chối chưa được xác định rõ: trả ngay hay chờ đủ hai kết quả. Bản vẽ TẠM DÙNG chờ đủ hai kết quả rồi kiểm tra cả hai đồng ý. Nếu chọn trả ngay phải hủy việc chờ còn lại; không chạy đồng thời vòng sửa mới và vòng xác nhận cũ.
+- Liên quan task: 44, 45, 46
+- N05 · CHECKLIST VÀ KÝ LẠI SAU CHỈNH SỬA CQCM phối hợp kiểm tra lại và xác nhận ký BM-04 cùng Checklist tương ứng theo phiên bản hồ sơ hiện tại. Luồng ≥160 tỷ dùng Checklist 01; luồng <160 tỷ dùng Checklist 02. Hồ sơ đã sửa phải ký lại theo phiên bản hiện tại, không tái dùng kết quả ký cũ để vượt bước. BM-02 là Phiếu trình giải quyết công việc, khác Checklist.
+- Liên quan task: 25, 35, 36, 37, 38, 39, 40, 43, 44
+- Q02 · TO-BE GIỮ NGUYÊN — Tổng GĐ Tập đoàn xem xét/cho ý kiến BM-07 Theo tài liệu, BM-07 được gửi Tổng GĐ Tập đoàn để theo dõi, quản lý. Theo phương án TO-BE đã chốt, vẫn giữ bước Tổng GĐ Tập đoàn xem xét/cho ý kiến và gateway trước khi sinh BM-08. Task liên quan được tô vàng để nhận biết đây là nội dung giữ theo TO-BE dù tài liệu không quy định rõ điểm chờ này.
+- Liên quan task: 52, 53, 54, 55, 56
+- N06 · TTMS QUYẾT ĐỊNH NHÁNH BÁO CÁO TTMS xác định Có/Không cần báo cáo TGĐ Tập đoàn tại task 47. Gateway sau BM-05 chỉ sử dụng lựa chọn đó, không tự tạo quy tắc giá trị/ủy quyền. Giữ Ban ĐTXD lập BM-07, có quyền trả lại và thông báo cho hai đầu mối. Vai trò TGĐ tiếp tục theo phương án TO-BE tại Q02.
+- Liên quan task: 47, 48, 49, 50, 51, 52, 53, 54, 55
+- N07 · BỔ SUNG KIỂM SOÁT DANH SÁCH CQCM Sau khi Đơn vị ĐXMS lập BM-03 và chọn CQCM, TTMS kiểm tra danh sách đã đúng chức năng/phạm vi và đủ thành phần hay chưa. Đúng/đủ mới gửi yêu cầu thẩm định; chưa đúng/đủ quay lại task 16 để cập nhật.
+- Liên quan task: 16, 17, 18
+- MS02 – NGHIỆP VỤ PHÊ DUYỆT ĐIỀU CHỈNH ĐỀ XUẤT MUA SẮM
+- Áp dụng 03 luồng con theo giá trị sau điều chỉnh và trạng thái phê duyệt của tài liệu đầu vào · Kế thừa cấu trúc MS01
+- MS02 áp dụng trình tự thẩm định/phê duyệt tương tự MS01; giá trị và thẩm quyền được xác định lại theo trạng thái sau điều chỉnh. Ghi chú nghiệp vụ nằm phía dưới sơ đồ.
+- 01. ĐXMS cũ • Nội dung điều chỉnh • RSTK • Báo giá • Dự thảo
+- 02. Thẩm định CQCM • BM-04
+- 05. Báo cáo Tập đoàn • Phê duyệt điều chỉnh ĐXMS
+- 31. Tổ chức họp thống nhất các bên Tác nhân: Cơ quan chủ trì đầu tư mua sắm (TTMS) Thực hiện: TTMS tổ chức họp giữa Đơn vị đề xuất, CQCM và các bên liên quan để thống nhất các nội dung còn vướng mắc của hồ sơ điều chỉnh. Biểu mẫu/Hồ sơ: Không quy định mẫu riêng trong 3 tài liệu
+- 32. Cập nhật kết quả cuộc họp Tác nhân: Cơ quan chủ trì đầu tư mua sắm (TTMS) Thực hiện: TTMS cập nhật kết luận cuộc họp và các nội dung đã/chưa thống nhất vào hồ sơ điều chỉnh. Biểu mẫu/Hồ sơ: Kết quả cuộc họp; không có BM chuẩn trong 3 tài liệu
+- 33. Trình cấp cao hơn kết luận Tác nhân: Cơ quan chủ trì đầu tư mua sắm (TTMS) Thực hiện: TTMS trình nội dung điều chỉnh chưa thống nhất cùng hồ sơ/kết quả họp lên cấp cao hơn để xin kết luận. Biểu mẫu/Hồ sơ: Hồ sơ ĐXMS; BM-02; kết quả họp (nếu có)
+- 43. Xác nhận hồ sơ điều chỉnh đủ điều kiện giao ký BM-05 Tác nhân: Cơ quan chủ trì đầu tư mua sắm (TTMS) Thực hiện: Sau khi BM-05 đã được rà soát, cập nhật đầy đủ, TTMS xác nhận hồ sơ điều chỉnh đủ điều kiện để Hệ thống ĐTMS thực hiện trình ký BM-05 cho TTMS qua VOffice. Biểu mẫu/Hồ sơ: BM-05; Checklist 01; hồ sơ điều chỉnh
+- 50. Rà soát, cập nhật Công văn báo cáo TGĐ Tác nhân: Cơ quan chủ trì đầu tư mua sắm (TTMS) Thực hiện: TTMS rà soát, cập nhật BM-06 của hồ sơ điều chỉnh trước khi trình Thủ trưởng đơn vị ký. Biểu mẫu/Hồ sơ: BM-06
+- 58. Rà soát, xác nhận dự thảo Quyết định phê duyệt điều chỉnh Tác nhân: Cơ quan chủ trì đầu tư mua sắm (TTMS) Thực hiện: TTMS rà soát dự thảo BM-08 và Checklist 01 trước khi trình Người có thẩm quyền sau điều chỉnh. Biểu mẫu/Hồ sơ: BM-08; Checklist 01
+- 59. Trình Quyết định phê duyệt điều chỉnh ĐXMS Tác nhân: Cơ quan chủ trì đầu tư mua sắm (TTMS) Thực hiện: TTMS trình hồ sơ điều chỉnh và dự thảo BM-08 tới Người có thẩm quyền theo thẩm quyền sau điều chỉnh. Biểu mẫu/Hồ sơ: BM-08; Checklist 01; BM-04; BM-02; hồ sơ điều chỉnh
+- 42. Rà soát, cập nhật BM-05 Tác nhân: Cơ quan chủ trì đầu tư mua sắm (TTMS) Thực hiện: TTMS với vai trò CQCM chủ trì về ĐTXD rà soát, cập nhật dự thảo BM-05 cho hồ sơ điều chỉnh, bảo đảm nội dung phản ánh đúng phần thay đổi và kết quả thẩm định trước khi xác nhận đủ điều kiện trình ký. Biểu mẫu/Hồ sơ: BM-05; hồ sơ điều chỉnh ĐXMS; Checklist 01
+- 48. Xác định có cần báo cáo TGĐ Tập đoàn Tác nhân: Cơ quan chủ trì đầu tư mua sắm (TTMS) Thực hiện: TTMS xác định hồ sơ điều chỉnh có thuộc nhánh cần báo cáo TGĐ Tập đoàn trước khi phê duyệt hay không, căn cứ trạng thái tài liệu đầu vào áp dụng cho hồ sơ điều chỉnh và thẩm quyền sau điều chỉnh. Biểu mẫu/Hồ sơ: Không có mẫu riêng; căn cứ hồ sơ điều chỉnh/BM-05
+- 38. Ký thẩm định trực tiếp BM-09 Tác nhân: Cơ quan chủ trì đầu tư mua sắm (TTMS) Thực hiện: TTMS với vai trò CQCM chủ trì về ĐTXD xem xét và ký thẩm định trực tiếp trên BM-09 đối với hồ sơ điều chỉnh có giá trị dưới 160 tỷ đồng. Biểu mẫu/Hồ sơ: BM-09; Checklist 02
+- 17. Xác nhận danh sách CQCM thẩm định điều chỉnh Tác nhân: Cơ quan chủ trì đầu tư mua sắm (TTMS) Thực hiện: TTMS kiểm tra danh sách CQCM do Đơn vị đề xuất lựa chọn đã đúng chức năng, đúng phạm vi và đầy đủ đối với nội dung điều chỉnh hay chưa. Chỉ khi đúng/đủ mới chuyển bước. Biểu mẫu/Hồ sơ: BM-03; danh sách CQCM
+- 44. Trình ký BM-05 của TTMS Tác nhân: Hệ thống ĐTMS/Tích hợp/ AI Thực hiện: Hệ thống ĐTMS tạo/gửi yêu cầu trình ký BM-05 qua VOffice để TTMS ký BM-05 với tư cách CQCM về ĐTXD. Chỉ sau khi nhận kết quả TTMS ký thành công, hệ thống mới chuyển sang thông báo/giao việc ký cho các thành phần còn lại. Biểu mẫu/Hồ sơ: BM-05
+- 2. Lấy dữ liệu ĐXMS cũ và kết quả đã thực hiện Tác nhân: Hệ thống ĐTMS/Tích hợp/ AI Thực hiện: Hệ thống lấy dữ liệu của ĐXMS đã phê duyệt, các căn cứ liên quan và thông tin/kết quả đã thực hiện của ĐXMS cũ để làm cơ sở xác định phần cần điều chỉnh. Biểu mẫu/Hồ sơ: Hồ sơ ĐXMS cũ; kết quả đã thực hiện; căn cứ liên quan
+- 3. AI gợi ý thông tin điều chỉnh ĐXMS Tác nhân: Hệ thống ĐTMS/Tích hợp/ AI Thực hiện: AI tổng hợp dữ liệu ĐXMS cũ và thông tin hiện có để gợi ý các nội dung có thể cần cập nhật; người dùng phải rà soát, xác nhận trước khi ghi nhận vào hồ sơ điều chỉnh. Biểu mẫu/Hồ sơ: Hồ sơ ĐXMS cũ; dữ liệu liên quan
+- 6. Đối chiếu Dự toán + eBOM + mBOM và thông tin tồn kho tại thời điểm điều chỉnh Tác nhân: Hệ thống ĐTMS/Tích hợp/ AI Thực hiện: Hệ thống thực hiện lại việc kiểm tra Dự toán, eBOM, mBOM và thông tin tồn kho theo dữ liệu hiện tại nhằm phản ánh thay đổi về số lượng tồn kho, nhu cầu và các dữ liệu liên quan tại thời điểm điều chỉnh. Biểu mẫu/Hồ sơ: Dự toán; eBOM; mBOM; dữ liệu tồn kho hiện tại
+- 9. Gửi yêu cầu báo giá điều chỉnh Tác nhân: Hệ thống ĐTMS/Tích hợp/ AI Thực hiện: Theo thiết kế TO-BE kế thừa MS01, Hệ thống ĐTMS gửi trực tiếp yêu cầu báo giá tới nhà cung cấp/đầu mối nhận báo giá để cập nhật cơ sở giá tại thời điểm điều chỉnh. Biểu mẫu/Hồ sơ: Yêu cầu báo giá
+- 14. AI lọc nội dung chưa đạt và hướng dẫn sửa dự thảo điều chỉnh Tác nhân: Hệ thống ĐTMS/Tích hợp/ AI Thực hiện: AI xác định các nội dung chưa đạt trên dự thảo điều chỉnh và gợi ý nội dung cần cập nhật; người dùng rà soát trước khi sửa hồ sơ. Biểu mẫu/Hồ sơ: BM-01 + Checklist 01 (≥160 tỷ); BM-09 + Checklist 02 (<160 tỷ); phụ lục (nếu có)
+- 15. Tạo dự thảo yêu cầu thẩm định điều chỉnh, trình ký và thông báo Tác nhân: Hệ thống ĐTMS/Tích hợp/ AI Thực hiện: Hệ thống tạo dự thảo BM-03 phục vụ việc gửi CQCM thẩm định hồ sơ điều chỉnh ĐXMS. Biểu mẫu/Hồ sơ: BM-03; hồ sơ điều chỉnh ĐXMS
+- 22. Tạo/gửi trình ký BM-04 và thông báo qua VOffice Tác nhân: Hệ thống ĐTMS/Tích hợp/ AI Thực hiện: Hệ thống tạo/gửi trình ký BM-04 của hồ sơ điều chỉnh qua VOffice và thông báo theo luồng. Biểu mẫu/Hồ sơ: BM-04
+- 23. Tổng hợp BM-04 đã ký của các CQCM Tác nhân: Hệ thống ĐTMS/Tích hợp/ AI Thực hiện: Hệ thống tổng hợp các BM-04 đã ký hợp lệ của các CQCM đối với hồ sơ điều chỉnh; thiếu kết quả thì tiếp tục chờ. Biểu mẫu/Hồ sơ: BM-04
+- 25. AI tóm tắt nội dung NOK và gửi đơn vị đề xuất Tác nhân: Hệ thống ĐTMS/Tích hợp/ AI Thực hiện: AI tổng hợp các nội dung NOK/ý kiến cần xử lý từ BM-04 và gửi Đơn vị đề xuất để hoàn thiện hồ sơ điều chỉnh. Biểu mẫu/Hồ sơ: BM-04
+- 29. Tăng số vòng xử lý lại Tác nhân: Hệ thống ĐTMS/Tích hợp/ AI Thực hiện: Hệ thống tăng số vòng xử lý lại của hồ sơ điều chỉnh để phục vụ kiểm soát vòng trao đổi/thẩm định. Biểu mẫu/Hồ sơ: Không có
+- 30. Gửi cảnh báo và yêu cầu họp Tác nhân: Hệ thống ĐTMS/Tích hợp/ AI Thực hiện: Khi số vòng xử lý vượt ngưỡng theo thiết kế TO-BE, hệ thống gửi cảnh báo và yêu cầu tổ chức họp để xử lý các nội dung chưa thống nhất. Biểu mẫu/Hồ sơ: Không có
+- 37. Gửi trình ký và tổng hợp BM-04/Checklist theo luồng Tác nhân: Hệ thống ĐTMS/Tích hợp/ AI Thực hiện: Hệ thống tạo/gửi trình ký và tổng hợp kết quả ký BM-04 cùng Checklist tương ứng của hồ sơ điều chỉnh trên VOffice; chỉ chuyển tiếp khi đủ kết quả hợp lệ. Biểu mẫu/Hồ sơ: BM-04; Checklist 01 (≥160 tỷ) / Checklist 02 (<160 tỷ)
+- 45. Thông báo/giao việc ký BM-05 theo phân công Tác nhân: Hệ thống ĐTMS/Tích hợp/ AI Thực hiện: Sau khi TTMS đã ký BM-05 thành công, Hệ thống ĐTMS thông báo/giao việc ký BM-05 cho CQCM Tài chính, CQCM liên quan và Phó TGĐ/Phó GĐ chuyên trách theo phân công. Biểu mẫu/Hồ sơ: BM-05
+- 49. AI soạn Công văn báo cáo TGĐ Tập đoàn Tác nhân: Hệ thống ĐTMS/Tích hợp/ AI Thực hiện: AI tạo dự thảo BM-06 cho hồ sơ điều chỉnh thuộc nhánh phải báo cáo TGĐ Tập đoàn. Biểu mẫu/Hồ sơ: BM-06
+- 52. Trình ký BM-06 qua VOffice và chuyển Ban ĐTXD Tác nhân: Hệ thống ĐTMS/Tích hợp/ AI Thực hiện: Hệ thống chuyển BM-06 của hồ sơ điều chỉnh sang VOffice để ký/phát hành và chuyển Ban ĐTXD Tập đoàn. Biểu mẫu/Hồ sơ: BM-06
+- 57. Tự động sinh dự thảo Quyết định phê duyệt điều chỉnh ĐXMS Tác nhân: Hệ thống ĐTMS/Tích hợp/ AI Thực hiện: Hệ thống sinh dự thảo BM-08 cho hồ sơ điều chỉnh trên cơ sở kết quả thẩm định và điều kiện phê duyệt của nhánh ≥160 tỷ. Biểu mẫu/Hồ sơ: BM-08; hồ sơ điều chỉnh ĐXMS
+- 61. Tạo/gửi ký duyệt hồ sơ điều chỉnh trên VOffice Tác nhân: Hệ thống ĐTMS/Tích hợp/ AI Thực hiện: Hệ thống chuyển văn bản phê duyệt điều chỉnh sang VOffice theo luồng áp dụng và cập nhật kết quả ký/phát hành về ĐTMS. Biểu mẫu/Hồ sơ: ≥160 tỷ: BM-08; <160 tỷ: BM-09
+- 18. Gửi yêu cầu thẩm định điều chỉnh, trình ký và thông báo Tác nhân: Hệ thống ĐTMS/Tích hợp/ AI Thực hiện: Hệ thống gửi yêu cầu thẩm định hồ sơ điều chỉnh tới các CQCM đã được TTMS xác nhận. Biểu mẫu/Hồ sơ: BM-03; hồ sơ điều chỉnh ĐXMS
+- 24. AI kiểm tra xung đột BM-04 giữa các CQCM Tác nhân: Hệ thống ĐTMS/Tích hợp/ AI Thực hiện: AI kiểm tra khả năng xung đột/mâu thuẫn giữa các ý kiến BM-04 đối với hồ sơ điều chỉnh. Biểu mẫu/Hồ sơ: BM-04
+- 40. Gửi trình ký và tổng hợp BM-09 Tác nhân: Hệ thống ĐTMS/Tích hợp/ AI Thực hiện: Hệ thống chuyển BM-09 của hồ sơ điều chỉnh sang VOffice và tổng hợp kết quả ký thẩm định; chỉ chuyển tiếp khi đủ kết quả hợp lệ. Biểu mẫu/Hồ sơ: BM-09; Checklist 02
+- 19. Rà soát, hoàn thiện BM-04 cho hồ sơ điều chỉnh Tác nhân: Cơ quan chuyên môn phối hợp (Tài chính/CQCM khác) Thực hiện: CQCM nghiên cứu hồ sơ điều chỉnh và lập BM-04, nêu rõ nội dung đạt/chưa đạt, ý kiến chuyên môn và yêu cầu sửa đổi/bổ sung nếu có. Biểu mẫu/Hồ sơ: BM-04; hồ sơ điều chỉnh ĐXMS
+- 35. Kiểm tra lại nội dung hồ sơ điều chỉnh đã hoàn chỉnh Tác nhân: Cơ quan chuyên môn phối hợp (Tài chính/CQCM khác) Thực hiện: CQCM kiểm tra lại phiên bản hồ sơ điều chỉnh sau khi Đơn vị đề xuất đã cập nhật theo ý kiến thẩm định/giải trình. Biểu mẫu/Hồ sơ: Hồ sơ điều chỉnh; BM-04; Checklist tương ứng
+- 36. Xác nhận ký BM-04 và Checklist theo luồng Tác nhân: Cơ quan chuyên môn phối hợp (Tài chính/CQCM khác) Thực hiện: CQCM xác nhận/ký BM-04 và Checklist tương ứng trên phiên bản hồ sơ điều chỉnh hiện tại; không tái sử dụng kết quả ký của phiên bản cũ. Biểu mẫu/Hồ sơ: BM-04; Checklist 01 (≥160 tỷ) / Checklist 02 (<160 tỷ)
+- 46. Xem xét, ký BM-05 Tác nhân: Cơ quan chuyên môn phối hợp (Tài chính/CQCM khác) Thực hiện: CQCM Tài chính kế toán và các CQCM liên quan xem xét, xác nhận và ký BM-05 đối với hồ sơ điều chỉnh theo chức năng, nhiệm vụ. Biểu mẫu/Hồ sơ: BM-05
+- Chờ ký BM-04 / Checklist 01 (≥160 tỷ)Chờ ký Tờ trình BM-09 / Checklist 02 (<160 tỷ)
+- 1. Chọn ĐXMS đã được phê duyệt cần điều chỉnh Tác nhân: Đơn vị đề xuất mua sắm Thực hiện: Đơn vị đề xuất lựa chọn ĐXMS đã được phê duyệt cần điều chỉnh. Hệ thống sử dụng hồ sơ đã phê duyệt làm căn cứ khởi tạo hồ sơ điều chỉnh và truy vết phiên bản trước điều chỉnh. Biểu mẫu/Hồ sơ: ĐXMS đã được phê duyệt; BM-08 hoặc BM-09 tương ứng; hồ sơ ĐXMS cũ
+- 4. Xác định lý do, phạm vi và xác nhận nội dung điều chỉnh Tác nhân: Đơn vị đề xuất mua sắm Thực hiện: Đơn vị đề xuất xác định lý do, phạm vi và nội dung cần điều chỉnh trên cơ sở ĐXMS cũ và tình hình hiện tại. Nội dung có thể bao gồm nhu cầu, chủng loại/số lượng, chỉ tiêu kỹ thuật/phương án công nghệ, giá trị, tiến độ hoặc nội dung khác của ĐXMS; người dùng xác nhận trước khi tiếp tục. Biểu mẫu/Hồ sơ: Hồ sơ ĐXMS cũ; nội dung đề nghị điều chỉnh
+- 5. Chọn/bóc tách căn cứ và nội dung cần điều chỉnh Tác nhân: Đơn vị đề xuất mua sắm Thực hiện: Đơn vị đề xuất chọn, bóc tách các căn cứ/hạng mục bị ảnh hưởng bởi điều chỉnh để xác định phạm vi dữ liệu cần tính toán lại và chuẩn bị hồ sơ điều chỉnh. Biểu mẫu/Hồ sơ: Căn cứ mua sắm; hồ sơ ĐXMS cũ; nội dung điều chỉnh
+- 7. Nhận thông tin rà soát tồn kho cập nhật Tác nhân: Đơn vị đề xuất mua sắm Thực hiện: Đơn vị đề xuất nhận và rà soát kết quả tồn kho cập nhật tại thời điểm điều chỉnh, làm cơ sở xác định phần nhu cầu còn phải mua sau điều chỉnh. Biểu mẫu/Hồ sơ: Kết quả RSTK tại thời điểm điều chỉnh
+- 8. Khởi tạo yêu cầu báo giá điều chỉnh Tác nhân: Đơn vị đề xuất mua sắm Thực hiện: Đơn vị đề xuất xác định danh mục/số lượng còn cần mua sau khi rà soát tồn kho và khởi tạo yêu cầu báo giá phục vụ hồ sơ điều chỉnh. Biểu mẫu/Hồ sơ: Yêu cầu báo giá; kết quả RSTK cập nhật
+- 10. Tổng hợp và kiểm tra báo giá tại thời điểm điều chỉnh Tác nhân: Đơn vị đề xuất mua sắm Thực hiện: Đơn vị đề xuất tổng hợp các báo giá nhận được, kiểm tra mức độ đáp ứng và sử dụng kết quả hiện hành để xác định giá trị ĐXMS sau điều chỉnh. Biểu mẫu/Hồ sơ: Báo giá cập nhật; kết quả RSTK
+- 12. Hoàn thiện dự thảo điều chỉnh ĐXMS (≥160 tỷ) Tác nhân: Đơn vị đề xuất mua sắm Thực hiện: Hoàn thiện dự thảo hồ sơ điều chỉnh ĐXMS khi giá trị sau điều chỉnh từ 160 tỷ đồng trở lên, trên cơ sở kết quả RSTK, báo giá cập nhật, ĐXMS cũ và nội dung phát sinh dẫn tới điều chỉnh. Biểu mẫu/Hồ sơ: BM-01; Checklist 01; Kết quả RSTK; Báo giá; hồ sơ ĐXMS cũ
+- 13. Thẩm định cấp đơn vị đối với hồ sơ điều chỉnh Tác nhân: Đơn vị đề xuất mua sắm Thực hiện: Chỉ huy đơn vị đề xuất xem xét hồ sơ điều chỉnh trước khi gửi CQCM thẩm định; kiểm tra nội dung điều chỉnh, căn cứ, giá trị sau điều chỉnh và bộ biểu mẫu tương ứng. Biểu mẫu/Hồ sơ: ≥160 tỷ: BM-01 + Checklist 01; <160 tỷ: BM-09 + Checklist 02
+- 26. Rà soát BM-04 và xác định nội dung cần cập nhật hồ sơ điều chỉnh Tác nhân: Đơn vị đề xuất mua sắm Thực hiện: Đơn vị đề xuất rà soát các BM-04, xác định nội dung cần cập nhật trên hồ sơ điều chỉnh và lựa chọn tiếp thu hoặc giải trình/bảo lưu theo luồng. Biểu mẫu/Hồ sơ: BM-04; BM-01 hoặc BM-09 theo giá trị sau điều chỉnh
+- 27. Hoàn chỉnh hồ sơ trình điều chỉnh ĐXMS Tác nhân: Đơn vị đề xuất mua sắm Thực hiện: Hoàn chỉnh hồ sơ điều chỉnh theo ý kiến CQCM và nội dung giải trình/bảo lưu, sử dụng bộ biểu mẫu tương ứng với giá trị sau điều chỉnh. Biểu mẫu/Hồ sơ: ≥160 tỷ: BM-01, BM-02, BM-04, Checklist 01; <160 tỷ: BM-09, BM-02, BM-04, Checklist 02; hồ sơ ĐXMS cũ
+- 28. Lập nội dung giải trình Tác nhân: Đơn vị đề xuất mua sắm Thực hiện: Đơn vị đề xuất lập BM-02/nội dung giải trình đối với các ý kiến thẩm định chưa thể tiếp thu ngay, nêu rõ nội dung tiếp thu, bảo lưu và lý do. Biểu mẫu/Hồ sơ: BM-02; Phụ lục 1 giải trình ý kiến CQCM
+- 16. Lập phiếu yêu cầu thẩm định điều chỉnh và chọn CQCM Tác nhân: Đơn vị đề xuất mua sắm Thực hiện: Đơn vị đề xuất rà soát/cập nhật BM-03 và lựa chọn danh sách CQCM cần tham gia thẩm định hồ sơ điều chỉnh. Biểu mẫu/Hồ sơ: BM-03; hồ sơ điều chỉnh ĐXMS
+- Giá trị sau điều chỉnh?
+- ≥160 tỷ
+- 11. Hoàn thiện dự thảo điều chỉnh ĐXMS (<160 tỷ) Tác nhân: Đơn vị đề xuất mua sắm Thực hiện: Hoàn thiện dự thảo hồ sơ điều chỉnh ĐXMS khi giá trị sau điều chỉnh dưới 160 tỷ đồng, trên cơ sở kết quả RSTK, báo giá cập nhật, ĐXMS cũ và nội dung phát sinh dẫn tới điều chỉnh. Biểu mẫu/Hồ sơ: BM-09; Checklist 02; Kết quả RSTK; Báo giá; hồ sơ ĐXMS cũ
+- 47. Xem xét, ký BM-05 Tác nhân: Phó TGĐ/Phó GĐ chuyên trách Thực hiện: Phó TGĐ/Phó GĐ chuyên trách xem xét và ký BM-05 đối với hồ sơ điều chỉnh theo thành phần áp dụng. Biểu mẫu/Hồ sơ: BM-05
+- 39. Ký thẩm định trực tiếp BM-09 Tác nhân: Phó TGĐ/Phó GĐ chuyên trách Thực hiện: Phó TGĐ/Phó GĐ chuyên trách xem xét và ký thẩm định trực tiếp trên BM-09 của hồ sơ điều chỉnh theo thành phần áp dụng. Biểu mẫu/Hồ sơ: BM-09; Checklist 02
+- 34. Xem xét, kết luận nội dung chưa thống nhất Tác nhân: Thủ trưởng đơn vị VHT Thực hiện: Thủ trưởng đơn vị VHT xem xét và kết luận phương án xử lý đối với nội dung điều chỉnh chưa thống nhất. Biểu mẫu/Hồ sơ: Không quy định mẫu riêng trong 3 tài liệu
+- 51. Xem xét, xác nhận trình ký Công văn báo cáo TGĐ Tác nhân: Thủ trưởng đơn vị VHT Thực hiện: Thủ trưởng đơn vị VHT xem xét, xác nhận trình ký BM-06 của hồ sơ điều chỉnh. Biểu mẫu/Hồ sơ: BM-06
+- 60. Xem xét, phê duyệt điều chỉnh ĐXMS Tác nhân: Thủ trưởng đơn vị VHT Thực hiện: Người có thẩm quyền sau điều chỉnh xem xét hồ sơ: ký BM-08 đối với nhánh ≥160 tỷ hoặc ký duyệt trực tiếp BM-09 đối với nhánh <160 tỷ. Biểu mẫu/Hồ sơ: ≥160 tỷ: BM-08, Checklist 01, BM-04, BM-02; <160 tỷ: BM-09, Checklist 02, BM-04, BM-02
+- 53. Xem xét hồ sơ điều chỉnh, lập Báo cáo gửi TGĐ Tập đoàn Tác nhân: Ban Đầu tư - Xây dựng Tập đoàn Thực hiện: Ban ĐTXD Tập đoàn xem xét hồ sơ điều chỉnh và lập BM-07 theo nhánh phải báo cáo TGĐ Tập đoàn. Biểu mẫu/Hồ sơ: BM-06; BM-07; hồ sơ điều chỉnh ĐXMS
+- 54. Gửi BM-07 đến TGĐ Tập đoàn Tác nhân: Ban Đầu tư - Xây dựng Tập đoàn Thực hiện: Ban ĐTXD Tập đoàn gửi BM-07 của hồ sơ điều chỉnh đến TGĐ Tập đoàn theo luồng. Biểu mẫu/Hồ sơ: BM-07
+- 55. Thông báo đồng thời cho hai đầu mối Tác nhân: Ban Đầu tư - Xây dựng Tập đoàn Thực hiện: Ban ĐTXD Tập đoàn thông báo/gửi thông tin BM-07 của hồ sơ điều chỉnh đồng thời cho TTMS và đầu mối Đơn vị đề xuất theo TO-BE đã chốt. Biểu mẫu/Hồ sơ: BM-07; không có mẫu thông báo riêng
+- 56. Xem xét và cho ý kiến về nội dung điều chỉnh ĐXMS Tác nhân: Tổng GĐ Tập đoàn Thực hiện: Theo phương án TO-BE kế thừa MS01, TGĐ Tập đoàn xem xét/cho ý kiến về nội dung điều chỉnh ĐXMS trước khi tiếp tục luồng phê duyệt. Biểu mẫu/Hồ sơ: BM-07; hồ sơ điều chỉnh ĐXMS
+- Sửa dự thảo (≥160 tỷ)
+- 21. AI lọc nội dung cần sửa trên BM-04 Tác nhân: Hệ thống ĐTMS/Tích hợp/ AI Thực hiện: Nếu BM-04 đối với hồ sơ điều chỉnh chưa đạt, AI tóm tắt nội dung cần sửa để CQCM hoàn thiện lại. Biểu mẫu/Hồ sơ: BM-04; phụ lục (nếu có)
+- 20. Xác nhận trình ký BM-04 Tác nhân: Cơ quan chuyên môn phối hợp (Tài chính/CQCM khác) Thực hiện: Chỉ huy CQCM xác nhận nội dung BM-04 đối với hồ sơ điều chỉnh trên ĐTMS trước khi chuyển trình ký. Biểu mẫu/Hồ sơ: BM-04
+- 41. AI soạn thảo Báo cáo kết quả thẩm định điều chỉnh ĐXMS Tác nhân: Hệ thống ĐTMS/Tích hợp/ AI Thực hiện: AI tạo dự thảo BM-05 trên cơ sở hồ sơ điều chỉnh đã hoàn chỉnh và các ý kiến thẩm định; người dùng tiếp tục rà soát theo luồng. Biểu mẫu/Hồ sơ: BM-05; hồ sơ điều chỉnh ĐXMS
+- Q01 · ĐÃ CHỐT — TTMS ký BM-05 trước các thành phần còn lại Đối với hồ sơ điều chỉnh, TTMS rà soát/cập nhật BM-05 tại task 42, xác nhận đủ điều kiện tại task 43; Hệ thống trình ký BM-05 cho TTMS tại task 44. Chỉ sau khi nhận kết quả TTMS ký thành công mới thông báo/giao việc ký cho CQCM Tài chính/CQCM liên quan và Phó TGĐ/Phó GĐ chuyên trách.
+- Liên quan task: 41, 42, 43, 44, 45, 46, 47
+- N05 · CHECKLIST VÀ KÝ LẠI TRÊN HỒ SƠ ĐIỀU CHỈNH CQCM kiểm tra lại và xác nhận ký BM-04 cùng Checklist tương ứng theo phiên bản hồ sơ điều chỉnh hiện tại. Giá trị sau điều chỉnh ≥160 tỷ dùng Checklist 01; dưới 160 tỷ dùng Checklist 02. Không tái sử dụng kết quả ký của phiên bản hồ sơ trước điều chỉnh để vượt bước.
+- Q02 · TO-BE GIỮ NGUYÊN — Tổng GĐ Tập đoàn xem xét/cho ý kiến BM-07 MS02 kế thừa MS01: theo tài liệu, BM-07 được gửi TGĐ Tập đoàn để theo dõi, quản lý; theo phương án TO-BE đã chốt vẫn giữ bước TGĐ Tập đoàn xem xét/cho ý kiến và gateway trước khi sinh BM-08 đối với hồ sơ điều chỉnh thuộc nhánh này.
+- N06 · XÁC ĐỊNH NHÁNH BÁO CÁO SAU ĐIỀU CHỈNH TTMS xác định Có/Không cần báo cáo TGĐ Tập đoàn tại task 48 trên cơ sở hồ sơ điều chỉnh, trạng thái tài liệu đầu vào và thẩm quyền sau điều chỉnh. Gateway sau BM-05 chỉ sử dụng lựa chọn này, không tự tạo thêm quy tắc.
+- Liên quan task: 48, 49, 50, 51, 52, 53, 54, 55, 56
+- N07 · KIỂM SOÁT DANH SÁCH CQCM ĐỐI VỚI HỒ SƠ ĐIỀU CHỈNH Sau khi Đơn vị đề xuất lập BM-03 và chọn CQCM, TTMS kiểm tra danh sách đã đúng chức năng/phạm vi và đủ thành phần đối với nội dung điều chỉnh hay chưa. Đúng/đủ mới gửi yêu cầu thẩm định; chưa đúng/đủ quay lại task 16.
+- N08 · GIÁ TRỊ VÀ THẨM QUYỀN SAU ĐIỀU CHỈNH Giá trị dùng để phân nhánh là giá trị ĐXMS sau điều chỉnh. Nếu điều chỉnh làm thay đổi thẩm quyền phê duyệt thì thực hiện theo thẩm quyền sau điều chỉnh. Ví dụ hồ sơ cũ dưới 160 tỷ nhưng sau điều chỉnh từ 160 tỷ trở lên phải chuyển sang nhánh ≥160 tỷ.
+- Liên quan task: 10, 11, 12, 48, 60
+- N09 · RÀ SOÁT TỒN KHO VÀ BÁO GIÁ LẠI MS02 luôn thực hiện lại rà soát tồn kho và cập nhật báo giá/cơ sở giá tại thời điểm điều chỉnh. Không mặc định tái sử dụng kết quả RSTK/báo giá của ĐXMS cũ vì số lượng tồn kho, giá cả và nhu cầu có thể đã thay đổi.
+- Liên quan task: 6, 7, 8, 9, 10
+- N10 · ĐIỀU CHỈNH/BỔ SUNG NGÂN SÁCH Theo Quy trình, việc điều chỉnh ĐXMS thực hiện đồng thời với điều chỉnh/bổ sung ngân sách để triển khai thủ tục mua sắm. BPMN MS02 không mô hình hóa quy trình ngân sách riêng; nội dung này được ghi chú để các bên kiểm soát khi triển khai và tích hợp nghiệp vụ.
+- Liên quan task: Toàn luồng MS02
+
+
+## Trang: MS13
+
+208 nhãn (theo thứ tự trong tệp, không phải thứ tự luồng):
+
+- MS13 • LUỒNG KHOẢN ĐẦU TƯ ĐƠN GIẢN
+- Phó TGĐ/Phó GĐ chuyên trách
+- Hồ sơ đã thống nhất thuộc vòng nào?
+- Cơ quan chuyên môn phối hợp (Tài chính/CQCM khác)
+- 29. Thẩm định và gửi ý kiến chuyên môn Tác nhân: CQCM phối hợp Thực hiện: CQCM thẩm định theo chức năng. Cấp VHT: ký ý kiến theo thành phần áp dụng. Cấp Tập đoàn: VHT rà soát nội bộ, không ký thẩm định. Không phát hành công văn phối hợp riêng. Biểu mẫu: Ý kiến thẩm định; BM-09/BM-10 khi áp dụng
+- 11. Xác nhận hình thành TSCĐ Tác nhân: Ban Tài chính Thực hiện: Xác nhận Có / Không hình thành tài sản cố định và kết quả OK / NOT OK . Biểu mẫu: Kết quả xác nhận TSCĐ; hồ sơ KĐT
+- Đã nhận đủ 02 kết quả xác nhận
+- +
+- Cả 02 xác nhận đều OK?
+- Đơn vị đề xuất KĐT
+- 17. Rà soát, bổ sung và hoàn thiện đề xuất Tác nhân: Đơn vị đề xuất Thực hiện: PA/PM rà soát nội dung AI, chuẩn bị trình thẩm định. Biểu mẫu: Đề xuất KĐT đã rà soát
+- 19. Lập dự thảo văn bản gộp BM00 Tác nhân: Đơn vị đề xuất Thực hiện: Rà soát nội dung AI, hoàn thiện BM-00. Chủ trương và KĐT chung một văn bản. Khi sửa sau từ chối phê duyệt, giữ vòng BM-00 và số lần họp. Biểu mẫu: BM-00; hồ sơ và tài liệu kèm theo
+- 26. Bổ sung và hoàn chỉnh hồ sơ Tác nhân: Đơn vị đề xuất Thực hiện: Bổ sung hồ sơ theo yêu cầu; giữ loại hồ sơ và số lần họp của vòng hiện tại. Chuyển đúng bước chọn lại CQCM của BM-00, BM-01 hoặc BM-03. Biểu mẫu: Hồ sơ dự thảo đã bổ sung; tài liệu kèm theo
+- 31. Bổ sung hồ sơ hoặc giải trình Tác nhân: Đơn vị đề xuất Thực hiện: Làm rõ nội dung CQCM yêu cầu. Biểu mẫu: Văn bản giải trình
+- 39. Lập và hoàn thiện tờ trình chủ trương Tác nhân: Đơn vị đề xuất Thực hiện: Mục tiêu, sự cần thiết, tổng vốn dự kiến, nguồn vốn, thời gian; trao đổi CQCM trước trình. Biểu mẫu: BM-01; Checklist 01
+- 40. Kiểm tra hồ sơ trước trình Tác nhân: Đơn vị đề xuất Thực hiện: Đầu mối kiểm tra độc lập của đơn vị; không xóa dòng checklist khi thiếu tài liệu. Biểu mẫu: Checklist 01
+- 43. Trình hồ sơ tới các đầu mối Tác nhân: Đơn vị đề xuất Thực hiện: CQCM chủ trì; cấp phó phụ trách nếu có; người có thẩm quyền theo nguồn. Biểu mẫu: BM-01; Checklist 01
+- 51. Kiểm tra và trình hồ sơ Tác nhân: Đơn vị đề xuất Thực hiện: Kiểm tra độc lập đầy đủ, hợp lệ; gửi CQCM chủ trì. Biểu mẫu: Checklist 02; hồ sơ KĐT
+- 59. Hoàn chỉnh hồ sơ theo hướng dẫn Tác nhân: Đơn vị đề xuất Thực hiện: Tiếp tục hoàn chỉnh hoặc thực hiện hướng dẫn của CQCM chủ trì. Biểu mẫu: Hồ sơ; giải trình
+- 1. Chọn căn cứ và nội dung KĐT Tác nhân: Đơn vị đề xuất KĐT Thực hiện: Chọn tài liệu đầu vào/căn cứ lập KĐT đã được phê duyệt ở cấp áp dụng và xác định phạm vi nội dung KĐT. Biểu mẫu: Không có mẫu riêng; Tài liệu đầu vào
+- 4. Rà soát và xác nhận thông tin cơ bản Tác nhân: Đơn vị đề xuất mua sắm Thực hiện: Rà soát, xác nhận mục đích, phạm vi/quy mô, giá trị, nguồn vốn, thời gian, biện pháp/kế hoạch thực hiện và độ Mật của ĐXMS. Biểu mẫu: Không có mẫu riêng; thông tin là đầu vào BM-01
+- 5. Chọn/bóc tách căn cứ KĐT Tác nhân: Đơn vị đề xuất KĐT Thực hiện: Bóc tách căn cứ theo dữ liệu có sẵn đến dòng/hạng mục dùng để lập nhu cầu KĐT. Biểu mẫu: Không có
+- 7. Nhận thông tin rà soát tồn kho khả dụng Tác nhân: Đơn vị đề xuất KĐT Thực hiện: Nhận kết quả rà soát tồn kho khả dụng để đánh giá phần hàng tồn có thể sử dụng cho nhu cầu KĐT. Biểu mẫu: Kết quả rà soát tồn kho theo Quy định QLTS
+- 8. Khởi tạo / chỉnh sửa yêu cầu báo giá Tác nhân: Đơn vị đề xuất KĐT Thực hiện: Căn cứ kết quả tồn kho, xác định danh mục/số lượng cần mua và lập yêu cầu báo giá. Trường hợp báo giá ko đạt yêu cầu thì chỉnh sửa lại yêu cầu báo giá. Biểu mẫu: Yêu cầu báo giá theo Quy định TTMS
+- 10. Tổng hợp và kiểm tra báo giá Tác nhân: Đơn vị đề xuất KĐT Thực hiện: Tổng hợp báo giá, kiểm tra mức độ đáp ứng; chốt tổng mức vốn thực tế để hệ thống phân luồng MS13 / MS14 / MS15. Biểu mẫu: Báo giá / Kết quả lấy báo giá. Biểu mẫu: Báo giá/Kết quả lấy báo giá
+- 15. Hoàn thiện dự thảo KĐT Tác nhân: Đơn vị đề xuất KĐT Thực hiện: Hoàn thiện dự thảo hồ sơ KĐT trên cơ sở kết quả tồn kho, báo giá và các căn cứ liên quan. Biểu mẫu: BM-00 hoặc BM-01/BM-03 theo nhánh đã xác định; Checklist tương ứng
+- Đủ thông tin căn cứ?
+- Phát sinh nhu cầu lập KĐT
+- Hồ sơ gộp thuộc cấp duyệt nào đã xác định?
+- Cần ý kiến CQCM liên quan?
+- 50. Lập hồ sơ phê duyệt KĐT Tác nhân: Đơn vị đề xuất Thực hiện: Rà soát nội dung AI, trao đổi CQCM và hoàn thiện BM-03. Khi sửa sau từ chối phê duyệt KĐT, giữ chủ trương đã duyệt và số lần họp BM-03. Biểu mẫu: BM-03; Checklist 02; chủ trương đã duyệt
+- 61. Hoàn thiện và trình ký hồ sơ gộp cấp VHT Tác nhân: Đơn vị đề xuất; TTMS / CQCM chủ trì Thực hiện: ĐVĐX hoàn thiện BM-00. TTMS tổng hợp, ký báo cáo thẩm định BM-14 và soạn dự thảo BM-18; trình TGĐ VHT phê duyệt trong một giai đoạn gộp, không tách BM-01 / BM-03. Biểu mẫu: BM-00; BM-14; dự thảo BM-18
+- 20. Xin ý kiến Chỉ huy ĐVĐX Tác nhân: Đơn vị đề xuất Thực hiện: Gửi dự thảo văn bản gộp để xin ý kiến Chỉ huy ĐVĐX trước khi chuyển thẩm định. Biểu mẫu: BM-00
+- 22. Lựa chọn CQCM thẩm định dự thảo Tác nhân: Đơn vị đề xuất Thực hiện: Chủ động chọn danh sách CQCM thẩm định/phối hợp cho hồ sơ dự thảo. Hệ thống chuyển theo danh sách đã chọn. Biểu mẫu: Hồ sơ BM-00
+- 41. Chọn CQCM thẩm định chủ trương Tác nhân: Đơn vị đề xuất Thực hiện: Chọn danh sách CQCM tại khâu kiểm tra hồ sơ trước khi trình; hệ thống không tự cố định danh sách. KHCN / Quốc phòng: ĐVĐX chủ động chỉ định CQCM và đơn vị chủ trì theo tính chất KĐT. Biểu mẫu: BM-01; Checklist 01
+- 52. Lựa chọn CQCM thẩm định KĐT Tác nhân: Đơn vị đề xuất Thực hiện: Sau khi kiểm tra hồ sơ, chủ động chọn danh sách CQCM thẩm định. Luồng xử lý tiếp theo áp dụng tương tự khâu dự thảo. KHCN / Quốc phòng: ĐVĐX chủ động chỉ định CQCM và đơn vị chủ trì theo tính chất KĐT. Biểu mẫu: BM-03; Checklist 02
+- 34. Chuyên quản xác nhận sau họp Tác nhân: Chuyên quản ĐVĐX Thực hiện: Rà soát và xác nhận nội dung điều chỉnh đã thống nhất sau họp, trước khi cho phép sửa thông tin hồ sơ. Biểu mẫu: Biên bản họp; nội dung điều chỉnh; xác nhận chuyên quản
+- 35. Chỉ huy đơn vị xác nhận sau họp Tác nhân: Chỉ huy ĐVĐX Thực hiện: Duyệt lại nội dung điều chỉnh sau họp. Chỉ cho phép ĐVĐX cập nhật và trình ký khi đã có đủ xác nhận. Biểu mẫu: Biên bản họp; nội dung điều chỉnh; xác nhận Chỉ huy
+- 36. Cập nhật hồ sơ theo nội dung đã xác nhận Tác nhân: Đơn vị đề xuất Thực hiện: Sửa thông tin theo nội dung Chuyên quản và Chỉ huy đơn vị đã xác nhận; chuyển rà soát lại để trình ký. Biểu mẫu: Hồ sơ đã cập nhật; nội dung đã được xác nhận
+- Đủ 03 điều kiện lập hồ sơ gộp BM-00?
+- 64. Hoàn thiện công văn và bộ hồ sơ gửi Tập đoàn Tác nhân: Đơn vị đề xuất VHT Thực hiện: Rà soát dự thảo công văn, căn cứ và hồ sơ đã thẩm định nội bộ; hoàn thiện bộ tài liệu để TGĐ VHT ký công văn trình lần đầu. Giai đoạn thẩm định tại VHT không ký. Biểu mẫu: Công văn; BM-01 / BM-03 / BM-00; căn cứ kèm theo
+- 68. Tiếp thu nhận xét và hoàn thiện hồ sơ trình lại Tác nhân: Đơn vị đề xuất VHT Thực hiện: Trực tiếp tiếp thu ý kiến Tập đoàn, sửa hồ sơ và lập báo cáo giải trình; hoàn thiện bộ hồ sơ để TGĐ VHT ký trình lại. Hồ sơ bị trả về ở khâu sau cũng quay lại bước này, không qua đầu mối trung gian. Biểu mẫu: Báo cáo giải trình; BM-06; BM-01 / BM-03 / BM-00
+- 21. Cho ý kiến dự thảo văn bản gộp Tác nhân: Chỉ huy ĐVĐX Thực hiện: Xem xét dự thảo BM-00. ĐVĐX tiếp thu, hoàn thiện theo ý kiến trước khi chuyển hồ sơ. Biểu mẫu: BM-00
+- 56. Ký tờ trình phê duyệt KĐT Tác nhân: Chỉ huy Đơn vị đề xuất Thực hiện: Ký tờ trình BM-03 đại diện ĐVĐX trước khi TTMS ký báo cáo thẩm định và trình quyết định phê duyệt cấp VHT. Biểu mẫu: BM-03; Checklist 02
+- 24. Ký phiếu yêu cầu thẩm định Tác nhân: Chỉ huy Đơn vị đề xuất Thực hiện: Ký phiếu yêu cầu thẩm định hồ sơ gộp; hệ thống mở vòng BM-00 và khởi tạo bộ đếm họp = 0 lần đầu. Giữ số lần đã họp khi bổ sung hoặc trình lại. Biểu mẫu: Phiếu yêu cầu thẩm định; BM-00; bộ đếm BM-00
+- 1. Kế hoạch SXKD hoặc phương án KD hoặc đề tài hàng năm 2. Hợp đồng hoặc Thỏa thuận hợp tác 3. Chỉ đạo từ Ban Tổng Giám Đốc
+- Lấy báo giá thị trường: Dựa vào các nhà thầu nhất định chuyên cung cấp các loại hàng hóa ĐVĐX cần
+- Hồ sơ cần sửa thuộc vòng nào?
+- Đã sửa hồ sơ
+- BM-00: chọn lại CQCM dự thảo
+- BM-01: chọn lại CQCM chủ trương
+- BM-03: chọn lại CQCM KĐT
+- DS CQCM BM-03 được duyệt?
+- Không đồng ý: chọn lại
+- Hệ thống ĐTMS/Tích hợp AI
+- 16. AI hỗ trợ soạn nội dung, thông tin trong đề xuất KĐT Tác nhân: Hệ thống ĐTMS / AI Thực hiện: Đọc căn cứ, dựng nháp và phân tích; không thay người phê duyệt. Biểu mẫu: Đề xuất KĐT; dữ liệu căn cứ
+- 30. AI gợi ý nội dung cần chỉnh sửa Tác nhân: Hệ thống ĐTMS/Tích hợp/ AI Thực hiện: AI tổng hợp/gợi ý cần sửa đổi giải trình. Biểu mẫu: Ý kiến CQCM; nội dung cần sửa / giải trình
+- 44. HT/AI kiểm tra trước khi gửi Tác nhân: Hệ thống ĐTMS / AI Thực hiện: Kiểm tra tính đầy đủ, hợp lệ trước khi gửi. Đạt: mở vòng thẩm định BM-01. Không đạt: trả ĐVĐX hoàn chỉnh hồ sơ rồi gửi lại để kiểm tra. Biểu mẫu: BM-01; Checklist 01; kết quả kiểm tra
+- 2. Lấy dữ liệu căn cứ đã phê duyệt Tác nhân: Hệ thống ĐTMS/Tích hợp/ AI Thực hiện: Lấy thông tin từ các nguồn căn cứ đã chọn (kế hoạch, eBOM/mBOM và dữ liệu liên quan) để hỗ trợ lập KĐT. Biểu mẫu: Không có
+- 3. AI gợi ý thông tin cơ bản KĐT Tác nhân: Hệ thống ĐTMS/Tích hợp/ AI Thực hiện: AI tổng hợp/gợi ý thông tin cơ bản của KĐT từ tài liệu đầu vào; kết quả để người dùng rà soát, xác nhận. Biểu mẫu: Không có
+- 6. Kiểm tra tồn kho Tác nhân: Hệ thống ĐTMS / AI Thực hiện: Đối chiếu Dự toán, eBOM/mBOM và tồn kho; tính phần căn cứ còn dùng, loại phần đã dùng/đang hold. Biểu mẫu: Không có; dữ liệu Dự toán/eBOM/mBOM/Quản lý kho
+- 9. Gửi yêu cầu báo giá Tác nhân: Hệ thống ĐTMS/Tích hợp/ AI Thực hiện: Tự động gửi yêu cầu báo giá theo thông tin người dùng đã lập tới nhà cung cấp/đầu mối theo tích hợp. Biểu mẫu: Yêu cầu báo giá theo Quy định
+- 63. AI hỗ trợ dự thảo công văn trình Tập đoàn Tác nhân: Hệ thống ĐTMS / AI Thực hiện: Dựa trên hồ sơ chủ trương, KĐT hoặc hồ sơ gộp đã được phân cấp Tập đoàn, hỗ trợ soạn công văn gửi Tập đoàn và tập hợp dự thảo hồ sơ; ĐVĐX rà soát trước trình. Biểu mẫu: Công văn trình Tập đoàn; dự thảo BM-01 / BM-03 / BM-00
+- 66. Chuyển hồ sơ đã ký lên Tập đoàn Tác nhân: Hệ thống ĐTMS / Tích hợp VOffice Thực hiện: Chuyển hồ sơ đã ký tới Tập đoàn. VOffice: gửi qua tích hợp, nhận trạng thái/PDF tự động. Bản cứng: ghi nhận chuyển bộ hồ sơ giấy và tài liệu đã cập nhật tại bước 78 (khối KÝ CHUNG). Biểu mẫu: Công văn đã ký; hồ sơ gửi; trạng thái/PDF hoặc scan
+- Vòng hiện tại đã họp dưới 02 lần?
+- 33. Ghi nhận lần họp và kết quả Tác nhân: Hệ thống ĐTMS / AI Thực hiện: Tăng số lần họp của hồ sơ đang xử lý thêm 1; lưu biên bản và kết quả. Đếm riêng BM-00, BM-01 và BM-03; không cộng dồn giữa các vòng, không cho tổ chức lần thứ 3. Biểu mẫu: Biên bản họp; kết quả; bộ đếm riêng BM-00 / BM-01 / BM-03
+- Chủ trương thuộc cấp duyệt nào đã xác định?
+- KĐT thuộc cấp duyệt nào đã xác định?
+- Chuyển xử lý theo MS14 / MS15
+- Tổng mức vốn thực tế thuộc MS13?
+- 14. AI gợi ý thông tin cần chỉnh sửa Tác nhân: Hệ thống ĐTMS/Tích hợp/ AI Thực hiện: AI tổng hợp/gợi ý thông tin NOT OK để Đơn vị ĐXMS đối chiếu và chỉnh sửa lại. Biểu mẫu: Kết quả kiểm tra định danh; nội dung cần chỉnh sửa
+- 28. AI gợi ý phản hồi Tác nhân: Hệ thống ĐTMS/Tích hợp/ AI Thực hiện: AI tổng hợp/gợi ý đưa ý kiến. Biểu mẫu: Ý kiến thẩm định dự thảo
+- 25. AI gợi ý thông tin cần chỉnh sửa Tác nhân: Hệ thống ĐTMS/Tích hợp/ AI Thực hiện: AI tổng hợp/gợi ý thông tin NOT OK để Đơn vị ĐX KĐT đối chiếu và chỉnh sửa lại. Biểu mẫu: Kết quả kiểm tra hồ sơ; nội dung cần chỉnh sửa
+- 18. AI hỗ trợ lập dự thảo Tác nhân: Hệ thống ĐTMS / AI Thực hiện: BM00 Đọc căn cứ, dựng nháp . Biểu mẫu: Dự thảo BM-00; tài liệu căn cứ
+- Báo giá đạt yêu cầu?
+- Danh sách CQCM được phê duyệt?
+- Gửi đồng thời 02 yêu cầu xác nhận
+- 49. AI gợi ý thông tin lập hồ sơ phê duyệt KĐT Tác nhân: Hệ thống ĐTMS/Tích hợp/ AI Thực hiện: AI tổng hợp/gợi ý từ các thông tin đã có để lập hồ sơ phê duyệt. Biểu mẫu: BM-03; Checklist 02
+- 58. AI tóm tắt phản hồi và gợi ý điều chỉnh Tác nhân: Hệ thống ĐTMS/Tích hợp/ AI Thực hiện: AI tóm tắt phản hồi và gợi ý điều chỉnh cho ĐVĐX Biểu mẫu: Không có mẫu riêng; hồ sơ / kết quả tại bước này.
+- 74. Nhận kết quả phê duyệt và lưu hồ sơ Tác nhân: Hệ thống ĐTMS / Tích hợp VOffice Thực hiện: VOffice: nhận trạng thái/PDF tự động. Bản cứng: dùng trạng thái/scan đã cập nhật tại bước 78 (khối KÝ CHUNG). Lưu kết quả; chủ trương riêng được duyệt thì lập KĐT; KĐT/BM-00 được duyệt thì kết thúc. Biểu mẫu: BM-01 hoặc BM-18 đã ký; PDF/scan; trạng thái
+- Là Chủ trương riêng hay hồ sơ gộp đã được duyệt?
+- Hoàn tất phê duyệt cấp Tập đoàn
+- 13. Xác định thẩm quyền phê duyệt Tác nhân: Hệ thống ĐTMS Thực hiện: Kiểm tra loại tài sản, loại/mục đích KĐT, tổng mức vốn và quy định ủy quyền áp dụng. Lưu riêng cấp duyệt chủ trương và cấp duyệt KĐT (VHT / Tập đoàn), căn cứ áp dụng. Tự tính lại trước trình ký nếu dữ liệu này thay đổi. Biểu mẫu: Kết quả xác nhận tài sản, định danh KĐT; tổng mức vốn; quy định phân cấp / ủy quyền
+- 45. Mở vòng thẩm định chủ trương BM-01 Tác nhân: Hệ thống ĐTMS Thực hiện: Gắn hồ sơ đang xử lý là BM-01. Khởi tạo bộ đếm họp BM-01 = 0 khi mở vòng lần đầu; giữ số lần đã họp khi bổ sung hoặc trình lại. Chuyển khối kiểm tra, giải trình, họp dùng chung. Biểu mẫu: BM-01; Checklist 01; bộ đếm BM-01
+- 54. Mở vòng thẩm định KĐT BM-03 Tác nhân: Hệ thống ĐTMS Thực hiện: Sau khi chủ trương được duyệt, mở vòng BM-03. Khởi tạo bộ đếm BM-03 = 0 lần đầu; độc lập với BM-01 và giữ số lần khi sửa/trình lại. Chuyển khối kiểm tra, giải trình, họp dùng chung. Biểu mẫu: BM-03; Checklist 02; chủ trương đã duyệt; bộ đếm BM-03
+- Cơ quan chủ trì (TTMS)
+- 12. Xác nhận 04 yếu tố định danh Tác nhân: TTMS Thực hiện: Xác nhận Lĩnh vực; Loại KĐT; Giá tiền sơ bộ; Tính chất tài sản (Nguyên chiếc / Cần tích hợp). Trả kết quả OK / NOT OK. Biểu mẫu: Thông tin định danh KĐT
+- Hồ sơ đủ điều kiện thẩm định?
+- 27. Thẩm định nội dung hồ sơ Tác nhân: CQCM chủ trì / phối hợp Thực hiện: Pháp lý, mục tiêu, nhu cầu, phạm vi, quy mô, tổng vốn và nội dung phù hợp giai đoạn. Biểu mẫu: BM-00 / BM-01 / BM-03 theo giai đoạn; tài liệu căn cứ
+- Cần sửa đổi hoặc giải trình?
+- Đã thống nhất nội dung?
+- 32. Họp thống nhất giải trình ĐVĐX – CQCM Tác nhân: CQCM chủ trì Thực hiện: Tổ chức họp ĐVĐX với CQCM khi chưa thống nhất nội dung. Mỗi vòng BM-00, BM-01 hoặc BM-03 được họp tối đa 02 lần; thống nhất sớm thì tiếp tục, không phải họp đủ 02 lần. Biểu mẫu: Biên bản/kết quả họp
+- Sau họp đã thống nhất?
+- 37. Báo cáo nội dung chưa thống nhất Tác nhân: CQCM chủ trì / phối hợp Thực hiện: CQCM chủ trì báo cáo người có thẩm quyền. Biểu mẫu: Báo cáo nội dung chưa thống nhất; hồ sơ liên quan
+- 46. Thẩm định và hoàn chỉnh hồ sơ chủ trương Tác nhân: CQCM chủ trì thẩm định tại VHT Thực hiện: Kiểm tra căn cứ, mục tiêu, sự cần thiết, vốn dự kiến, nguồn vốn và thời gian; phối hợp ĐVĐX giải trình, hoàn thiện hồ sơ. Cấp Tập đoàn: chỉ thẩm định nội bộ, không ký thẩm định tại VHT. Biểu mẫu: BM-01; Checklist 01; ý kiến CQCM
+- 47. Ký thẩm định trực tiếp trên tờ trình chủ trương Tác nhân: CQCM chủ trì; cấp phó phụ trách nếu có Thực hiện: Chỉ áp dụng cấp VHT: ký thẩm định trên BM-01 đã đủ điều kiện. Không lập báo cáo kết quả thẩm định chủ trương hoặc quyết định chủ trương riêng. Biểu mẫu: BM-01
+- 55. Thẩm định hồ sơ KĐT tại VHT Tác nhân: TTMS / CQCM chủ trì thẩm định tại VHT Thực hiện: Kiểm tra căn cứ, mục tiêu, nhu cầu, phạm vi, tổng vốn, nguồn vốn và nội dung hồ sơ; phối hợp ĐVĐX giải trình, hoàn thiện. Nhánh Tập đoàn không ký thẩm định tại VHT. Biểu mẫu: BM-03; Checklist 02; ý kiến CQCM
+- 57. Ký báo cáo thẩm định và soạn dự thảo quyết định Tác nhân: TTMS / CQCM chủ trì thẩm định cấp VHT Thực hiện: Tổng hợp kết quả và ký Báo cáo thẩm định KĐT BM-14; soạn dự thảo Quyết định BM-18, trình TGĐ VHT ký ban hành. TTMS không ký quyết định. Biểu mẫu: BM-14; dự thảo BM-18
+- Báo cáo thẩm định được thông qua?
+- 23. Xác nhận danh sách CQCM BM-00 Tác nhân: CQCM chủ trì thẩm định tại VHT Thực hiện: Kiểm tra danh sách do ĐVĐX chọn theo chức năng và nội dung hồ sơ; xác nhận Đồng ý hoặc Không đồng ý, ghi lý do để ĐVĐX chọn lại. Biểu mẫu: Danh sách CQCM BM-00; kết quả xác nhận
+- 42. Xác nhận danh sách CQCM BM-01 Tác nhân: CQCM chủ trì thẩm định tại VHT Thực hiện: Kiểm tra danh sách do ĐVĐX chọn theo chức năng và nội dung hồ sơ; xác nhận Đồng ý hoặc Không đồng ý, ghi lý do để ĐVĐX chọn lại. Biểu mẫu: Danh sách CQCM BM-01; kết quả xác nhận
+- 53. Xác nhận danh sách CQCM BM-03 Tác nhân: CQCM chủ trì thẩm định tại VHT Thực hiện: Kiểm tra danh sách do ĐVĐX chọn theo chức năng và nội dung hồ sơ; xác nhận Đồng ý hoặc Không đồng ý, ghi lý do để ĐVĐX chọn lại. Biểu mẫu: Danh sách CQCM BM-03; kết quả xác nhận
+- Thủ trưởng đơn vị VHT
+- 69. Ký trình bộ hồ sơ hoàn thiện lên Tập đoàn Tác nhân: TGĐ VHT / lãnh đạo được ủy quyền Thực hiện: Ký trình lại báo cáo giải trình và bộ hồ sơ đã hoàn thiện sau nhận xét. Đối với hồ sơ chủ trương, TGĐ VHT ký trình chính thức; KĐT có thể do lãnh đạo được ủy quyền ký. Biểu mẫu: Báo cáo giải trình; BM-06; bộ hồ sơ hoàn thiện
+- 38. Xem xét, kết luận nội dung chưa thống nhất Tác nhân: Người có thẩm quyền tại VHT Thực hiện: Xem xét báo cáo và nội dung còn vướng mắc; kết luận để ĐVĐX tiếp tục bổ sung, giải trình hoặc dừng theo chỉ đạo. Biểu mẫu: Báo cáo nội dung chưa thống nhất; hồ sơ liên quan
+- Dừng quy trình
+- 48. Ký phê duyệt chủ trương cấp VHT Tác nhân: TGĐ VHT Thực hiện: Xem xét hồ sơ đã thẩm định và ký phê duyệt trực tiếp trên BM-01. Không áp dụng cho chủ trương thuộc thẩm quyền Tập đoàn. Biểu mẫu: BM-01
+- Đồng ý phê duyệt chủ trương?
+- 60. Ký ban hành quyết định phê duyệt KĐT cấp VHT Tác nhân: TGĐ VHT Thực hiện: Xem xét hồ sơ và BM-14 đã được cơ quan chủ trì ký; ký ban hành Quyết định BM-18 thuộc thẩm quyền VHT. Biểu mẫu: BM-03; BM-14; BM-18
+- Đồng ý phê duyệt KĐT?
+- 62. Ký phê duyệt hồ sơ gộp cấp VHT Tác nhân: TGĐ VHT Thực hiện: Xem xét BM-00 và báo cáo thẩm định BM-14; ký hồ sơ gộp và ban hành BM-18 trong một giai đoạn. TTMS không ký quyết định. Biểu mẫu: BM-00; BM-14; BM-18
+- Kết quả phê duyệt / chỉ đạo
+- Kết luận xử lý nội dung chưa thống nhất?
+- Đồng ý phê duyệt hồ sơ gộp?
+- 65. Ký công văn trình hồ sơ lên Tập đoàn Tác nhân: TGĐ VHT Thực hiện: Xem xét và ký công văn kèm dự thảo hồ sơ đề nghị Tập đoàn xử lý theo thẩm quyền. Đây là ký trình hồ sơ, không phải VHT phê duyệt thay Tập đoàn. Biểu mẫu: Công văn đã ký; dự thảo BM-01 / BM-03 / BM-00
+- Đồng ý ký công văn trình?
+- Quyết định phê duyệt KĐT
+- Ý kiến chỉ đạo xử lý?
+- Chỉ đạo dừng
+- Các Ban chuyên môn / Ban ĐTXD Tập đoàn
+- 67. Thẩm định và gửi phiếu nhận xét về VHT Tác nhân: Các Ban chuyên môn Tập đoàn Thực hiện: Xem xét hồ sơ theo chức năng, lập và gửi phiếu/văn bản nhận xét để ĐVĐX thuộc VHT tiếp thu, bổ sung, giải trình. Chủ trương dùng BM-09; KĐT dùng BM-10. Biểu mẫu: BM-09 / BM-10; hồ sơ trình Tập đoàn
+- Hồ sơ hoàn thiện đạt yêu cầu?
+- 70. Tiếp nhận và kiểm tra hồ sơ hoàn thiện Tác nhân: Ban Đầu tư – Xây dựng Tập đoàn Thực hiện: Kiểm tra hồ sơ đã được VHT ký trình lại, việc tiếp thu và giải trình các ý kiến. Nếu chưa đủ điều kiện, trả trực tiếp ĐVĐX bổ sung và VHT ký trình lại. Biểu mẫu: Bộ hồ sơ hoàn thiện; báo cáo giải trình; ý kiến CQCM
+- 71. Hoàn thiện hồ sơ chủ trương và ký các Ban Tác nhân: Các Ban chuyên môn / Ban ĐTXD Tập đoàn Thực hiện: Hoàn thiện hồ sơ chủ trương MS13 và thực hiện các chân ký của phòng ban Tập đoàn trên BM-01 trước khi TGĐ Tập đoàn ký trực tiếp. Không lập báo cáo thẩm định chủ trương hoặc quyết định riêng. Biểu mẫu: BM-01 có chân ký các Ban; hồ sơ chủ trương
+- 72. Lập báo cáo thẩm định và dự thảo quyết định Tác nhân: Ban Đầu tư – Xây dựng Tập đoàn Thực hiện: Áp dụng hồ sơ KĐT hoặc BM-00 gộp: tổng hợp ý kiến, lập và ký Báo cáo kết quả thẩm định BM-14; soạn dự thảo Quyết định BM-18 để TGĐ Tập đoàn phê duyệt. BM-00 vẫn là một giai đoạn gộp. Biểu mẫu: BM-14; dự thảo BM-18; BM-03 / BM-00
+- Hồ sơ chủ trương riêng?
+- Tổng GĐ Tập đoàn
+- 73. Ký phê duyệt hồ sơ cấp Tập đoàn Tác nhân: TGĐ Tập đoàn Thực hiện: Chủ trương MS13: ký trực tiếp BM-01 đã có chân ký các Ban. KĐT hoặc hồ sơ gộp BM-00: xem xét BM-14 và ký ban hành BM-18. Không quay về TGĐ VHT phê duyệt thay Tập đoàn. Biểu mẫu: BM-01 hoặc BM-14 và BM-18
+- Đồng ý phê duyệt hồ sơ?
+- Không cần sửa / đã thống nhất
+- BM-01: chủ trương
+- BM-00: gộp
+- BM-03: KĐT
+- Vòng BM-01
+- Đã xác nhận
+- Đồng ý
+- Vòng BM-03
+- PHÂN LOẠI VÀ PHÂN CẤP MS13: VT–CNTT dưới 160 tỷ; lĩnh vực khác dưới 90 tỷ, trừ bất động sản. Đây là ngưỡng phân loại luồng, không mặc nhiên là thẩm quyền VHT. Bước 13 xác định riêng cấp duyệt chủ trương và KĐT theo phân cấp / ủy quyền. Các gateway ký dùng kết quả này. Nếu đầu vào thay đổi, hệ thống tính lại trước trình ký; BM-00 chỉ gộp khi đủ điều kiện.
+- PHÊ DUYỆT MS13 Chủ trương: ký trực tiếp BM-01; không lập báo cáo thẩm định chủ trương hay quyết định riêng. KĐT: cơ quan chủ trì ký BM-14 và soạn BM-18; TGĐ có thẩm quyền ký BM-18. BM-00 giữ một giai đoạn gộp. Sửa sau từ chối: giữ loại hồ sơ, chủ trương đã duyệt và bộ đếm. Chỉ xét lại gộp/tách khi đầu vào thay đổi làm mất điều kiện gộp.
+- HÌNH THỨC KÝ — ÁP DỤNG CHUNG Hồ sơ Mật: bắt buộc ký bản cứng. Không Mật: người trình chọn VOffice hoặc bản cứng. Chi tiết ở khối KÝ CHUNG bên dưới. VOffice trả trạng thái/PDF tự động; bản cứng phải cập nhật trạng thái và đính kèm scan. Giữ đúng người ký và thứ tự ký của bước đang thực hiện.
+- XỬ LÝ CẤP TẬP ĐOÀN Ba nhánh chủ trương / KĐT / BM-00 đi vào chuỗi xử lý Tập đoàn trên cùng trang; loại hồ sơ được giữ theo nhánh vào. Nhánh chủ trương hoàn tất thì tiếp tục lập KĐT; nhánh KĐT hoặc hồ sơ gộp hoàn tất thì kết thúc. VHT ký trình, không phê duyệt thay Tập đoàn.
+- Đủ
+- Hoàn chỉnh
+- VHT
+- Chưa đủ
+- Không đủ (tức thuộc các trường hợp còn lại) → BM-01 và BM-03
+- Không thuộc MS13
+- Đủ điều kiện
+- Đã thống nhất
+- Chưa thống nhất
+- Không
+- Không đồng ý
+- Có
+- Thông qua
+- Rà soát và xử lý
+- Yêu cầu gửi
+- Bổ sung / giải trình
+- Không đồng ý – hoàn thiện công văn
+- Tập đoàn
+- Có: lần 1 hoặc lần 2
+- Không: đã đủ 02 lần
+- Cấp VHT
+- Cấp Tập đoàn – chủ trương
+- Cấp Tập đoàn – KĐT
+- Đạt
+- Xác nhận TSCĐ
+- Xác nhận 04 yếu tố
+- OK
+- NOT OK
+- Chưa đủ điều kiện
+- Đủ cả 03 điều kiện → BM-00
+- Tiếp tục xử lý
+- Không thông qua
+- Thuộc MS13
+- Chưa đạt / cần bổ sung
+- Có – chủ trương
+- Không – KĐT / BM-00
+- Không đồng ý / yêu cầu sửa
+- Đồng ý / đã ký
+- Có – lập hồ sơ KĐT
+- Hồ sơ gộp– hoàn tất KĐT / hồ sơ gộp
+- AI kiểm tra đạt?
+- KIỂM TRA – GIẢI TRÌNH – HỌP THEO TỪNG VÒNG BM-00: một vòng gộp. BM-01 và BM-03: hai vòng độc lập, mỗi vòng tối đa 02 lần họp. Hồ sơ chưa đủ điều kiện: bổ sung rồi chọn lại CQCM đúng giai đoạn. Danh sách không được đồng ý: quay về chính bước chọn danh sách của vòng đó. Sửa/trình lại không đặt lại số lần họp. Khi thống nhất, đi đúng nhánh hồ sơ để tiếp tục.
+- Không đạt: sửa hồ sơ
+- DS CQCM BM-01 được duyệt?
+- KÝ CHUNG — chi tiết áp dụng tại mỗi bước ký trong luồng chính; giữ nguyên người ký, thứ tự và kết quả duyệt
+- Đến bước trình ký
+- Hồ sơ Mật?
+- 75. Chọn hình thức ký Tác nhân: Người trình hồ sơ Thực hiện: Chọn VOffice hoặc bản cứng cho hồ sơ không Mật. Hệ thống lưu hình thức ký của lần trình hiện tại. Biểu mẫu: Hồ sơ không Mật; hình thức ký
+- Chọn ký VOffice?
+- 76. Trình và nhận kết quả ký VOffice Tác nhân: Hệ thống ĐTMS / VOffice Thực hiện: API gửi hồ sơ và luồng tới VOffice. Người có thẩm quyền ký/duyệt. Webhook trả trạng thái và PDF đã ký; ĐTMS lưu kết quả tự động, không xác nhận thủ công. Biểu mẫu: Hồ sơ trình ký; trạng thái; PDF đã ký
+- 77. Thực hiện ký bản cứng Tác nhân: Người trình; người có thẩm quyền ký Thực hiện: In và trình bản cứng theo đúng người ký, thứ tự ký tại bước hiện tại. Hồ sơ Mật bắt buộc theo nhánh này; không gửi hồ sơ Mật qua VOffice. Biểu mẫu: Bộ hồ sơ bản cứng; văn bản ký / ý kiến xử lý
+- 78. Cập nhật kết quả ký bản cứng Tác nhân: Người phụ trách hồ sơ Thực hiện: Cập nhật trạng thái, đính kèm bản scan và ý kiến xử lý. Với hồ sơ Mật, cập nhật và lưu tài liệu trong phạm vi được phép theo quy định bảo mật. Biểu mẫu: Trạng thái; scan văn bản; ý kiến xử lý
+- Đã ghi nhận kết quả ký?
+- Trở về bước hiện tại: xử lý Đồng ý / Không đồng ý theo luồng chính
+- Đã lưu
+- Không Mật
+- Bản cứng
+- VOffice
+- Đã xử lý ký
+- Đủ trạng thái / tài liệu theo kết quả
+- Đã nhận callback
+- Mật: bắt buộc bản cứng
+- 03 ĐIỀU KIỆN GỘP BM-00 — GATEWAY SAU BƯỚC 17 1. Thuộc MS13: VT–CNTT dưới 160 tỷ; lĩnh vực khác dưới 90 tỷ, trừ bất động sản. 2. Khoản đầu tư trang bị nội bộ. 3. Tài sản hình thành nguyên chiếc, không cần tích hợp hệ thống trước sử dụng. Đủ cả 03: BM-00 một giai đoạn. Không đủ: BM-01 rồi BM-03. Nguồn: Kế hoạch ĐTMS, sheet Quy trình, ô C86.
+- Không đạt: sửa yêu cầu báo giá
+- Không đồng ý: sửa BM-03
+- Không đồng ý: sửa BM-00
+- - Lĩnh vực Viễn thông - CNTT: Tổng mức vốn < 160 tỷ đồng - Lĩnh vực khác (trừ Bất động sản): Tổng mức vốn < 90 tỷ đồng Target KPI Thời gian ≤ 10 ngày làm việc
+
+
+## Trang: MS14
+
+226 nhãn (theo thứ tự trong tệp, không phải thứ tự luồng):
+
+- MS14 • LUỒNG KHOẢN ĐẦU TƯ THÔNG THƯỜNG — CHỦ TRƯƠNG → KHOẢN ĐẦU TƯ
+- Phó TGĐ/Phó GĐ chuyên trách
+- Hồ sơ đã thống nhất thuộc giai đoạn nào?
+- Cơ quan chuyên môn phối hợp (Tài chính/CQCM khác)
+- 23. Thẩm định và gửi ý kiến chuyên môn Tác nhân: CQCM phối hợp Thực hiện: Thẩm định theo chức năng. Cấp VHT: ký ý kiến theo thành phần áp dụng. Cấp Tập đoàn: VHT rà soát nội bộ, không ký thẩm định. Biểu mẫu: BM-09 (chủ trương) / BM-10 (KĐT); ý kiến nội bộ
+- 11. Xác nhận hình thành TSCĐ Tác nhân: Ban Tài chính Thực hiện: Xác nhận Có / Không hình thành tài sản cố định và kết quả OK / NOT OK . Biểu mẫu: Kết quả xác nhận TSCĐ; hồ sơ KĐT
+- Đã nhận đủ 02 kết quả xác nhận
+- +
+- Cả 02 xác nhận đều OK?
+- Đơn vị đề xuất KĐT
+- 17. Rà soát, bổ sung và hoàn thiện đề xuất Tác nhân: Đơn vị đề xuất Thực hiện: PA/PM rà soát nội dung AI, chuẩn bị trình thẩm định. Biểu mẫu: Đề xuất KĐT đã rà soát
+- 19. Bổ sung và hoàn chỉnh hồ sơ Tác nhân: Đơn vị đề xuất Thực hiện: Bổ sung hồ sơ theo yêu cầu; giữ giai đoạn và số lần họp. Chuyển đúng bước chọn lại CQCM chủ trương BM-02 hoặc KĐT BM-04. Biểu mẫu: BM-02 hoặc BM-04/BM-05 đã sửa; checklist; tài liệu
+- 25. Bổ sung hồ sơ hoặc giải trình Tác nhân: Đơn vị đề xuất Thực hiện: Làm rõ nội dung CQCM yêu cầu. Biểu mẫu: Văn bản giải trình
+- 33. Lập và hoàn thiện tờ trình chủ trương Tác nhân: Đơn vị đề xuất Thực hiện: Mục tiêu, sự cần thiết, tổng vốn dự kiến, nguồn vốn, thời gian; trao đổi CQCM trước trình. Biểu mẫu: BM-02; Checklist 03; tài liệu chủ trương
+- 34. Kiểm tra hồ sơ trước trình Tác nhân: Đơn vị đề xuất Thực hiện: Đầu mối kiểm tra độc lập của đơn vị; không xóa dòng checklist khi thiếu tài liệu. Biểu mẫu: Checklist 03
+- 37. Ký và trình hồ sơ chủ trương Tác nhân: Chỉ huy ĐVĐX Thực hiện: Ký hồ sơ đại diện ĐVĐX; gửi CQCM chủ trì, cấp phó phụ trách nếu có. Nếu không đồng ý ký, trả ĐVĐX hoàn thiện. Biểu mẫu: BM-02; Checklist 03; văn bản giải trình
+- 47. Kiểm tra hồ sơ KĐT trước trình Tác nhân: Đầu mối kiểm tra độc lập ĐVĐX Thực hiện: Kiểm tra đầy đủ, hợp lệ theo Checklist 04; hoàn thiện hồ sơ trước khi chọn CQCM và Chỉ huy ĐVĐX ký trình. Biểu mẫu: BM-04; BM-05; Checklist 04; BM-17
+- 55. Hoàn chỉnh hồ sơ theo hướng dẫn Tác nhân: Đơn vị đề xuất Thực hiện: Tiếp tục hoàn chỉnh hoặc thực hiện hướng dẫn của CQCM chủ trì. Biểu mẫu: Hồ sơ; giải trình
+- 1. Chọn căn cứ và nội dung KĐT Tác nhân: Đơn vị đề xuất KĐT Thực hiện: Chọn tài liệu đầu vào/căn cứ lập KĐT đã được phê duyệt ở cấp áp dụng và xác định phạm vi nội dung KĐT. Biểu mẫu: Không có mẫu riêng; Tài liệu đầu vào
+- 4. Rà soát và xác nhận thông tin cơ bản Tác nhân: Đơn vị đề xuất mua sắm Thực hiện: Rà soát, xác nhận mục đích, phạm vi/quy mô, giá trị, nguồn vốn, thời gian, biện pháp/kế hoạch thực hiện và độ Mật của ĐXMS. Biểu mẫu: Thông tin đầu vào BM-02; mức độ Mật
+- 5. Chọn/bóc tách căn cứ KĐT Tác nhân: Đơn vị đề xuất KĐT Thực hiện: Bóc tách căn cứ theo dữ liệu có sẵn đến dòng/hạng mục dùng để lập nhu cầu KĐT. Biểu mẫu: Không có
+- 7. Nhận thông tin rà soát tồn kho khả dụng Tác nhân: Đơn vị đề xuất KĐT Thực hiện: Nhận kết quả rà soát tồn kho khả dụng để đánh giá phần hàng tồn có thể sử dụng cho nhu cầu KĐT. Biểu mẫu: Kết quả rà soát tồn kho theo Quy định QLTS
+- 8. Khởi tạo / chỉnh sửa yêu cầu báo giá Tác nhân: Đơn vị đề xuất KĐT Thực hiện: Căn cứ kết quả tồn kho, xác định danh mục/số lượng cần mua và lập yêu cầu báo giá. Trường hợp báo giá ko đạt yêu cầu thì chỉnh sửa lại yêu cầu báo giá. Biểu mẫu: Yêu cầu báo giá theo Quy định TTMS
+- 10. Tổng hợp và kiểm tra báo giá Tác nhân: Đơn vị đề xuất KĐT Thực hiện: Tổng hợp báo giá, kiểm tra mức độ đáp ứng; chốt tổng mức vốn thực tế để hệ thống phân luồng MS13 / MS14 / MS15. Biểu mẫu: Báo giá / Kết quả lấy báo giá. Biểu mẫu: Báo giá/Kết quả lấy báo giá
+- 15. Hoàn thiện dự thảo KĐT Tác nhân: Đơn vị đề xuất KĐT Thực hiện: Hoàn thiện dự thảo KĐT trên cơ sở tồn kho, báo giá và căn cứ liên quan. MS14 thực hiện chủ trương trước, phê duyệt KĐT sau. Biểu mẫu: BM-02; sau chủ trương: BM-04 và BM-05; checklist tương ứng
+- Đủ thông tin căn cứ?
+- Phát sinh nhu cầu lập KĐT
+- Cần ý kiến CQCM liên quan?
+- 46. Lập hồ sơ phê duyệt KĐT Tác nhân: Đơn vị đề xuất Thực hiện: Rà soát AI, trao đổi CQCM, hoàn thiện tờ trình và báo cáo đề xuất đầu tư. Khi sửa KĐT, giữ BM-17 và số lần họp BM-04. Biểu mẫu: BM-04; BM-05; Checklist 04; BM-17
+- 35. Chọn CQCM thẩm định chủ trương Tác nhân: Đơn vị đề xuất Thực hiện: Chọn danh sách CQCM tại khâu kiểm tra hồ sơ trước khi trình; hệ thống không tự cố định danh sách. KHCN / Quốc phòng: ĐVĐX chủ động chỉ định CQCM và đơn vị chủ trì theo tính chất KĐT. Biểu mẫu: BM-02; Checklist 03
+- 48. Lựa chọn CQCM thẩm định KĐT Tác nhân: Đơn vị đề xuất Thực hiện: Sau khi kiểm tra hồ sơ, chủ động chọn danh sách CQCM thẩm định. Luồng xử lý tiếp theo áp dụng tương tự khâu dự thảo. KHCN / Quốc phòng: ĐVĐX chủ động chỉ định CQCM và đơn vị chủ trì theo tính chất KĐT. Biểu mẫu: BM-04; Checklist 04
+- 28. Chuyên quản xác nhận sau họp Tác nhân: Chuyên quản ĐVĐX Thực hiện: Rà soát và xác nhận nội dung điều chỉnh đã thống nhất sau họp, trước khi cho phép sửa thông tin hồ sơ. Biểu mẫu: Biên bản họp; nội dung điều chỉnh; xác nhận chuyên quản
+- 29. Chỉ huy đơn vị xác nhận sau họp Tác nhân: Chỉ huy ĐVĐX Thực hiện: Duyệt lại nội dung điều chỉnh sau họp. Chỉ cho phép ĐVĐX cập nhật và trình ký khi đã có đủ xác nhận. Biểu mẫu: Biên bản họp; nội dung điều chỉnh; xác nhận Chỉ huy
+- 30. Cập nhật hồ sơ theo nội dung đã xác nhận Tác nhân: Đơn vị đề xuất Thực hiện: Sửa thông tin theo nội dung Chuyên quản và Chỉ huy đơn vị đã xác nhận; chuyển rà soát lại để trình ký. Biểu mẫu: Hồ sơ đã cập nhật; nội dung đã được xác nhận
+- 58. Hoàn thiện công văn và bộ hồ sơ gửi Tập đoàn Tác nhân: Đơn vị đề xuất VHT Thực hiện: Rà soát dự thảo công văn, căn cứ và hồ sơ đã thẩm định nội bộ; hoàn thiện bộ tài liệu để TGĐ VHT ký công văn trình lần đầu. Giai đoạn thẩm định tại VHT không ký. Biểu mẫu: Công văn; BM-02 hoặc BM-04/BM-05; checklist; căn cứ
+- 63. Tiếp thu nhận xét và hoàn thiện hồ sơ trình lại Tác nhân: Đơn vị đề xuất VHT Thực hiện: Trực tiếp tiếp thu ý kiến Tập đoàn, sửa hồ sơ, lập văn bản giải trình và phiếu trình. Hồ sơ bị trả ở bước sau cũng về đây; giữ giai đoạn, BM-17 đã duyệt nếu là KĐT. Biểu mẫu: Văn bản giải trình; BM-06 (Phiếu trình giải quyết công việc); hồ sơ
+- 50. Ký và trình hồ sơ phê duyệt KĐT Tác nhân: Chỉ huy ĐVĐX Thực hiện: Ký BM-04 kèm BM-05 và Checklist 04 trước thẩm định, áp dụng cả cấp VHT và Tập đoàn. Không đồng ý: trả ĐVĐX sửa hồ sơ. Biểu mẫu: BM-04; BM-05; Checklist 04; giải trình nếu có
+- 1. Kế hoạch SXKD hoặc phương án KD hoặc đề tài hàng năm 2. Hợp đồng hoặc Thỏa thuận hợp tác 3. Chỉ đạo từ Ban Tổng Giám Đốc
+- Lấy báo giá thị trường: Dựa vào các nhà thầu nhất định chuyên cung cấp các loại hàng hóa ĐVĐX cần
+- Hồ sơ cần sửa thuộc giai đoạn nào?
+- Đã sửa hồ sơ
+- BM-02: chọn lại CQCM chủ trương
+- BM-04: chọn lại CQCM KĐT
+- DS CQCM BM-04 được duyệt?
+- Không đồng ý: chọn lại
+- Chỉ huy đồng ý ký?
+- Chỉ huy đồng ý ký hồ sơ KĐT?
+- Đồng ý
+- Hệ thống ĐTMS/Tích hợp AI
+- 16. AI hỗ trợ soạn nội dung, thông tin trong đề xuất KĐT Tác nhân: Hệ thống ĐTMS / AI Thực hiện: Đọc căn cứ, dựng nháp và phân tích; không thay người phê duyệt. Biểu mẫu: Đề xuất KĐT; dữ liệu căn cứ
+- 24. AI gợi ý nội dung cần chỉnh sửa Tác nhân: Hệ thống ĐTMS/Tích hợp/ AI Thực hiện: AI tổng hợp/gợi ý cần sửa đổi giải trình. Biểu mẫu: Ý kiến CQCM; nội dung cần sửa / giải trình
+- 38. HT/AI kiểm tra trước khi gửi Tác nhân: Hệ thống ĐTMS / AI Thực hiện: Kiểm tra đầy đủ, hợp lệ trước khi gửi. Đạt: mở vòng BM-02. Không đạt: trả ĐVĐX hoàn thiện và kiểm tra lại. Biểu mẫu: BM-02; Checklist 03; kết quả AI
+- 2. Lấy dữ liệu căn cứ đã phê duyệt Tác nhân: Hệ thống ĐTMS/Tích hợp/ AI Thực hiện: Lấy thông tin từ các nguồn căn cứ đã chọn (kế hoạch, eBOM/mBOM và dữ liệu liên quan) để hỗ trợ lập KĐT. Biểu mẫu: Không có
+- 3. AI gợi ý thông tin cơ bản KĐT Tác nhân: Hệ thống ĐTMS/Tích hợp/ AI Thực hiện: AI tổng hợp/gợi ý thông tin cơ bản của KĐT từ tài liệu đầu vào; kết quả để người dùng rà soát, xác nhận. Biểu mẫu: Không có
+- 6. Kiểm tra tồn kho Tác nhân: Hệ thống ĐTMS / AI Thực hiện: Đối chiếu Dự toán, eBOM/mBOM và tồn kho; tính phần căn cứ còn dùng, loại phần đã dùng/đang hold. Biểu mẫu: Không có; dữ liệu Dự toán/eBOM/mBOM/Quản lý kho
+- 9. Gửi yêu cầu báo giá Tác nhân: Hệ thống ĐTMS/Tích hợp/ AI Thực hiện: Tự động gửi yêu cầu báo giá theo thông tin người dùng đã lập tới nhà cung cấp/đầu mối theo tích hợp. Biểu mẫu: Yêu cầu báo giá theo Quy định
+- 57. AI hỗ trợ dự thảo công văn trình Tập đoàn Tác nhân: Hệ thống ĐTMS / AI Thực hiện: Từ hồ sơ thuộc thẩm quyền Tập đoàn, AI hỗ trợ soạn công văn và tập hợp dự thảo; ĐVĐX rà soát trước trình. Biểu mẫu: Công văn; BM-02 hoặc BM-04/BM-05; tài liệu
+- 60. Chuyển hồ sơ đã ký lên Tập đoàn Tác nhân: Hệ thống ĐTMS / Tích hợp VOffice Thực hiện: Chuyển hồ sơ đã ký tới Tập đoàn qua tích hợp. Bản cứng: ghi nhận chuyển hồ sơ giấy, dùng trạng thái/scan đã cập nhật trong khối KÝ CHUNG. Biểu mẫu: Công văn đã ký; hồ sơ gửi; trạng thái/PDF hoặc scan
+- Đã họp < 02 lần?
+- 27. Ghi nhận lần họp và kết quả Tác nhân: Hệ thống ĐTMS / AI Thực hiện: Sau cuộc họp hoàn tất, tăng bộ đếm giai đoạn hiện tại thêm 1, lưu biên bản. Đếm riêng BM-02 và BM-04; không đặt lại khi sửa, không cho họp lần thứ 3. Biểu mẫu: Biên bản; policyMeetingCount / investmentMeetingCount
+- Chủ trương thuộc cấp duyệt nào đã xác định?
+- KĐT thuộc cấp duyệt nào đã xác định?
+- Chuyển xử lý theo MS13 / MS15
+- Khoản đầu tư thuộc MS14?
+- 14. AI gợi ý thông tin cần chỉnh sửa Tác nhân: Hệ thống ĐTMS/Tích hợp/ AI Thực hiện: AI tổng hợp/gợi ý thông tin NOT OK để Đơn vị ĐXMS đối chiếu và chỉnh sửa lại. Biểu mẫu: Kết quả kiểm tra định danh; nội dung cần chỉnh sửa
+- 22. AI gợi ý phản hồi Tác nhân: Hệ thống ĐTMS/Tích hợp/ AI Thực hiện: AI tổng hợp/gợi ý đưa ý kiến. Biểu mẫu: Ý kiến thẩm định dự thảo
+- 18. AI gợi ý thông tin cần chỉnh sửa Tác nhân: Hệ thống ĐTMS/Tích hợp/ AI Thực hiện: AI tổng hợp/gợi ý thông tin NOT OK để Đơn vị ĐX KĐT đối chiếu và chỉnh sửa lại. Biểu mẫu: Kết quả kiểm tra hồ sơ; nội dung cần chỉnh sửa
+- Báo giá đạt yêu cầu?
+- Gửi đồng thời 02 yêu cầu xác nhận
+- 45. AI gợi ý thông tin lập hồ sơ phê duyệt KĐT Tác nhân: Hệ thống ĐTMS/Tích hợp/ AI Thực hiện: Từ BM-17 đã duyệt và căn cứ liên quan, AI hỗ trợ dự thảo tờ trình BM-04 và báo cáo đề xuất đầu tư BM-05 để ĐVĐX rà soát. Biểu mẫu: BM-04; BM-05; Checklist 04; BM-17
+- 54. AI tóm tắt phản hồi và gợi ý điều chỉnh Tác nhân: Hệ thống ĐTMS/Tích hợp/ AI Thực hiện: AI tóm tắt phản hồi và gợi ý điều chỉnh cho ĐVĐX Biểu mẫu: Không có mẫu riêng; hồ sơ / kết quả tại bước này.
+- 71. Nhận kết quả phê duyệt và lưu hồ sơ Tác nhân: Hệ thống ĐTMS / Tích hợp VOffice Thực hiện: Nhận trạng thái/PDF VOffice tự động; bản cứng dùng kết quả khối KÝ CHUNG. Lưu BM-17 để lập KĐT, hoặc BM-18 để kết thúc. Biểu mẫu: BM-17 / BM-18 đã ký; trạng thái; PDF/scan
+- Kết quả phê duyệt thuộc giai đoạn nào?
+- Hoàn tất phê duyệt cấp Tập đoàn
+- 13. Phân loại và xác định cấp phê duyệt Tác nhân: Hệ thống ĐTMS Thực hiện: Theo loại tài sản, loại KĐT, lĩnh vực, mục đích và tổng vốn, áp dụng GUQ 1419, QT 8.6.5, HD 1971. Lưu riêng cấp duyệt chủ trương và KĐT; tính lại khi dữ liệu/quy tắc thay đổi. Biểu mẫu: Kết quả MS14; 02 cấp duyệt; căn cứ hiệu lực
+- 39. Mở vòng thẩm định chủ trương BM-02 Tác nhân: Hệ thống ĐTMS Thực hiện: Gắn giai đoạn chủ trương; tạo policyMeetingCount = 0 lần đầu. Giữ số lần đã họp khi sửa/trình lại; dùng khối kiểm tra, giải trình, họp chung. Biểu mẫu: BM-02; Checklist 03; policyMeetingCount
+- 51. Mở vòng thẩm định KĐT BM-04 Tác nhân: Hệ thống ĐTMS Thực hiện: Sau BM-17 đã duyệt, gắn giai đoạn KĐT; tạo investmentMeetingCount = 0 lần đầu. Độc lập với BM-02; giữ số lần khi sửa/trình lại. Biểu mẫu: BM-04; BM-05; Checklist 04; BM-17; bộ đếm
+- Cơ quan chủ trì (TTMS)
+- 12. Xác nhận 04 yếu tố định danh Tác nhân: TTMS Thực hiện: Xác nhận Lĩnh vực; Loại KĐT; Giá tiền sơ bộ; Tính chất tài sản (Nguyên chiếc / Cần tích hợp). Trả kết quả OK / NOT OK. Biểu mẫu: Thông tin định danh KĐT
+- Hồ sơ đủ điều kiện thẩm định?
+- 20. Thẩm định nội dung hồ sơ Tác nhân: CQCM chủ trì / phối hợp Thực hiện: Rà soát pháp lý, nhu cầu, quy mô, vốn và nội dung của giai đoạn hiện tại; KĐT đối chiếu chủ trương BM-17. Cấp Tập đoàn: rà soát nội bộ VHT, không ký thẩm định. Biểu mẫu: BM-02 hoặc BM-04/BM-05; checklist; căn cứ
+- Cần sửa đổi hoặc giải trình?
+- Đã thống nhất nội dung?
+- 26. Họp thống nhất giải trình ĐVĐX – CQCM Tác nhân: CQCM chủ trì Thực hiện: Họp ĐVĐX và CQCM xử lý nội dung chưa thống nhất. Mỗi giai đoạn tạm áp dụng tối đa 02 lần; thống nhất sớm thì tiếp tục. Không tính họp HĐĐT vào giới hạn này. Biểu mẫu: Biên bản họp; kết luận; ý kiến bảo lưu
+- Sau họp đã thống nhất?
+- 31. Báo cáo nội dung chưa thống nhất Tác nhân: CQCM chủ trì / phối hợp Thực hiện: CQCM chủ trì báo cáo người có thẩm quyền. Biểu mẫu: Báo cáo nội dung chưa thống nhất; hồ sơ liên quan
+- 40. Thẩm định và hoàn chỉnh hồ sơ chủ trương Tác nhân: CQCM chủ trì thẩm định tại VHT Thực hiện: Kiểm tra căn cứ, mục tiêu, sự cần thiết, vốn dự kiến, nguồn vốn và thời gian; phối hợp ĐVĐX giải trình, hoàn thiện hồ sơ. Cấp Tập đoàn: chỉ thẩm định nội bộ, không ký thẩm định tại VHT. Biểu mẫu: BM-02; Checklist 03; BM-09 / ý kiến nội bộ
+- 43. Ký báo cáo thẩm định chủ trương; dự thảo quyết định Tác nhân: TTMS; Phó TGĐ/Phó GĐ phụ trách (nếu có) Thực hiện: Sau HĐĐT đủ điều kiện, lập và ký BM-13 đúng thành phần; soạn dự thảo BM-17 trình TGĐ VHT. Cơ quan chủ trì không ký quyết định. Biểu mẫu: BM-13; dự thảo BM-17; BM-11; BM-02
+- 52. Thẩm định hồ sơ KĐT tại VHT Tác nhân: TTMS / CQCM chủ trì thẩm định tại VHT Thực hiện: Kiểm tra căn cứ, mục tiêu, nhu cầu, phạm vi, tổng vốn, nguồn vốn và nội dung hồ sơ; phối hợp ĐVĐX giải trình, hoàn thiện. Nhánh Tập đoàn không ký thẩm định tại VHT. Biểu mẫu: BM-04; BM-05; Checklist 04; BM-17; BM-10 / ý kiến nội bộ
+- 53. Ký báo cáo thẩm định và soạn dự thảo quyết định Tác nhân: TTMS; CQCM tham gia; Phó TGĐ/Phó GĐ phụ trách (nếu có) Thực hiện: Tổng hợp, lập và ký BM-15 theo đủ thành phần; soạn dự thảo BM-18 trình TGĐ VHT. TTMS không ký quyết định. Biểu mẫu: BM-15; dự thảo BM-18; BM-04/BM-05
+- Báo cáo thẩm định được thông qua?
+- 36. Xác nhận danh sách CQCM BM-02 Tác nhân: CQCM chủ trì thẩm định tại VHT Thực hiện: Kiểm tra danh sách do ĐVĐX chọn theo chức năng và nội dung hồ sơ; xác nhận Đồng ý hoặc Không đồng ý, ghi lý do để ĐVĐX chọn lại. Biểu mẫu: Danh sách CQCM BM-02; kết quả xác nhận
+- 49. Xác nhận danh sách CQCM BM-04 Tác nhân: CQCM chủ trì thẩm định tại VHT Thực hiện: Kiểm tra danh sách do ĐVĐX chọn theo chức năng và nội dung hồ sơ; xác nhận Đồng ý hoặc Không đồng ý, ghi lý do để ĐVĐX chọn lại. Biểu mẫu: Danh sách CQCM BM-04; kết quả xác nhận
+- 41. Chuẩn bị hồ sơ tham mưu HĐĐT VHT Tác nhân: TTMS Thực hiện: Gửi hồ sơ đã thẩm định đến thành viên HĐĐT; soạn phiếu trình ý kiến Hội đồng, ghi đủ ý kiến bảo lưu. Biểu mẫu: BM-02; BM-09; dự thảo BM-11
+- BM-13 được thông qua?
+- Cấp VHT, phát hành công văn?
+- 21. Ký và gửi công văn phối hợp thẩm định Tác nhân: TTMS / người có thẩm quyền ký công văn Thực hiện: Chỉ cấp VHT: tùy chọn công văn phân công CQCM, nội dung thẩm định; ký và gửi. Không phát hành vẫn lấy ý kiến CQCM. Biểu mẫu: BM-07 (chủ trương) / BM-08 (KĐT); hồ sơ
+- Công văn đã ký?
+- Thủ trưởng đơn vị VHT
+- 64. Ký trình bộ hồ sơ hoàn thiện lên Tập đoàn Tác nhân: TGĐ VHT / lãnh đạo được ủy quyền Thực hiện: Ký trình lại văn bản giải trình, BM-06 và bộ hồ sơ đã hoàn thiện; gửi trực tiếp Tập đoàn. Chủ trương do TGĐ VHT ký; KĐT có thể do lãnh đạo được ủy quyền ký. Biểu mẫu: BM-06; văn bản giải trình; BM-02 hoặc BM-04/BM-05
+- 32. Xem xét, kết luận nội dung chưa thống nhất Tác nhân: Người có thẩm quyền xử lý tại VHT Thực hiện: Kết luận xử lý nội dung còn vướng của giai đoạn rà soát VHT: tiếp tục bổ sung, giải trình hoặc dừng. Đây không phải phê duyệt thay Tập đoàn. Biểu mẫu: Báo cáo nội dung chưa thống nhất; hồ sơ liên quan
+- Dừng quy trình
+- 44. Ký ban hành quyết định chủ trương cấp VHT Tác nhân: TGĐ VHT Thực hiện: Xem BM-13 đã ký, ý kiến HĐĐT và hồ sơ; ký ban hành BM-17 theo thẩm quyền VHT. Biểu mẫu: BM-02; BM-11; BM-13; BM-17
+- Đồng ý phê duyệt chủ trương?
+- 56. Ký ban hành quyết định phê duyệt KĐT cấp VHT Tác nhân: TGĐ VHT Thực hiện: Xem hồ sơ và BM-15 đã được ký đúng thành phần; ký ban hành BM-18 thuộc thẩm quyền VHT. Biểu mẫu: BM-04; BM-05; BM-15; BM-18
+- Đồng ý phê duyệt KĐT?
+- Kết luận xử lý nội dung chưa thống nhất?
+- 59. Ký công văn trình hồ sơ lên Tập đoàn Tác nhân: TGĐ VHT Thực hiện: Xem xét và ký công văn kèm dự thảo hồ sơ đề nghị Tập đoàn xử lý theo thẩm quyền. Đây là ký trình hồ sơ, không phải VHT phê duyệt thay Tập đoàn. Biểu mẫu: Công văn đã ký; BM-02 hoặc BM-04/BM-05
+- Đồng ý ký công văn trình?
+- Quyết định phê duyệt KĐT
+- Ý kiến chỉ đạo xử lý?
+- Chỉ đạo dừng
+- Chỉ đạo sau từ chối?
+- Dừng KĐT theo chỉ đạo; giữ chủ trương đã duyệt
+- Các Ban chuyên môn / Ban ĐTXD Tập đoàn
+- 62. Thẩm định và gửi phiếu nhận xét về VHT Tác nhân: Các Ban chuyên môn Tập đoàn Thực hiện: Xem xét hồ sơ theo chức năng, lập và gửi phiếu/văn bản nhận xét để ĐVĐX thuộc VHT tiếp thu, bổ sung, giải trình. Chủ trương dùng BM-09; KĐT dùng BM-10. Biểu mẫu: BM-09 / BM-10; hồ sơ trình Tập đoàn
+- Hồ sơ hoàn thiện đạt yêu cầu?
+- 65. Tiếp nhận và kiểm tra hồ sơ hoàn thiện Tác nhân: Ban Đầu tư – Xây dựng Tập đoàn Thực hiện: Kiểm tra hồ sơ đã được VHT ký trình lại, việc tiếp thu và giải trình các ý kiến. Nếu chưa đủ điều kiện, trả trực tiếp ĐVĐX bổ sung và VHT ký trình lại. Biểu mẫu: BM-02 hoặc BM-04/BM-05; BM-06; giải trình; BM-09/BM-10
+- 68. Ký báo cáo thẩm định chủ trương; dự thảo quyết định Tác nhân: Ban ĐTXD; Phó TGĐ phụ trách (nếu có) Thực hiện: Sau ý kiến HĐĐT đủ điều kiện, lập và ký BM-13 đúng thành phần; soạn dự thảo BM-17 trình TGĐ Tập đoàn. Biểu mẫu: BM-02; BM-11; BM-13; dự thảo BM-17
+- 69. Ký báo cáo thẩm định KĐT; dự thảo quyết định Tác nhân: Ban ĐTXD; CQCM tham gia; Phó TGĐ phụ trách (nếu có) Thực hiện: Tổng hợp ý kiến, lập và ký BM-15 đúng thành phần; soạn dự thảo BM-18 trình TGĐ Tập đoàn. Cơ quan chủ trì không ký quyết định. Biểu mẫu: BM-04; BM-05; BM-15; dự thảo BM-18
+- Hồ sơ thuộc giai đoạn nào?
+- 66. Chuẩn bị hồ sơ tham mưu HĐĐT Tập đoàn Tác nhân: Ban ĐTXD Tập đoàn Thực hiện: Gửi hồ sơ đã được CQCM thẩm định đến thành viên HĐĐT; soạn phiếu ý kiến, ghi đầy đủ ý kiến bảo lưu. Biểu mẫu: BM-02; BM-09; dự thảo BM-11
+- Báo cáo được thông qua?
+- Phát hành công văn phối hợp?
+- 61. Ký và gửi công văn phối hợp thẩm định Tác nhân: Ban ĐTXD / người có thẩm quyền ký công văn Thực hiện: Theo lựa chọn, phân công CQCM và nội dung thẩm định; ký và gửi công văn. Không phát hành công văn vẫn lấy ý kiến các Ban. Biểu mẫu: BM-07 (chủ trương) / BM-08 (KĐT); hồ sơ
+- Tổng GĐ Tập đoàn
+- 70. Ký phê duyệt hồ sơ cấp Tập đoàn Tác nhân: TGĐ Tập đoàn Thực hiện: Chủ trương: xem BM-13 và ký BM-17. KĐT: xem BM-15 và ký BM-18. Thẩm quyền thuộc Tập đoàn; VHT chỉ ký trình. Biểu mẫu: BM-13 và BM-17 / BM-15 và BM-18
+- Đồng ý phê duyệt hồ sơ?
+- Dừng giai đoạn hiện tại theo chỉ đạo Tập đoàn
+- Không cần sửa / đã thống nhất
+- BM-02: chủ trương
+- BM-04: KĐT
+- Vòng BM-02
+- Đã xác nhận
+- Vòng BM-04
+- Hội đồng đầu tư VHT
+- 42. Xem xét độc lập và ký ý kiến HĐĐT Tác nhân: HĐĐT VHT Thực hiện: Xem xét hồ sơ chủ trương; ký ý kiến đủ/chưa đủ điều kiện, ghi ý kiến bảo lưu. Không tính vào 02 lần họp phối hợp. Biểu mẫu: BM-11; BM-02; ý kiến CQCM
+- HĐĐT: đủ điều kiện?
+- Hội đồng đầu tư Tập đoàn
+- 67. Xem xét độc lập và ký ý kiến HĐĐT Tác nhân: HĐĐT Tập đoàn Thực hiện: Xem xét hồ sơ chủ trương; ký ý kiến đủ/chưa đủ điều kiện, ghi ý kiến bảo lưu. Không tính vào giới hạn họp phối hợp. Biểu mẫu: BM-11; BM-02; ý kiến CQCM
+- PHÂN LOẠI VÀ PHÂN CẤP MS14 VT–CNTT: 160 ≤ vốn < 1.000 tỷ; lĩnh vực khác, trừ bất động sản: 90 ≤ vốn < 500 tỷ. Ngưỡng phân loại không mặc nhiên là thẩm quyền VHT. Bước 13 xác định riêng cấp duyệt chủ trương và KĐT theo phân cấp/ủy quyền. Các gateway trình ký dùng kết quả này; tính lại khi đầu vào hoặc quy tắc thay đổi.
+- PHÊ DUYỆT MS14 — HAI GIAI ĐOẠN RIÊNG Chủ trương: BM-02; báo cáo thẩm định BM-13; quyết định BM-17. KĐT: BM-04/BM-05; báo cáo thẩm định BM-15; quyết định BM-18. Cơ quan chủ trì thẩm định ký báo cáo và soạn dự thảo quyết định; TGĐ có thẩm quyền ký quyết định. Sửa/trình lại: giữ chủ trương đã duyệt và bộ đếm của từng giai đoạn.
+- HÌNH THỨC KÝ — ÁP DỤNG CHUNG Hồ sơ Mật: bắt buộc ký bản cứng. Không Mật: người trình chọn VOffice hoặc bản cứng. Chi tiết ở khối KÝ CHUNG bên dưới. VOffice trả trạng thái/PDF tự động; bản cứng phải cập nhật trạng thái và đính kèm scan. Giữ đúng người ký và thứ tự ký của bước đang thực hiện.
+- TRÌNH TẬP ĐOÀN THEO TỪNG GIAI ĐOẠN Chủ trương BM-02 và KĐT BM-04/BM-05 dùng cùng chuỗi xử lý tại Tập đoàn. VHT rà soát nội bộ, không ký thẩm định; Chỉ huy ĐVĐX ký hồ sơ, TGĐ VHT ký công văn trình và ký trình lại. Tập đoàn thẩm định, phê duyệt. Chủ trương được duyệt bằng BM-17 mới lập hồ sơ KĐT.
+- Đủ
+- Hoàn chỉnh
+- Chưa đủ
+- Không thuộc MS14
+- Đủ điều kiện
+- Đã thống nhất
+- Chưa thống nhất
+- Không
+- Không đồng ý
+- Có
+- Thông qua
+- Rà soát và xử lý
+- Kết quả ký
+- Bổ sung / giải trình
+- Không đồng ý – hoàn thiện công văn
+- Có: lần 1 hoặc lần 2
+- Không: đã đủ 02 lần
+- Cấp VHT
+- Cấp Tập đoàn – chủ trương
+- Cấp Tập đoàn – KĐT
+- Đạt
+- Xác nhận TSCĐ
+- Xác nhận 04 yếu tố
+- OK
+- NOT OK
+- Chưa đủ điều kiện
+- Cần lấy ý kiến CQCM
+- Không thông qua
+- Thuộc MS14
+- Chưa đạt / cần bổ sung
+- Chủ trương – BM-02
+- KĐT – BM-04/BM-05
+- Không đồng ý / yêu cầu sửa
+- Đồng ý / đã ký
+- Chủ trương đã duyệt → lập KĐT
+- KĐT đã duyệt → kết thúc
+- AI kiểm tra đạt?
+- KIỂM TRA – GIẢI TRÌNH – HỌP THEO TỪNG GIAI ĐOẠN MS14 có hai vòng độc lập: chủ trương BM-02 và KĐT BM-04/BM-05. Tạm áp dụng tối đa 02 lần họp phối hợp trong mỗi vòng theo xác nhận của người dùng; họp HĐĐT không tính vào bộ đếm này. Hồ sơ chưa đủ điều kiện: bổ sung rồi chọn lại CQCM đúng giai đoạn. Danh sách chưa được đồng ý: quay về bước chọn CQCM của chính giai đoạn đó. Sửa/trình lại không đặt lại số lần họp.
+- Không đạt: sửa hồ sơ
+- DS CQCM BM-02 được duyệt?
+- KÝ CHUNG — chi tiết áp dụng tại mỗi bước ký trong luồng chính; giữ nguyên người ký, thứ tự và kết quả duyệt
+- Đến bước trình ký
+- Hồ sơ Mật?
+- 72. Chọn hình thức ký Tác nhân: Người trình hồ sơ Thực hiện: Chọn VOffice hoặc bản cứng cho hồ sơ không Mật. Hệ thống lưu hình thức ký của lần trình hiện tại. Biểu mẫu: Hồ sơ không Mật; hình thức ký
+- Chọn ký VOffice?
+- 73. Trình và nhận kết quả ký VOffice Tác nhân: Hệ thống ĐTMS / VOffice Thực hiện: API gửi hồ sơ và luồng tới VOffice. Người có thẩm quyền ký/duyệt. Webhook trả trạng thái và PDF đã ký; ĐTMS lưu kết quả tự động, không xác nhận thủ công. Biểu mẫu: Hồ sơ trình ký; trạng thái; PDF đã ký
+- 74. Thực hiện ký bản cứng Tác nhân: Người trình; người có thẩm quyền ký Thực hiện: In và trình bản cứng theo đúng người ký, thứ tự ký tại bước hiện tại. Hồ sơ Mật bắt buộc theo nhánh này; không gửi hồ sơ Mật qua VOffice. Biểu mẫu: Bộ hồ sơ bản cứng; văn bản ký / ý kiến xử lý
+- 75. Cập nhật kết quả ký bản cứng Tác nhân: Người phụ trách hồ sơ Thực hiện: Cập nhật trạng thái, đính kèm bản scan và ý kiến xử lý. Với hồ sơ Mật, cập nhật và lưu tài liệu trong phạm vi được phép theo quy định bảo mật. Biểu mẫu: Trạng thái; scan văn bản; ý kiến xử lý
+- Đã ghi nhận kết quả ký?
+- Trở về bước hiện tại: xử lý Đồng ý / Không đồng ý theo luồng chính
+- Đã lưu
+- Không Mật
+- Bản cứng
+- VOffice
+- Đã xử lý ký
+- Đủ trạng thái / tài liệu theo kết quả
+- Đã nhận callback
+- Mật: bắt buộc bản cứng
+- CHUYỂN GIAI ĐOẠN MS14 Chủ trương và KĐT là hai giai đoạn riêng. Chủ trương được phê duyệt bằng BM-17 mới chuyển sang lập hồ sơ KĐT BM-04/BM-05. Sau bước 71, gateway phân biệt kết quả theo giai đoạn: chủ trương đã duyệt → bước 45 để lập KĐT; KĐT đã duyệt bằng BM-18 → kết thúc. Hồ sơ, danh sách CQCM và bộ đếm họp được quản lý riêng cho từng giai đoạn.
+- Không đạt: sửa yêu cầu báo giá
+- PHÂN LOẠI MS14 VT–CNTT: 160 ≤ tổng mức vốn < 1.000 tỷ đồng. Lĩnh vực khác (trừ bất động sản): 90 ≤ tổng mức vốn < 500 tỷ đồng. Ngưỡng phân loại không đồng nhất với phân cấp phê duyệt; cấp duyệt chủ trương và KĐT xác định riêng theo văn bản hiệu lực.
+- MS14: 02 giai đoạn BM-02 → BM-04/BM-05
+- Tiếp tục: sửa hồ sơ chủ trương
+- Không đồng ý: sửa hồ sơ
+- Kết luận HĐĐT
+- Chưa đủ: hoàn thiện chủ trương
+- Thông qua / đủ chữ ký
+- Không thông qua: sửa hồ sơ
+- Chưa đủ: ĐVĐX sửa và VHT ký trình lại
+- Không thông qua: sửa và ký trình lại
+- VHT và chọn phát hành
+- Không / cấp TĐ: vẫn lấy ý kiến
+- Đã ký: lấy ý kiến
+- Chưa đồng ý: sửa và trình lại
+- Có: BM-07/BM-08
+- Không: vẫn lấy ý kiến
+- Tiếp tục: sửa KĐT
+- Tiếp tục: ĐVĐX sửa; VHT ký trình lại
+- 02 GIAI ĐOẠN — 02 BỘ ĐẾM ĐỘC LẬP BM-02 và BM-04 dùng chung khối kiểm tra, giải trình và họp; tạm áp dụng tối đa 02 lần họp phối hợp mỗi giai đoạn. Chỉ tăng sau họp hoàn tất; không đặt lại khi sửa/trình lại. HĐĐT chỉ ở chủ trương và không tính vào bộ đếm này.
+- BIỂU MẪU RIÊNG MS14 Chủ trương: BM-02, Checklist 03, BM-09, BM-11, BM-13, BM-17. KĐT: BM-04, BM-05, Checklist 04, BM-10, BM-15, BM-18. BM-05: Báo cáo đề xuất đầu tư – KĐT thông thường/phức tạp. BM-06: Phiếu trình giải quyết công việc; văn bản giải trình đính kèm riêng. BM-07/BM-08 tùy chọn.
+- CĂN CỨ PHÂN CẤP / PHÂN LOẠI 1419/GUQ-CNVTQĐ ngày 05/02/2026; QT.CNVTQĐ.ĐTXD.8.6.5 hiệu lực 18/03/2026; 1971/HD-ĐTXD-ĐT ngày 12/11/2025. Lưu riêng 02 cấp duyệt tại bước phân loại; dùng kết quả tại gateway từng giai đoạn. Tính lại khi dữ liệu phân cấp thay đổi. Hồ sơ KĐT cần thay đổi chủ trương đã duyệt chuyển quy trình MS14.02; không tự ghi đè BM-17.
+- Không đồng ý: sửa KĐT
+
+
+## Trang: MS22
+
+38 nhãn (theo thứ tự trong tệp, không phải thứ tự luồng):
+
+- MS22 • THƯƠNG THẢO VÀ KÝ HỢP ĐỒNG
+- Đơn vị sử dụng
+- Ký nháy: chỉ Trung tâm mua sắm và Đơn vị sử dụng. Thực hiện sau khi hoàn tất soạn/chỉnh sửa và Trưởng phòng hợp đồng đã ký soạn thảo; trước khi trình Thủ trưởng VHT ký hợp đồng.
+- - cần check điều kiện để soạn dự thảo, sẽ ra được các biểu mẫu dự thảo riêng: ⁃ ví dụ: loại hàng hóa; 1 lô hay nhiều lô, loại thanh toán ⁃ dựa vào loại hợp đồng, tình trạng giao hàng, tình trạng thanh toán, ..
+- Phòng hợp đồng
+- Bắt đầu
+- 12. Gửi hợp đồng đã được ký cho nhà thầu/nhà cung cấp ký Tác nhân: Phòng hợp đồng Thực hiện: Gửi hợp đồng đã được Thủ trưởng VHT ký: chọn ký qua VContract hoặc gửi bản giấy để ký cứng; theo dõi nhà thầu/nhà cung cấp hoàn tất ký. Hồ sơ/biểu mẫu: Hợp đồng đã được Thủ trưởng VHT ký; bộ hợp đồng gửi nhà thầu/nhà cung cấp.
+- 11. Nhận hợp đồng đã được ký Tác nhân: Phòng hợp đồng Thực hiện: Hợp đồng sau khi được ký duyệt sẽ chuyển về cho Phòng hợp đồng. Hồ sơ/biểu mẫu: Hợp đồng đã được Thủ trưởng VHT ký;
+- 6. Làm việc lại với nhà thầu/nhà cung cấp Tác nhân: Phòng hợp đồng và nhà thầu/nhà cung cấp Thực hiện: Trao đổi lại qua email để thống nhất các nội dung cần thay đổi sau khi Phòng hợp đồng xem xét cảnh báo AI; cập nhật dự thảo, phụ lục và biên bản liên quan, rồi chuyển AI kiểm tra lại. Hồ sơ/biểu mẫu: Bộ hợp đồng/phụ lục cập nhật; biên bản thương thảo hoặc hoàn thiện liên quan.
+- 7. Kiểm tra và chỉnh sửa hồ sơ Tác nhân: Phòng hợp đồng (người soạn thảo) Thực hiện: Chỉnh sửa nội bộ theo cảnh báo AI đã được kiểm tra hoặc theo ý kiến trả hồ sơ của Trưởng phòng hợp đồng; cập nhật hồ sơ và chuyển AI kiểm tra lại trước khi trình duyệt. Hồ sơ/biểu mẫu: Bộ hợp đồng/phụ lục đã sửa; cảnh báo AI hoặc ý kiến Trưởng phòng hợp đồng.
+- Có cần thống nhất lại với nhà thầu/nhà cung cấp?
+- 9. Tập hợp hồ sơ, chữ ký nháy và trình ký Tác nhân: Phòng hợp đồng Thực hiện: Sau khi Trưởng phòng hợp đồng ký soạn thảo, lấy chữ ký nháy của Trung tâm mua sắm và Đơn vị sử dụng; tập hợp hồ sơ, trình Tổng giám đốc VHT (Thủ trưởng VHT) ký hợp đồng. Hồ sơ/biểu mẫu: Bộ hợp đồng/phụ lục ký nháy và hồ sơ trình ký.
+- Hệ thống ĐTMS / Tích hợp AI
+- kết quả kiểm tra AI?
+- Email gửi hồ sơ ký choNhà thầu/Nhà cung cấp
+- Not OK
+- Nhà thầu / Nhà cung cấp
+- Hợp đồng đã ký → MS23
+- Trưởng phòng hợp đồng
+- Thủ trưởng VHT
+- 10. Xem xét, phê duyệt và ký hợp đồng Tác nhân: Tổng giám đốc VHT (Thủ trưởng VHT) Thực hiện: Xem xét, phê duyệt và ký khi đồng ý; khi cần yêu cầu pháp chế, tài chính, đầu tư thẩm định. Không đồng ý: trả Phòng hợp đồng sửa và trình lại theo QT. Hồ sơ/biểu mẫu: Bộ hợp đồng trình ký; ý kiến thẩm định nếu có; hợp đồng đã được Thủ trưởng VHT ký khi đồng ý.
+- 1. Tiếp nhận thông tin và hồ sơ hợp đồng Tác nhân: Phòng hợp đồng Thực hiện: Căn cứ vào đề xuất mua sắm và hồ sơ thầu mà phòng thầu bàn giao: tiếp nhận thông tin cơ bản của hợp đồng. Hồ sơ/biểu mẫu: Kết quả thầu / đề xuất mua sắm; hồ sơ thầu; thông tin hợp đồng.
+- 2. Hoàn thiện phụ lục kỹ thuật và cập nhật mã hàng Tác nhân: Đơn vị sử dụng Thực hiện: Đơn vị kỹ thuật hoàn thiện phụ lục kỹ thuật(yêu cầu kỹ thuật, thông số sản phẩm, tiêu chuẩn nghiệm thu, SLA và tiến độ bàn giao). Lập song song với body/phụ lục giá. Hồ sơ/biểu mẫu: Phụ lục kỹ thuật; danh mục đã cấp mã theo QT.
+- 3. Hoàn thiện body và phụ lục giá Tác nhân: Phòng hợp đồng Thực hiện: Hoàn thiện body và phụ lục 1 về giá/danh mục hàng hóa. Thực hiện song song với Đơn vị sử dụng lập phụ lục kỹ thuật. Hồ sơ/biểu mẫu: Body hợp đồng; phụ lục 1 về giá/danh mục hàng hóa.
+- 4. Gửi dự thảo cùng phụ lục cho nhà thầu/nhà cung cấp để thương thảo Tác nhân: Phòng hợp đồng và nhà thầu/nhà cung cấp Thực hiện: Gửi dự thảo cùng phụ lục cho nhà thầu/nhà cung cấp để thương thảo qua email. Hồ sơ/biểu mẫu: Dự thảo và phụ lục; biên bản thương thảo ký, đóng dấu.
+- 5. Kiểm tra thông tin trước phê duyệt Tác nhân: Hệ thống ĐTMS / Tích hợp AI Thực hiện: Kiểm tra hồ sơ sau thương thảo/hoàn thiện hoặc sau chỉnh sửa. OK: chuyển Trưởng phòng hợp đồng duyệt. Not OK: trả người soạn thảo xử lý, sửa hồ sơ; xác định có cần trao đổi lại với nhà thầu/nhà cung cấp. Hồ sơ/biểu mẫu: Bộ hợp đồng/phụ lục; kết quả và cảnh báo AI. Tiêu chí/checklist AI chi tiết còn cần xác nhận.
+- 8. Phê duyệt và ký soạn thảo hợp đồng Tác nhân: Trưởng phòng hợp đồng Thực hiện: Xem xét hồ sơ và kết quả AI. Đồng ý: ký soạn thảo rồi chuyển lấy chữ ký nháy, tập hợp hồ sơ trình ký. Không đồng ý: trả nhân viên Phòng hợp đồng chỉnh sửa theo ý kiến; AI kiểm tra lại trước khi trình duyệt lại. Hồ sơ/biểu mẫu: Bộ hợp đồng/phụ lục; kết quả AI; ý kiến phê duyệt hoặc yêu cầu chỉnh sửa.
+- Trưởng phòng HĐ phê duyệt?
+- Thủ trưởng VHT phê duyệt?
+- 13. Ký và gửi lại hợp đồng Tác nhân: Nhà thầu / Nhà cung cấp Thực hiện: Theo hình thức đã chọn: ký trên VContract hoặc ký, đóng dấu và gửi lại bản giấy; hai bên có hợp đồng ký đầy đủ. Hồ sơ/biểu mẫu: Hợp đồng đã ký trên VContract hoặc bản giấy đã ký, đóng dấu.
+- OK
+- Có
+- Không: trả chỉnh sửa theo ý kiến
+- Không: sửa và trình lại / theo chỉ đạo
+- +
+- Không
+- Quy ước mũi tên: xanh lá = OK / được duyệt; đỏ = không đạt / trả lại / quay lại sửa; cam = phân loại cách xử lý; xanh xám = luồng thông thường / căn cứ hợp đồng; xám nét đứt = ghi chú cần xác nhận. Màu Có/Không phụ thuộc ý nghĩa điều kiện.
+- Gửi qua email
+
+
+## Trang: MS23 - Tổng quan
+
+38 nhãn (theo thứ tự trong tệp, không phải thứ tự luồng):
+
+- MS23 | Theo dõi thực hiện hợp đồng — tổng quan sự kiện
+- MỨC TỔNG QUAN / PRESALE • 👤 USER TASK: người thao tác trên giao diện • ⚙ SERVICE TASK: hệ thống tự động • X: điều kiện rẽ nhánh • [?]: cần xác nhận
+- MS23 theo dõi cùng một hợp đồng qua nhiều sự kiện; các trang MS23.01–.04 được kích hoạt riêng theo phát sinh và trả trạng thái/ngày thực tế về hồ sơ hợp đồng. Không hiểu các luồng con là chuỗi bắt buộc
+- VHT / ĐTMS
+- Phòng Hợp đồng / ĐVMS
+- 3. Ghi nhận thông báo giao hàng Tác nhân: Phòng Hợp đồng / ĐVMS Thực hiện: Tiếp nhận thông báo giao hàng từ đối tác và ghi nhận trên ĐTMS để chuyển thông tin cho các bộ phận liên quan. Kênh tiếp nhận/tích hợp còn cần xác nhận [? Q3]. Hồ sơ/biểu mẫu: Thông báo giao hàng của đối tác; hợp đồng liên quan. Chưa chỉ định mẫu riêng.
+- USER TASK
+- Hợp đồng đã ký được tải lên hệ thống
+- Đối tác thông báo giao hàng [? Q3]
+- Luồng con có biên bản đã ký đầy đủ [? Q5]
+- Các nhánh nhắc hạn / thông báo là sự kiện độc lập cùng tham chiếu hợp đồng; không phải các bước tuần tự.
+- 1. AI đọc hợp đồng, trích xuất mốc theo dõi Tác nhân: Hệ thống ĐTMS / AI Thực hiện: Đọc hợp đồng đã ký được tải lên hệ thống; trích xuất thông tin và các mốc dự kiến để theo dõi; lưu vào hồ sơ theo dõi hợp đồng. Trường dữ liệu và việc kiểm tra kết quả AI còn cần xác nhận [? Q2]. Hồ sơ/biểu mẫu: Hợp đồng đã ký; hồ sơ theo dõi hợp đồng. Chưa chỉ định mẫu riêng.
+- ⚙
+- SERVICE TASK
+- 2. Tự động đôn đốc giao hàng Tác nhân: Hệ thống ĐTMS / AI Thực hiện: Dựa trên mốc giao hàng trong hợp đồng, tự động gửi nhắc/đôn đốc giao hàng khi đến mốc theo dõi. Thời điểm, tần suất, người nhận và kênh gửi chưa chốt [? Q2]. Hồ sơ/biểu mẫu: Mốc giao hàng trong hợp đồng; nội dung thông báo nhắc. Chưa chỉ định mẫu riêng.
+- 4. Thông báo các bộ phận liên quan Tác nhân: Hệ thống ĐTMS / AI Thực hiện: Từ thông báo giao hàng đã ghi nhận, gửi thông tin đến các bộ phận liên quan và chuyển hồ sơ giao hàng sang MS23.02 – Bàn giao hàng hóa / dịch vụ. Danh sách bộ phận và kênh thông báo chưa chốt [? Q3]. Hồ sơ/biểu mẫu: Thông báo giao hàng đã ghi nhận; hồ sơ giao hàng chuyển MS23.02. Chưa chỉ định mẫu riêng.
+- 5. AI đọc biên bản, cập nhật ngày thực tế Tác nhân: Hệ thống ĐTMS / AI Thực hiện: Khi luồng con có biên bản đã ký đầy đủ, đọc thông tin và cập nhật ngày thực tế tương ứng có trong biên bản; trả trạng thái/ngày thực tế về hồ sơ theo dõi hợp đồng. Thông tin trả về và cơ chế kiểm tra AI chưa chốt [? Q5]. Hồ sơ/biểu mẫu: Biên bản đã ký từ MS23.01–.04; HOC đã ký khi áp dụng; hồ sơ theo dõi hợp đồng.
+- Hệ thống ĐTMS / AI
+- Đến mốc giao hàng trong hợp đồng [? Q2]
+- Đã gửi nhắc
+- Đến hạn / phát sinh chứng từ [? Q4]
+- Đã cập nhật trạng thái / ngày thực tế
+- ◷
+- Hồ sơ theo dõi hợp đồng Mã HĐ • mốc dự kiến • trạng thái
+- Lưu thông tin trích xuất
+- Mốc giao hàng trong HĐ
+- ✉
+- MS23.02 Bàn giao hàng hóa / dịch vụ
+- Hồ sơ giao hàng
+- MS23.01 / .03 / .04 Văn bản phát sinh / nghiệm thu / thanh lý Kích hoạt luồng phù hợp theo nghiệp vụ [? Q4]
+- Theo mốc hoặc phát sinh đã chốt
+- Kết quả bàn giao / HOC ký
+- Kết quả biên bản ký
+- Cập nhật trạng thái và ngày thực tế
+- Đối tác (Pool ngoài phạm vi điều phối nội bộ)
+- Thông báo giao hàng
+- Phản hồi bản ký khi áp dụng
+- HOC, KCS, xử lý hàng không đạt và chi tiết ký thuộc trang MS23.02; phê duyệt văn bản thuộc MS23.01/.03/.04. HOC và triển khai/nghiệm thu có thể song song theo QT 10.2.5. Thanh toán theo đợt vẫn thuộc MS24.
+
+
+## Trang: MS23.01
+
+40 nhãn (theo thứ tự trong tệp, không phải thứ tự luồng):
+
+- MS23.01 | Văn bản phát sinh khi thực hiện hợp đồng
+- QUY ƯỚC: Xanh lá = OK / được duyệt | Đỏ = Không OK / trả sửa | Cam = Phân loại | Xanh xám = Luồng thông thường | Nét liền = Luồng xử lý | Nét đứt + phong bì = Trao đổi/thông báo với bên ngoài theo hình thức được chọn
+- VHT / ĐTMS
+- Phòng Hợp đồng / ĐVMS
+- 1. Lập thông tin văn bản phát sinh Tác nhân: Phòng Hợp đồng / ĐVMS Thực hiện: Chọn loại văn bản, nêu nội dung/sự việc và đính kèm căn cứ. Nếu sửa đổi hợp đồng, xác định nội dung được phép sửa đổi và lấy ý kiến ĐVSD khi cần. Hồ sơ/biểu mẫu: Hồ sơ, căn cứ và văn bản liên quan theo nội dung bước này.
+- USER TASK
+- X
+- 2. Lập và trình đề xuất sửa đổi Tác nhân: Phòng Hợp đồng / ĐVMS Thực hiện: Tổng hợp nội dung sửa đổi đã thống nhất với đơn vị sử dụng, lập tờ trình đề xuất sửa đổi. Hồ sơ/biểu mẫu: Hồ sơ, căn cứ và văn bản liên quan theo nội dung bước này.
+- 6. Hoàn thiện văn bản và kết quả thống nhất Tác nhân: Phòng Hợp đồng / ĐVMS Thực hiện: Rà soát dự thảo, ghi nhận nội dung thống nhất với đối tác khi áp dụng; hoàn thiện hồ sơ trình duyệt. Hồ sơ/biểu mẫu: Hồ sơ, căn cứ và văn bản liên quan theo nội dung bước này.
+- 9. Chọn hình thức và trình ký văn bản Tác nhân: Phòng Hợp đồng / ĐVMS Thực hiện: Chọn VContract/ký cứng/hình thức được chấp nhận và lập bộ hồ sơ trình ký. Hồ sơ/biểu mẫu: Hồ sơ, căn cứ và văn bản liên quan theo nội dung bước này.
+- 11. Cập nhật văn bản đã ký đầy đủ và gửi lại Tác nhân: Phòng Hợp đồng / ĐVMS Thực hiện: Theo dõi, tải lên và cập nhật văn bản có đầy đủ chữ ký theo loại văn bản, gồm chữ ký nhà thầu/nhà cung cấp khi áp dụng. Chọn hình thức gửi và gửi lại văn bản đã ký đầy đủ cho nhà thầu/nhà cung cấp. Hồ sơ/biểu mẫu: Văn bản đã ký đầy đủ; thông tin bên nhận; hình thức gửi được chọn.
+- Hệ thống ĐTMS / AI
+- 5. AI hỗ trợ soạn văn bản Tác nhân: Hệ thống ĐTMS / AI Thực hiện: Sinh dự thảo đúng loại văn bản từ căn cứ đã có. Với phụ lục sửa đổi, dùng nội dung đề xuất đã được duyệt. Hồ sơ/biểu mẫu: Hồ sơ, căn cứ và văn bản liên quan theo nội dung bước này.
+- ⚙
+- SERVICE TASK
+- 7. AI kiểm tra văn bản trước duyệt Tác nhân: Hệ thống ĐTMS / AI Thực hiện: Kiểm tra nội dung và căn cứ trong hồ sơ trước khi chuyển duyệt. Hồ sơ/biểu mẫu: Hồ sơ, căn cứ và văn bản liên quan theo nội dung bước này.
+- 12. AI cập nhật thông tin từ văn bản đã ký Tác nhân: Hệ thống ĐTMS / AI Thực hiện: Đọc văn bản đã ký để cập nhật thông tin phát sinh, ngày thực tế có trong văn bản. Chốt nội dung phụ lục được cập nhật và hiệu lực áp dụng; mốc nhắc phải dùng tiến độ có hiệu lực. Đây là chức năng cập nhật chung được tham chiếu tại tổng quan, thực hiện một lần. Chức năng dùng chung được tham chiếu tại MS23 tổng quan; chỉ thực hiện một lần cho mỗi hồ sơ ký. Hồ sơ/biểu mẫu: Hồ sơ, căn cứ và văn bản liên quan theo nội dung bước này.
+- 4. AI kiểm tra chứng từ / căn cứ và các văn bản Tác nhân: Hệ thống ĐTMS / AI Thực hiện: AI kiểm tra chứng từ, căn cứ và các văn bản trong hồ sơ. Nếu không đạt, trả kết quả để Phòng Hợp đồng sửa lại thông tin và tài liệu tại bước 1, sau đó thực hiện lại luồng kiểm tra. Nếu đạt, tiếp tục bước 5. Hồ sơ/biểu mẫu: Chứng từ; căn cứ; các văn bản kèm theo; kết quả kiểm tra AI.
+- OK
+- AI kiểm tra OK?
+- Trưởng phòng Hợp đồng
+- 8. Phê duyệt văn bản để trình ký [? Q2] Tác nhân: Trưởng phòng Hợp đồng Thực hiện: Ghi nhận ý kiến Trưởng phòng HĐ theo note. Hồ sơ/biểu mẫu: Hồ sơ, căn cứ và văn bản liên quan theo nội dung bước này.
+- Người có thẩm quyền
+- 3. Ghi nhận duyệt đề xuất sửa đổi Tác nhân: Người có thẩm quyền Thực hiện: Ghi nhận quyết định của người có thẩm quyền, ý kiến chuyên môn nếu được yêu cầu; chưa duyệt thì hoàn thiện tờ trình và trình lại. Hồ sơ/biểu mẫu: Hồ sơ, căn cứ và văn bản liên quan theo nội dung bước này.
+- 10. Ghi nhận kết quả ký văn bản Tác nhân: Người có thẩm quyền Thực hiện: Ghi nhận phê duyệt/ký của cấp có thẩm quyền. Với phụ lục sửa đổi, không duyệt thì quay lại hồ sơ trình ký. Hồ sơ/biểu mẫu: Hồ sơ, căn cứ và văn bản liên quan theo nội dung bước này.
+- Đề xuất được duyệt?
+- Không [? Q2]
+- Không OK — Phòng Hợp đồng sửa lại
+- Phát sinh nhu cầu lập văn bản
+- Là sửa đổi hợp đồng?
+- Được duyệt để trình ký?
+- Được ký duyệt?
+- Hoàn tất một văn bản phát sinh
+- Có
+- Không
+- Đối tác (Pool ngoài phạm vi điều phối nội bộ)
+- Ý kiến thống nhất khi áp dụng
+- Văn bản đã ký
+- Gửi văn bản đã ký — hình thức tự chọn
+- ✉
+
+
+## Trang: MS23.02
+
+76 nhãn (theo thứ tự trong tệp, không phải thứ tự luồng):
+
+- MS23.02 | Bàn giao hàng hóa / dịch vụ
+- VHT / ĐTMS
+- Phòng Hợp đồng / ĐVMS
+- X
+- 1. Nhận thông báo bàn giao Tác nhân: Phòng Hợp đồng Thực hiện: Nhận thông báo bàn giao từ Nhà thầu/Nhà cung cấp; ghi nhận thông tin gắn với Hợp đồng/Đơn hàng để kiểm tra đối tượng bàn giao là hàng hóa hay dịch vụ. Hồ sơ/biểu mẫu: Thông báo giao hàng; Hợp đồng/Đơn hàng liên quan. Kết quả: Có thông tin để phân loại hàng hóa/dịch vụ; chỉ hàng hóa mới chuyển thông báo cho Phòng Quản lý tài sản.
+- USER TASK
+- 14. Tập hợp và xác nhận đủ hồ sơ bàn giao Tác nhân: Phòng Hợp đồng / ĐVMS Thực hiện: Tập hợp hồ sơ bàn giao; kiểm tra đủ hàng hóa, chứng từ và căn cứ chất lượng trước khi chuyển lập HOC. HOC có thể theo từng đợt hoặc toàn bộ tùy Hợp đồng. Hồ sơ/biểu mẫu: Hồ sơ giao nhận; chứng từ liên quan; kết quả KCS đạt. Kết quả: Đủ: chuyển AI kiểm tra/soạn HOC. Chưa đủ: yêu cầu bổ sung và kiểm tra lại.
+- 21. Trình ký và cập nhật HOC đã ký Tác nhân: Phòng Hợp đồng / ĐVMS Thực hiện: Chọn hình thức trình ký được áp dụng; theo dõi và cập nhật HOC có đầy đủ chữ ký. [?] Tuyến ký và phạm vi tích hợp ký cần làm rõ. Hồ sơ/biểu mẫu: HOC và hồ sơ trình ký; HOC đã ký đầy đủ. Kết quả: Có HOC đã ký làm căn cứ cập nhật ngày bàn giao thực tế.
+- 15. Bổ sung hàng / chứng từ / căn cứ Tác nhân: Phòng Hợp đồng / ĐVMS Thực hiện: Bổ sung hàng hóa, chứng từ hoặc căn cứ còn thiếu theo nội dung kiểm tra; tập hợp lại hồ sơ để xác nhận đủ điều kiện bàn giao. Hồ sơ/biểu mẫu: Danh sách nội dung còn thiếu; tài liệu/hàng hóa bổ sung. Kết quả: Quay lại bước tập hợp và xác nhận đủ hồ sơ bàn giao.
+- 2. Lập và gửi thông báo giao hàng Tác nhân: Phòng Hợp đồng Thực hiện: Lập thông báo giao hàng từ thông tin đã nhận; gửi Phòng Quản lý tài sản để chuẩn bị tiếp nhận. Hồ sơ/biểu mẫu: Thông báo giao hàng; thông tin hàng hóa và hồ sơ liên quan. Kết quả: Phòng Quản lý tài sản nhận thông báo giao hàng.
+- Hướng xử lý theo HĐ / PO?
+- 11. Xử lý vi phạm qua MS23.01 Tác nhân: Phòng Hợp đồng / ĐVMS; phối hợp ĐVSD Thực hiện: Căn cứ chế tài Hợp đồng/Đơn hàng để xử lý vi phạm chậm tiến độ hoặc chất lượng không đạt; lập biên bản phạt/hồ sơ xử lý qua MS23.01. Hồ sơ/biểu mẫu: Hợp đồng/Đơn hàng; biên bản vi phạm; căn cứ xử lý. Kết quả: Chuyển MS23.01 và chờ kết quả; đây không phải mức bắt buộc trước mọi trường hợp hủy.
+- 12. Thực hiện thủ tục hủy HĐ / Đơn hàng Tác nhân: Phòng Hợp đồng / ĐVMS Thực hiện: Khi không thể hoàn thành mục tiêu mua sắm do không khắc phục/thay thế được hàng hóa, thực hiện thủ tục hủy phần hàng hóa lỗi hoặc toàn bộ Hợp đồng/Đơn hàng. Hồ sơ/biểu mẫu: Hồ sơ xử lý hàng lỗi; căn cứ Hợp đồng/Đơn hàng. Kết quả: Kết thúc/Hủy theo phạm vi xử lý. [?] Chi tiết thủ tục và tuyến duyệt hủy.
+- 13. Lập Tờ trình xin ý kiến Người có thẩm quyền Tác nhân: Phòng Hợp đồng / ĐVMS Thực hiện: Lập Tờ trình xin ý kiến Người có thẩm quyền khi không thể thực hiện theo quy trình hoặc có vướng mắc đặc thù; áp dụng mục 6.6 QT 10.2.5. Hồ sơ/biểu mẫu: Tờ trình; hồ sơ vướng mắc và phương án đề xuất. Kết quả: Chờ ý kiến chỉ đạo. [?] Chưa chốt luồng tiếp theo sau khi có ý kiến.
+- Chuyển MS23.01; chờ kết quả xử lý
+- 18. Hoàn thiện hồ sơ và HOC Tác nhân: Phòng Hợp đồng / ĐVMS Thực hiện: Rà soát dự thảo AI, bổ sung/chỉnh sửa nội dung và hồ sơ liên quan; khi AI kiểm tra trước duyệt không OK, sửa theo nội dung được chỉ ra. Hồ sơ/biểu mẫu: HOC dự thảo; hồ sơ/căn cứ bàn giao; kết quả kiểm tra AI. Kết quả: Có hồ sơ và HOC hoàn thiện để AI kiểm tra trước khi chuyển duyệt.
+- Không hoàn thành mục tiêu mua sắm
+- Đủ hàng, chứng từ và căn cứ chất lượng?
+- Xác nhận lại
+- Đơn vị sử dụng
+- 6. Ghi nhận kết quả kiểm tra chất lượng Tác nhân: Đơn vị Sử dụng Thực hiện: Ghi nhận kết quả kiểm tra chất lượng hàng hóa và căn cứ đánh giá; phân biệt kết quả lần đầu với kết quả sau bổ sung/thay thế. [?] Làm rõ phân công kiểm tra với Phòng Quản lý tài sản. Hồ sơ/biểu mẫu: Kết quả KCS; hồ sơ giao hàng và yêu cầu kiểm tra chất lượng. Kết quả: Đạt: đi tiếp luồng bàn giao hiện tại. Không đạt: chuyển xử lý theo nhánh tương ứng.
+- 4. Ghi nhận xác nhận dịch vụ Tác nhân: Đơn vị Sử dụng Thực hiện: Trực tiếp theo dõi Nhà thầu thực hiện dịch vụ và xác nhận kết quả/khối lượng theo Hợp đồng. Việc giao nhận dịch vụ không qua Phòng Quản lý tài sản, nhập kho hay KCS kho. Hồ sơ/biểu mẫu: Biên bản xác nhận thực hiện dịch vụ (bước 3a); thông tin kết quả/khối lượng dịch vụ. Kết quả: Có hồ sơ để ĐVSD tiếp tục chủ trì nghiệm thu dịch vụ tại MS23.03 (bước 3b). Hai bên xử lý/khắc phục nội dung chưa đạt trước khi ký nghiệm thu hoàn thành.
+- Đã bổ sung / thay thế?
+- 10. Trả hàng / ghi nhận vướng mắc xử lý Tác nhân: Đơn vị Sử dụng; phối hợp ĐVMS Thực hiện: Trả hàng cho Nhà thầu/Nhà cung cấp theo hướng xử lý. Nếu có vướng mắc đặc thù, ghi nhận để xin ý kiến. ĐVMS phối hợp ĐVSD xử lý theo Hợp đồng/Đơn hàng. Hồ sơ/biểu mẫu: Biên bản trả hàng; hồ sơ không đạt; Hợp đồng/Đơn hàng. Kết quả: Chuyển hướng phạt vi phạm, hủy hoặc trình xin ý kiến theo căn cứ thực tế.
+- Kết thúc / Hủy HĐ hoặc phần hàng lỗi
+- Kết quả kiểm tra chất lượng?
+- Hệ thống ĐTMS / AI
+- 16. AI kiểm tra chứng từ / căn cứ Tác nhân: Hệ thống ĐTMS / AI Thực hiện: Kiểm tra chứng từ, căn cứ và hồ sơ bàn giao trước khi soạn HOC; phát hiện nội dung chưa đủ/chưa phù hợp. [?] Bộ tiêu chí kiểm tra cần làm rõ. Hồ sơ/biểu mẫu: Hồ sơ bàn giao; kết quả KCS đạt; chứng từ/căn cứ liên quan. Kết quả: OK: chuyển AI soạn HOC. Không OK: trả Phòng Hợp đồng bổ sung/chỉnh sửa hồ sơ và kiểm tra lại.
+- ⚙
+- SERVICE TASK
+- 22. AI cập nhật ngày bàn giao thực tế Tác nhân: Hệ thống ĐTMS / AI Thực hiện: Đọc HOC đã ký để cập nhật ngày bàn giao thực tế có trong văn bản. Không tự suy ra ngày chưa có; chức năng dùng chung với MS23 tổng quan chỉ thực hiện một lần. Hồ sơ/biểu mẫu: HOC đã ký đầy đủ. [?] Các thông tin khác được cập nhật. Kết quả: Ghi nhận ngày bàn giao thực tế và hoàn tất hồ sơ bàn giao.
+- 17. AI hỗ trợ soạn HOC Tác nhân: Hệ thống ĐTMS / AI Thực hiện: Hỗ trợ lập dự thảo HOC từ hồ sơ/căn cứ đã kiểm tra OK; dùng mẫu áp dụng cho đợt hoặc phạm vi bàn giao theo Hợp đồng. Hồ sơ/biểu mẫu: Hồ sơ đã kiểm tra; mẫu HOC [?]. Kết quả: Có dự thảo HOC để Phòng Hợp đồng rà soát và hoàn thiện.
+- 19. AI kiểm tra HOC trước duyệt Tác nhân: Hệ thống ĐTMS / AI Thực hiện: Kiểm tra nội dung HOC và các chứng từ/căn cứ sau khi Phòng Hợp đồng hoàn thiện. [?] Checklist cần làm rõ. Hồ sơ/biểu mẫu: HOC hoàn thiện; hồ sơ/căn cứ bàn giao. Kết quả: OK: chuyển Trưởng phòng Hợp đồng duyệt. Không OK: trả bước hoàn thiện hồ sơ và HOC.
+- AI kiểm tra OK?
+- Trưởng phòng Hợp đồng
+- 20. Phê duyệt hồ sơ bàn giao để trình ký Tác nhân: Trưởng phòng Hợp đồng Thực hiện: Xem hồ sơ bàn giao và HOC; ghi nhận quyết định duyệt để trình ký hoặc ý kiến yêu cầu hoàn thiện lại. Hồ sơ/biểu mẫu: HOC dự thảo; hồ sơ bàn giao; kết quả kiểm tra AI. Kết quả: Được duyệt: trình ký. Không duyệt: quay lại tập hợp/hoàn thiện hồ sơ theo luồng hiện tại.
+- 3. Ghi nhận giao nhận hàng và hồ sơ kho Tác nhân: Phòng Quản lý tài sản Thực hiện: Tiếp nhận hàng hóa; ghi nhận giao hàng và hồ sơ kho. Hàng bổ sung/thay thế quay lại bước này để làm lại thủ tục giao nhận, nhập kho và kiểm tra chất lượng. Hồ sơ/biểu mẫu: Hồ sơ giao nhận, hồ sơ kho; hàng hóa được giao. [?] Mẫu và thao tác ĐTMS/SAP. Kết quả: Có thông tin giao hàng và hồ sơ kho để lập yêu cầu kiểm tra chất lượng.
+- 5. Lập yêu cầu kiểm tra chất lượng Tác nhân: Phòng Quản lý tài sản Thực hiện: Lập yêu cầu kiểm tra chất lượng đối với hàng hóa đã tiếp nhận. [?] Chi tiết quy trình sẽ làm rõ thêm với Phòng Quản lý tài sản. Hồ sơ/biểu mẫu: Yêu cầu kiểm tra chất lượng; hồ sơ giao hàng/kho. [?] Mẫu và tiêu chí kiểm tra. Kết quả: Có yêu cầu để thực hiện và ghi nhận kết quả kiểm tra.
+- 7. Lập biên bản không đạt và ghi nhận hướng xử lý Tác nhân: Phòng Quản lý tài sản Thực hiện: Lập biên bản hàng hóa không đạt. Quyết định từ chối ngay hoặc đồng ý cho bổ sung/thay thế hàng hóa phù hợp trong 7 ngày kể từ ngày lập biên bản. Hồ sơ/biểu mẫu: Biên bản không đạt; kết quả KCS; Hợp đồng/Đơn hàng. Kết quả: Ghi nhận hướng xử lý và ngày bắt đầu hạn 7 ngày; không dùng nhánh sửa đổi HĐ cũ.
+- Phòng Quản lý tài sản
+- Hướng xử lý lần đầu?
+- 8. Theo dõi bổ sung / thay thế trong 7 ngày Tác nhân: Phòng Quản lý tài sản Thực hiện: Theo dõi Nhà thầu/Nhà cung cấp bổ sung/thay thế hàng hóa trong 7 ngày từ ngày lập biên bản; ghi nhận việc khắc phục và hàng giao bổ sung/thay thế. Hồ sơ/biểu mẫu: Biên bản không đạt; thông tin hàng hóa bổ sung/thay thế. Kết quả: Có hàng trong hạn: quay lại bước 3 để tiếp nhận và kiểm tra lại. Không khắc phục trong hạn: chuyển xử lý.
+- Có hàng bổ sung / thay thế trong hạn 7 ngày?
+- 9. Ghi nhận quyền từ chối và chuyển xử lý theo HĐ Tác nhân: Phòng Quản lý tài sản Thực hiện: Ghi nhận quyết định từ chối ngay hoặc quyền từ chối khi hàng sau bổ sung/thay thế vẫn không đáp ứng quy định; chuyển trường hợp không khắc phục được sang xử lý theo Hợp đồng/Đơn hàng. Hồ sơ/biểu mẫu: Biên bản không đạt; kết quả kiểm tra lại hoặc tình trạng quá hạn. Kết quả: Có căn cứ chuyển trả hàng/xử lý vi phạm; không mặc định tiếp tục bàn giao hàng không đạt.
+- Chờ ý kiến chỉ đạo [?] Luồng xử lý tiếp
+- ✉
+- Đạt
+- Nhà thầu / Nhà cung cấp thông báo bàn giao
+- Đối tượng bàn giao?
+- Có hồ sơ dịch vụ cho MS23.03 ĐVSD tiếp tục chủ trì nghiệm thu
+- Được duyệt?
+- Hoàn tất hồ sơ bàn giao
+- Hàng hóa
+- Dịch vụ
+- Không đạt
+- OK
+- Có
+- Không [? Q2]
+- Đủ
+- Chưa đủ
+- Nhà thầu / Nhà cung cấp (Pool ngoài phạm vi điều phối nội bộ)
+- ✉ Thông báo giao hàng (email)
+- ✉ Bản HOC ký đủ (email nếu chọn)
+- QT 10.2.5, bước 3a, 4a–9c, trang PDF 11–17; 2909.txt, mục MS23
+- Cập nhật thông tin từ bản ký tại trang này là chức năng được tham chiếu ở MS23 tổng quan; không chạy AI hai lần.
+- [?] Cần làm rõ với Phòng Quản lý tài sản: chi tiết kiểm tra chất lượng, biểu mẫu biên bản, thao tác ĐTMS/SAP. Ngoại lệ: chưa chốt nhánh tiếp theo sau ý kiến chỉ đạo. Các hướng phạt / hủy / xin ý kiến không phải ba mức bắt buộc tuần tự.
+- Chưa
+- Đã bổ sung / thay thế: vẫn không đạt
+- Cho bổ sung / thay thế
+- Từ chối ngay
+- Có → tiếp nhận, kiểm tra lại
+- Không khắc phục trong hạn
+- Phạt / hồ sơ xử lý
+- Vướng mắc đặc thù / ngoại lệ
+- Không OK → bổ sung / chỉnh sửa
+- Không OK → hoàn thiện lại
+
+
+## Trang: MS23.03
+
+61 nhãn (theo thứ tự trong tệp, không phải thứ tự luồng):
+
+- MS23.03 | Nghiệm thu hàng hóa / dịch vụ
+- Xanh lá: OK / đồng ý ký • Đỏ: Không OK / trả soạn thảo • Cam: phân loại • Xanh xám: luồng thường • Nét đứt + phong bì: trao đổi/thông báo
+- Căn cứ ký nghiệm thu: báo cáo KCS đã ký từ đơn vị chủ quản. Tài sản: Phòng Đảm bảo hàng hóa / TTMS; dịch vụ: ĐVSD. Chuyên quản hợp đồng tiếp nhận báo cáo; các loại nghiệm thu trong MS23.03 dùng chung tuyến ký. Loại hồ sơ PAC/TAM, FAC/TAC hoặc nghiệm thu dịch vụ theo Hợp đồng.
+- VHT / ĐTMS
+- Phòng Hợp đồng / Chuyên quản hợp đồng
+- Có kết quả KCS / căn cứ để xác nhận nghiệm thu
+- X
+- Loại KCS / đối tượng nghiệm thu?
+- 3. Tiếp nhận báo cáo và xác định hồ sơ nghiệm thu Tác nhân: Phòng Hợp đồng / Chuyên quản hợp đồng Thực hiện: Chuyên quản hợp đồng tập hợp báo cáo đã ký từ đơn vị chủ quản; ghi nhận loại hồ sơ và kết quả nghiệm thu theo Hợp đồng. Kiểm tra căn cứ trước khi chuyển soạn biên bản. Hồ sơ/biểu mẫu: Báo cáo KCS đã ký; tài liệu thực hiện/lắp đặt/đo kiểm; Hợp đồng. Kết quả: Đủ hồ sơ, KCS đạt: chuyển AI hỗ trợ soạn biên bản. Thiếu chứng từ: yêu cầu đơn vị chủ quản bổ sung. KCS chưa đạt: chuyển ĐVSD phối hợp khắc phục.
+- Hồ sơ / KCS đủ điều kiện?
+- 6. Soạn thảo và hoàn thiện biên bản nghiệm thu — G1 Tác nhân: Phòng Hợp đồng / Chuyên quản hợp đồng Thực hiện: Hoàn thiện biên bản theo mẫu, rà soát dự thảo AI và đính kèm báo cáo KCS. Tại đây biên bản mới hoàn thiện nội dung, CHƯA KÝ. Xác định hợp đồng có yêu cầu thanh lý và có đủ điều kiện ký chung hay không. Hồ sơ/biểu mẫu: Biên bản nghiệm thu hoàn thiện; KCS đã ký; hợp đồng và thông tin điều kiện ký chung. Kết quả: G1: MS23.04 sử dụng thông tin tại bước này. Ký chung: chờ G2 để tập hợp hai biên bản. Ký riêng / không yêu cầu thanh lý: tiếp tục kiểm tra và ký nghiệm thu.
+- 13. Cập nhật biên bản đã ký đầy đủ — G3 Tác nhân: Phòng Hợp đồng / Chuyên quản hợp đồng Thực hiện: Theo dõi tuyến ký và cập nhật đầy đủ chữ ký theo hợp đồng. Ký chung: cập nhật riêng kết quả ký biên bản nghiệm thu và biên bản thanh lý; gửi kết quả thanh lý về MS23.04 tại G3. Ký riêng: cập nhật biên bản nghiệm thu, hoàn tất MS23.03 rồi mới trình ký thanh lý tại MS23.04. Hồ sơ/biểu mẫu: Biên bản nghiệm thu đã ký; biên bản thanh lý đã ký nếu ký chung; hồ sơ ký liên quan. Kết quả: MS23.03 tiếp tục cập nhật nghiệm thu. G3: MS23.04 nhận bản thanh lý đã ký khi ký chung; ký riêng chỉ bắt đầu trình ký sau khi MS23.03 hoàn tất.
+- HĐ yêu cầu thanh lý và đủ điều kiện ký chung?
+- 7. Tập hợp bộ hồ sơ nghiệm thu và thanh lý — G2 Tác nhân: Phòng Hợp đồng / Chuyên quản hợp đồng Thực hiện: Chờ MS23.04 hoàn thiện biên bản thanh lý tại G2. Tập hợp biên bản nghiệm thu và biên bản thanh lý vào cùng bộ hồ sơ. Chỉ chuyển kiểm tra / trình ký khi cả hai biên bản đã hoàn thiện; thực hiện một tuyến ký tại MS23.03. Hồ sơ/biểu mẫu: Biên bản nghiệm thu chưa ký; biên bản thanh lý đã hoàn thiện từ MS23.04. Kết quả: Tiếp tục AI kiểm tra và tuyến ký chung. Không chạy thêm tuyến ký thanh lý song song tại MS23.04.
+- Hệ thống ĐTMS / AI
+- 5. AI hỗ trợ soạn biên bản theo template Tác nhân: Hệ thống ĐTMS / AI Thực hiện: Hỗ trợ soạn dự thảo biên bản nghiệm thu theo template phù hợp loại hồ sơ đã xác định, sử dụng báo cáo KCS và căn cứ đã kiểm tra. Hồ sơ/biểu mẫu: Template biên bản nghiệm thu; báo cáo KCS và căn cứ liên quan. Kết quả: Có dự thảo để Phòng Hợp đồng soạn thảo/hoàn thiện. [?] Chốt template cụ thể.
+- 8. AI kiểm tra hồ sơ sau hoàn thiện Tác nhân: Hệ thống ĐTMS / AI Thực hiện: Kiểm tra phiên bản biên bản và căn cứ sau khi Phòng Hợp đồng hoàn thiện, trước khi chuyển Trưởng phòng Hợp đồng ký duyệt. Ký chung: xử lý cả biên bản nghiệm thu và biên bản thanh lý trong cùng hồ sơ; ký riêng: chỉ xử lý biên bản nghiệm thu. Hồ sơ/biểu mẫu: Biên bản nghiệm thu; báo cáo KCS; chứng từ/căn cứ. Kết quả: OK: chuyển ký duyệt. Không OK: trả bước soạn thảo/hoàn thiện.
+- AI kiểm tra OK?
+- 14. AI cập nhật ngày nghiệm thu thực tế Tác nhân: Hệ thống ĐTMS / AI Thực hiện: Đọc biên bản đã ký để cập nhật ngày nghiệm thu thực tế có trong văn bản, phục vụ theo dõi và căn cứ thanh toán theo Hợp đồng. Chức năng dùng chung với MS23 tổng quan chỉ thực hiện một lần. Hồ sơ/biểu mẫu: Biên bản nghiệm thu đã ký đầy đủ. Kết quả: Ghi nhận ngày nghiệm thu thực tế; hoàn tất một hồ sơ nghiệm thu. Nếu ký riêng thanh lý: chỉ sau khi bước này hoàn tất mới tiếp tục trình ký MS23.04.
+- Có nghiệm thu đã ký đầy đủ / được phê duyệt
+- G1 — Sang MS23.04 kiểm tra điều kiện / chuẩn bị thanh lý
+- G2 — Nhận biên bản thanh lý đã hoàn thiện từ MS23.04
+- G3 — Kết quả ký chung / thông tin nghiệm thu hoàn tất → MS23.04
+- Phòng Đảm bảo hàng hóa / Trung tâm Mua sắm
+- 1. Ký và gửi báo cáo KCS tài sản Tác nhân: Phòng Đảm bảo hàng hóa / Trung tâm Mua sắm Thực hiện: Ký báo cáo KCS tài sản; gửi báo cáo cho Chuyên quản hợp đồng thuộc Phòng Hợp đồng để làm căn cứ soạn thảo và trình Trưởng phòng Hợp đồng ký nghiệm thu. Hồ sơ/biểu mẫu: Báo cáo KCS tài sản đã ký; căn cứ/kết quả kiểm tra. Kết quả: Chuyên quản nhận báo cáo; Trưởng phòng Hợp đồng sử dụng báo cáo làm căn cứ ký nghiệm thu.
+- Đơn vị Sử dụng
+- 2. Ký và gửi báo cáo KCS dịch vụ Tác nhân: Đơn vị Sử dụng Thực hiện: Ký và gửi báo cáo KCS dịch vụ cho Chuyên quản hợp đồng thuộc Phòng Hợp đồng để làm căn cứ soạn thảo và trình Trưởng phòng Hợp đồng ký nghiệm thu. Hồ sơ/biểu mẫu: Báo cáo KCS dịch vụ đã ký; kết quả/khối lượng dịch vụ. Kết quả: Có báo cáo đã ký từ ĐVSD làm căn cứ nghiệm thu dịch vụ.
+- 4. Ghi nhận khắc phục và kiểm tra lại Tác nhân: Đơn vị Sử dụng Thực hiện: Phối hợp Nhà thầu/Nhà cung cấp khắc phục nội dung chưa đạt cho cả tài sản và dịch vụ; ghi nhận kết quả kiểm tra lại. Chuyển lại đơn vị chủ quản để ký/cập nhật báo cáo KCS tương ứng. Hồ sơ/biểu mẫu: Danh sách vấn đề; kết quả khắc phục và kiểm tra lại. Kết quả: Quay lại nguồn KCS tài sản/dịch vụ; chỉ tiếp tục nghiệm thu khi có căn cứ phù hợp.
+- Trưởng phòng Hợp đồng
+- 9. Ký duyệt biên bản nghiệm thu Tác nhân: Trưởng phòng Hợp đồng Thực hiện: Xem biên bản nghiệm thu và báo cáo KCS làm căn cứ; ghi nhận đồng ý ký hoặc ý kiến không đồng ý theo tuyến ký đã chốt. Ký chung: xử lý cả biên bản nghiệm thu và biên bản thanh lý trong cùng hồ sơ; ký riêng: chỉ xử lý biên bản nghiệm thu. Hồ sơ/biểu mẫu: Biên bản nghiệm thu; báo cáo KCS đã ký; bộ hồ sơ trình ký. Kết quả: Đồng ý: chuyển cấp tiếp theo. Không đồng ý: trả Phòng Hợp đồng sửa soạn thảo.
+- Đồng ý ký?
+- Giám đốc
+- 10. Ký biên bản nghiệm thu Tác nhân: Giám đốc Thực hiện: Xem biên bản nghiệm thu và báo cáo KCS làm căn cứ; ghi nhận đồng ý ký hoặc ý kiến không đồng ý theo tuyến ký đã chốt. Ký chung: xử lý cả biên bản nghiệm thu và biên bản thanh lý trong cùng hồ sơ; ký riêng: chỉ xử lý biên bản nghiệm thu. Hồ sơ/biểu mẫu: Biên bản nghiệm thu; báo cáo KCS đã ký; bộ hồ sơ trình ký. Kết quả: Đồng ý: chuyển cấp tiếp theo. Không đồng ý: trả Phòng Hợp đồng sửa soạn thảo.
+- ✉
+- Tổng Giám đốc
+- 12. Ký biên bản nghiệm thu Tác nhân: Tổng Giám đốc Thực hiện: Xem biên bản nghiệm thu và báo cáo KCS làm căn cứ; ghi nhận đồng ý ký hoặc ý kiến không đồng ý theo tuyến ký đã chốt. Ký chung: xử lý cả biên bản nghiệm thu và biên bản thanh lý trong cùng hồ sơ; ký riêng: chỉ xử lý biên bản nghiệm thu. Hồ sơ/biểu mẫu: Biên bản nghiệm thu; báo cáo KCS đã ký; bộ hồ sơ trình ký. Kết quả: Đồng ý: chuyển cấp tiếp theo. Không đồng ý: trả Phòng Hợp đồng sửa soạn thảo.
+- Có
+- Văn thư
+- 11. Kiểm tra hồ sơ trình ký Tác nhân: Văn thư Thực hiện: Kiểm tra hồ sơ đã được Trưởng phòng Hợp đồng và Giám đốc ký trước khi chuyển Tổng Giám đốc. Ký chung: kiểm tra cả hai biên bản; ký riêng: kiểm tra hồ sơ nghiệm thu. Hồ sơ/biểu mẫu: Biên bản nghiệm thu; báo cáo KCS và hồ sơ trình ký kèm theo. Kết quả: Đạt: chuyển Tổng Giám đốc ký. Không đạt: trả Phòng Hợp đồng chỉnh sửa, hoàn thiện lại hồ sơ.
+- Hồ sơ đạt yêu cầu?
+- ✉ KCS chưa đạt
+- ✉ Thông tin nghiệm thu đã hoàn thiện, chưa ký
+- ✉ Hồ sơ thanh lý hoàn thiện
+- ✉ Trả kết quả ký chung
+- Nhà thầu / Nhà cung cấp (Pool ngoài phạm vi điều phối nội bộ)
+- Tài sản
+- Dịch vụ
+- Khắc phục → cập nhật / ký lại KCS
+- OK
+- ✉ Không OK → chỉnh sửa
+- Đồng ý
+- ✉ Không đồng ý → sửa soạn thảo
+- Kết quả thực hiện phối hợp
+- Chữ ký bắt buộc sau TGD ký
+- ✉ Thiếu chứng từ → PHĐ yêu cầu bổ sung
+- Đạt
+- ✉ Không đạt → sửa / hoàn thiện hồ sơ
+- Ký riêng / không yêu cầu thanh lý
+- Ký chung
+- Hai biên bản hoàn thiện
+- ĐIỂM GIAO MS23.03 ↔ MS23.04 G1: hoàn thiện biên bản nghiệm thu, chưa ký (bước 6). G2: nhận biên bản thanh lý hoàn thiện, tập hợp trình ký chung (bước 7). G3: gửi kết quả ký chung để cập nhật thanh lý. Ký riêng: đi hết MS23.03 trước khi trình ký thanh lý ở MS23.04. Ký chung: chỉ dùng tuyến ký tại MS23.03, không chạy hai tuyến ký trùng nhau. Nếu bị trả lại: sửa đúng biên bản có vấn đề, tập hợp lại bộ hồ sơ và trình lại. [Q1 CẦN XÁC NHẬN] Thời điểm quyết toán giá trị khi ký chung chưa chốt. Vẫn giữ nguyên yêu cầu nghiệp vụ: nghiệm thu hoàn thành → quyết toán giá trị → thanh lý chấm dứt hợp đồng.
+
+
+## Trang: MS23.04
+
+60 nhãn (theo thứ tự trong tệp, không phải thứ tự luồng):
+
+- MS23.04 | Thanh lý hợp đồng
+- Xanh lá: OK / đồng ý ký • Đỏ: Not OK / trả soạn thảo • Xanh xám: luồng thường • Nét đứt + ✉: trao đổi / thông báo / email
+- ĐIỂM GIAO G1: MS23.03 bước 6 hoàn thiện biên bản nghiệm thu, CHƯA KÝ. Ký chung: hoàn thiện thanh lý → G2 về MS23.03 bước 7 để trình ký hai biên bản qua một tuyến. G3: kết quả ký chung từ MS23.03 bước 13 → MS23.04 bước 13 cập nhật thanh lý. Ký riêng: đi hết MS23.03 rồi mới trình ký riêng tại MS23.04. Yêu cầu nghiệm thu hoàn thành → quyết toán giá trị → thanh lý chấm dứt hợp đồng vẫn giữ; thời điểm quyết toán trong phương án ký chung cần xác nhận Q1.
+- VHT / ĐTMS
+- Phòng Hợp đồng / Chuyên quản hợp đồng
+- 1. Kiểm tra yêu cầu và điều kiện ký chung — G1 Tác nhân: Phòng Hợp đồng / Chuyên quản hợp đồng Thực hiện: Nhận thông tin từ G1: biên bản nghiệm thu tại MS23.03 đã hoàn thiện nội dung nhưng chưa ký. Kiểm tra yêu cầu thanh lý, điều kiện ký chung và bảo lãnh theo từng hợp đồng. Không lấy nghiệm thu đã ký xong làm điều kiện của nhánh ký chung. Hồ sơ/biểu mẫu: Hợp đồng; biên bản nghiệm thu đã hoàn thiện chưa ký; căn cứ bàn giao; bảo lãnh. Kết quả: Đủ điều kiện ký chung: bước 2. Chưa đủ: bước 3 để đi theo nhánh ký riêng, chờ MS23.03 hoàn tất.
+- 2. Chuẩn bị biên bản thanh lý để ký chung Tác nhân: Phòng Hợp đồng / Chuyên quản hợp đồng Thực hiện: Chuẩn bị biên bản thanh lý dựa trên hồ sơ hợp đồng và thông tin nghiệm thu đã hoàn thiện nhưng chưa ký. Sau khi hoàn thiện và kiểm tra, trả biên bản về G2 tại MS23.03 để tập hợp hai biên bản và đi chung tuyến ký. Hồ sơ/biểu mẫu: Hợp đồng; biên bản nghiệm thu chưa ký; căn cứ bàn giao; bảo lãnh. Kết quả: Tiếp tục soạn thảo / kiểm tra thanh lý; không chờ nghiệm thu ký xong và không chạy tuyến ký riêng.
+- 3. Chờ MS23.03 hoàn tất và bổ sung hồ sơ Tác nhân: Phòng Hợp đồng / Chuyên quản hợp đồng Thực hiện: Nếu ký riêng, MS23.03 tiếp tục toàn bộ tuyến ký và cập nhật nghiệm thu. Chờ nghiệm thu đã ký đầy đủ, đi hết MS23.03; bổ sung bảo lãnh theo hợp đồng. Chưa hoàn tất nghiệm thu thì chưa trình ký thanh lý. Hồ sơ/biểu mẫu: Kết quả nghiệm thu hoàn tất từ MS23.03; biên bản đã ký; bảo lãnh. Kết quả: Chỉ chuyển bước 4 khi MS23.03 hoàn tất và đầy đủ điều kiện thanh lý.
+- 4. Chuẩn bị hồ sơ thanh lý để ký riêng Tác nhân: Phòng Hợp đồng / Chuyên quản hợp đồng Thực hiện: Nhận kết quả nghiệm thu hoàn tất từ MS23.03; tập hợp biên bản đã ký, bảo lãnh và căn cứ thanh lý. Thực hiện quyết toán giá trị trước khi tiếp tục trình ký thanh lý riêng. Hồ sơ/biểu mẫu: Biên bản nghiệm thu ký đầy đủ; hợp đồng; bảo lãnh; hồ sơ quyết toán. Kết quả: Chuyển bước 5 quyết toán, rồi soạn thảo và trình ký thanh lý riêng.
+- 7. Soạn thảo và hoàn thiện biên bản thanh lý Tác nhân: Phòng Hợp đồng / Chuyên quản hợp đồng Thực hiện: Kiểm tra dự thảo AI, hoàn thiện biên bản theo mẫu và đính kèm căn cứ. Khi AI hoặc bất kỳ cấp ký nào trả lại, sửa nội dung theo ý kiến và trình lại từ Trưởng phòng Hợp đồng. Nếu cần thống nhất nội dung, trao đổi Nhà thầu / Nhà cung cấp qua email. Hồ sơ/biểu mẫu: Mẫu biên bản; dự thảo; hồ sơ kèm theo; ý kiến trả lại. Kết quả: Có biên bản và hồ sơ hoàn thiện để AI kiểm tra trước khi chuyển ký duyệt.
+- 13. Cập nhật biên bản thanh lý đã ký đầy đủ — G3 Tác nhân: Phòng Hợp đồng / Chuyên quản hợp đồng Thực hiện: Ký chung: nhận biên bản thanh lý và kết quả ký từ G3 của MS23.03, không chạy lại tuyến ký MS23.04. Ký riêng: cập nhật bản thanh lý sau khi hoàn tất tuyến ký tại MS23.04. Ghi nhận đủ chữ ký theo hợp đồng; gửi bản ký cho Nhà thầu / Nhà cung cấp. Hồ sơ/biểu mẫu: Biên bản thanh lý đã ký; kết quả ký chung từ MS23.03 hoặc ký riêng tại MS23.04. Kết quả: Có bản thanh lý ký đầy đủ để AI cập nhật; vẫn đảm bảo thứ tự nghiệm thu hoàn thành → quyết toán giá trị → thanh lý chấm dứt hợp đồng.
+- X
+- Hợp đồng yêu cầu biên bản thanh lý?
+- Không thực hiện thanh lý Chỉ nghiệm thu theo MS23.03
+- 5. Quyết toán giá trị — nhánh ký riêng Tác nhân: Phòng Hợp đồng / Chuyên quản hợp đồng Thực hiện: Sau khi MS23.03 hoàn tất nghiệm thu, thực hiện quyết toán giá trị theo hợp đồng và hồ sơ đã ký. Ghi nhận kết quả trước khi trình ký thanh lý riêng. Nhánh ký chung không được mặc định dùng thời điểm này; cần xác nhận Q1. Hồ sơ/biểu mẫu: Hợp đồng; biên bản nghiệm thu hoàn tất; hồ sơ / kết quả quyết toán. Kết quả: Có kết quả quyết toán để tiếp tục soạn thảo và trình ký thanh lý riêng.
+- Đủ điều kiện ký chung theo hợp đồng và đủ bảo lãnh?
+- Nghiệm thu đã ký xong hẳn và đầy đủ bảo lãnh?
+- G1 — Nghiệm thu đã hoàn thiện CHƯA KÝ tại MS23.03 bước 6
+- G3 — Nhận kết quả ký chung từ MS23.03 bước 13
+- ✉ Biên bản thanh lý đã ký đầy đủ
+- Hệ thống ĐTMS / AI
+- 6. AI hỗ trợ soạn biên bản thanh lý theo mẫu Tác nhân: Hệ thống ĐTMS / AI Thực hiện: Sử dụng mẫu biên bản thanh lý và hồ sơ đã tập hợp để hỗ trợ tạo dự thảo. Nội dung dự thảo bám hợp đồng và căn cứ bàn giao / nghiệm thu, bảo lãnh được cung cấp; chuyển Phòng Hợp đồng kiểm tra và hoàn thiện. Hồ sơ/biểu mẫu: Mẫu biên bản thanh lý; hợp đồng; hồ sơ bàn giao / nghiệm thu; bảo lãnh. Kết quả: Có dự thảo biên bản thanh lý để Phòng Hợp đồng soạn thảo / hoàn thiện.
+- 8. AI kiểm tra hồ sơ sau hoàn thiện Tác nhân: Hệ thống ĐTMS / AI Thực hiện: Kiểm tra chứng từ, căn cứ và phiên bản biên bản thanh lý sau khi Phòng Hợp đồng hoàn thiện, trước khi chuyển Trưởng phòng Hợp đồng ký duyệt. Khi chưa đạt, nêu nội dung cần sửa / bổ sung để người soạn thảo xử lý. Hồ sơ/biểu mẫu: Biên bản thanh lý dự thảo; hợp đồng; căn cứ bàn giao / nghiệm thu và bảo lãnh. Kết quả: OK: rẽ theo phương án ký; ký chung trả G2 về MS23.03, ký riêng chuyển bước 9. Not OK: trả bước 7 để sửa và kiểm tra lại.
+- 14. AI cập nhật thông tin từ biên bản đã ký Tác nhân: Hệ thống ĐTMS / AI Thực hiện: Đọc biên bản thanh lý đã được cập nhật đầy đủ chữ ký; ghi nhận thông tin và kết quả thanh lý vào hồ sơ hợp đồng. Chức năng dùng chung với MS23 tổng quan chỉ thực hiện một lần. Hồ sơ/biểu mẫu: Biên bản thanh lý đã ký đầy đủ; hồ sơ hợp đồng liên quan. Kết quả: Ghi nhận kết quả và hoàn tất biên bản thanh lý hợp đồng.
+- Phương án ký đã chọn?
+- AI kiểm tra OK?
+- OK
+- Hoàn tất biên bản thanh lý
+- Trưởng phòng Hợp đồng
+- 9. Ký duyệt biên bản thanh lý Tác nhân: Trưởng phòng Hợp đồng Thực hiện: Xem biên bản thanh lý và các hồ sơ làm căn cứ, chỉ áp dụng nhánh ký riêng. Ghi nhận đồng ý ký duyệt hoặc ý kiến không đồng ý để Phòng Hợp đồng sửa soạn thảo. Tuyến này chỉ dùng khi ký riêng; ký chung thực hiện tại MS23.03. Hồ sơ/biểu mẫu: Biên bản thanh lý; bộ hồ sơ trình ký và căn cứ kèm theo. Kết quả: Đồng ý: ký duyệt, chuyển Giám đốc VHT. Không đồng ý: trả Phòng Hợp đồng sửa tại bước 7.
+- Giám đốc VHT
+- 10. Ký biên bản thanh lý Tác nhân: Giám đốc VHT Thực hiện: Giám đốc VHT xem biên bản thanh lý và bộ hồ sơ đã được Trưởng phòng Hợp đồng ký duyệt; ghi nhận đồng ý ký hoặc nêu ý kiến yêu cầu chỉnh sửa. Tuyến này chỉ dùng khi ký riêng; ký chung thực hiện tại MS23.03. Hồ sơ/biểu mẫu: Biên bản thanh lý; bộ hồ sơ trình ký đã được Trưởng phòng Hợp đồng duyệt. Kết quả: Đồng ý: ký và chuyển Văn thư kiểm tra. Không đồng ý: trả Phòng Hợp đồng sửa tại bước 7.
+- Đồng ý ký?
+- Văn thư
+- 11. Kiểm tra hồ sơ trình ký Tác nhân: Văn thư Thực hiện: Văn thư tiếp nhận biên bản và hồ sơ đã qua Giám đốc VHT; kiểm tra hồ sơ trước khi chuyển Tổng Giám đốc. Nếu hồ sơ chưa đạt, ghi nhận ý kiến và trả Phòng Hợp đồng hoàn thiện. Tuyến này chỉ dùng khi ký riêng; ký chung thực hiện tại MS23.03. Hồ sơ/biểu mẫu: Biên bản thanh lý; bộ hồ sơ trình ký và thông tin ký liên quan. Kết quả: OK: chuyển Tổng Giám đốc ký. Not OK: trả bước 7; sửa và trình lại từ Trưởng phòng Hợp đồng.
+- Tổng Giám đốc
+- 12. Ký biên bản thanh lý Tác nhân: Tổng Giám đốc Thực hiện: Tổng Giám đốc xem biên bản thanh lý cùng hồ sơ trình ký đã được kiểm tra; quyết định đồng ý ký hoặc yêu cầu chỉnh sửa. Tuyến này chỉ dùng khi ký riêng; ký chung thực hiện tại MS23.03. Hồ sơ/biểu mẫu: Biên bản thanh lý; hồ sơ đã qua Trưởng phòng Hợp đồng, Giám đốc VHT và Văn thư. Kết quả: Đồng ý: ký, chuyển cập nhật biên bản đã ký. Không đồng ý: trả bước 7 để sửa và trình lại.
+- Ký riêng
+- Hồ sơ thanh lý để trình ký
+- Đồng ý ký duyệt?
+- Hồ sơ kiểm tra OK?
+- OK — đủ điều kiện, ký chung
+- Not OK — chưa đủ điều kiện, ký riêng
+- Not OK — tiếp tục chờ / bổ sung
+- OK — nghiệm thu đã ký xong hẳn, đủ bảo lãnh
+- Not OK — ✉ trả lỗi để sửa
+- Not OK — ✉ trả ý kiến; sửa và trình lại từ Trưởng phòng HĐ
+- Nhà thầu / Nhà cung cấp (Pool ngoài phạm vi điều phối nội bộ)
+- ✉ Trao đổi nội dung / gửi dự thảo để ký
+- ✉ Gửi lại biên bản có chữ ký Nhà thầu / Nhà cung cấp
+- ✉ Gửi biên bản thanh lý đã ký đầy đủ
+- ✉
+- G1 / G2 / G3 trên hai sơ đồ dùng cùng mã để thể hiện điểm nối. Ký chung chỉ thực hiện tuyến ký tại MS23.03; MS23.04 chuẩn bị biên bản và nhận lại bản đã ký. Ký riêng hoàn tất MS23.03 trước rồi mới chạy tuyến ký MS23.04. Trả lại trong ký chung: sửa biên bản có vấn đề ở luồng tương ứng, tập hợp lại bộ hồ sơ và trình lại từ Trưởng phòng Hợp đồng; không kết thúc thanh lý khi hồ sơ chưa được ký đầy đủ.
+- Nguồn: sơ đồ MS23.04 đã tải; review trong phiên này; 2909.txt (MS23). Phong cách và cấu trúc mô tả kế thừa mẫu MS23.03 - 0110 bạn gửi.
+- Có
+- Không — chỉ nghiệm thu
+- Quyết toán hoàn thành
+- G2 — Trả BB thanh lý hoàn thiện MS23.03 bước 7 tập hợp / trình ký chung
+- ✉ Ký chung — gửi biên bản
+- Q1 — CẦN XÁC NHẬN Ký chung: quyết toán giá trị thực hiện sau khi hoàn thiện nội dung nghiệm thu hay sau khi nghiệm thu ký xong? Chưa chốt thời điểm này; không mặc định ký chung nghĩa là cả ba nghiệp vụ hoàn tất đồng thời. Yêu cầu giữ nguyên: nghiệm thu hoàn thành → quyết toán giá trị → thanh lý chấm dứt hợp đồng.
+
+
+## Trang: MS24
+
+44 nhãn (theo thứ tự trong tệp, không phải thứ tự luồng):
+
+- MS24 • THANH TOÁN HỢP ĐỒNG THEO TỪNG ĐỢT
+- Cập nhật theo MoM review và xác nhận bổ sung ngày 04/10/2026 • Kế thừa mẫu MS22 gần nhất • Bản nghiệp vụ phục vụ thiết kế Camunda/WBS; các mục [Q] chưa chốt.
+- Chuyên quản / Đơn vị mua sắm (ĐVMS) [Q1]
+- Phòng hợp đồng – Nhân sự chuyên thanh toán
+- Hồ sơ đủ căn cứ?
+- Hợp đồng yêu cầu bảng tổng hợp? [Q2]
+- Hệ thống ĐTMS / AI
+- Hoàn tất lần thanh toán theo hợp đồng Đã ghi nhận trạng thái và đồng bộ thông tin thanh toán lên SAP
+- Phòng Tài chính kế toán
+- Thủ trưởng VHT
+- Văn thư
+- Tổng giám đốc Tập đoàn
+- 1. Tập hợp và gửi hồ sơ thanh toán Tác nhân: Chuyên quản / Đơn vị mua sắm (ĐVMS) [Q1] Thực hiện: Tập hợp hồ sơ thanh toán theo điều khoản hợp đồng và gửi nhân sự chuyên thanh toán thuộc Phòng hợp đồng. Nguồn giao việc lập YCCT cho ĐVMS; chưa nêu chuyên quản thuộc Trung tâm mua sắm. Hồ sơ/biểu mẫu: Hợp đồng; hồ sơ tạm ứng/bảo lãnh hoặc hồ sơ thanh toán theo giai đoạn.
+- 2. Tiếp nhận và tổng hợp hồ sơ thanh toán Tác nhân: Phòng hợp đồng – Nhân sự chuyên thanh toán Thực hiện: Nhân sự chuyên thanh toán tiếp nhận, tổng hợp hồ sơ do chuyên quản gửi và kiểm tra hồ sơ đã đủ căn cứ thanh toán theo hợp đồng hay chưa. Hồ sơ/biểu mẫu: Bộ hồ sơ thanh toán; hợp đồng; thông tin số tiền và người nhận; kết quả kiểm tra căn cứ.
+- X
+- 3. Bổ sung hồ sơ thanh toán Tác nhân: Chuyên quản / Đơn vị mua sắm (ĐVMS) [Q1] Thực hiện: Khi hồ sơ chưa đủ căn cứ, chuyên quản/ĐVMS bổ sung thông tin, tài liệu theo yêu cầu và gửi lại nhân sự chuyên thanh toán để tiếp nhận, tổng hợp, kiểm tra lại. Hồ sơ/biểu mẫu: Yêu cầu bổ sung; thông tin/tài liệu còn thiếu; bộ hồ sơ đã bổ sung.
+- 4. Xuất đề nghị chuyển tiền theo template Tác nhân: Hệ thống ĐTMS / AI Thực hiện: Hệ thống sinh đề nghị chuyển tiền từ hồ sơ đã tổng hợp theo template. Khi trình lại, sử dụng thông tin đã chỉnh sửa. Bước này không dùng AI gợi ý. Hồ sơ/biểu mẫu: Template đề nghị chuyển tiền; thông tin thanh toán đã tổng hợp/cập nhật. Mẫu thực tế chưa cung cấp.
+- 5. Cung cấp hóa đơn thanh toán Tác nhân: Phòng hợp đồng – Nhân sự chuyên thanh toán Thực hiện: Phòng hợp đồng cung cấp thông tin/hóa đơn liên quan đến đợt để AI lập bảng tổng hợp thanh toán. Hồ sơ/biểu mẫu: Hóa đơn và thông tin thanh toán của đợt.
+- 6. AI lập bảng tổng hợp thanh toán Tác nhân: Hệ thống ĐTMS / AI Thực hiện: AI lập bảng tổng hợp từ hóa đơn và dữ liệu thanh toán. Chuyển Phòng tài chính kiểm tra và ký. Hồ sơ/biểu mẫu: Hóa đơn; dữ liệu thanh toán; mẫu bảng tổng hợp chưa được cung cấp.
+- 7. Kiểm tra và ký bảng tổng hợp Tác nhân: Phòng tài chính [Q3: người ký chưa rõ] Thực hiện: Phòng tài chính kiểm tra và ký. Chức danh ký chưa chốt; có thể là Trưởng phòng tài chính. Hồ sơ/biểu mẫu: Bảng tổng hợp thanh toán; hồ sơ/hóa đơn; ý kiến và kết quả ký.
+- Đồng ý?
+- 8. Kiểm tra và ký bảng tổng hợp Tác nhân: Thủ trưởng VHT Thực hiện: Thủ trưởng VHT kiểm tra, ký bảng tổng hợp sau Phòng tài chính. Hồ sơ/biểu mẫu: Bảng tổng hợp; hồ sơ liên quan; ý kiến và kết quả ký.
+- 9. Kiểm tra và ký xác nhận bảng tổng hợp Tác nhân: Văn thư Thực hiện: Văn thư kiểm tra font chữ, biểu mẫu, loại văn bản, định dạng và văn phong; ký xác nhận. Hồ sơ/biểu mẫu: Bảng tổng hợp và tài liệu trình; ý kiến/kết quả ký xác nhận.
+- 10. Kiểm tra và ký bảng tổng hợp Tác nhân: Tổng giám đốc Tập đoàn Thực hiện: Tổng giám đốc Tập đoàn kiểm tra và ký sau Văn thư. Hồ sơ/biểu mẫu: Bảng tổng hợp; hồ sơ trình ký; ý kiến và kết quả ký.
+- 11. Chỉnh sửa bảng tổng hợp thanh toán Tác nhân: Phòng hợp đồng – Nhân sự chuyên thanh toán Thực hiện: Nếu một cấp không đồng ý ở giai đoạn bảng tổng hợp: sửa bảng và dữ liệu liên quan theo ý kiến; trình lại từ Phòng tài chính. Không chuyển sang vòng sửa đề nghị chuyển tiền. Hồ sơ/biểu mẫu: Bảng tổng hợp đã chỉnh sửa; ý kiến trả lại; hóa đơn/thông tin liên quan.
+- 12. Hoàn thiện hồ sơ đề nghị chuyển tiền Tác nhân: Phòng hợp đồng – Nhân sự chuyên thanh toán Thực hiện: Hoàn thiện đề nghị theo template và bộ hồ sơ. Nếu cần bảng tổng hợp, kèm bảng đã ký đủ. Chọn ký tích hợp VOffice/VContract hoặc hình thức khác được phép. Hồ sơ/biểu mẫu: Đề nghị chuyển tiền; căn cứ thanh toán; bảng tổng hợp đã ký nếu cần; phương thức trình ký.
+- 13. Kiểm tra và ký duyệt đề nghị chuyển tiền Tác nhân: Phòng tài chính [Q3: người ký chưa rõ] Thực hiện: Phòng tài chính kiểm tra và ký duyệt đề nghị trước Thủ trưởng VHT. Không đồng ý: trả về chỉnh sửa đề nghị rồi trình lại từ Phòng tài chính. Chức danh ký chưa chốt. Hồ sơ/biểu mẫu: Đề nghị chuyển tiền và hồ sơ kèm; ý kiến/kết quả ký duyệt.
+- 14. Kiểm tra và ký đề nghị chuyển tiền Tác nhân: Thủ trưởng VHT Thực hiện: Thủ trưởng VHT kiểm tra và ký sau Phòng tài chính. Không đồng ý: trả về sửa đề nghị, trình lại từ Phòng tài chính trong tuyến đề nghị chuyển tiền. Hồ sơ/biểu mẫu: Đề nghị chuyển tiền; hồ sơ kèm; ý kiến/kết quả ký.
+- 15. Kiểm tra và ký xác nhận đề nghị chuyển tiền Tác nhân: Văn thư Thực hiện: Văn thư kiểm tra font chữ, biểu mẫu, loại văn bản, định dạng và văn phong; ký xác nhận. Không đồng ý: trả về sửa đề nghị, trình lại từ Phòng tài chính. Hồ sơ/biểu mẫu: Đề nghị chuyển tiền; ý kiến/kết quả ký xác nhận.
+- 16. Kiểm tra và ký đề nghị chuyển tiền Tác nhân: Tổng giám đốc Tập đoàn Thực hiện: Tổng giám đốc Tập đoàn kiểm tra và ký sau Văn thư. Không đồng ý: trả về sửa đề nghị rồi trình lại từ Phòng tài chính trong tuyến đề nghị chuyển tiền. Hồ sơ/biểu mẫu: Đề nghị chuyển tiền; hồ sơ kèm; ý kiến/kết quả ký.
+- 17. Chỉnh sửa đề nghị chuyển tiền Tác nhân: Phòng hợp đồng – Nhân sự chuyên thanh toán Thực hiện: Một cấp không đồng ý trong tuyến đề nghị: chỉnh sửa đề nghị và hồ sơ theo ý kiến, hoàn thiện và trình lại từ Phòng tài chính. Không quay về vòng sửa/ký bảng tổng hợp. Hồ sơ/biểu mẫu: Đề nghị chuyển tiền đã chỉnh sửa; ý kiến trả lại; hồ sơ kèm.
+- 18. Thanh toán tiền Tác nhân: Phòng Tài chính kế toán Thực hiện: Sau khi đề nghị chuyển tiền được duyệt đủ, Phòng Tài chính kế toán thực hiện thanh toán tiền cho nhà thầu/nhà cung cấp theo hợp đồng. Bao gồm chuyển tiền hoặc thủ tục tiền mặt theo phương thức đã thỏa thuận. Hồ sơ/biểu mẫu: Đề nghị đã ký duyệt; hợp đồng; thông tin nhận tiền; chứng từ/minh chứng thanh toán.
+- 19. Cập nhật trạng thái và tải minh chứng Tác nhân: Phòng Tài chính kế toán Thực hiện: Sau khi chuyển tiền/chi tiền mặt, Phòng Tài chính kế toán cập nhật trạng thái và tải thông tin/minh chứng thanh toán lên ĐTMS. Tên trạng thái chưa chốt. Hồ sơ/biểu mẫu: Thông tin thực hiện thanh toán; chứng từ/minh chứng theo phương thức; trạng thái cập nhật.
+- 20. AI ghi nhận và đồng bộ trạng thái thanh toán lên SAP Tác nhân: Hệ thống ĐTMS / AI Thực hiện: AI ghi nhận trạng thái thanh toán và thông tin liên quan từ dữ liệu Phòng Tài chính kế toán đã cập nhật; đồng bộ các thông tin này lên SAP. Hồ sơ/biểu mẫu: Trạng thái thanh toán; thông tin thực hiện thanh toán; chứng từ/minh chứng; dữ liệu đồng bộ SAP.
+- Phát sinh đợt thanh toán theo hợp đồng
+- Có
+- Không – bổ sung hồ sơ
+- Gửi lại kiểm tra
+- Đồng ý
+- Không
+- Không đồng ý – sửa bảng tổng hợp
+- Trình ký lại từ Phòng tài chính
+- Không đồng ý – sửa đề nghị
+- Hoàn thiện lại đề nghị
