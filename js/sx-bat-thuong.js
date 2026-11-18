@@ -221,15 +221,15 @@
         ${k.kv('Tên sản phẩm', x.spTen ? esc(x.spTen) : null)}${k.kv('Mã sản phẩm', x.spMa ? esc(x.spMa) : null)}${k.kv('Serial', x.serial ? esc(x.serial) : null)}
         ${k.kv('Khách hàng', x.khachN ? esc(x.khachN) : null)}${k.kv('Đơn vị sản xuất', x.donViN ? esc(x.donViN) : null)}${k.kv('Số hiệu thao tác', x.op ? esc(x.op) : null)}
         ${k.kv('Ca sản xuất', x.shift ? esc(catN('sx-ca-san-xuat', x.shift)) : null)}${k.kv('Cỡ mẫu kiểm tra', x.sample ? esc(String(x.sample)) : null)}${k.kv('Số lượng ảnh hưởng', x.qty != null ? esc(`${x.qty}${x.unit ? ' ' + catN('sx-don-vi-tinh', x.unit).toLowerCase() : ''}`) : null)}
-        ${k.kv('Tỷ lệ lỗi', defectPct(x) != null ? esc(defectPct(x) + ' %') : null)}${k.kv('Yêu cầu kỹ thuật vi phạm', x.req ? esc(x.req) : null, 'span2')}
+        ${k.kv('Tỷ lệ lỗi', defectPct(x) != null ? esc(String(defectPct(x)).replace('.', ',') + ' %') : null)}${k.kv('Yêu cầu kỹ thuật vi phạm', x.req ? esc(x.req) : null, 'span2')}
         ${k.kv('Mô tả hiện tượng', esc(x.desc || ''), 'span3')}
         ${k.kv('Loại bất thường', x.type ? esc(catRow(x.type).name) : null, 'span2')}${k.kv('Mức độ', x.sev ? esc(D.sxSev[x.sev]) : null)}
         ${k.kv('Đơn vị xử lý', x.unitText ? esc(x.unitText) : null)}${k.kv('Ngày tiếp nhận', x.received ? esc(dmy(x.received)) : null)}
         ${k.kv('Hạn xử lý', x.due ? `${esc(dmy(x.due))} (${x.sla} ngày làm việc)` : x.type && !x.sla ? 'Theo quy trình nhà máy' : x.type && !x.received ? `Tính từ ngày tiếp nhận (${x.sla} ngày làm việc)` : null)}
         ${k.kv('Còn lại', l == null ? null : l < 0 ? `<span class="t-err">Quá hạn ${-l} ngày làm việc</span>` : `${l} ngày làm việc`)}${k.kv('Ngày đóng', x.closed ? esc(dmy(x.closed)) : null)}
         ${k.kv('Số lần kiểm tra không đạt', x.nok ? String(x.nok) : null)}</div>`)
-      + k.card('Đối sách tức thời', k.table([['TT', 60, 'c'], ['Hành động', 420], ['Người thực hiện', 200], ['Thời hạn', 120]], (x.actions || []).map((a, i) => [i + 1, a.hd, pName(a.who), a.han]),
-        (r) => `<td class="c num">${r[0]}</td><td>${esc(r[1] || '')}</td><td>${r[2] ? esc(r[2]) : k.dash}</td><td class="num">${r[3] ? esc(dmy(r[3])) : k.dash}</td>`))
+      + k.card('Đối sách tức thời', k.table([['Hành động', 460], ['Người thực hiện', 220], ['Thời hạn', 120]], (x.actions || []).map((a) => [a.hd, pName(a.who), a.han]),
+        (r) => `<td>${esc(r[0] || '')}</td><td>${r[1] ? esc(r[1]) : k.dash}</td><td class="num">${r[2] ? esc(dmy(r[2])) : k.dash}</td>`))
       + k.card('Phân tích sơ bộ và xác nhận hiện trường', `<div class="ginfo c3">
         ${k.kv('Nhóm nguyên nhân', causesText(x) ? esc(causesText(x)) : null, 'span3')}${k.kv('Dự đoán sơ bộ nguyên nhân', x.guess ? esc(x.guess) : null, 'span3')}
         ${k.kv('Nhân sự kiểm tra (TT.SX - VHT)', (x.inspect || []).length ? esc((x.inspect || []).map(pName).join(', ')) : null, 'span2')}${k.kv('Nhân sự tham gia (Đối tác SX)', (x.partner || []).length ? esc((x.partner || []).map(pName).join(', ')) : null)}</div>`)
