@@ -487,7 +487,7 @@
     const STC = { PLANNING: C[5], PREPARING: C[3], IN_PRODUCTION: C[2], ACCEPTANCE: C[0], DONE: C[4] };
     const dStatus = donut('Dự án theo trạng thái', stKeys.map((k) => ({ label: D.sxStatus[k], value: ps.filter((x) => x.p.status === k).length, color: STC[k] || C[5] })), { unit: 'dự án', note: `Dự án mới mở trong 30 ngày gần nhất (từ ${dmy(since30)}): ${M[4][2].length}` });
     const runP = ps.filter((x) => x.run);
-    const dTrack = donut('Dự án đang thực hiện theo tiến độ', [{ label: 'Đúng tiến độ', value: runP.filter((x) => onTrack(x.p, x)).length, color: C[2] }, { label: 'Chậm tiến độ', value: runP.filter((x) => !onTrack(x.p, x)).length, color: C[1] }], { unit: 'đang thực hiện', note: `Chậm từ ${LATE_PT} điểm trở lên so với kế hoạch đến ngày` });
+    const dTrack = donut('Dự án đang thực hiện theo tiến độ', [{ label: 'Đúng tiến độ', value: runP.filter((x) => onTrack(x.p, x)).length, color: C[2] }, { label: 'Chậm tiến độ', value: runP.filter((x) => !onTrack(x.p, x)).length, color: C[1] }], { unit: 'dự án', note: `Chậm từ ${LATE_PT} điểm trở lên so với kế hoạch đến ngày` });
     const donuts = `<section class="tq-blk" data-sx-so-du-an><h2 class="rp-h2">Số dự án</h2><p class="cap">Theo bộ lọc Khối, Dự án ở trên</p><div class="rp-g2">${dStatus}${dTrack}</div></section>`;
     const charts = `<section class="tq-blk" data-sx-bieu-do><h2 class="rp-h2">Biểu đồ</h2><p class="cap">Theo bộ lọc Khối, Dự án ở trên</p><div class="rp-g2">${cProg}${cBt}${cTd}${cKpi}</div></section>`;
     const info = {
