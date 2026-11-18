@@ -1,6 +1,6 @@
 // T25 B1: MS22 Thương thảo và ký hợp đồng chạy trên HĐ-2026-0052 — bấm đủ 13 bước qua eForm, Việc của tôi, Xem BPMN, Chi tiết hợp đồng.
 import { test, expect } from '@playwright/test';
-import { fresh } from './helpers.mjs';
+import { fresh, signGo } from './helpers.mjs';
 
 const HD = 'HĐ-2026-0052', CASE = 'HSHD-2026-0052', HREF = '#/hop-dong/' + encodeURIComponent(HD);
 const BA = /SCR-|UC-|task \d|Prototype|minh hoạ|GIẢ LẬP|P-1\d\d|ngoài BPMN/;
@@ -46,7 +46,8 @@ test('MS22 đủ 13 bước: song song 2 ‖ 3, AI cảnh báo → thống nhấ
   await as(page, 'dvsd');
   const row = page.locator('.vtable tbody tr', { hasText: 'Hoàn thiện phụ lục kỹ thuật' });
   await expect(row).toContainText(HD);
-  await expect(row).toContainText(CASE);
+  // Việc của tôi không có cột Mã hồ sơ (D-92) — dòng mang mã hồ sơ ở data-code.
+  await expect(row).toHaveAttribute('data-code', CASE);
   await expect(page.locator('.bell .count')).toHaveText('1');
   // Bước 2
   await openTask(page, 'dvsd', 2);
@@ -107,13 +108,14 @@ test('MS22 đủ 13 bước: song song 2 ‖ 3, AI cảnh báo → thống nhấ
   await done(page);
   // Bước 10: Xem BPMN tô đúng bước; ký qua hộp thoại Trình ký
   await openTask(page, 'tgd', 10);
-  await page.locator('.task-acts [data-go$="/bpmn"]').click();
+  // T56 Q6: nút Xem BPMN nằm trên hàng tiêu đề, không trong thanh thao tác.
+  await page.locator('[data-go$="/bpmn"]').click();
   await expect(page.locator('.bp-h h2')).toContainText('Xem xét, phê duyệt và ký hợp đồng');
   await expect(page.locator('.bp-root [data-task="10"] rect').first()).toHaveAttribute('fill', '#e9fbf0');
   await page.goBack();
   await act(page, 'Phê duyệt và ký hợp đồng');
   await ok(page);
-  await page.locator('.vmodal #go').click();
+  await signGo(page.locator('.vmodal')); // T54: Trình ký VOffice cần mật khẩu VOffice (GIẢ LẬP)
   await done(page);
   // Bước 11, 12
   await openTask(page, 'phd', 11);
@@ -174,8 +176,9 @@ test('MS22: hồ sơ con không đụng hồ sơ đang chạy ở luồng chính
   await expect(page).toHaveURL(/#\/viec-cua-toi$/);
   expect(await page.evaluate(() => [Flow.state.code, Flow.inCase()])).toEqual([main, false]);
   await as(page, 'admin');
-  await expect(page.locator('.vtable tbody')).toContainText(CASE);
-  await expect(page.locator('.vtable tbody')).toContainText(main);
+  // Không có cột Mã hồ sơ (D-92): kiểm hai hồ sơ qua data-code của dòng.
+  await expect(page.locator(`.vtable tbody tr[data-code="${CASE}"]`)).toHaveCount(1);
+  await expect(page.locator(`.vtable tbody tr[data-code="${main}"]`)).not.toHaveCount(0);
   // Mở việc hồ sơ chính rồi quay lại việc hợp đồng: đúng hồ sơ theo route
   await goto(page, '#/task/' + (await page.evaluate(() => Flow.tokensFor('admin')[0].id)));
   // T29 B19: việc bước 1 của hồ sơ chính mở màn Lập ĐXMS (Mã ĐXMS ở ô chỉ đọc).

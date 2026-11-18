@@ -43,7 +43,8 @@ test('MS23: 5 nhánh sự kiện từ công cụ demo; bước 3 qua eForm, bắ
   await goto(page, '#/viec-cua-toi');
   const row = page.locator('.vtable tbody tr', { hasText: 'Ghi nhận thông báo giao hàng' });
   await expect(row).toContainText(HD);
-  await expect(row).toContainText(CASE);
+  // Việc của tôi không có cột Mã hồ sơ (D-92) — dòng mang mã hồ sơ ở data-code.
+  await expect(row).toHaveAttribute('data-code', CASE);
   await expect(page.locator('.bell .count')).toHaveText('1');
   await goto(page, '#/task/' + (await page.evaluate(() => Flow.caseTokens('phd')[0].id)));
   await expect(page.locator('.ginfo')).toContainText(HD);
