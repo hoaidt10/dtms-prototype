@@ -25,9 +25,12 @@
   const RUN = ['PREPARING', 'IN_PRODUCTION', 'ACCEPTANCE'];
 
   /* ---------- Bộ lọc chung (Khối, Dự án; báo cáo Tiến độ thêm Kỳ báo cáo) ---------- */
-  const F = { khoi: null, project: null, period: 'DX', at: `${dmy(D.sxToday)} 07:00` };
+  const F = { khoi: null, project: null, year: null, period: 'DX', at: `${dmy(D.sxToday)} 07:00` };
   const R = {}; // trạng thái từng báo cáo: { drill: { label, fn } }
-  const projects = () => P().visible().filter((p) => (!F.khoi || p.khoi === F.khoi) && (!F.project || p.code === F.project));
+  /* Lọc theo năm (nhánh hoaidt10): dự án có thời gian thực hiện giao với năm đã chọn. */
+  const inYear = (p) => !F.year || ((!p.start || String(p.start).slice(0, 4) <= F.year) && (!p.end || String(p.end).slice(0, 4) >= F.year));
+  const yearsOf = () => [...new Set(['2026'].concat(...P().visible().map((p) => [p.start, p.end].filter(Boolean).map((d) => String(d).slice(0, 4)))))].sort();
+  const projects = () => P().visible().filter((p) => (!F.khoi || p.khoi === F.khoi) && (!F.project || p.code === F.project) && inYear(p));
   const inScope = (code) => projects().some((p) => p.code === code);
 
   /* ---------- Tiến độ dự án: thực hiện (tab Kế hoạch & mốc) và kế hoạch đến ngày (cùng cách gộp của SxDuAn.roll) ---------- */
@@ -64,7 +67,7 @@
     const now = today() + 17 * 3600000, out = [];
     window.SxFlow.cases().forEach((c) => {
       const project = projOf(c.obj);
-      if (project ? !inScope(project) : (F.project || F.khoi)) return;
+      if (project ? !inScope(project) : (F.project || F.khoi || F.year)) return;
       const row = (step, who, since, at, open) => {
         const st = stepDef(c.flow, step), days = r1(((at ? stampMs(at) : now) - stampMs(since)) / DAY), nlv = (st[3] || {}).nlv || 2;
         out.push({ code: c.code, flow: c.flow, obj: c.obj, project, step: `${st[0]}. ${st[1] || ''}`, who, ben: benOf(who), since, at, open, days, nlv, late: days > nlv });
@@ -378,15 +381,16 @@
 
   /* ---------- Khối lọc ---------- */
   function filterBar(withPeriod) {
-    const ps = P().visible().filter((p) => !F.khoi || p.khoi === F.khoi);
+    const ps = P().visible().filter((p) => (!F.khoi || p.khoi === F.khoi) && inYear(p));
     return `<section class="rp-filter sxr-filter">
       <div class="vfield" style="width:200px"><div class="lr"><label>Khối</label></div>${vSelect({ id: 'sxr-khoi', value: F.khoi, clear: true, searchable: false, placeholder: 'Tất cả', options: Object.entries(KHOI).map(([value, label]) => ({ value, label })), onChange: (v) => { F.khoi = v || null; if (F.project && !P().visible().some((p) => p.code === F.project && (!F.khoi || p.khoi === F.khoi))) F.project = null; clearDrill(); rerender(); } })}</div>
       <div class="vfield" style="width:360px"><div class="lr"><label>Dự án</label></div>${vSelect({ id: 'sxr-project', value: F.project, clear: true, searchable: true, placeholder: 'Tất cả', options: ps.map((p) => ({ value: p.code, label: `${p.code} — ${p.name}` })), onChange: (v) => { F.project = v || null; clearDrill(); rerender(); } })}</div>
+      <div class="vfield" style="width:160px"><div class="lr"><label>Năm</label></div>${vSelect({ id: 'sxr-year', value: F.year, clear: true, searchable: false, placeholder: 'Tất cả', options: yearsOf().map((y) => ({ value: y, label: y })), onChange: (v) => { F.year = v || null; if (F.project && !projects().some((p) => p.code === F.project)) F.project = null; clearDrill(); rerender(); } })}</div>
       ${withPeriod ? `<div class="vfield" style="width:240px"><div class="lr"><label>Kỳ báo cáo</label></div>${vSelect({ id: 'sxr-period', value: F.period, searchable: false, options: Object.entries(PERIOD).map(([value, label]) => ({ value, label })), onChange: (v) => { F.period = v || 'DX'; rerender(); } })}</div>` : ''}
       </section>`;
   }
   const clearDrill = () => Object.keys(R).forEach((k) => { R[k].drill = null; });
-  const filterTxt = () => `Khối: ${F.khoi ? KHOI[F.khoi] : 'Tất cả'}; Dự án: ${F.project || 'Tất cả'}`;
+  const filterTxt = () => `Khối: ${F.khoi ? KHOI[F.khoi] : 'Tất cả'}; Dự án: ${F.project || 'Tất cả'}; Năm: ${F.year || 'Tất cả'}`;
 
   /* ---------- SX-14 Báo cáo ---------- */
   const EX = {};
@@ -557,6 +561,6 @@
     if (t.closest('[data-sxr-refresh]')) { const n = new Date(), p2 = (v) => String(v).padStart(2, '0'); F.at = `${dmy(D.sxToday)} ${p2(n.getHours())}:${p2(n.getMinutes())}`; rerender(); toast('<b>Thành công</b><br>Đã làm mới dữ liệu'); }
   });
 
-  const reset = () => { F.khoi = null; F.project = null; F.period = 'DX'; clearDrill(); };
+  const reset = () => { F.khoi = null; F.project = null; F.year = null; F.period = 'DX'; clearDrill(); };
   window.SxBc = { overview, report, REPORTS, kpis, vtlk, settle, waits, prog, reset };
 })();
