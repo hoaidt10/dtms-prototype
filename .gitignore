@@ -1,0 +1,7 @@
+node_modules/
+test-results/
+playwright-report/
+# Bí mật: mã khoá bản đăng (chỉ người tích hợp có)
+.env
+.env.*
+!*.example
