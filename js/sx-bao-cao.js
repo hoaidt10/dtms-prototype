@@ -475,6 +475,17 @@
     const sugBlk = `<section class="tq-blk" data-sx-goi-y><h2 class="rp-h2">Gợi ý cho bạn</h2><p class="cap">Hệ thống tự gợi ý theo việc của bạn và dữ liệu dự án trong phạm vi bộ lọc</p>
       <div class="sx-sug hd-alerts">${sug.length ? sug.map(([, tone, tx, lb, go]) => `<div class="hd-alert ${tone}">${icon('info')}<span class="tx">${tx}</span><button type="button" class="vbtn sm secondary" data-go="${go}">${esc(lb)}</button></div>`).join('')
     : '<div class="empty-t">Không có gợi ý nào — các việc và dự án đang đúng hạn.</div>'}</div></section>`;
+    /* Biểu đồ Dashboard (nhánh hoaidt10): cùng nguồn số liệu với các danh sách SX; tái dùng hbars / pairs của Báo cáo. */
+    const withColor = (a, cs) => a.map((x, i) => Object.assign(x, { color: cs[i % cs.length] }));
+    const stKeys = Object.keys(D.sxStatus || {});
+    const cProg = pairs('Tiến độ dự án: thực hiện so với kế hoạch đến ngày', run.map((x) => ({ label: x.code, a: x.act, b: x.plan, late: x.gap <= -LATE_PT })));
+    const cStatus = hbars('Dự án theo trạng thái', withColor(countBy(ps, (x) => x.p.status, stKeys, (k) => D.sxStatus[k]), C), { unit: 'dự án' });
+    const btAll = window.SxBt.all().filter((x) => inScope(x.project));
+    const cBt = hbars('Phiếu bất thường theo trạng thái', withColor(countBy(btAll, (x) => window.SxBt.stOf(x)[0]), [C[1], C[3], C[0], C[2], C[5]]), { unit: 'phiếu' });
+    const tdAll = window.SxTd.all().filter((x) => inScope(x.project));
+    const cTd = hbars('Thay đổi kỹ thuật theo trạng thái', withColor(countBy(tdAll, (x) => window.SxTd.stOf(x)[0]), [C[4], C[0], C[3], C[2], C[5]]), { unit: 'yêu cầu' });
+    const cKpi = hbars('KPI quy trình so với mục tiêu', kpis().filter((x) => x.value != null).map((x) => ({ label: x.name, value: x.value, sub: 'MT ' + x.target + '%', color: x.value >= x.target ? C[2] : C[1] })), { pct: true, max: 100 });
+    const charts = `<section class="tq-blk" data-sx-bieu-do><h2 class="rp-h2">Biểu đồ</h2><p class="cap">Theo bộ lọc Khối, Dự án ở trên</p><div class="rp-g2">${cProg}${cStatus}${cBt}${cTd}${cKpi}</div></section>`;
     const info = {
       scr: 'SX-01', name: 'Dashboard', uc: 'SX-ULNL sheet NL Chuc nang › Báo cáo thống kê › Tổng quan dự án (dòng 2526–2530); SX-KS-K2 §2.4 (Dashboard KPI sản xuất); plan T71 §4 SX-01',
       notes: [
@@ -494,6 +505,7 @@
         <div class="rp-tiles sxtq-5">${M.map((m, i) => tile(m, 'm' + i)).join('')}</div></section>
       <section class="tq-blk"><h2 class="rp-h2">Cần chú ý</h2>
         <div class="rp-tiles">${A.map((m, i) => tile(m, 'a' + i)).join('')}</div></section>
+      ${charts}
       ${K().card('Tiến độ dự án so với kế hoạch', run.length ? K().table([['Mã dự án', 140], ['Tên dự án', 280], ['Khối', 80], ['Trạng thái', 150, 'c'], ['Giai đoạn hiện tại', 220], ['Thực hiện', 100, 'r'], ['Kế hoạch đến ngày', 140, 'r'], ['Chênh lệch', 110, 'r'], ['Hạng mục chậm', 120, 'r']], run,
         (x) => `<td><a class="link" data-go="${x.href}">${esc(x.code)}</a></td><td>${K().clamp(x.title)}</td><td>${esc(KHOI[x.p.khoi])}</td><td class="c">${badge(D.sxStatus[x.p.status], D.sxStatusV[x.p.status])}</td><td>${K().clamp(x.stage)}</td>
           <td class="r num">${x.act}%</td><td class="r num">${x.plan}%</td><td class="r num ${x.gap < 0 ? 't-err' : ''}">${x.gap > 0 ? '+' : ''}${x.gap} điểm</td><td class="r num ${x.late.length ? 't-err' : ''}">${x.late.length}</td>`)
