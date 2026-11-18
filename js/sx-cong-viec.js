@@ -189,8 +189,9 @@
     const tiles = `<div class="rp-tiles tq-metrics" data-sxcv-tiles>${TILES.map(([t, l, d, c]) => `<button type="button" class="ov-tile rp-tile tq-m ${cur === t ? 'on' : ''}" data-sxcv-tile="${kind}|${t}" aria-pressed="${cur === t}">
       <span class="ov-tx"><span class="t">${esc(l)}</span><span class="d">${esc(d)}</span></span><span class="ov-n"><span class="n num ${c || ''}">${b.filter((x) => tileOk(t, x)).length}</span></span></button>`).join('')}</div>`;
     const ST = ['Chưa thực hiện', 'Đang thực hiện', 'Quá hạn', 'Hoàn thành'];
-    const right = `<button type="button" class="vbtn secondary" data-sxcv-import="${kind}">${icon('upload')} Nhập Excel</button><button type="button" class="vbtn secondary" data-sxcv-export="${kind}">${icon('excel')} Xuất Excel</button>`
-      + (canCreate(kind) ? `<button class="vbtn primary" data-go="sx/cong-viec/create/${kind}">${icon('add')} Thêm mới</button>` : '');
+    /* Nhánh hoaidt10: Việc cá nhân chỉ còn Xuất Excel (bỏ Nhập Excel, Thêm mới); Nhiệm vụ đơn vị giữ đủ nút. */
+    const right = (dv ? `<button type="button" class="vbtn secondary" data-sxcv-import="${kind}">${icon('upload')} Nhập Excel</button>` : '') + `<button type="button" class="vbtn secondary" data-sxcv-export="${kind}">${icon('excel')} Xuất Excel</button>`
+      + (dv && canCreate(kind) ? `<button class="vbtn primary" data-go="sx/cong-viec/create/${kind}">${icon('add')} Thêm mới</button>` : '');
     const people = D.personas.filter((x) => x.sx).map((x) => ({ value: x.id, label: x.name }));
     return k.listPage({
       id: ID(kind), title: dv ? 'Danh sách nhiệm vụ đơn vị' : 'Danh sách việc cá nhân', ph: 'Tìm kiếm theo mã, tên công việc, dự án', info, right, top: `<div data-sxcv-list="${kind}">${tiles}</div>`,
