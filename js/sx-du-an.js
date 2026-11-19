@@ -414,9 +414,22 @@
         ${k.kv('Đơn vị sản xuất', p.factory ? esc(catName('sx-don-vi', p.factory)) : null)}${k.kv('Giám đốc dự án', esc(pName(p.pm)))}${k.kv('Khách hàng / đơn vị sử dụng', esc(p.customer || ''))}
         ${nvKv(p, k)}
         ${k.kv('Ngày bắt đầu', esc(dmy(p.start)))}${k.kv('Ngày kết thúc', esc(dmy(p.end)))}${k.kv('Tiến độ chung', `${prog}%`)}
-        ${k.kv('Mục tiêu', esc(p.goal || ''), 'span3')}
+        ${k.kv('Số kế hoạch', p.planNo ? esc(p.planNo) : null)}${k.kv('Ngày phê duyệt kế hoạch', p.baseline ? esc(dmy(p.baseline)) : null)}${k.kv('Cấp phê duyệt', esc(p.khoi === 'K2' ? 'Ban Giám đốc Khối 2' : 'Ban Giám đốc Khối 1'))}
+        ${k.kv('Đơn vị lập kế hoạch', esc(p.unit || (KHOI[p.khoi] || '')))}${k.kv('Đơn vị phối hợp', esc(p.partners || 'Trung tâm Sản xuất; Trung tâm Mua sắm; Trung tâm ĐBCL'), 'span2')}
+        ${k.kv('Mục tiêu (Objective)', esc(p.goal || ''), 'span3')}
+        ${k.kv('Kết quả then chốt (OKRs)', (p.okr || [`KR1: Hoàn thành sản xuất ${num(p.qty)} ${p.unitName} đúng tiến độ, trước ngày ${dmy(p.end)}`, 'KR2: Đạt chỉ tiêu nội bộ, chỉ tiêu chiến - kỹ thuật được BQP phê duyệt', 'KR3: Vật tư leadtime dài, export license được bảo đảm theo kế hoạch mua sắm']).map(esc).join('<br>'), 'span3')}
+        ${k.kv('Yêu cầu', esc(p.req || 'Đạt chỉ tiêu nội bộ, chỉ tiêu chiến - kỹ thuật được BQP phê duyệt, sẵn sàng phục vụ nghiệm thu cấp BQP; hoàn thành kế hoạch sản xuất kinh doanh năm, đảm bảo mục tiêu lên doanh thu của dự án.'), 'span3')}
+        ${k.kv('Rủi ro, đề xuất', p.risk ? esc(p.risk) : null, 'span3')}
         ${k.kv('Người tạo', esc(pName(p.creator)))}${k.kv('Ngày tạo', esc(dmy(p.created)))}${k.kv('Kế hoạch gốc', p.baseline ? 'Chốt ngày ' + esc(dmy(p.baseline)) : 'Chưa chốt')}
         ${k.kv('Điều kiện sản xuất', window.SxCg.gateBadge(p))}</div>`);
+    /* Cột Thao tác của tab Kế hoạch: nút Xem chi tiết đi tới màn / tab tương ứng của mục (4 → Đề xuất mua sắm, 5 → Chuyển giao từ nghiên cứu, 6–7 → tab Điều kiện sản xuất, 9 → Bán thành phẩm & tiến độ, 10 → Chất lượng & nghiệm thu). */
+    const NAV = { B4: ['go', 'sx/mua-sam'], B5: ['go', 'sx/chuyen-giao'], B6: ['tab', 'm4'], B7: ['tab', 'm4'], B9: ['tab', 'btp'], B10: ['tab', 'nt'] };
+    const detailBtn = (r) => {
+      const n = NAV[r.key.split('.').slice(1).join('.')];
+      if (!n) return '';
+      return n[0] === 'go' ? `<button type="button" class="vbtn sm secondary" data-go="${n[1]}">Xem chi tiết</button>`
+        : `<button type="button" class="vbtn sm secondary" data-sxda-tab="${n[1]}" data-sxda-code="${esc(p.code)}">Xem chi tiết</button>`;
+    };
     const tPlan = () => {
       const cols = [
         { h: 'Hạng mục / mốc', w: 420, toggler: true, cell: (r) => (r.children ? `<b>${esc(r.name)}</b>` : esc(r.name)) },
@@ -427,11 +440,11 @@
         { h: 'Hoàn thành', w: 110, align: 'r', cell: (r) => `<span class="num">${r.pct}%</span>` },
         { h: 'Chênh lệch (ngày)', w: 130, align: 'r', cell: (r) => { const d = delay(r); return d == null ? k.dash : `<span class="num ${d > 0 ? 't-err' : ''}">${d > 0 ? '+' + d : 0}</span>`; } },
         { h: 'Trạng thái', w: 150, align: 'c', cell: (r) => badge(...stOf(r)) },
-      ].concat(window.SxCv ? [{ h: 'Công việc', w: 190, align: 'r', cell: (r) => window.SxCv.planCell(p, r) }] : []);
+      ].concat([{ h: 'Thao tác', w: 130, align: 'c', cell: (r) => detailBtn(r) }]);
       const open = T.open[p.code] || (T.open[p.code] = new Set(['G1', 'G2', 'G2.B4', 'G3', 'G3.B9', 'G4']));
       const keyed = (rows, pre) => rows.map((r) => Object.assign({}, r, { key: pre ? `${pre}.${r.key.split('.').pop()}` : r.key, children: r.children ? keyed(r.children, pre ? `${pre}.${r.key.split('.').pop()}` : r.key) : null }));
       const cap = p.baseline ? `Kế hoạch gốc chốt ngày ${dmy(p.baseline)}${p.planNo ? ` · Kế hoạch số ${p.planNo}` : ''}` : 'Chưa có kế hoạch gốc — kế hoạch được chốt khi phê duyệt kế hoạch sản xuất';
-      return `<section class="vcard" data-sx-plan><div class="vcard-h"><h3>Kế hoạch &amp; mốc</h3><div class="row"><span class="cap">${esc(cap)}</span>${window.SxKh ? window.SxKh.planBtn(p) : ''}</div></div>
+      return `<section class="vcard" data-sx-plan><div class="vcard-h"><h3>Kế hoạch</h3><div class="row"><span class="cap">${esc(cap)}</span>${window.SxKh ? window.SxKh.planBtn(p) : ''}</div></div>
         ${vTreeTable({ id: 'sx-plan', columns: cols, rows: keyed(plan), expanded: open, empty: 'Chưa có kế hoạch',
     onToggle: (key) => { if (open.has(key)) open.delete(key); else open.add(key); rerender(); } })}</section>`;
     };
@@ -448,10 +461,17 @@
       ${head({ title: o.title || 'Xem chi tiết dự án sản xuất', back: o.back || 'sx/du-an', lg: true, info: o.info || info, right })}
       ${o.bar || ''}
       ${alerts}
-      ${k.tabs('sx:' + p.code, [['info', 'Thông tin chung'], ['plan', 'Kế hoạch & mốc'], ['kh', 'Phê duyệt kế hoạch'], ['ns', 'Nhân sự'], ['cg', 'Hồ sơ chuyển giao'], ['m4', 'Điều kiện sản xuất'], ['ms', 'Mua sắm & hợp đồng'], ['btp', 'Bán thành phẩm & tiến độ'], ['bt', 'Bất thường & thay đổi'], ['nt', 'Chất lượng & nghiệm thu'], ['vmms', 'Dữ liệu VMMS'], ['docs', 'Tài liệu'], ['hist', 'Lịch sử']],
+      ${k.tabs('sx:' + p.code, [['info', 'Thông tin chung'], ['plan', 'Kế hoạch'], ['kh', 'Phê duyệt kế hoạch'], ['ns', 'Nhân sự'], ['cg', 'Hồ sơ chuyển giao'], ['m4', 'Điều kiện sản xuất'], ['ms', 'Mua sắm & hợp đồng'], ['btp', 'Bán thành phẩm & tiến độ'], ['bt', 'Bất thường & thay đổi'], ['nt', 'Chất lượng & nghiệm thu'], ['vmms', 'Dữ liệu VMMS'], ['docs', 'Tài liệu'], ['hist', 'Lịch sử']],
     { info: tInfo, kh: tKh, plan: tPlan, ns: () => window.SxKh.tabStaff(p), cg: () => window.SxCg.projectCg(p), m4: () => window.SxCg.projectM4(p), ms: () => window.SxMs.projectTab(p), btp: () => window.SxBtp.projectTab(p), bt: () => window.SxBt.projectTab(p), nt: () => window.SxNt.projectTab(p), vmms: () => window.SxVmms.projectTab(p), docs: tDocs, hist: tHist })}</div>`;
   }
   const T = { open: {} };
+  document.addEventListener('click', (e) => {
+    const b = e.target.closest && e.target.closest('[data-sxda-tab]');
+    if (!b) return;
+    e.stopPropagation(); e.preventDefault();
+    K().setTab('sx:' + b.dataset.sxdaCode, b.dataset.sxdaTab);
+    rerender();
+  }, true);
   /* T74 #97: Mã / Tên nhiệm vụ = nhiệm vụ đơn vị cấp 1 của dự án (giao khi kick-off hoặc Giao việc), mở Chi tiết nhiệm vụ đơn vị. */
   function nvKv(p, k) {
     const l = window.SxCv ? window.SxCv.all().filter((x) => x.kind === 'DV' && x.project === p.code && !x.parent).sort((a, b) => ((a.created || a.start) < (b.created || b.start) ? -1 : 1)) : [];
