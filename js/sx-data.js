@@ -511,6 +511,7 @@
      received: ngày tiếp nhận ở bước 2; guess: dự đoán sơ bộ nguyên nhân; files: tệp đính kèm theo mục BM.QLBT.01 (bm, iqc, qc, kd, khac). ---------- */
   D.sxSev = { 1: 'Rất nghiêm trọng', 2: 'Nghiêm trọng', 3: 'Trung bình', 4: 'Thấp' };
   D.sxIssues = [
+    { code: 'BT-2026-005', draft: true, project: 'DA-SX-2026-001', title: 'Đầu nối MIL-38999 lô 12 lỏng chân tiếp xúc (nháp)', desc: 'Phát hiện 3 / 40 đầu nối lỏng chân khi lắp thử; đang chờ bổ sung số liệu trước khi gửi.', found: '2026-11-18', foundTime: '09:30', place: 'NPH-05', qty: 3, unit: 'DVT-02', sample: 40, spMa: 'VT-25', creator: 'sxqa' },
     { code: 'BT-2026-001', nok: 1, project: 'DA-SX-2026-001', title: 'Sai lệch cấu hình máy đo công suất RF tại trạm đo VMC', desc: '8 bộ VT-25 đo công suất phát thấp hơn chỉ tiêu 0,8 dB, đo lại bằng máy khác đạt.',
       found: '2026-09-02', foundTime: '14:20', place: 'NPH-05', qty: 8, unit: 'DVT-02', spMa: 'VT-25', serial: 'VT25-0003', sample: 20, stage: 'CD-06', op: 'ĐK-05', shift: 'CA-2',
       req: 'Công suất phát đo tại trạm đo kiểm cuối thấp hơn chỉ tiêu 0,8 dB', causes: ['NN2', 'NN4'], guess: 'Máy đo công suất sai lệch cấu hình sau lần cập nhật phần mềm công cụ.',

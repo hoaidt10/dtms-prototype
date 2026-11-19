@@ -54,14 +54,15 @@
       spMa: spOf(x, p), spTen: ((D.sxProducts || []).find((s) => s.code === spOf(x, p)) || {}).name || '', khachN: x.khach || (p && p.customer) || '', donViC: x.donVi || (p && p.factory) || '',
       donViN: catN('sx-don-vi', x.donVi || (p && p.factory) || '') });
   }
-  const all = () => U.created.concat(D.sxIssues).map((x) => decorate(Object.assign({}, x, U.edit[x.code] || {})));
+  const all = () => U.created.concat(D.sxIssues).map((x) => Object.assign({}, x, U.edit[x.code] || {})).filter((x) => !x.deleted).map(decorate);
   const byCode = (code) => all().find((x) => x.code === code) || null;
   const caseOf = (x) => { const l = F().cases(x.code, 'SX-BT'); return l[l.length - 1] || null; };
   /* T74 #98: trạng thái theo bước đang chạy của luồng SX-BT (bước 2…7) + Đã đóng. Quá hạn không còn là trạng thái — tô đỏ ở Hạn xử lý / Còn lại (isOver). */
   const ST_STEP = { 1: ['Chờ tiếp nhận', 'default'], 2: ['Chờ tiếp nhận', 'default'], 3: ['Đang đề xuất giải pháp', 'info'], 4: ['Chờ đánh giá giải pháp', 'warning'],
     5: ['Đang xử lý', 'info'], 6: ['Chờ đánh giá kết quả xử lý', 'warning'], 7: ['Đang lưu hồ sơ', 'info'] };
-  const ST_LIST = ['Chờ tiếp nhận', 'Đang đề xuất giải pháp', 'Chờ đánh giá giải pháp', 'Đang xử lý', 'Chờ đánh giá kết quả xử lý', 'Đang lưu hồ sơ', 'Đã đóng'];
+  const ST_LIST = ['Lưu nháp', 'Chờ tiếp nhận', 'Đang đề xuất giải pháp', 'Chờ đánh giá giải pháp', 'Đang xử lý', 'Chờ đánh giá kết quả xử lý', 'Đang lưu hồ sơ', 'Đã đóng'];
   function stOf(x) {
+    if (x.draft) return ['Lưu nháp', 'default'];
     if (x.closed) return ['Đã đóng', 'success'];
     const c = caseOf(x), t = c && c.status !== 'done' ? c.tokens[0] : null;
     if (t && ST_STEP[t.step]) return ST_STEP[t.step];
@@ -167,12 +168,13 @@
       serialOpts: P().all().flatMap((p) => { const s = D.sxSerial[p.code]; return s ? Array.from({ length: 12 }, (_, i) => ({ label: s[0] + pad(i + 1, s[1]), value: s[0] + pad(i + 1, s[1]), proj: p.code })) : []; }),
     };
   }
-  async function create(project) {
-    const f = window.EForms.sx['SX-BT'].lap;
+  async function create(project, editCode) {
+    const f = window.EForms.sx['SX-BT'].lap, cur = editCode ? byCode(editCode) : null;
+    if (cur) project = cur.project;
     const projects = P().visible().filter((p) => p.status !== 'PLANNING' && p.status !== 'DONE').map((p) => [p.code, `${p.code} — ${p.name}`]);
     const L = lists(), pr = project ? P().byCode(project) : null;
-    const r = await window.EFormRun.open({ title: 'Thêm mới phiếu bất thường', schema: Object.assign({ id: f.id }, f.schema(Object.assign({ types: catTypes(), sevs: Object.entries(D.sxSev) }, L))), vars: { serialOpts: L.serialOpts },
-      values: Object.assign({ btProject: project || null, btFound: `${dmy(D.sxToday)} ${new Date().toTimeString().slice(0, 5)}`, btQty: null, btCoMau: null }, pr ? { btSpTen: pr.product, btSpMa: pr.product, btKhach: pr.customer || '', btDonVi: pr.factory || '' } : {}),
+    const r = await window.EFormRun.open({ title: cur ? 'Sửa phiếu bất thường' : 'Thêm mới phiếu bất thường', schema: Object.assign({ id: f.id }, f.schema(Object.assign({ types: catTypes(), sevs: Object.entries(D.sxSev) }, L))), vars: { serialOpts: L.serialOpts },
+      values: cur ? Object.fromEntries(Object.entries(ctx(editCode)).filter(([key]) => key.startsWith('bt'))) : Object.assign({ btProject: project || null, btFound: `${dmy(D.sxToday)} ${new Date().toTimeString().slice(0, 5)}`, btQty: null, btCoMau: null }, pr ? { btSpTen: pr.product, btSpMa: pr.product, btKhach: pr.customer || '', btDonVi: pr.factory || '' } : {}),
       check: (v) => {
         const d = fromDmy(String(v.btFound || '').split(' ')[0]);
         if (!d) return 'Ngày xảy ra lỗi phải đúng định dạng DD/MM/YYYY.';
@@ -181,14 +183,22 @@
         if ((v.btDoiSach || []).some((x) => x.han && !fromDmy(x.han))) return 'Thời hạn của đối sách tức thời phải đúng định dạng DD/MM/YYYY.';
         return null;
       } });
-    if (!r || !r.submit) return;
-    const v = r.values, n = Math.max(0, ...all().map((x) => Number(x.code.slice(-3)))) + 1, code = 'BT-2026-' + String(n).padStart(3, '0');
-    U.created.unshift(Object.assign({ code }, fromForm(v), { creator: pid() }));
-    persist();
+    if (!r || (!r.submit && !r.draft)) return;
+    const v = r.values, draft = !!r.draft;
+    let code = editCode;
+    if (cur) {
+      patch(code, Object.assign(fromForm(v), { title: String(v.btTitle || '').trim() || cur.title || 'Phiếu bất thường (nháp)' }, draft ? {} : { draft: false }));
+    } else {
+      const n = Math.max(0, ...all().map((x) => Number(x.code.slice(-3)))) + 1;
+      code = 'BT-2026-' + String(n).padStart(3, '0');
+      U.created.unshift(Object.assign({ code }, fromForm(v), { creator: pid() }, draft ? { draft: true, title: String(v.btTitle || '').trim() || 'Phiếu bất thường (nháp)' } : {}));
+      persist();
+    }
+    if (draft) { toast('<b>Thành công</b><br>Lưu nháp thành công!'); location.hash = '#/' + href({ code }); return; }
     const c = F().start('SX-BT', code);
     F().complete(c.code, c.tokens[0].id, -1, v);
-    P().log(v.btProject, 'Lập phiếu bất thường', `${code}: ${v.btTitle.trim()}`);
-    toast('<b>Thành công</b><br>Thêm mới thành công!');
+    P().log(v.btProject, 'Lập phiếu bất thường', `${code}: ${String(v.btTitle || '').trim()}`);
+    toast('<b>Thành công</b><br>' + (cur ? 'Gửi phiếu thành công!' : 'Thêm mới thành công!'));
     location.hash = '#/' + href({ code });
   }
 
@@ -210,7 +220,7 @@
   function detail(code, opt) {
     const o = opt || {}, k = K(), x = byCode(code);
     if (!x || !visible().some((y) => y.code === code)) return `<div class="pg">${head({ title: o.title || 'Xem chi tiết phiếu bất thường', back: o.back || 'sx/bat-thuong', lg: true })}${k.emptyCard('Thông tin chung', 'Không tìm thấy phiếu bất thường hoặc bạn không có quyền xem.')}</div>`;
-    const c = caseOf(x), v = (c && c.vars) || {}, st = stOf(x), l = leftOf(x), ecr = window.SxTd ? window.SxTd.ecrOf(x.code) : null;
+    const c = caseOf(x), v = Object.assign({}, (c && c.vars) || {}, x.xl || {}), st = stOf(x), l = leftOf(x), ecr = window.SxTd ? window.SxTd.ecrOf(x.code) : null;
     const info = {
       scr: 'SX-08', name: 'Chi tiết phiếu bất thường', uc: 'SX-KS-K1 §3.2, Bảng 6, Bảng 7',
       notes: ['Khuôn task-create (mode detail) + app-tabs; màn xử lý việc của luồng xử lý bất thường dùng chính thân màn này + thanh trạng thái (my-task-detail).',
@@ -250,7 +260,7 @@
     const parts = (t) => String(t || '').split(/(?<=\.)\s+|;\s*/).map((s) => s.trim()).filter(Boolean);
     const han = v.paHan || (x.due ? dmy(x.due) : '');
     const fix = Array.isArray(v.paKhacPhuc) ? v.paKhacPhuc : parts(v.paBienPhap).map((hd, i) => ({ hd, who: x.handler, han, img: i === 0 && passed(3) ? 'HinhAnh-' + x.code + '-KP01.jpg' : '' }));
-    const prevent = Array.isArray(v.paNgan) ? v.paNgan : parts(v.bhBaiHoc).map((hd) => ({ hd, who: x.pm, han, img: '' }));
+    const prevent = Array.isArray(v.paNgan) ? v.paNgan : parts(v.paNgan || v.bhBaiHoc).map((hd) => ({ hd, who: x.pm, han, img: '' }));
     const apprLevel = x.sev && x.sev <= 2 ? 'Ban Giám đốc Khối (Phó Giám đốc Khối)' : 'PM dự án';
     const groups = window.Catalog.rows('sx-nhom-nguyen-nhan'), chosen = x.causes || [];
     const hanTxt = (h) => (h ? (String(h).includes('-') ? dmy(h) : h) : '');
@@ -258,13 +268,13 @@
       (r) => `<td>${k.clamp(r.hd)}</td><td>${r.who ? esc(pName(r.who)) : k.dash}</td><td class="num">${r.han ? esc(hanTxt(r.han)) : k.dash}</td><td>${r.img ? `<a class="link">${esc(r.img)}</a>` : k.dash}</td>`);
     const rejected = evs.filter((h) => h.step != null && h.step !== 2 && /Trả lại|Không đạt/.test(h.act));
     const stepName = (n) => { const s = D.sxFlows['SX-BT'].steps.find((y) => y[0] === n); return s ? `${n}. ${s[1]}` : String(n); };
-    const b1 = k.card('Khối 1 — Xác minh & phân tích nguyên nhân', `<div class="ginfo c3">
+    const b1 = k.card('Xác minh & phân tích nguyên nhân', `<div class="ginfo c3">
         ${k.kv('Trạng thái xác minh của QLSX', passed(2) ? badge('Đã xác minh', 'success') : badge('Chờ xác minh', 'warning'))}${k.kv('Người xác minh', evAt(2) ? esc(pName(evAt(2).who)) : null)}${k.kv('Ngày xác minh', evAt(2) ? esc(dmy(evAt(2).at)) : null)}
         ${k.kv('Loại bất thường (xác nhận lại)', x.type ? esc(typeText(x.type)) : null, 'span2')}${k.kv('Mức độ (xác nhận lại)', x.sev ? esc(D.sxSev[x.sev]) : null)}</div>
       <h4 class="ginfo-sub">Phân loại nguyên nhân chính thức (6M + 1, BM.QLBT.02)</h4>
       <div class="row" style="gap:8px;flex-wrap:wrap;margin:4px 0 12px">${groups.map((g) => badge(g.name, chosen.includes(g.code) ? 'success' : 'default')).join('')}</div>
       <div class="ginfo c3">${k.kv('Nội dung phân tích chi tiết', v.blNguyenNhan ? esc(v.blNguyenNhan) : null, 'span3')}${k.kv('File đo kiểm bổ sung', v.blFile ? `<a class="link">${esc(v.blFile)}</a>` : null, 'span3')}</div>`);
-    const b2 = k.card('Khối 2 — Phương án xử lý', `<div class="ginfo c3">
+    const b2 = k.card('Phương án xử lý', `<div class="ginfo c3">
         ${k.kv('Số phương án xử lý bất thường', fix.length || passed(2) ? esc('PAXL-' + x.code.slice(3) + '-' + String(allC.length).padStart(2, '0')) : null)}${k.kv('Cấp duyệt', esc(apprLevel))}${k.kv('Kết quả phê duyệt', passed(4) ? badge('Đã phê duyệt', 'success') : cur === 4 ? badge('Chờ phê duyệt', 'warning') : null)}</div>
       <h4 class="ginfo-sub">Phương án khắc phục bất thường</h4>${actTbl(fix)}
       <h4 class="ginfo-sub">Hành động ngăn ngừa tái diễn</h4>${actTbl(prevent)}
@@ -274,7 +284,7 @@
     const pct = passed(5) ? 100 : cur === 5 ? 50 : 0, hand = evAt(5);
     const itemPct = (r) => (r.kind === 'Khắc phục' ? pct : passed(7) ? 100 : 0);
     const itemSt = (r) => { const p = itemPct(r); return p >= 100 ? ['Hoàn thành', 'success'] : p ? ['Đang thực hiện', 'info'] : ['Chưa bắt đầu', 'default']; };
-    const b3 = k.card('Khối 3 — Triển khai & bàn giao tiền xử lý', `${k.table([['Đầu việc', 460], ['Loại', 120], ['Người thực hiện', 200], ['Thời hạn', 120], ['% hoàn thành', 120, 'r'], ['Trạng thái', 150, 'c']], items,
+    const b3 = k.card('Triển khai & bàn giao tiền xử lý', `${k.table([['Đầu việc', 460], ['Loại', 120], ['Người thực hiện', 200], ['Thời hạn', 120], ['% hoàn thành', 120, 'r'], ['Trạng thái', 150, 'c']], items,
         (r) => `<td>${k.clamp(r.hd)}</td><td>${esc(r.kind)}</td><td>${r.who ? esc(pName(r.who)) : k.dash}</td><td class="num">${r.han ? esc(hanTxt(r.han)) : k.dash}</td><td class="r num">${itemPct(r)}%</td><td class="c">${badge(...itemSt(r))}</td>`)}
       <h4 class="ginfo-sub">Cổng xác nhận bàn giao kết quả tiền xử lý cho đơn vị sản xuất</h4>
       <div class="ginfo c3">${k.kv('Kết quả triển khai', v.tkKetQua ? esc(v.tkKetQua) : null, 'span3')}
@@ -284,11 +294,12 @@
     const checks = evs.filter((h) => h.step === 6).map((h, i) => { const ok = !/NOK|Không đạt/.test(h.act), tot = x.qty || 0, bad = ok ? 0 : Math.ceil(tot / 4); return { lan: i + 1, at: h.at, who: h.who, form: i % 2 ? 'Trực tiếp trên chuyền' : 'Kiểm tra hồ sơ', good: tot - bad, bad, ok }; });
     if (cur === 6) checks.push({ lan: checks.length + 1, at: null, who: c.tokens[0].who, form: 'Trực tiếp trên chuyền', running: true });
     const tags = [['Mã SP', x.spMa], ['Công đoạn', x.stage ? catN('sx-cong-doan', x.stage) : ''], ['Nhóm nguyên nhân', causesText(x)]].filter((t) => t[1]).map((t) => badge(t[0] + ': ' + t[1], 'default')).join(' ');
-    const b4 = k.card('Khối 4 — Lịch sử nghiệm thu & bài học kinh nghiệm', `${k.table([['Lần kiểm tra', 110, 'c'], ['Ngày kiểm', 130], ['Người kiểm', 200], ['Hình thức', 190], ['Số lượng đạt / hỏng', 160, 'r'], ['Kết luận', 130, 'c'], ['Biên bản đo kiểm', 300]], checks,
+    const b4 = k.card('Lịch sử nghiệm thu & bài học kinh nghiệm', `${k.table([['Lần kiểm tra', 110, 'c'], ['Ngày kiểm', 130], ['Người kiểm', 200], ['Hình thức', 190], ['Số lượng đạt / hỏng', 160, 'r'], ['Kết luận', 130, 'c'], ['Biên bản đo kiểm', 300]], checks,
         (r) => `<td class="c">Lần ${r.lan}</td><td class="num">${r.at ? esc(dmy(r.at)) : k.dash}</td><td>${esc(pName(r.who))}</td><td>${esc(r.form)}</td><td class="r num">${r.running ? '-' : `${num(r.good)} / ${num(r.bad)}`}</td><td class="c">${r.running ? badge('Đang kiểm tra', 'info') : r.ok ? badge('OK', 'success') : badge('NOK', 'error')}</td><td>${r.running ? k.dash : `<a class="link">${esc('BBDK-' + x.code + '-L' + r.lan + '.pdf')}</a>`}</td>`)}
       <h4 class="ginfo-sub">Bài học kinh nghiệm</h4>
       <div class="ginfo c3">${k.kv('Nội dung bài học', v.bhBaiHoc ? esc(v.bhBaiHoc) : null, 'span3')}${k.kv('Thẻ (Tag)', v.bhBaiHoc && tags ? tags : null, 'span3')}</div>`);
-    const tXl = () => `<div data-sxbt-xl>${b1}${b2}${b3}${b4}</div>`;
+    const canXl = st[0] === 'Đang xử lý' && !x.closed && !x.draft;
+    const tXl = () => `<div data-sxbt-xl>${canXl ? `<div class="row" style="justify-content:flex-end;margin-bottom:12px"><button type="button" class="vbtn primary" data-sxbt-xl-edit="${esc(x.code)}">${icon('edit')} Chỉnh sửa</button></div>` : ''}<style>.sxbt-zone{border-left:4px solid #e4002b;border-radius:10px;margin:0 0 24px;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.10);overflow:hidden}.sxbt-zone>.vcard{margin:0;box-shadow:none;border-radius:0}.sxbt-zone>.vcard>.vcard-h{background:#fafafa;margin:-24px -24px 16px;padding:14px 24px;border-bottom:1px solid #eee}.sxbt-zone>.vcard>.vcard-h h3{color:#e4002b}</style>${[b1, b2, b3, b4].map((h) => `<div class="sxbt-zone">${h}</div>`).join('')}</div>`;
     /* Tab Tiến trình: tách Hạn xử lý (SLA) / Hoàn thành thực tế; chọn phiên bản hồ sơ (HSBT-…-01, -02) để xem lại vòng trước khi phiếu bị NOK. */
     const tTt = () => {
       if (!allC.length) return k.card('Tiến trình', '<p class="faint">Chưa có hồ sơ.</p>');
@@ -299,10 +310,38 @@
       return bar + k.card('Hồ sơ xử lý bất thường', pr.top + pr.steps) + k.card('Lịch sử xử lý', pr.hist);
     };
     return `<div class="pg" data-sxbt-detail="${esc(x.code)}">
-      ${head({ title: o.title || 'Xem chi tiết phiếu bất thường', back: o.back || 'sx/bat-thuong', lg: true, info, right: o.task || !window.SxTd ? '' : window.SxTd.issueBtn(x) })}
+      ${head({ title: o.title || 'Xem chi tiết phiếu bất thường', back: o.back || 'sx/bat-thuong', lg: true, info, right: x.draft && !o.task ? `<button type="button" class="vbtn secondary" data-sxbt-del="${esc(x.code)}">${icon('del')} Xóa</button><button type="button" class="vbtn primary" data-sxbt-edit="${esc(x.code)}">${icon('edit')} Sửa</button>` : o.task || !window.SxTd ? '' : window.SxTd.issueBtn(x) })}
       ${o.bar || ''}${alert}
       ${k.tabs(tabKey(x.code), [['info', 'Thông tin phiếu'], ['xl', 'Phân tích và xử lý'], ['tt', 'Tiến trình']], { info: tInfo, xl: tXl, tt: tTt })}</div>`;
   }
+  /* Chỉnh sửa tab Phân tích và xử lý (chỉ khi phiếu Đang xử lý): ghi đè nội dung hồ sơ trên phiếu. */
+  async function xlDlg(code) {
+    const x = byCode(code), c = caseOf(x), v = Object.assign({}, (c && c.vars) || {}, x.xl || {}), { txt, ta, tf, file } = window.EForms.b, L = (n) => ({ layout: { columns: n } });
+    const r = await window.EFormRun.open({ title: 'Chỉnh sửa phân tích và xử lý', schema: { id: 'sx-bt-xl-sua', components: [
+      txt(`Phiếu **${x.code}** — ${x.title}. Cập nhật nội dung phân tích, phương án xử lý và kết quả triển khai khi phiếu đang xử lý.`),
+      ta('blNguyenNhan', 'Nội dung phân tích nguyên nhân chi tiết', { rows: 3 }), file('blFile', 'File đo kiểm bổ sung', L(16)),
+      ta('paBienPhap', 'Phương án khắc phục bất thường (mỗi ý kết thúc bằng dấu chấm)', { rows: 3 }), ta('paNgan', 'Hành động ngăn ngừa tái diễn', { rows: 2 }),
+      tf('paHan', 'Thời hạn hoàn thành dự kiến (DD/MM/YYYY)', L(8)), ta('tkKetQua', 'Kết quả triển khai', { rows: 2 })] },
+    values: { blNguyenNhan: v.blNguyenNhan || '', blFile: v.blFile || '', paBienPhap: v.paBienPhap || '', paNgan: v.paNgan && !Array.isArray(v.paNgan) ? v.paNgan : v.bhBaiHoc || '', paHan: v.paHan || '', tkKetQua: v.tkKetQua || '' },
+    check: (val) => (val.paHan && !fromDmy(val.paHan) ? 'Thời hạn phải đúng định dạng DD/MM/YYYY.' : null) });
+    if (!r || !r.submit) return;
+    patch(code, { xl: Object.assign({}, x.xl, r.values) });
+    P().log(x.project, 'Chỉnh sửa phân tích và xử lý phiếu bất thường', x.code);
+    toast('<b>Thành công</b><br>Cập nhật thành công!'); rerender();
+  }
+  document.addEventListener('click', async (e) => {
+    const t = e.target.closest && e.target.closest('[data-sxbt-xl-edit],[data-sxbt-edit],[data-sxbt-del]');
+    if (!t) return;
+    e.preventDefault();
+    if (t.dataset.sxbtXlEdit) { xlDlg(t.dataset.sxbtXlEdit); return; }
+    if (t.dataset.sxbtEdit) { create(null, t.dataset.sxbtEdit); return; }
+    const x = byCode(t.dataset.sxbtDel);
+    const yes = await window.Catalog.confirm({ sev: 'danger', title: 'Bạn chắc chắn muốn xoá không?', desc: `Bạn có chắc chắn muốn xóa phiếu bất thường: ${x.code} — ${x.title} không?`, hl: `${x.code} — ${x.title}`, cancel: 'Hủy', ok: 'Xoá' });
+    if (!yes) return;
+    if (U.created.some((y) => y.code === x.code)) U.created = U.created.filter((y) => y.code !== x.code); else U.edit[x.code] = Object.assign({}, U.edit[x.code], { deleted: true });
+    persist(); P().log(x.project, 'Xoá phiếu bất thường nháp', x.code);
+    toast('<b>Thành công</b><br>Xoá phiếu bất thường thành công'); location.hash = '#/sx/bat-thuong';
+  }, true);
   /* Ngữ cảnh eForm. */
   function ctx(code) {
     const x = byCode(code);
