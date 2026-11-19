@@ -37,8 +37,7 @@
       { label: 'Sản phẩm sẵn sàng sản xuất', path: 'sx/san-pham', scr: 'SX-07', notes: soon('S3', 'SX-07') }] },
     { label: 'Cung ứng vật tư', icon: 'phan_he_mua_sam', open: true, children: [
       { label: 'Nhu cầu vật tư', path: 'sx/nhu-cau', scr: 'SX-17' },
-      { label: 'Đề xuất mua sắm', path: 'sx/mua-sam', scr: 'SX-10' },
-      { label: 'Gói thầu, hợp đồng', path: 'sx/goi-thau-hd', scr: 'SX-10' }] },
+      { label: 'Đề xuất mua sắm', path: 'sx/mua-sam', scr: 'SX-10' }] },
     { label: 'Bất thường sản xuất', icon: 'menu_square', path: 'sx/bat-thuong', scr: 'SX-08', notes: soon('S6', 'SX-08') },
     { label: 'Thay đổi kỹ thuật', icon: 'phan_he_quy_trinh', path: 'sx/thay-doi', scr: 'SX-09', notes: soon('S7', 'SX-09') },
     { label: 'Nghiệm thu sản phẩm', icon: 'chuc_danh_khoa_hoc', path: 'sx/nghiem-thu', scr: 'SX-12', notes: soon('S8', 'SX-12') },

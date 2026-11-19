@@ -6,6 +6,7 @@
 ## 2026-11-19 · Nhu cầu vật tư có Danh mục; Đề xuất mua sắm đồng bộ ĐXMS
 - Nhu cầu vật tư (`js/sx-nhu-cau.js`): 2 khối — Danh mục vật tư (tổng số theo MBOM × số lượng dự án) và Nhu cầu vật tư (số lượng cần trước ngày cần); cột Mã nhu cầu → Mã đề xuất, bỏ cột Đề xuất mua sắm; dữ liệu mẫu tách 2 đợt, tồn kho trừ dần theo ngày cần.
 - Nhu cầu vật tư: Danh mục vật tư chuyển xuống dưới bảng Nhu cầu, phân trang 10 dòng; bảng Nhu cầu xếp Chưa đề xuất / Trễ hạn lên trước.
+- Bỏ menu "Gói thầu, hợp đồng" (`js/sx-data.js`); route `#/sx/goi-thau-hd` giữ nguyên.
 - Đề xuất mua sắm (`js/sx-mua-sam.js`, `js/luong.js`): danh sách và chi tiết dùng lại nguyên giao diện ĐXMS (7 tab, chỉ ĐXMS nguồn Sản xuất), bỏ Thêm, Sửa, Xóa, Xuất Excel, Điều chỉnh; thêm ĐXMS-2026-0058 / 0066 vào `js/data.js`.
 
 ## 2026-11-18 · Bỏ menu Việc của tôi, thêm biểu đồ Dashboard
