@@ -86,8 +86,8 @@
       q: INFO_Q, src: 'task-management/task-management.component · /task-management',
     };
     return k.listPage({
-      id: 'sxms', exp: 'Danh sach de xuat mua sam tu san xuat', title: 'Danh sách đề xuất mua sắm từ sản xuất', ph: 'Tìm kiếm theo mã, tên đề xuất, dự án', info,
-      right: canCreate() ? `<button class="vbtn primary" data-go="sx/mua-sam/create">${icon('add')} Thêm mới</button>` : '',
+      id: 'sxms', title: 'Danh sách đề xuất mua sắm từ sản xuất', ph: 'Tìm kiếm theo mã, tên đề xuất, dự án', info,
+      right: '', /* T73: bỏ Thêm mới, Xuất Excel — lập đề xuất từ màn Nhu cầu vật tư; danh sách chỉ xem, đồng bộ từ ĐTMS */
       rows: () => visible().map((x) => Object.assign({}, x, { st: sentSt(x), ds: dxmsSt(x), total: totalOf(x), dx: (chain(x) || { dxms: [''] }).dxms[0] })),
       kwText: (x) => `${x.code} ${x.title} ${x.project}`,
       empty: () => ({ code: '', title: '', project: null, dot: null, st: [] }),
@@ -144,7 +144,7 @@
       scr: 'SX-10', name: x ? 'Chỉnh sửa đề xuất mua sắm từ sản xuất' : 'Lập đề xuất mua sắm từ sản xuất', uc: 'SX-KS-K2 §2.1 (Tờ trình mua sắm, tồn kho real-time), §2.3 API-01; SX-KS-K1 §2.3, §2.5',
       notes: [
         'Khuôn task-create. Nguồn kinh phí trích từ căn cứ hình thành của dự án (PAKD / nhiệm vụ / hợp đồng); chỉ tiêu kỹ thuật đính kèm từ Kho sản phẩm sẵn sàng sản xuất — sản phẩm chưa qua cổng chuyển giao thì chưa lập được (công đoạn trước xong mới kích hoạt công đoạn sau, SX-KS-K2 §4.1).',
-        '<b>Danh mục vật tư</b>: MBOM dự toán đồng bộ từ VMMS (chỉ xem) × số lượng dự án = nhu cầu; <b>Tra cứu tồn kho</b> đọc tồn khả dụng ERP Kho TCT tức thì (thay 3–5 ngày xin xác nhận giấy); đề xuất mua = nhu cầu − tồn, sửa được. Đợt 1 gợi ý vật tư leadtime từ 16 tuần, đợt 2 phần còn lại (GIẢ LẬP P-248).',
+        '<b>Nhu cầu vật tư</b>: <b>Danh mục vật tư</b> (MBOM dự toán đồng bộ VMMS × số lượng dự án) nay nằm ở màn Nhu cầu vật tư; ở đây chỉ chọn các vật tư cần mua; <b>Tra cứu tồn kho</b> đọc tồn khả dụng ERP Kho TCT tức thì (thay 3–5 ngày xin xác nhận giấy); đề xuất mua = nhu cầu − tồn, sửa được. Đợt 1 gợi ý vật tư leadtime từ 16 tuần, đợt 2 phần còn lại (GIẢ LẬP P-248).',
         '<b>Gửi phê duyệt</b> khởi tạo hồ sơ phê duyệt đề xuất (Lãnh đạo Khối Duyệt / Từ chối — GIẢ LẬP P-255). Duyệt thì hệ thống gửi sang ĐTMS: tạo ĐXMS ở trạng thái Chưa khởi tạo, Đơn vị đề xuất = Trung tâm Sản xuất, ghi nguồn Phân hệ Sản xuất; Trung tâm Mua sắm xử lý tiếp trên ĐTMS (P-249). Chờ phê duyệt và sau khi gửi không sửa ở đây.',
         'Mở từ <b>Nhu cầu vật tư</b>: chỉ chọn sẵn các vật tư đã chọn ở đó, số lượng đề xuất = phần còn thiếu so với tồn kho.',
       ],
@@ -163,7 +163,7 @@
     (r) => `<td class="c"><input type="checkbox" data-sxm-on="${esc(r.code)}" ${r.on ? 'checked' : ''} aria-label="Chọn ${esc(r.code)}"></td><td>${esc(r.code)}</td><td>${k.clamp(r.name)}</td><td>${esc(r.unit)}</td>
       <td class="r num">${num(r.per)}</td><td class="r num">${num(r.per * p.qty)}</td><td class="r num">${num(stockOf(r.code))}</td>
       <td class="r"><input class="vctl num r" style="width:100px" inputmode="numeric" data-sxm-qty="${esc(r.code)}" value="${r.qty}" ${r.on ? '' : 'disabled'}></td>
-      <td class="r num">${num(r.price)}</td><td class="r num">${r.on ? num(r.qty * r.price) : k.dash}</td><td class="r num">${r.lt}</td><td class="c">${r.el ? 'Có' : 'Không'}</td>`) : '<p class="faint">Chọn dự án để lấy danh mục vật tư theo MBOM dự toán.</p>';
+      <td class="r num">${num(r.price)}</td><td class="r num">${r.on ? num(r.qty * r.price) : k.dash}</td><td class="r num">${r.lt}</td><td class="c">${r.el ? 'Có' : 'Không'}</td>`) : '<p class="faint">Chọn dự án để lấy nhu cầu vật tư theo MBOM dự toán (xem Danh mục vật tư ở màn Nhu cầu vật tư).</p>';
     return `<form class="pg" data-sxm-form="${x ? esc(x.code) : ''}">
       ${head({ title: x ? 'Chỉnh sửa đề xuất mua sắm' : 'Lập đề xuất mua sắm', back, lg: true, info,
     right: `<button type="button" class="vbtn secondary grey" data-go="${back}">Huỷ</button><button type="button" class="vbtn secondary" data-sxm-save>Lưu nháp</button><button type="submit" class="vbtn primary">Gửi phê duyệt</button>` })}
@@ -177,7 +177,7 @@
         ${k.field('Chỉ tiêu kỹ thuật', `<input class="vctl" value="${p ? esc(rel ? `${p.product} ${rel.ver || p.version} — Kho sản phẩm sẵn sàng sản xuất${rel.pkg ? ` (gói ${rel.pkg})` : ''}` : 'Sản phẩm chưa có trong Kho sản phẩm sẵn sàng sản xuất') : ''}" placeholder="Theo Kho sản phẩm sẵn sàng sản xuất" disabled>`)}
         ${k.field('Ghi chú', `<textarea class="vctl" id="sxm-note" rows="2" maxlength="2000" placeholder="Nhập ghi chú">${esc(v.note)}</textarea>`, { cls: 'span3' })}
       </div></section>
-      <section class="vcard pad24" data-sxm-lines><div class="vcard-h"><h3>Danh mục vật tư (MBOM dự toán)</h3><div class="row">
+      <section class="vcard pad24" data-sxm-lines><div class="vcard-h"><h3>Nhu cầu vật tư đề xuất mua</h3><div class="row">
         ${U.stockAt ? `<span class="cap">Tồn kho cập nhật ${esc(U.stockAt)}</span>` : ''}${p ? '<button type="button" class="vbtn secondary" data-sxm-stock>Tra cứu tồn kho</button>' : ''}</div></div>
         ${err.lines ? `<div class="t-err" style="margin:0 0 8px">${esc(err.lines)}</div>` : ''}${tbl}
         ${p ? `<div style="display:flex;justify-content:flex-end;padding-top:12px"><b>Tổng giá trị dự toán: <span data-sxm-total>${num(total)}</span> đồng</b></div>` : ''}</section></form>`;
@@ -265,9 +265,20 @@
     };
     /* T71 S12: Xoá chỉ đề xuất Nháp chưa từng gửi phê duyệt (chưa khởi tạo hồ sơ SX-MS); đã có hồ sơ (kể cả Bị từ chối) thì giữ để tra vết. */
     const right = o.task || !canEditP(x) ? '' : (canDelP(x) ? `<button type="button" class="vbtn secondary" data-sxm-del="${esc(x.code)}">${icon('del')} Xoá</button>` : '')
-      + `<button type="button" class="vbtn secondary" data-go="${href(x)}/edit">${icon('edit')} Chỉnh sửa</button><button type="button" class="vbtn primary" data-sxm-submit="${esc(x.code)}">Gửi phê duyệt</button>`;
+      + `<button type="button" class="vbtn primary" data-sxm-submit="${esc(x.code)}">Gửi phê duyệt</button>`;
     const alert = x.rejected && !x.sent && !pending(x) ? `<div class="hd-alerts"><div class="hd-alert error">${icon('info')}<span>Đề xuất bị từ chối: ${esc(x.rejected)}</span></div></div>` : '';
     const pr = hs ? FL().progress(hs) : null;
+    /* T73: đề xuất đã sang ĐTMS → đồng bộ nguyên 7 tab của Chi tiết ĐXMS (luong.js body), chỉ xem. */
+    const dxc = x.dxms || (x.sync && x.sync.dxms[0]);
+    if (dxc && window.Luong && Flow.findDxms(dxc) && !o.task && !o.bar) {
+      return window.Luong.detailSx(dxc);
+    }
+    if (false) {
+      window.Luong.useTab('ms:' + x.code, 'info');
+      info.notes.unshift('<b>T73:</b> đề xuất đã gửi sang ĐTMS hiện nguyên các tab của Chi tiết đề xuất mua sắm trên ĐTMS (đồng bộ, chỉ xem); không có Thêm, Chỉnh sửa, Xuất Excel. <b>Danh mục vật tư</b> xem ở màn Nhu cầu vật tư.');
+      return `<div class="pg" data-sxm-detail="${esc(x.code)}">${head({ title: o.title || 'Xem chi tiết đề xuất mua sắm', back: o.back || 'sx/mua-sam', lg: true, info, right: '' })}${o.bar || ''}
+        <p class="cap" style="margin:0 0 8px">Đề xuất từ sản xuất <b>${esc(x.code)}</b> · ĐXMS <a class="link" data-go="luong/${encodeURIComponent(dxc)}">${esc(dxc)}</a> · ${badge(...sentSt(x))}</p>${window.Luong.body(dxc)}</div>`;
+    }
     return `<div class="pg" data-sxm-detail="${esc(x.code)}">
       ${head({ title: o.title || 'Xem chi tiết đề xuất mua sắm', back: o.back || 'sx/mua-sam', lg: true, info, right })}${o.bar || ''}${alert}
       ${k.card('Thông tin chung', `<div class="ginfo c3">${k.kv('Mã đề xuất', esc(x.code))}${k.kv('Tên đề xuất', esc(x.title), 'span2')}
@@ -276,7 +287,7 @@
         ${k.kv('Người lập', esc(pName(x.creator)))}${k.kv('Ngày lập', esc(dmy(x.created)))}${k.kv('Ngày gửi ĐTMS', x.sent ? esc(dmy(x.sent)) : null)}
         ${k.kv('Người duyệt', x.approver ? esc(pName(x.approver)) : null)}${k.kv('Ngày duyệt', x.approved ? esc(dmy(x.approved)) : null)}
         ${k.kv('Ghi chú', x.note ? esc(x.note) : null, 'span3')}</div>`)}
-      ${k.card('Danh mục vật tư', k.table([['Mã vật tư', 130], ['Tên vật tư', 250], ['ĐVT', 60], ['Đề xuất mua', 110, 'r'], ['Đơn giá dự toán (đồng)', 150, 'r'], ['Thành tiền (đồng)', 150, 'r'], ['Leadtime (tuần)', 100, 'r'], ['Export License', 100, 'c']], lines,
+      ${k.card('Nhu cầu vật tư đề xuất mua', k.table([['Mã vật tư', 130], ['Tên vật tư', 250], ['ĐVT', 60], ['Đề xuất mua', 110, 'r'], ['Đơn giá dự toán (đồng)', 150, 'r'], ['Thành tiền (đồng)', 150, 'r'], ['Leadtime (tuần)', 100, 'r'], ['Export License', 100, 'c']], lines,
         (r) => `<td>${esc(r.code)}</td><td>${k.clamp(r.name)}</td><td>${esc(r.unit)}</td><td class="r num">${num(r.qty)}</td><td class="r num">${num(r.price)}</td><td class="r num">${num(r.qty * r.price)}</td><td class="r num">${r.lt}</td><td class="c">${r.el ? 'Có' : 'Không'}</td>`))}
       ${pr ? `<div data-sxm-hs>${k.card('Hồ sơ phê duyệt đề xuất', pr.top + pr.steps)}${k.card('Lịch sử xử lý', pr.hist)}</div>` : ''}
       <section class="vcard pad24" data-sxm-chain><div class="vcard-h"><h3>Tiến trình trên ĐTMS</h3>${c && !c.live ? '<span class="cap">Dữ liệu đồng bộ từ ĐTMS</span>' : ''}</div>${chainTable(x)}</section></div>`;
@@ -374,8 +385,8 @@
     const [, a, b] = parts;
     if (a === 'create') return form(null);
     if (a && b === 'edit') return form(decodeURIComponent(a));
-    if (a) return detail(decodeURIComponent(a));
-    return list();
+    if (a) { const c = decodeURIComponent(a); return /^ĐXMS/.test(c) && window.Luong ? window.Luong.detailSx(c) : detail(c); }
+    return window.Luong ? window.Luong.listSx() : list();
   }
   function enter(parts) {
     if (parts[0] !== 'mua-sam') return;

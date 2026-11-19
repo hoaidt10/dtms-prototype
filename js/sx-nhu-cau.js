@@ -33,7 +33,12 @@
     const out = [];
     D.sxProjects.filter((p) => p.baseline && D.sxMbom[p.product]).forEach((p0) => {
       const p = P().byCode(p0.code), need = needDateOf(p);
-      mbomOf(p).forEach((m) => out.push({ code: codeFor(p.code, out), project: p.code, mat: m.code, qty: m.per * p.qty, need, note: '', src: 'MBOM', creator: p.pm, created: p.baseline }));
+      /* T73: Danh mục = tổng số lượng; Nhu cầu = số lượng cần có trước từng ngày. Vật tư từ 10 đơn vị: tách 2 đợt (60% trước ngày cần, 40% trước ngày cần + 30 ngày). */
+      mbomOf(p).forEach((m) => {
+        const total = m.per * p.qty, q1 = total >= 10 ? Math.ceil(total * 0.6) : total, base = { project: p.code, mat: m.code, src: 'MBOM', creator: p.pm, created: p.baseline };
+        out.push(Object.assign({ code: codeFor(p.code, out), qty: q1, need, note: q1 < total ? 'Đợt 1' : '' }, base));
+        if (q1 < total) out.push(Object.assign({ code: codeFor(p.code, out), qty: total - q1, need: iso(ms(need) + 30 * DAY), note: 'Đợt 2' }, base));
+      });
     });
     return out;
   }
@@ -50,18 +55,20 @@
   const buyerOf = (r) => { if (r.buyer) return r.buyer; const p = P().byCode(r.project), m = matOf(r); return !p || p.model === 'VHT_TU_SX' || m.lt >= 20 || m.el ? 'VHT' : 'DT'; };
   /* Tập kết vật tư (QT bước 4 đầu ra: báo cáo tiến độ tập kết NVL, biên bản bàn giao / trả hàng với nhà cung cấp). VHT mua: thật đọc phiếu nhập kho (API-04); đối tác mua: PM / nhà máy cập nhật. GIẢ LẬP — nhập tay cả hai. */
   const supOf = (r) => U.sup[r.code] || { qty: 0, date: null, note: '', file: '', ret: 0 };
-  function decorate(r) {
-    const m = matOf(r), short = Math.max(0, r.qty - stockOf(r.mat)), order = iso(ms(r.need) - (m.lt || 0) * 7 * DAY), prop = propOf(r), buyer = buyerOf(r);
+  function decorate(r, avail) {
+    const m = matOf(r), short = Math.max(0, r.qty - avail), order = iso(ms(r.need) - (m.lt || 0) * 7 * DAY), prop = propOf(r), buyer = buyerOf(r);
     let st;
     if (prop) st = prop.sent ? ['Đã đề xuất', 'success'] : ['Đang đề xuất', 'info'];
     else if (buyer === 'DT') st = ['Đối tác mua', 'default'];
     else if (!short) st = ['Đủ tồn kho', 'default'];
     else if (order < D.sxToday) st = ['Trễ hạn đặt hàng', 'error'];
     else st = ['Chưa đề xuất', 'warning'];
-    return Object.assign({}, r, { m, short, order, prop, st, buyer, sup: supOf(r), free: !prop && short > 0 && buyer === 'VHT' });
+    return Object.assign({}, r, { m, avail, short, order, prop, st, buyer, sup: supOf(r), free: !prop && short > 0 && buyer === 'VHT' });
   }
   const visibleProjects = () => P().visible();
-  const all = () => { const ids = new Set(visibleProjects().map((p) => p.code)); return rows().filter((r) => ids.has(r.project)).map(decorate); };
+  const all = () => { const ids = new Set(visibleProjects().map((p) => p.code)); const left = {};
+    /* Tồn kho khả dụng trừ dần theo thứ tự ngày cần của cùng vật tư trong dự án. */
+    return rows().filter((r) => ids.has(r.project)).sort((a, b) => (a.need < b.need ? -1 : a.need > b.need ? 1 : 0)).map((r) => { const k = `${r.project}|${r.mat}`; if (!(k in left)) left[k] = stockOf(r.mat); const a = left[k]; left[k] = Math.max(0, a - r.qty); return decorate(r, a); }); };
   const canManage = (project) => { const p = P().byCode(project); return !!p && p.status !== 'DONE' && (isAdmin() || p.pm === pid() || (p.khoi === 'K1' && D.roleOf(pid()) === 'R-SX-SUBPM')); };
   const canCreate = () => isAdmin() || ['R-SX-PM', 'R-SX-SUBPM'].includes(D.roleOf(pid()));
   const projOpts = () => visibleProjects().filter((p) => D.sxMbom[p.product] && canManage(p.code));
@@ -88,25 +95,29 @@
     const right = `<button type="button" class="vbtn secondary" data-sxnc-stock>Tra cứu tồn kho</button>`
       + (canCreate() ? `<button type="button" class="vbtn secondary" data-sxnc-import>${icon('upload')} Nhập Excel</button><button type="button" class="vbtn secondary" data-sxnc-mbom>Tạo từ MBOM</button><button type="button" class="vbtn secondary" data-sxnc-prop ${SEL.size ? '' : 'disabled'}>Lập đề xuất mua sắm${SEL.size ? ` (${SEL.size})` : ''}</button><button class="vbtn primary" data-sxnc-add>${icon('add')} Thêm mới</button>` : '');
     const iconBtn = (ic, label, attrs) => `<button type="button" class="vbtn icon ghost" aria-label="${label}" title="${label}" ${attrs}>${icon(ic)}</button>`;
+    /* Khối 1 — Danh mục vật tư: tổng số lượng theo MBOM dự toán (VMMS, chỉ xem) × số lượng dự án. Khối 2 — Nhu cầu vật tư: số lượng cần có trước ngày cần (bảng bên dưới). */
+    const catRows = visibleProjects().filter((p) => D.sxMbom[p.product]).flatMap((p0) => { const p = P().byCode(p0.code); return mbomOf(p).map((m) => Object.assign({ project: p.code, total: m.per * p.qty }, m)); });
+    const catalog = `<section class="vcard pad24" data-sxnc-cat><div class="vcard-h"><h3>Danh mục vật tư</h3><span class="cap">Tổng số lượng theo MBOM dự toán (VMMS, chỉ xem) × số lượng dự án</span></div>
+      ${k.table([['Dự án', 140], ['Mã vật tư', 150], ['Tên vật tư', 260], ['ĐVT', 70], ['Định mức / bộ', 110, 'r'], ['Tổng số lượng', 120, 'r'], ['Tồn kho TCT', 120, 'r'], ['Đơn giá dự toán (đồng)', 160, 'r'], ['Leadtime (tuần)', 120, 'r'], ['Export License', 120, 'c']], catRows,
+      (m) => `<td>${esc(m.project)}</td><td>${esc(m.code)}</td><td>${k.clamp(m.name)}</td><td>${esc(m.unit)}</td><td class="r num">${num(m.per)}</td><td class="r num">${num(m.total)}</td><td class="r num">${num(stockOf(m.code))}</td><td class="r num">${num(m.price)}</td><td class="r num">${m.lt}</td><td class="c">${m.el ? 'Có' : 'Không'}</td>`)}</section>`;
     return k.listPage({
-      id: 'sxnc', exp: 'Danh sach nhu cau vat tu', title: 'Danh sách nhu cầu vật tư', ph: 'Tìm kiếm theo mã, vật tư, dự án', info, right,
-      top: U.stockAt ? `<p class="cap" data-sxnc-at style="margin:-8px 0 12px">Tồn kho TCT cập nhật lúc ${esc(U.stockAt)}</p>` : '',
+      id: 'sxnc', exp: 'Danh sach nhu cau vat tu', title: 'Nhu cầu vật tư', ph: 'Tìm kiếm theo mã đề xuất, vật tư, dự án', info, right,
+      top: (U.stockAt ? `<p class="cap" data-sxnc-at style="margin:-8px 0 12px">Tồn kho TCT cập nhật lúc ${esc(U.stockAt)}</p>` : '') + catalog + '<h3 style="margin:20px 0 8px">Nhu cầu vật tư <span class="cap">— số lượng cần có trước ngày cần để đảm bảo sản xuất</span></h3>',
       rows: () => all().sort((a, b) => (a.project === b.project ? (a.order < b.order ? -1 : 1) : a.project < b.project ? -1 : 1)),
-      kwText: (r) => `${r.code} ${r.mat} ${r.m.name} ${r.project}`,
+      kwText: (r) => `${r.code} ${r.prop ? r.prop.code : ''} ${r.mat} ${r.m.name} ${r.project}`,
       empty: () => ({ project: null, mat: '', st: [], lt: null }),
       match: (r, f) => (!f.project || r.project === f.project) && (k.has(f.mat, r.mat) || k.has(f.mat, r.m.name)) && k.inSet(f.st, r.st[0]) && (!f.lt || (f.lt === 'DAI') === (r.m.lt >= 16)),
       adv: (txt, sel) => `${sel('project', 'Dự án', { options: visibleProjects().map((p) => ({ value: p.code, label: `${p.code} — ${p.name}` })) })}${txt('mat', 'Vật tư')}
         ${sel('st', 'Trạng thái', { multi: true, searchable: false, options: ST.map((x) => ({ value: x, label: x })) })}
         ${sel('lt', 'Leadtime', { searchable: false, options: [{ value: 'DAI', label: 'Dài (từ 16 tuần)' }, { value: 'NGAN', label: 'Dưới 16 tuần' }] })}`,
-      cols: [['', 48, 'c'], ['Thao tác', 100, 'c'], ['Trạng thái', 170, 'c'], ['Mã nhu cầu', 140], ['Dự án', 140], ['Mã vật tư', 150], ['Tên vật tư', 260], ['Bên mua sắm', 150], ['ĐVT', 70], ['Nhu cầu', 110, 'r'],
-        ['Tồn kho TCT', 120, 'r'], ['Còn thiếu', 110, 'r'], ['Ngày cần', 120], ['Leadtime (tuần)', 120, 'r'], ['Hạn đặt hàng', 130], ['Đề xuất mua sắm', 150]],
+      cols: [['', 48, 'c'], ['Thao tác', 100, 'c'], ['Trạng thái', 170, 'c'], ['Mã đề xuất', 140], ['Dự án', 140], ['Mã vật tư', 150], ['Tên vật tư', 260], ['Bên mua sắm', 150], ['ĐVT', 70], ['Số lượng cần', 110, 'r'],
+        ['Tồn kho TCT', 120, 'r'], ['Còn thiếu', 110, 'r'], ['Cần trước ngày', 130], ['Leadtime (tuần)', 120, 'r'], ['Hạn đặt hàng', 130]],
       href: () => 'sx/nhu-cau',
       cell: (r) => `<td class="c">${r.free && canManage(r.project) ? `<input type="checkbox" data-sxnc-sel="${esc(r.code)}" ${SEL.has(r.code) ? 'checked' : ''} aria-label="Chọn ${esc(r.code)}">` : ''}</td>
         <td class="c"><div class="acts">${canManage(r.project) ? iconBtn('edit', 'Sửa', `data-sxnc-edit="${esc(r.code)}"`) : ''}${canManage(r.project) && !r.prop ? `<span class="sep"></span>${iconBtn('del', 'Xoá', `data-sxnc-del="${esc(r.code)}"`)}` : ''}</div></td>
-        <td class="c">${badge(...r.st)}</td><td><a class="link" data-sxnc-view="${esc(r.code)}">${esc(r.code)}</a></td><td>${esc(r.project)}</td><td>${esc(r.mat)}</td><td>${k.clamp(r.m.name)}</td><td>${esc(BUYER[r.buyer])}</td><td>${esc(r.m.unit)}</td>
-        <td class="r num">${num(r.qty)}</td><td class="r num">${num(stockOf(r.mat))}</td><td class="r num">${r.short ? num(r.short) : k.dash}</td><td class="num">${esc(dmy(r.need))}</td>
-        <td class="r num">${r.m.lt}</td><td class="num${r.st[0] === 'Trễ hạn đặt hàng' ? ' due-over' : ''}">${esc(dmy(r.order))}</td>
-        <td>${r.prop ? `<a class="link" data-go="sx/mua-sam/${encodeURIComponent(r.prop.code)}">${esc(r.prop.code)}</a>` : k.dash}</td>`,
+        <td class="c">${badge(...r.st)}</td><td>${r.prop ? `<a class="link" data-go="sx/mua-sam/${encodeURIComponent(r.prop.code)}">${esc(r.prop.code)}</a>` : k.dash}</td><td>${esc(r.project)}</td><td><a class="link" data-sxnc-view="${esc(r.code)}">${esc(r.mat)}</a></td><td>${k.clamp(r.m.name)}</td><td>${esc(BUYER[r.buyer])}</td><td>${esc(r.m.unit)}</td>
+        <td class="r num">${num(r.qty)}</td><td class="r num">${num(r.avail)}</td><td class="r num">${r.short ? num(r.short) : k.dash}</td><td class="num">${esc(dmy(r.need))}</td>
+        <td class="r num">${r.m.lt}</td><td class="num${r.st[0] === 'Trễ hạn đặt hàng' ? ' due-over' : ''}">${esc(dmy(r.order))}</td>`,
     });
   }
 
@@ -139,8 +150,8 @@
     rerender();
   }
   async function add() {
-    const list = rows(), have = new Set(list.map((r) => `${r.project}|${r.mat}`));
-    const opts = projOpts().flatMap((p) => mbomOf(p).filter((m) => !have.has(`${p.code}|${m.code}`)).map((m) => [`${p.code}|${m.code}`, `${p.code} · ${m.code} — ${m.name}`]));
+    const list = rows();
+    const opts = projOpts().flatMap((p) => mbomOf(p).map((m) => [`${p.code}|${m.code}`, `${p.code} · ${m.code} — ${m.name}`]));
     if (!opts.length) { toast('Mọi vật tư trong MBOM của các dự án bạn quản lý đã có dòng nhu cầu.', 'warn'); return; }
     const { sel, num: n, dt, ta, req, opts: o } = B(), L = (k) => ({ layout: { columns: k } });
     const res = await window.EFormRun.open({ title: 'Thêm mới nhu cầu vật tư', schema: { id: 'sx-nc-add', components: [
@@ -229,7 +240,6 @@
         if (!p) errs.push(`Dự án ${project} không tồn tại.`);
         else if (!canManage(project)) errs.push(`Bạn không quản lý dự án ${project}.`);
         else if (!m) errs.push(`Vật tư ${mat} không thuộc MBOM của sản phẩm ${p.product}.`);
-        else if (rows().some((r) => r.project === project && r.mat === mat)) errs.push(`Vật tư ${mat} đã có dòng nhu cầu của dự án.`);
         return { errs, data: { project, mat, qty, need }, cells: [project, mat, m ? m.name : '', num(qty), dmy(need)] };
       }),
       commit: (ok) => {

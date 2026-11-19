@@ -89,7 +89,10 @@
   const KINDS = ['Tạo mới', 'Điều chỉnh'];
   const kindOf = (x) => (x.adjFrom ? 'Điều chỉnh' : 'Tạo mới');
   const L = { kw: '', adv: false, f: emptyF(), d: emptyF(), page: 1, size: 10, psOpen: false };
-  const href = (code) => 'luong/' + encodeURIComponent(code);
+  /* T73: SXMODE — màn Đề xuất mua sắm của phân hệ Sản xuất dùng lại nguyên danh sách / chi tiết ĐXMS (chỉ ĐXMS nguồn Sản xuất), bỏ Thêm, Sửa, Xóa, Xuất Excel, Điều chỉnh. */
+  let SXMODE = false;
+  const sxOwn = (x) => x.src === 'SX' && !!window.SxDuAn && window.SxDuAn.visible().some((p) => p.code === x.sxProject);
+  const href = (code) => (SXMODE ? 'sx/mua-sam/' : 'luong/') + encodeURIComponent(code);
   const dk = (s) => { const [d, m, y] = String(s || '').split('/'); return y ? `${y}${m.padStart(2, '0')}${d.padStart(2, '0')}` : ''; };
   /* T29 B12 (RV-PROTO-0511 #2): Ngày tạo một trường "từ – đến"; một ngày thì lọc từ ngày đó. */
   const rangeOf = (s) => { const m = String(s || '').match(/\d{1,2}\/\d{1,2}\/\d{4}/g) || []; return [m[0] || '', m[1] || '']; };
@@ -107,14 +110,14 @@
   }
   function rows() {
     const cases = window.Screens.allCases(), f = L.f;
-    return Flow.dxmsAll().map((x) => {
+    return Flow.dxmsAll().filter((x) => !SXMODE || sxOwn(x)).map((x) => {
       const m = window.Screens.dxmsMeta(x, cases);
       const run = m.hs.find((c) => c.st === 'processing') || m.hs[0] || null;
       const live = run && run.live && Flow.state.status === 'running';
       const who = live ? [...new Set(Flow.state.tokens.flatMap((t) => t.cands || [t.who]))].map((id) => persona(id).name).join(', ') : '';
       /* T45 V0.4 SRS 12 3.1.3: ed = Sửa / Xóa được (người thực hiện việc Lập), ret = bị Chỉ huy ĐVĐX trả lại ở 5.1. */
       const ls = lapState(x.code);
-      return Object.assign({}, x, { state: m.state, value: m.value, run, who, ed: editOf(x, m.state), ret: !!(ls && ls.returned) });
+      return Object.assign({}, x, { state: m.state, value: m.value, run, who, ed: SXMODE ? null : editOf(x, m.state), ret: !!(ls && ls.returned) });
     }).filter((x) => (!L.adv ? !L.kw || norm(`${x.code} ${x.title}`).includes(norm(L.kw))
       : ((fr, to) => (!fr || dk(x.created) >= dk(fr)) && (!to || dk(x.created) <= dk(to)))(...rangeOf(f.created))
         && (!f.code || norm(x.code).includes(norm(f.code))) && (!f.kind || kindOf(x) === f.kind) && (!f.title || norm(x.title).includes(norm(f.title))) && (!f.nv || x.nv === f.nv)
@@ -145,14 +148,15 @@
     if (L.page > pages) L.page = pages;
     const from = (L.page - 1) * L.size;
     const S = window.Screens.DXMS_STATUS;
-    const cols = [['Thao tác', 100, 'c'], ['Trạng thái', 250, 'c'], ['Mã ĐXMS', 170], ['Loại ĐXMS', 120], ['Tên đề xuất mua sắm', 280], ['Đề tài / dự án', 260], ['Đợt', 70, 'c'],
+    const cols0 = [['Thao tác', 100, 'c'], ['Trạng thái', 250, 'c'], ['Mã ĐXMS', 170], ['Loại ĐXMS', 120], ['Tên đề xuất mua sắm', 280], ['Đề tài / dự án', 260], ['Đợt', 70, 'c'],
       ['Quy trình', 100], ['Bước hiện tại', 220], ['Người đang xử lý', 180], ['Giá trị đề xuất (tỷ đồng)', 170, 'r'], ['Đơn vị đề xuất', 180], ['Người tạo', 170], ['Ngày tạo', 120], ['Ngày cập nhật', 140]];
+    const cols = SXMODE ? cols0.slice(1) : cols0;
     const body = all.slice(from, from + L.size).map((x, i) => `<tr class="click" data-go="${href(x.code)}" data-code="${esc(x.code)}">
         <td class="ord">${from + i + 1}</td><td class="c"><div class="acts">${x.ed ? `${iconBtn('edit', 'Sửa', `data-go="${x.ed.go}" data-lg-edit="${esc(x.code)}"`)}<span class="sep"></span>${iconBtn('del', 'Xóa', `data-lg-del="${esc(x.code)}"`)}` : ''}</div></td>
         <td class="c"><div class="lg-st">${badge(S[x.state][0], S[x.state][1])}${x.ret ? `<span data-lg-ret>${badge('Bị trả lại', 'warning')}</span>` : ''}</div></td><td><a class="link" data-go="${href(x.code)}">${esc(x.code)}</a></td><td data-kind>${kindOf(x)}</td><td>${clamp(x.title)}</td>
         <td>${clamp(S5().nvText(x.nv))}</td><td class="c">${S5().dotOf(x) || dash}</td>
         <td>${clamp(x.run && (x.run.flowLabel || x.run.flow))}</td>
-        <td>${clamp(x.run && x.run.step)}</td><td>${clamp(x.who)}</td><td class="r num">${x.value != null ? ty(x.value) : dash}</td><td>${clamp(x.unit)}</td><td>${clamp(x.creator)}</td><td class="num">${esc(x.created || '') || dash}</td><td class="num">${esc(x.updated)}</td></tr>`).join('');
+        <td>${clamp(x.run && x.run.step)}</td><td>${clamp(x.who)}</td><td class="r num">${x.value != null ? ty(x.value) : dash}</td><td>${clamp(x.unit)}</td><td>${clamp(x.creator)}</td><td class="num">${esc(x.created || '') || dash}</td><td class="num">${esc(x.updated)}</td></tr>`).join('').replace(SXMODE ? new RegExp("<td class=.c.><div class=.acts.></div></td>","g") : /$^/, '');
     const info = {
       scr: 'SCR-95', name: 'Danh sách đề xuất mua sắm', uc: 'UC-07-01, UC-07-12 · UR-DX-01, UR-DX-20',
       notes: [
@@ -169,7 +173,7 @@
       q: ['P-190', 'P-192'], src: 'task-management/task-management.component · /task-management',
     };
     return `<div class="pg">
-      ${head({ title: 'Danh sách đề xuất mua sắm', info, right: `<button class="vbtn secondary" data-lg="export">${icon('excel')} Xuất Excel</button><button class="vbtn secondary" data-go="dieu-chinh-dxms/create" data-adj-dxms>${icon('edit')} Điều chỉnh ĐXMS</button><button class="vbtn primary" data-go="luong/create">${icon('add')} Thêm mới</button>` })}
+      ${head({ title: 'Danh sách đề xuất mua sắm', info, right: SXMODE ? '' : `<button class="vbtn secondary" data-lg="export">${icon('excel')} Xuất Excel</button><button class="vbtn secondary" data-go="dieu-chinh-dxms/create" data-adj-dxms>${icon('edit')} Điều chỉnh ĐXMS</button><button class="vbtn primary" data-go="luong/create">${icon('add')} Thêm mới</button>` })}
       <div class="vcard">
         <div class="pg-head"><span></span><div class="r">
           ${L.adv ? '' : `<label class="vsearch" style="width:264px">${icon('search')}<input id="luong-kw" maxlength="255" placeholder="Tìm kiếm theo mã, tên đề xuất" value="${esc(L.kw)}"></label>`}
@@ -1303,7 +1307,7 @@
       ${body(code)}</div>`;
     }
     return `<div class="pg" data-luong-detail="${esc(code)}">
-      ${head({ title: 'Chi tiết đề xuất mua sắm', back: 'luong', lg: true, info, right: `${m.state === 'NEW' ? `<button type="button" class="vbtn red" data-go="${/* T45 V0.4: ĐXMS nháp đã có hồ sơ → mở việc Lập, không tạo hồ sơ mới */ lapState(x.code) ? 'task/' + lapState(x.code).tok.id : 'luong/create/' + encodeURIComponent(x.code)}" data-lap-dxms>Lập đề xuất mua sắm</button>` : ''}${m.state === 'OK' ? `<button type="button" class="vbtn red" data-go="dieu-chinh-dxms/create/${encodeURIComponent(x.code)}" data-adj-dxms>Điều chỉnh ĐXMS</button>` : ''}${m.state === 'STOP' ? `<button type="button" class="vbtn red" data-copy-dxms="${esc(x.code)}">Sao chép thành ĐXMS mới</button>` : ''}<button type="button" class="vbtn red" data-viewers="${esc(x.code)}">Cập nhật người xem</button>${/* [T34 bỏ Tách] nút Chỉnh sửa mở SCR-28: <button type="button" class="vbtn primary" data-go="dxms/<mã>/edit">Chỉnh sửa</button> */ ''}${bpmn}` })}
+      ${head({ title: 'Chi tiết đề xuất mua sắm', back: SXMODE ? 'sx/mua-sam' : 'luong', lg: true, info, right: SXMODE ? '' : `${m.state === 'NEW' ? `<button type="button" class="vbtn red" data-go="${/* T45 V0.4: ĐXMS nháp đã có hồ sơ → mở việc Lập, không tạo hồ sơ mới */ lapState(x.code) ? 'task/' + lapState(x.code).tok.id : 'luong/create/' + encodeURIComponent(x.code)}" data-lap-dxms>Lập đề xuất mua sắm</button>` : ''}${m.state === 'OK' ? `<button type="button" class="vbtn red" data-go="dieu-chinh-dxms/create/${encodeURIComponent(x.code)}" data-adj-dxms>Điều chỉnh ĐXMS</button>` : ''}${m.state === 'STOP' ? `<button type="button" class="vbtn red" data-copy-dxms="${esc(x.code)}">Sao chép thành ĐXMS mới</button>` : ''}<button type="button" class="vbtn red" data-viewers="${esc(x.code)}">Cập nhật người xem</button>${/* [T34 bỏ Tách] nút Chỉnh sửa mở SCR-28: <button type="button" class="vbtn primary" data-go="dxms/<mã>/edit">Chỉnh sửa</button> */ ''}${bpmn}` })}
       ${window.Screens.dxmsBar(x.code)}
       ${body(code)}</div>`;
   }
@@ -1557,5 +1561,7 @@
   /* SRS 29 (D-105): docRows dùng chung cho màn Quản lý tài liệu ĐXMS (SCR-107) — trạng thái văn bản đồng nhất với tab Tài liệu & văn bản. */
   /* T59: đổi tab đang mở (vd. Gửi Chỉ huy Kho còn lỗi → mở tab Rà soát tồn kho). */
   const setTab = (k) => { if (TAB_KEYS.includes(k)) DT.tab = k; };
-  window.Luong = { setTab, tabInfo0: (code) => { const x = Flow.findDxms(code); return x ? tabInfo0(x, window.Screens.dxmsMeta(x, window.Screens.allCases())) : ''; }, isGop, setMode, menu, tasksOf, rolesOf, route, enter, taskBtn, membersDialog, isLap, lapScreen, LAP_NAME, body, useTab, lapState, docRows };
+  const listSx = () => { SXMODE = true; try { return list(); } finally { SXMODE = false; } };
+  const detailSx = (code) => { SXMODE = true; try { useTab('sx:' + code, 'info'); return detail(code); } finally { SXMODE = false; } };
+  window.Luong = { listSx, detailSx, setTab, tabInfo0: (code) => { const x = Flow.findDxms(code); return x ? tabInfo0(x, window.Screens.dxmsMeta(x, window.Screens.allCases())) : ''; }, isGop, setMode, menu, tasksOf, rolesOf, route, enter, taskBtn, membersDialog, isLap, lapScreen, LAP_NAME, body, useTab, lapState, docRows };
 })();
