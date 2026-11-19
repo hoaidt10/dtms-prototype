@@ -270,10 +270,9 @@
     const stepName = (n) => { const s = D.sxFlows['SX-BT'].steps.find((y) => y[0] === n); return s ? `${n}. ${s[1]}` : String(n); };
     const b1 = k.card('Xác minh & phân tích nguyên nhân', `<div class="ginfo c3">
         ${k.kv('Trạng thái xác minh của QLSX', passed(2) ? badge('Đã xác minh', 'success') : badge('Chờ xác minh', 'warning'))}${k.kv('Người xác minh', evAt(2) ? esc(pName(evAt(2).who)) : null)}${k.kv('Ngày xác minh', evAt(2) ? esc(dmy(evAt(2).at)) : null)}
-        ${k.kv('Loại bất thường (xác nhận lại)', x.type ? esc(typeText(x.type)) : null, 'span2')}${k.kv('Mức độ (xác nhận lại)', x.sev ? esc(D.sxSev[x.sev]) : null)}</div>
-      <h4 class="ginfo-sub">Phân loại nguyên nhân chính thức (6M + 1, BM.QLBT.02)</h4>
-      <div class="row" style="gap:8px;flex-wrap:wrap;margin:4px 0 12px">${groups.map((g) => badge(g.name, chosen.includes(g.code) ? 'success' : 'default')).join('')}</div>
-      <div class="ginfo c3">${k.kv('Nội dung phân tích chi tiết', v.blNguyenNhan ? esc(v.blNguyenNhan) : null, 'span3')}${k.kv('File đo kiểm bổ sung', v.blFile ? `<a class="link">${esc(v.blFile)}</a>` : null, 'span3')}</div>`);
+        ${k.kv('Loại bất thường (xác nhận lại)', x.type ? esc(typeText(x.type)) : null, 'span2')}${k.kv('Mức độ (xác nhận lại)', x.sev ? esc(D.sxSev[x.sev]) : null)}
+        ${k.kv('Phân loại nguyên nhân chính thức (6M + 1, BM.QLBT.02)', (groups.find((g) => chosen.includes(g.code)) || {}).name ? esc(groups.find((g) => chosen.includes(g.code)).name) : null, 'span3')}</div>
+      <div class="ginfo c3" style="margin-top:12px">${k.kv('Nội dung phân tích chi tiết', v.blNguyenNhan ? esc(v.blNguyenNhan) : null, 'span3')}${k.kv('File đo kiểm bổ sung', v.blFile ? `<a class="link">${esc(v.blFile)}</a>` : null, 'span3')}</div>`);
     const b2 = k.card('Phương án xử lý', `<div class="ginfo c3">
         ${k.kv('Số phương án xử lý bất thường', fix.length || passed(2) ? esc('PAXL-' + x.code.slice(3) + '-' + String(allC.length).padStart(2, '0')) : null)}${k.kv('Cấp duyệt', esc(apprLevel))}${k.kv('Kết quả phê duyệt', passed(4) ? badge('Đã phê duyệt', 'success') : cur === 4 ? badge('Chờ phê duyệt', 'warning') : null)}</div>
       <h4 class="ginfo-sub">Phương án khắc phục bất thường</h4>${actTbl(fix)}
