@@ -75,6 +75,7 @@
 
   /* ---------- SX-17 Danh sách ---------- */
   const SEL = new Set();
+  const CAT = { page: 1, size: 10 };
   function list() {
     // Theo: task-management (danh sách; cột chọn như bảng Rà soát tồn kho của ĐXMS); hộp thoại theo ecat catalog-form-dialog (ngoại lệ B6)
     const k = K();
@@ -91,19 +92,24 @@
       ],
       q: ['P-260', 'P-248', 'P-262'], src: 'task-management/task-management.component · /task-management; ecat catalog-form-dialog',
     };
+    const RANK = (r) => { const i = ['Chưa đề xuất', 'Trễ hạn đặt hàng', 'Đang đề xuất', 'Đã đề xuất', 'Đủ tồn kho', 'Đối tác mua'].indexOf(r.st[0]); return i < 0 ? 9 : i; };
     const ST = ['Chưa đề xuất', 'Trễ hạn đặt hàng', 'Đang đề xuất', 'Đã đề xuất', 'Đủ tồn kho'];
     const right = `<button type="button" class="vbtn secondary" data-sxnc-stock>Tra cứu tồn kho</button>`
       + (canCreate() ? `<button type="button" class="vbtn secondary" data-sxnc-import>${icon('upload')} Nhập Excel</button><button type="button" class="vbtn secondary" data-sxnc-mbom>Tạo từ MBOM</button><button type="button" class="vbtn secondary" data-sxnc-prop ${SEL.size ? '' : 'disabled'}>Lập đề xuất mua sắm${SEL.size ? ` (${SEL.size})` : ''}</button><button class="vbtn primary" data-sxnc-add>${icon('add')} Thêm mới</button>` : '');
     const iconBtn = (ic, label, attrs) => `<button type="button" class="vbtn icon ghost" aria-label="${label}" title="${label}" ${attrs}>${icon(ic)}</button>`;
     /* Khối 1 — Danh mục vật tư: tổng số lượng theo MBOM dự toán (VMMS, chỉ xem) × số lượng dự án. Khối 2 — Nhu cầu vật tư: số lượng cần có trước ngày cần (bảng bên dưới). */
     const catRows = visibleProjects().filter((p) => D.sxMbom[p.product]).flatMap((p0) => { const p = P().byCode(p0.code); return mbomOf(p).map((m) => Object.assign({ project: p.code, total: m.per * p.qty }, m)); });
+    const cpages = Math.max(1, Math.ceil(catRows.length / CAT.size));
+    if (CAT.page > cpages) CAT.page = cpages;
     const catalog = `<section class="vcard pad24" data-sxnc-cat><div class="vcard-h"><h3>Danh mục vật tư</h3><span class="cap">Tổng số lượng theo MBOM dự toán (VMMS, chỉ xem) × số lượng dự án</span></div>
-      ${k.table([['Dự án', 140], ['Mã vật tư', 150], ['Tên vật tư', 260], ['ĐVT', 70], ['Định mức / bộ', 110, 'r'], ['Tổng số lượng', 120, 'r'], ['Tồn kho TCT', 120, 'r'], ['Đơn giá dự toán (đồng)', 160, 'r'], ['Leadtime (tuần)', 120, 'r'], ['Export License', 120, 'c']], catRows,
-      (m) => `<td>${esc(m.project)}</td><td>${esc(m.code)}</td><td>${k.clamp(m.name)}</td><td>${esc(m.unit)}</td><td class="r num">${num(m.per)}</td><td class="r num">${num(m.total)}</td><td class="r num">${num(stockOf(m.code))}</td><td class="r num">${num(m.price)}</td><td class="r num">${m.lt}</td><td class="c">${m.el ? 'Có' : 'Không'}</td>`)}</section>`;
-    return k.listPage({
+      ${k.table([['Dự án', 140], ['Mã vật tư', 150], ['Tên vật tư', 260], ['ĐVT', 70], ['Định mức / bộ', 110, 'r'], ['Tổng số lượng', 120, 'r'], ['Tồn kho TCT', 120, 'r'], ['Đơn giá dự toán (đồng)', 160, 'r'], ['Leadtime (tuần)', 120, 'r'], ['Export License', 120, 'c']], catRows.slice((CAT.page - 1) * CAT.size, CAT.page * CAT.size),
+      (m) => `<td>${esc(m.project)}</td><td>${esc(m.code)}</td><td>${k.clamp(m.name)}</td><td>${esc(m.unit)}</td><td class="r num">${num(m.per)}</td><td class="r num">${num(m.total)}</td><td class="r num">${num(stockOf(m.code))}</td><td class="r num">${num(m.price)}</td><td class="r num">${m.lt}</td><td class="c">${m.el ? 'Có' : 'Không'}</td>`)}
+      <div class="row" style="justify-content:flex-end;gap:8px;align-items:center;padding-top:12px"><span class="cap">${catRows.length ? (CAT.page - 1) * CAT.size + 1 : 0}–${Math.min(CAT.page * CAT.size, catRows.length)} / ${catRows.length} vật tư</span><button type="button" class="vbtn secondary sm" data-sxnc-cat="prev" ${CAT.page <= 1 ? 'disabled' : ''}>Trước</button><span class="cap">Trang ${CAT.page} / ${cpages}</span><button type="button" class="vbtn secondary sm" data-sxnc-cat="next" ${CAT.page >= cpages ? 'disabled' : ''}>Sau</button></div></section>`;
+    const pageHtml = k.listPage({
       id: 'sxnc', exp: 'Danh sach nhu cau vat tu', title: 'Nhu cầu vật tư', ph: 'Tìm kiếm theo mã đề xuất, vật tư, dự án', info, right,
-      top: (U.stockAt ? `<p class="cap" data-sxnc-at style="margin:-8px 0 12px">Tồn kho TCT cập nhật lúc ${esc(U.stockAt)}</p>` : '') + catalog + '<h3 style="margin:20px 0 8px">Nhu cầu vật tư <span class="cap">— số lượng cần có trước ngày cần để đảm bảo sản xuất</span></h3>',
-      rows: () => all().sort((a, b) => (a.project === b.project ? (a.order < b.order ? -1 : 1) : a.project < b.project ? -1 : 1)),
+      top: (U.stockAt ? `<p class="cap" data-sxnc-at style="margin:-8px 0 12px">Tồn kho TCT cập nhật lúc ${esc(U.stockAt)}</p>` : '') + '<h3 style="margin:0 0 8px">Nhu cầu vật tư <span class="cap">— số lượng cần có trước ngày cần để đảm bảo sản xuất</span></h3>',
+      /* Chưa đề xuất / Trễ hạn lên đầu để thấy đủ trạng thái; cùng trạng thái theo dự án, hạn đặt hàng. */
+      rows: () => all().sort((a, b) => (RANK(a) - RANK(b)) || (a.project === b.project ? (a.order < b.order ? -1 : 1) : a.project < b.project ? -1 : 1)),
       kwText: (r) => `${r.code} ${r.prop ? r.prop.code : ''} ${r.mat} ${r.m.name} ${r.project}`,
       empty: () => ({ project: null, mat: '', st: [], lt: null }),
       match: (r, f) => (!f.project || r.project === f.project) && (k.has(f.mat, r.mat) || k.has(f.mat, r.m.name)) && k.inSet(f.st, r.st[0]) && (!f.lt || (f.lt === 'DAI') === (r.m.lt >= 16)),
@@ -119,6 +125,8 @@
         <td class="r num">${num(r.qty)}</td><td class="r num">${num(r.avail)}</td><td class="r num">${r.short ? num(r.short) : k.dash}</td><td class="num">${esc(dmy(r.need))}</td>
         <td class="r num">${r.m.lt}</td><td class="num${r.st[0] === 'Trễ hạn đặt hàng' ? ' due-over' : ''}">${esc(dmy(r.order))}</td>`,
     });
+    const at = pageHtml.lastIndexOf('</div>');
+    return pageHtml.slice(0, at) + catalog + pageHtml.slice(at);
   }
 
   /* ---------- Hộp thoại (eForm) ---------- */
@@ -211,6 +219,12 @@
     toast('<b>Thành công</b><br>Xoá nhu cầu vật tư thành công');
     rerender();
   }, true);
+  document.addEventListener("click", (e) => {
+    const b = e.target.closest && e.target.closest("[data-sxnc-cat]");
+    if (!b || b.disabled) return;
+    CAT.page += b.dataset.sxncCat === "next" ? 1 : -1;
+    rerender();
+  });
   /* Bấm vào dòng (ngoài nút / liên kết): xem chi tiết. */
   document.addEventListener('click', (e) => {
     const tr = e.target.closest && e.target.closest('tr.click[data-go="sx/nhu-cau"]');
