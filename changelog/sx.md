@@ -5,7 +5,7 @@
 
 ## 2026-11-19 · Bất thường: phiếu Lưu nháp (Xóa, Sửa), Chỉnh sửa tab Phân tích và xử lý
 - Thêm trạng thái Lưu nháp: nút Lưu nháp ở form Thêm mới giờ lưu phiếu nháp; chi tiết phiếu nháp có Xóa, Sửa (Sửa mở lại form, Xác nhận thì gửi phiếu vào luồng). Dữ liệu mẫu BT-2026-005.
-- Tab Phân tích và xử lý: nút Chỉnh sửa chỉ hiện khi phiếu Đang xử lý (không hiện khi Đã đóng hoặc trạng thái khác); 4 vùng tách rõ, bỏ chữ Khối 1–4.
+- Tab Phân tích và xử lý: nút Chỉnh sửa chỉ hiện khi phiếu Đang xử lý (không hiện khi Đã đóng hoặc trạng thái khác); 4 khối thẻ như các màn khác, bỏ chữ Khối 1–4.
 
 ## 2026-11-19 · Bất thường: form Thêm mới; Dự án: Kế hoạch 11–15, OQC, Nghiệm thu
 - Thêm mới phiếu bất thường: bỏ bắt buộc BM.QLBT.01; Các tài liệu liên quan = tải nhiều tệp, có nút xoá tệp chọn nhầm (eform-run: filepicker `accumulate`); Thời gian xảy ra lỗi = một ô ngày giờ (datetime `withTime`).
