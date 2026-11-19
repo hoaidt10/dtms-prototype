@@ -91,6 +91,7 @@
   const L = { kw: '', adv: false, f: emptyF(), d: emptyF(), page: 1, size: 10, psOpen: false };
   /* T73: SXMODE — màn Đề xuất mua sắm của phân hệ Sản xuất dùng lại nguyên danh sách / chi tiết ĐXMS (chỉ ĐXMS nguồn Sản xuất), bỏ Thêm, Sửa, Xóa, Xuất Excel, Điều chỉnh. */
   let SXMODE = false;
+  const sxProj = (x) => { const p = window.SxDuAn && window.SxDuAn.byCode(x.sxProject); return p ? `${p.code} — ${p.name}` : x.sxProject || ''; };
   const sxOwn = (x) => x.src === 'SX' && !!window.SxDuAn && window.SxDuAn.visible().some((p) => p.code === x.sxProject);
   const href = (code) => (SXMODE ? 'sx/mua-sam/' : 'luong/') + encodeURIComponent(code);
   const dk = (s) => { const [d, m, y] = String(s || '').split('/'); return y ? `${y}${m.padStart(2, '0')}${d.padStart(2, '0')}` : ''; };
@@ -120,7 +121,7 @@
       return Object.assign({}, x, { state: m.state, value: m.value, run, who, ed: SXMODE ? null : editOf(x, m.state), ret: !!(ls && ls.returned) });
     }).filter((x) => (!L.adv ? !L.kw || norm(`${x.code} ${x.title}`).includes(norm(L.kw))
       : ((fr, to) => (!fr || dk(x.created) >= dk(fr)) && (!to || dk(x.created) <= dk(to)))(...rangeOf(f.created))
-        && (!f.code || norm(x.code).includes(norm(f.code))) && (!f.kind || kindOf(x) === f.kind) && (!f.title || norm(x.title).includes(norm(f.title))) && (!f.nv || x.nv === f.nv)
+        && (!f.code || norm(x.code).includes(norm(f.code))) && (!f.kind || kindOf(x) === f.kind) && (!f.title || norm(x.title).includes(norm(f.title))) && (!f.nv || (SXMODE ? x.sxProject : x.nv) === f.nv)
         && (!f.block || D.blockOf(x.unit) === f.block) && (!f.unit || x.unit === f.unit) && (!f.creator || x.creator === f.creator)
         && (!f.st.length || f.st.includes(x.state)) && (!f.priority || x.priority === f.priority) && (!f.secret || (f.secret === 'Có') === !!x.secret)));
   }
@@ -131,7 +132,7 @@
     return `<form class="adv" data-lgadv><div class="grid3">
         ${txt('code', 'Mã ĐXMS', 'Nhập mã ĐXMS')}${txt('title', 'Tên đề xuất mua sắm', 'Nhập tên đề xuất mua sắm')}
         ${sel('kind', 'Loại ĐXMS', { searchable: false, placeholder: 'Tất cả', options: KINDS.map((k) => ({ value: k, label: k })) })}
-        ${sel('nv', 'Đề tài / dự án', { placeholder: 'Chọn đề tài / dự án', options: D.nhiemVu.map((v) => ({ value: v.code, label: `${v.code} — ${v.name}` })) })}
+        ${SXMODE ? sel('nv', 'Dự án', { placeholder: 'Chọn dự án', options: window.SxDuAn.visible().map((p) => ({ value: p.code, label: `${p.code} — ${p.name}` })) }) : sel('nv', 'Đề tài / dự án', { placeholder: 'Chọn đề tài / dự án', options: D.nhiemVu.map((v) => ({ value: v.code, label: `${v.code} — ${v.name}` })) })}
         ${sel('block', 'Khối đơn vị', { searchable: false, placeholder: 'Chọn khối đơn vị', options: D.blocks.map((b) => ({ value: b, label: b })),
     onChange: (v) => { d.block = v; if (d.unit && D.blockOf(d.unit) !== v) d.unit = null; rerender(); } })}
         ${sel('unit', 'Đơn vị đề xuất', { placeholder: 'Chọn đơn vị đề xuất', options: S5().unitsOf(d.block).map((u) => ({ value: u, label: u })) })}
@@ -148,13 +149,13 @@
     if (L.page > pages) L.page = pages;
     const from = (L.page - 1) * L.size;
     const S = window.Screens.DXMS_STATUS;
-    const cols0 = [['Thao tác', 100, 'c'], ['Trạng thái', 250, 'c'], ['Mã ĐXMS', 170], ['Loại ĐXMS', 120], ['Tên đề xuất mua sắm', 280], ['Đề tài / dự án', 260], ['Đợt', 70, 'c'],
+    const cols0 = [['Thao tác', 100, 'c'], ['Trạng thái', 250, 'c'], ['Mã ĐXMS', 170], ['Loại ĐXMS', 120], ['Tên đề xuất mua sắm', 280], [SXMODE ? 'Dự án' : 'Đề tài / dự án', 260], ['Đợt', 70, 'c'],
       ['Quy trình', 100], ['Bước hiện tại', 220], ['Người đang xử lý', 180], ['Giá trị đề xuất (tỷ đồng)', 170, 'r'], ['Đơn vị đề xuất', 180], ['Người tạo', 170], ['Ngày tạo', 120], ['Ngày cập nhật', 140]];
     const cols = SXMODE ? cols0.slice(1) : cols0;
     const body = all.slice(from, from + L.size).map((x, i) => `<tr class="click" data-go="${href(x.code)}" data-code="${esc(x.code)}">
         <td class="ord">${from + i + 1}</td><td class="c"><div class="acts">${x.ed ? `${iconBtn('edit', 'Sửa', `data-go="${x.ed.go}" data-lg-edit="${esc(x.code)}"`)}<span class="sep"></span>${iconBtn('del', 'Xóa', `data-lg-del="${esc(x.code)}"`)}` : ''}</div></td>
         <td class="c"><div class="lg-st">${badge(S[x.state][0], S[x.state][1])}${x.ret ? `<span data-lg-ret>${badge('Bị trả lại', 'warning')}</span>` : ''}</div></td><td><a class="link" data-go="${href(x.code)}">${esc(x.code)}</a></td><td data-kind>${kindOf(x)}</td><td>${clamp(x.title)}</td>
-        <td>${clamp(S5().nvText(x.nv))}</td><td class="c">${S5().dotOf(x) || dash}</td>
+        <td>${clamp(SXMODE ? sxProj(x) : S5().nvText(x.nv))}</td><td class="c">${S5().dotOf(x) || dash}</td>
         <td>${clamp(x.run && (x.run.flowLabel || x.run.flow))}</td>
         <td>${clamp(x.run && x.run.step)}</td><td>${clamp(x.who)}</td><td class="r num">${x.value != null ? ty(x.value) : dash}</td><td>${clamp(x.unit)}</td><td>${clamp(x.creator)}</td><td class="num">${esc(x.created || '') || dash}</td><td class="num">${esc(x.updated)}</td></tr>`).join('').replace(SXMODE ? new RegExp("<td class=.c.><div class=.acts.></div></td>","g") : /$^/, '');
     const info = {
