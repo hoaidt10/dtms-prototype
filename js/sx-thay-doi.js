@@ -65,6 +65,7 @@
     const info = {
       scr: 'SX-09', name: 'Danh sách yêu cầu thay đổi kỹ thuật', uc: 'SX-KS-K1 §3.3 (QT.VHT.TTSX.4A.1.3), Bảng 8',
       notes: [
+        '<b>Dữ liệu đồng bộ từ phân hệ KHCN</b>: danh sách chỉ xem, không có Thêm mới ở phân hệ Quản lý sản xuất.',
         'Yêu cầu thay đổi kỹ thuật (ECR) là đối tượng cha của hồ sơ luồng thay đổi kỹ thuật (9 bước nháp — GIẢ LẬP P-238). Thêm mới = lập ECR (bước 1); mở từ phiếu bất thường Loại 2 thì ghi phiếu nguồn.',
         '<b>Nguồn</b> (T71 S12, P-257): Phân hệ sản xuất (lập tay / từ phiếu bất thường Loại 2) hoặc <b>Hệ thống KHCN</b> — yêu cầu thay đổi từ đề tài nghiên cứu cải tiến nhận qua API tích hợp, hệ thống ghi bước 1 và giao R&D phân tích; ECN ban hành (bước 8) được đồng bộ ngược về KHCN (GIẢ LẬP).',
         'Bước 3 chọn <b>phạm vi thay đổi</b> theo danh mục Cấp phê duyệt thay đổi kỹ thuật → người phê duyệt bước 4 theo cấp (C1 PM dự án, C2 Giám đốc TT Nghiên cứu thiết kế, C3 Ban Giám đốc Khối, C4 Ban Tổng Giám đốc — GIẢ LẬP P-252). Bước 5 / 8 hệ thống cấp mã ECO / ECN và ghi Nhật ký quản lý dự án (SXL.10).',
@@ -73,7 +74,7 @@
     };
     return k.listPage({
       id: 'sxtd', exp: 'Danh sach yeu cau thay doi ky thuat', title: 'Danh sách yêu cầu thay đổi kỹ thuật', ph: 'Tìm kiếm theo mã, tên, dự án', info,
-      right: canCreate() ? `<button class="vbtn primary" data-sxtd-new>${icon('add')} Thêm mới</button>` : '',
+      right: '', /* Bỏ Thêm mới: yêu cầu thay đổi kỹ thuật đồng bộ từ phân hệ KHCN */
       rows: () => visible().map((x) => Object.assign(x, { st: stOf(x), step: stepOf(x), who: whoOf(x) })).sort((a, b) => (a.code < b.code ? 1 : -1)),
       kwText: (x) => `${x.code} ${x.title} ${x.project} ${x.eco || ''} ${x.ecn || ''}`,
       empty: () => ({ code: '', title: '', project: null, level: null, src: null }),
@@ -154,7 +155,7 @@
     const k = K(), l = all().filter((x) => x.project === p.code).map((x) => Object.assign(x, { st: stOf(x) }));
     const can = canCreate() && p.status !== 'PLANNING' && p.status !== 'DONE';
     const log = logOf(p.code).slice().sort((a, b) => (a[0] < b[0] ? 1 : -1));
-    return `<section class="vcard pad24" data-sx-td><div class="vcard-h"><h3>Thay đổi kỹ thuật</h3>${can ? `<button type="button" class="vbtn secondary" data-sxtd-new="${esc(p.code)}">${icon('add')} Thêm mới ECR</button>` : ''}</div>
+    return `<section class="vcard pad24" data-sx-td><div class="vcard-h"><h3>Thay đổi kỹ thuật</h3><span class="cap">Đồng bộ từ phân hệ KHCN</span></div>
       ${k.table([['Mã ECR', 130], ['Tên yêu cầu thay đổi', 320], ['Cấp phê duyệt', 90, 'c'], ['Mã ECO', 130], ['Mã ECN', 130], ['Trạng thái', 170, 'c']], l,
     (x) => `<td><a class="link" data-go="${href(x)}">${esc(x.code)}</a></td><td>${k.clamp(x.title)}</td><td class="c">${x.level ? esc(x.level) : k.dash}</td><td>${x.eco ? esc(x.eco) : k.dash}</td><td>${x.ecn ? esc(x.ecn) : k.dash}</td><td class="c">${badge(...x.st)}</td>`)}</section>
       <section class="vcard pad24" data-sx-log><div class="vcard-h"><h3>Nhật ký quản lý dự án</h3><span class="cap">Theo SXL.10 — mã ECO / ECN, ngày ban hành, phiên bản tài liệu</span></div>
@@ -163,7 +164,7 @@
   }
   /* Nút mở ECR trên phiếu bất thường Loại 2 chưa đóng, chưa có ECR. */
   const ecrOf = (issue) => all().find((x) => x.issue === issue) || null;
-  const issueBtn = (it) => (it.type === 'L2' && !it.closed && !ecrOf(it.code) && canCreate() ? `<button type="button" class="vbtn secondary" data-sxtd-new="${esc(it.project)}" data-sxtd-issue="${esc(it.code)}">Mở yêu cầu thay đổi kỹ thuật</button>` : '');
+  const issueBtn = () => ''; /* Bỏ nút mở ECR từ phiếu bất thường: yêu cầu thay đổi kỹ thuật đồng bộ từ phân hệ KHCN */
 
   document.addEventListener('click', (e) => { const b = e.target.closest && e.target.closest('[data-sxtd-new]'); if (b) create(b.dataset.sxtdNew || null, b.dataset.sxtdIssue || null); });
   function route(parts) { return parts[1] ? detail(decodeURIComponent(parts[1])) : list(); }

@@ -3,6 +3,10 @@
 > Mỗi PR một mục, mới nhất trên cùng: `## YYYY-MM-DD — <việc> (#PR)` + 2–5 gạch đầu dòng (màn, thay đổi, nguồn, điểm treo mới).
 > Lịch sử trước T77: [lich-su-chung.md](lich-su-chung.md).
 
+## 2026-11-19 · Thay đổi kỹ thuật: bỏ Thêm mới (đồng bộ từ KHCN); bất thường: khoảng cách khối
+- Thay đổi kỹ thuật (`js/sx-thay-doi.js`): bỏ Thêm mới ở danh sách, bỏ Thêm mới ECR ở tab dự án và nút Mở yêu cầu thay đổi kỹ thuật ở phiếu bất thường Loại 2; dữ liệu đồng bộ từ phân hệ KHCN.
+- Bất thường › Phân tích và xử lý: các khối cách nhau 20px như màn khác.
+
 ## 2026-11-19 · Bất thường: phiếu Lưu nháp (Xóa, Sửa), Chỉnh sửa tab Phân tích và xử lý
 - Thêm trạng thái Lưu nháp: nút Lưu nháp ở form Thêm mới giờ lưu phiếu nháp; chi tiết phiếu nháp có Xóa, Sửa (Sửa mở lại form, Xác nhận thì gửi phiếu vào luồng). Dữ liệu mẫu BT-2026-005.
 - Tab Phân tích và xử lý: nút Chỉnh sửa chỉ hiện khi phiếu Đang xử lý (không hiện khi Đã đóng hoặc trạng thái khác); 4 khối thẻ như các màn khác, bỏ chữ Khối 1–4.
