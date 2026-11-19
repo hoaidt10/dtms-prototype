@@ -11,7 +11,7 @@
        Dùng cả khi Thêm mới và khi người lập sửa phiếu bị trả lại (bước 1 mở lại). */
     lap: { id: 'sx-bt-t01-phieu-bao-cao', write: ['btProject', 'btTitle', 'btSpTen', 'btSpMa', 'btKhach', 'btDonVi', 'btSerial', 'btCoMau', 'btLoai', 'btMucDo', 'btDesc',
       'btFound', 'btFoundTime', 'btPlace', 'btCongDoan', 'btThaoTac', 'btCa', 'btYeuCau', 'btQty', 'btQtyDvt', 'btDoiSach', 'btNhomNN', 'btGuess', 'btKiemTra', 'btThamGia',
-      'btFileMedia', 'btFileBm', 'btFileIqc', 'btFileQc', 'btFileKd', 'btFile'],
+      'btFileMedia', 'btFiles'],
       note: (v) => (window.SxBt && v.btLoai ? window.SxBt.classText(v.btLoai, v.btMucDo) : ''),
       /* Nhánh hoaidt10: bổ sung thông tin sản phẩm (Tên / Mã SP, Khách hàng, Đơn vị SX, Serial, Cỡ mẫu → tự tính % lỗi), Thời gian xảy ra lỗi (Ngày + Giờ), Nơi phát hiện / Công đoạn / Ca SX /
          Đơn vị tính lấy từ danh mục, Đối sách tức thời (dynamiclist), Phân tích sơ bộ (checklist 7 nhóm nguyên nhân, nhân sự kiểm tra / tham gia), tài liệu tách Ảnh / video lỗi và Tài liệu liên quan. */
@@ -29,8 +29,7 @@
           sel('btLoai', 'Loại bất thường', req(Object.assign(L(8), { values: opts(ctx.types || []), description: 'Loại quyết định đơn vị xử lý (Loại 1 QLSX, Loại 2 R&D, Loại 3 Nhà máy)' }))),
           sel('btMucDo', 'Mức độ bất thường', req(Object.assign(L(8), { values: opts(ctx.sevs || []), description: 'Mức độ quyết định thời hạn xử lý (SLA)' }))),
           ta('btDesc', 'Mô tả hiện tượng', req({ rows: 3 })),
-          dt('btFound', 'Thời gian xảy ra lỗi — ngày', req(L(8))),
-          tf('btFoundTime', 'Thời gian xảy ra lỗi — giờ (hh:mm)', Object.assign({ validate: { required: true, pattern: '^([01]\\d|2[0-3]):[0-5]\\d$' }, placeholder: 'hh:mm' }, L(8))),
+          dt('btFound', 'Thời gian xảy ra lỗi', req(Object.assign({ withTime: true }, L(8)))),
           sel('btPlace', 'Nơi phát hiện', req(Object.assign(L(8), { searchable: true, values: opts(ctx.places || []) }))),
           sel('btCongDoan', 'Công đoạn', req(Object.assign(L(8), { searchable: true, values: opts(ctx.stages || []) }))),
           tf('btThaoTac', 'Số hiệu thao tác', L(8)),
@@ -50,12 +49,8 @@
           tags('btThamGia', 'Nhân sự tham gia (Đối tác SX)', Object.assign(L(8), { searchable: true, values: opts(ctx.staffPartner || []) }))]),
         grp('Ảnh / video lỗi', [
           file('btFileMedia', 'Ảnh, video hiện trạng lỗi', Object.assign({ multiple: true, description: 'Chọn một hoặc nhiều tệp ảnh, video' }, L(16)))]),
-        grp('Các tài liệu liên quan (theo BM.QLBT.01)', [
-          file('btFileBm', 'Phiếu báo cáo bất thường (BM.QLBT.01)', req(Object.assign(L(8), { description: 'Mẫu ở Hồ sơ, tài liệu › Biểu mẫu tài liệu' }))),
-          file('btFileIqc', 'Hồ sơ IQC vật tư, linh kiện, bán thành phẩm (CO, CQ, CoC, kết quả thử nghiệm bên thứ 3 nếu có)', L(8)),
-          file('btFileQc', 'Hồ sơ kiểm soát chất lượng trong quá trình sản xuất', L(8)),
-          file('btFileKd', 'Hồ sơ kiểm định / hiệu chuẩn phương tiện đo', L(8)),
-          file('btFile', 'Tài liệu liên quan khác', L(8))])] }) },
+        grp('Các tài liệu liên quan', [
+          file('btFiles', 'Tệp đính kèm', { multiple: true, accumulate: true, description: 'Tải lên nhiều tệp; bấm biểu tượng xoá để bỏ tệp chọn nhầm' })])] }) },
     /* T74 #101: bỏ Loại / Mức độ (đã chọn ở bước 1), thêm đính kèm; Trả lại người lập cần lý do. Phiếu hệ thống tự lập (OQC không đạt) chưa có loại → hiện lại 2 ô chọn. */
     pl: { id: 'sx-bt-t02-tiep-nhan', write: ['blLoai', 'blMucDo', 'blNguyenNhan', 'blFile', 'blLyDoTra'],
       note: (v) => v.blNguyenNhan || v.blLyDoTra || '',

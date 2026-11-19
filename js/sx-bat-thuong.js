@@ -79,14 +79,15 @@
   /* ---------- Bộ xử lý hành động của SX-BT ---------- */
   /* Giá trị form lap → bản ghi phiếu (T74 #100). */
   const fromForm = (v) => ({ project: v.btProject, title: String(v.btTitle || '').trim(), type: v.btLoai || null, sev: v.btMucDo ? Number(v.btMucDo) : null, desc: String(v.btDesc || '').trim(),
-    found: fromDmy(v.btFound), foundTime: String(v.btFoundTime || '').trim(), place: v.btPlace || '', qty: v.btQty == null || v.btQty === '' ? null : Number(v.btQty), unit: v.btQtyDvt || '', guess: String(v.btGuess || '').trim(),
+    found: fromDmy(String(v.btFound || '').split(' ')[0]), foundTime: String(v.btFound || '').split(' ')[1] || '', place: v.btPlace || '', qty: v.btQty == null || v.btQty === '' ? null : Number(v.btQty), unit: v.btQtyDvt || '', guess: String(v.btGuess || '').trim(),
     spMa: v.btSpMa || '', khach: v.btKhach || '', donVi: v.btDonVi || '', serial: v.btSerial || '', sample: v.btCoMau == null || v.btCoMau === '' ? null : Number(v.btCoMau),
     stage: v.btCongDoan || '', op: String(v.btThaoTac || '').trim(), shift: v.btCa || '', req: String(v.btYeuCau || '').trim(), causes: v.btNhomNN || [],
     actions: (v.btDoiSach || []).filter((r) => String(r.hanhDong || '').trim()).map((r) => ({ hd: String(r.hanhDong).trim(), who: r.nguoi || '', han: fromDmy(r.han) || '' })),
     inspect: v.btKiemTra || [], partner: v.btThamGia || [], media: v.btFileMedia || '',
-    files: { bm: v.btFileBm || '', iqc: v.btFileIqc || '', qc: v.btFileQc || '', kd: v.btFileKd || '', khac: v.btFile || '' }, file: v.btFile || '' });
+    docs: String(v.btFiles || '').split(', ').filter(Boolean) });
   const FILE_ITEMS = [['bm', 'Phiếu báo cáo bất thường (BM.QLBT.01)'], ['iqc', 'Hồ sơ IQC vật tư, linh kiện, bán thành phẩm'], ['qc', 'Hồ sơ kiểm soát chất lượng trong sản xuất'],
     ['kd', 'Hồ sơ kiểm định / hiệu chuẩn phương tiện đo'], ['khac', 'Tài liệu liên quan khác']];
+  const docsOf = (x) => (x.docs || []).concat(Object.values(Object.assign({}, x.file ? { khac: x.file } : {}, x.files || {})).filter(Boolean));
   const filesOf = (x) => Object.assign({}, x.file ? { khac: x.file } : {}, x.files || {});
   const patch = (code, data) => { const own = U.created.find((x) => x.code === code); if (own) Object.assign(own, data); else U.edit[code] = Object.assign({}, U.edit[code], data); persist(); };
   Object.assign(F().ACT, {
@@ -171,9 +172,9 @@
     const projects = P().visible().filter((p) => p.status !== 'PLANNING' && p.status !== 'DONE').map((p) => [p.code, `${p.code} — ${p.name}`]);
     const L = lists(), pr = project ? P().byCode(project) : null;
     const r = await window.EFormRun.open({ title: 'Thêm mới phiếu bất thường', schema: Object.assign({ id: f.id }, f.schema(Object.assign({ types: catTypes(), sevs: Object.entries(D.sxSev) }, L))), vars: { serialOpts: L.serialOpts },
-      values: Object.assign({ btProject: project || null, btFound: dmy(D.sxToday), btQty: null, btCoMau: null }, pr ? { btSpTen: pr.product, btSpMa: pr.product, btKhach: pr.customer || '', btDonVi: pr.factory || '' } : {}),
+      values: Object.assign({ btProject: project || null, btFound: `${dmy(D.sxToday)} ${new Date().toTimeString().slice(0, 5)}`, btQty: null, btCoMau: null }, pr ? { btSpTen: pr.product, btSpMa: pr.product, btKhach: pr.customer || '', btDonVi: pr.factory || '' } : {}),
       check: (v) => {
-        const d = fromDmy(v.btFound);
+        const d = fromDmy(String(v.btFound || '').split(' ')[0]);
         if (!d) return 'Ngày xảy ra lỗi phải đúng định dạng DD/MM/YYYY.';
         if (d > D.sxToday) return 'Thời gian xảy ra lỗi không được sau thời điểm hiện tại.';
         if (v.btCoMau != null && v.btCoMau !== '' && v.btQty != null && v.btQty !== '' && Number(v.btQty) > Number(v.btCoMau)) return 'Số lượng ảnh hưởng không được lớn hơn cỡ mẫu kiểm tra.';
@@ -240,8 +241,8 @@
         [['Trung tâm Sản xuất — VHT', (x.inspect || []).map(pName).join(', ')], ['Đối tác sản xuất / Nhà máy', (x.partner || []).map(pName).join(', ')]],
         (r) => `<td>${esc(r[0])}</td><td>${r[1] ? k.clamp(r[1]) : k.dash}</td><td class="num">${r[1] ? esc(dmy(x.found)) : '-'}</td><td class="c">${r[1] ? badge('Đã xác nhận', 'success') : badge('Chưa xác nhận', 'default')}</td><td>${r[1] ? 'Xác nhận hiện tượng, số lượng ảnh hưởng đúng như mô tả tại hiện trường' : k.dash}</td>`))
       + k.card('Ảnh / video lỗi', k.table([['Tệp', 640]], x.media ? [[x.media]] : [], (r) => `<td><a class="link">${esc(r[0])}</a></td>`))
-      + k.card('Các tài liệu liên quan (BM.QLBT.01)', k.table([['Mục hồ sơ', 360], ['Tệp', 320]], FILE_ITEMS.map(([key, lb]) => [lb, filesOf(x)[key]]).concat(v.blFile ? [['Tài liệu tiếp nhận (bước 2)', v.blFile]] : []),
-        (r) => `<td>${esc(r[0])}</td><td>${r[1] ? `<a class="link">${esc(r[1])}</a>` : k.dash}</td>`));
+      + k.card('Các tài liệu liên quan', k.table([['Tên tệp', 640]], docsOf(x).map((n) => [n]).concat(v.blFile ? [[v.blFile]] : []),
+        (r) => `<td><a class="link">${esc(r[0])}</a></td>`));
     /* ---- Tab Phân tích và xử lý: 4 khối theo BM.QLBT.02 (mockup: dữ liệu suy từ hồ sơ + biến của luồng SX-BT) ---- */
     const allC = F().cases(x.code, 'SX-BT'), evs = allC.flatMap((cc) => cc.hist.map((h) => Object.assign({ cc }, h)));
     const cur = c && c.status !== 'done' && c.tokens[0] ? Number(c.tokens[0].step) : c ? 8 : 0, passed = (n) => cur > n;
@@ -309,8 +310,8 @@
       types: window.Catalog.rows('sx-bat-thuong').filter((r) => r.active !== false).map((r) => [r.code, r.name]), sevs: Object.entries(D.sxSev).map(([a, b]) => [a, b]),
       projects: P().visible().filter((p) => p.status !== 'PLANNING' && p.status !== 'DONE').map((p) => [p.code, `${p.code} — ${p.name}`]),
       /* T74 Q10: phiếu bị trả lại → bước 1 mở form lap điền sẵn thông tin phiếu hiện tại. */
-      btProject: x.project, btTitle: x.title, btLoai: x.type || null, btMucDo: x.sev ? String(x.sev) : null, btDesc: x.desc || '', btFound: dmy(x.found), btPlace: x.place || '',
-      btQty: x.qty, btGuess: x.guess || '', btFileBm: filesOf(x).bm || '', btFileIqc: filesOf(x).iqc || '', btFileQc: filesOf(x).qc || '', btFileKd: filesOf(x).kd || '', btFile: filesOf(x).khac || '',
+      btProject: x.project, btTitle: x.title, btLoai: x.type || null, btMucDo: x.sev ? String(x.sev) : null, btDesc: x.desc || '', btFound: dmy(x.found) + ' ' + (x.foundTime || '00:00'), btPlace: x.place || '',
+      btQty: x.qty, btGuess: x.guess || '', btFiles: docsOf(x).join(', '),
       btSpTen: spOf(x, P().byCode(x.project)), btSpMa: spOf(x, P().byCode(x.project)), btKhach: x.khachN || '', btDonVi: x.donViC || '', btSerial: x.serial || '', btCoMau: x.sample == null ? null : x.sample,
       btFoundTime: x.foundTime || '', btCongDoan: x.stage || null, btThaoTac: x.op || '', btCa: x.shift || null, btYeuCau: x.req || '', btQtyDvt: x.unit || null,
       btDoiSach: (x.actions || []).map((a) => ({ hanhDong: a.hd, nguoi: a.who, han: dmy(a.han) })), btNhomNN: x.causes || [], btKiemTra: x.inspect || [], btThamGia: x.partner || [], btFileMedia: x.media || '' });
@@ -332,5 +333,5 @@
   function enter(parts) { if (parts[0] === 'bat-thuong' && parts[1]) K().setTab(tabKey(decodeURIComponent(parts[1])), ['info', 'xl', 'tt'].includes(parts[2]) ? parts[2] : 'info'); }
   function reset() { U = blank(); persist(); }
 
-  window.SxBt = { route, enter, reset, all, byCode, detail, ctx, createAuto, tabKey, viewTitle: 'Xem chi tiết phiếu bất thường', classText, stOf, isOver, ST_LIST, leftOf, addWd, wdBetween, projectTab };
+  window.SxBt = { route, enter, reset, all, byCode, detail, ctx, createAuto, create, tabKey, viewTitle: 'Xem chi tiết phiếu bất thường', classText, stOf, isOver, ST_LIST, leftOf, addWd, wdBetween, projectTab };
 })();

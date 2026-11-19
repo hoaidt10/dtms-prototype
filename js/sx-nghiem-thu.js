@@ -18,7 +18,7 @@
 
   /* ---------- Lưu ---------- */
   const KEY = 'sx-proto-nt';
-  const blank = () => ({ created: [], edit: {}, ipqc: [], trial: {} });
+  const blank = () => ({ created: [], edit: {}, ipqc: [], trial: {}, oqc: [], oqcDel: [], oqcDone: {}, ntm: [] });
   let U = blank();
   try { U = Object.assign(U, JSON.parse(localStorage.getItem(KEY) || '{}')); } catch (e) { /* bỏ qua */ }
   const persist = () => { try { localStorage.setItem(KEY, JSON.stringify(U)); } catch (e) { /* bỏ qua */ } };
@@ -274,14 +274,87 @@
     P().patch(code, { status: 'DONE', closed: D.sxToday }, 'Đóng dự án', 'Lưu hồ sơ sản xuất và thông tin truy xuất lô hàng');
     toast('<b>Thành công</b><br>Dự án đã hoàn thành!'); rerender();
   }
+  /* ---------- (b) Bước 12 — Đánh giá chất lượng xuất xưởng (OQC): người dùng tự thêm nội dung đánh giá; đạt đủ → xác nhận hoàn thành, không đạt → chuyển sang tạo Phiếu bất thường ---------- */
+  const oqcSeed = (p) => (['IN_PRODUCTION', 'ACCEPTANCE', 'DONE'].includes(p.status) ? [
+    ['Kiểm tra ngoại quan, nhãn mác, bao gói', 'Không xước, nứt, đúng nhãn theo bản vẽ', 'Đạt 100% mẫu kiểm tra'],
+    ['Đo kiểm chỉ tiêu kỹ thuật theo lưu trình đo kiểm', 'Đạt chỉ tiêu nội bộ / chiến - kỹ thuật được phê duyệt', 'Các chỉ tiêu trong ngưỡng cho phép'],
+    ['Đối chiếu số sê-ri và hồ sơ truy xuất', 'Số sê-ri khớp hồ sơ lô, đủ chứng chỉ chất lượng thành phần', 'Khớp 100%']]
+    .map((r, i) => ({ code: `OQC-${p.code.slice(-3)}-0${i + 1}`, project: p.code, item: '', content: r[0], criteria: r[1], actual: r[2], kq: 'DAT', who: 'sxqa', at: p.baseline || D.sxToday, seed: true })) : []);
+  const oqcAll = (p) => (U.oqc || []).filter((x) => x.project === p.code).concat(oqcSeed(p).filter((x) => !(U.oqcDel || []).includes(x.code)));
+  const oqcDone = (p) => (U.oqcDone || {})[p.code] || (['DONE'].includes(p.status) ? { at: p.closed || D.sxToday, who: 'sxqa' } : null);
+  function oqcCard(p) {
+    const k = K(), l = oqcAll(p), bad = l.filter((x) => x.kq === 'NOK'), done = oqcDone(p), items = itemsOf(p);
+    const itName = (key) => (key ? (items.find((i) => i.key === key) || {}).name || key : 'Toàn dự án');
+    const st = done ? badge('Đã hoàn thành OQC', 'success') : bad.length ? badge('Có nội dung không đạt', 'error') : l.length ? badge('Đang đánh giá', 'info') : badge('Chưa đánh giá', 'default');
+    const can = canQa(p) && !done;
+    const gate = done ? `<p class="cap" style="margin:8px 0">Hoàn thành ngày ${esc(dmy(done.at))} — ${esc(pName(done.who))}.</p>`
+      : bad.length ? `<div class="hd-alerts"><div class="hd-alert error">${icon('info')}<span>${bad.length} nội dung đánh giá không đạt, chưa thể xác nhận hoàn thành OQC. ${can ? `<a class="link" data-sxnt-oqc-bt="${esc(p.code)}">Tạo phiếu bất thường</a>` : ''}</span></div></div>`
+        : l.length ? `<p class="cap" style="margin:8px 0">Đáp ứng đầy đủ các điều kiện đánh giá (${l.length} / ${l.length} nội dung đạt) — có thể xác nhận hoàn thành OQC.</p>` : '<p class="cap" style="margin:8px 0">Thêm các nội dung đánh giá xuất xưởng; đạt đủ thì xác nhận hoàn thành, không đạt thì lập phiếu bất thường.</p>';
+    return `<section class="vcard pad24" data-sxnt-oqc><div class="vcard-h"><h3>Đánh giá chất lượng xuất xưởng (OQC)</h3><div class="row">${st}
+        ${can ? `<button type="button" class="vbtn secondary" data-sxnt-oqc-add="${esc(p.code)}">${icon('add')} Thêm nội dung đánh giá</button>
+        <button type="button" class="vbtn primary" data-sxnt-oqc-done="${esc(p.code)}" ${l.length && !bad.length ? '' : 'disabled'}>Xác nhận hoàn thành OQC</button>` : ''}</div></div>${gate}
+      ${k.table([['Mã', 120], ['Hạng mục / lô', 200], ['Nội dung đánh giá', 300], ['Tiêu chí / yêu cầu', 280], ['Kết quả ghi nhận', 220], ['Kết luận', 120, 'c'], ['Người đánh giá', 170], ['Ngày', 110], ['Tệp', 200]].concat(can ? [['', 70, 'c']] : []), l,
+    (x) => `<td>${esc(x.code)}</td><td>${k.clamp(itName(x.item))}</td><td>${k.clamp(x.content)}</td><td>${x.criteria ? k.clamp(x.criteria) : k.dash}</td><td>${x.actual ? k.clamp(x.actual) : k.dash}</td>
+      <td class="c">${x.kq === 'DAT' ? badge('Đạt', 'success') : badge('Không đạt', 'error')}</td><td>${k.clamp(pName(x.who))}</td><td class="num">${esc(dmy(x.at))}</td><td>${x.file ? `<a class="link">${esc(x.file)}</a>` : k.dash}</td>
+      ${can ? `<td class="c"><button type="button" class="vbtn icon ghost" aria-label="Xoá" title="Xoá" data-sxnt-oqc-del="${esc(x.code)}">${icon('del')}</button></td>` : ''}`)}</section>`;
+  }
+  async function oqcDlg(code) {
+    const p = P().byCode(code), { txt, tf, sel, rad, file, req, opts } = window.EForms.b, L = (c) => ({ layout: { columns: c } });
+    const r = await window.EFormRun.open({ title: 'Thêm nội dung đánh giá OQC', schema: { id: 'sx-oqc', components: [
+      txt(`Dự án **${p.code}** — ${p.name}. Ghi nhận từng nội dung đánh giá chất lượng xuất xưởng; kết luận Không đạt thì chuyển sang lập phiếu bất thường.`),
+      sel('item', 'Hạng mục / lô', Object.assign(L(8), { values: opts([['', 'Toàn dự án']].concat(itemsOf(p).map((i) => [i.key, i.name]))) })),
+      tf('content', 'Nội dung đánh giá', req(L(16))), tf('criteria', 'Tiêu chí / yêu cầu', L(16)), tf('actual', 'Kết quả ghi nhận', L(16)),
+      rad('kq', 'Kết luận', req({ values: opts([['DAT', 'Đạt'], ['NOK', 'Không đạt']]) })), file('file', 'Biên bản, hồ sơ đánh giá', L(16))] }, values: { kq: 'DAT', item: '' } });
+    if (!r || !r.submit) return;
+    const v = r.values, x = { code: nextCode((U.oqc || []).concat(oqcAll(p)), 'code', `OQC-${p.code.slice(-3)}-`, 2), project: code, item: v.item || '', content: String(v.content || '').trim(), criteria: String(v.criteria || '').trim(), actual: String(v.actual || '').trim(), kq: v.kq, who: pid(), at: D.sxToday, file: v.file || '' };
+    U.oqc = [x].concat(U.oqc || []); persist();
+    if (v.file) P().addDoc(code, [v.file, 'OQC', x.code, pid(), D.sxToday]);
+    P().log(code, 'Thêm nội dung đánh giá OQC', `${x.code}: ${x.content} — ${x.kq === 'DAT' ? 'Đạt' : 'Không đạt'}`);
+    toast(x.kq === 'NOK' ? '<b>Đã ghi nhận</b><br>Nội dung không đạt — dùng liên kết Tạo phiếu bất thường để xử lý.' : '<b>Thành công</b><br>Thêm mới thành công!'); rerender();
+  }
+  /* ---------- Nghiệm thu: thông tin do người dùng chủ động nhập (theo dõi tiến độ, tình trạng nghiệm thu) ---------- */
+  const NT_LEVEL = { TCT: 'Tổng công ty', BQP: 'Bộ Quốc phòng', KH: 'Khách hàng / đơn vị sử dụng', NB: 'Nội bộ' };
+  const NT_ST = { CHUA: ['Chưa nghiệm thu', 'default'], DANG: ['Đang nghiệm thu', 'info'], DAT: ['Đạt', 'success'], NOK: ['Không đạt', 'error'] };
+  const ntManual = (p) => (U.ntm || []).filter((x) => x.project === p.code);
+  const canNtm = (p) => p.status !== 'PLANNING' && (isAdmin() || p.pm === pid() || D.roleOf(pid()) === 'R-SX-QA');
+  function ntManualCard(p) {
+    const k = K(), l = ntManual(p), can = canNtm(p), avg = l.length ? Math.round(l.reduce((a, x) => a + (x.pct || 0), 0) / l.length) : null;
+    return `<h4 class="ginfo-sub" style="margin-top:20px">Thông tin nghiệm thu nhập tay${avg == null ? '' : ` <span class="faint">(${l.length} nội dung · tiến độ trung bình ${avg}%)</span>`}</h4>
+      <div class="row" style="justify-content:flex-end;margin-bottom:8px">${can ? `<button type="button" class="vbtn secondary" data-sxnt-ntm-add="${esc(p.code)}">${icon('add')} Thêm thông tin nghiệm thu</button>` : ''}</div>
+      ${k.table([['Mã', 120], ['Nội dung nghiệm thu', 300], ['Cấp nghiệm thu', 190], ['Ngày dự kiến / thực hiện', 150], ['Tiến độ', 100, 'r'], ['Tình trạng', 150, 'c'], ['Biên bản', 200], ['Ghi chú', 240]].concat(can ? [['Thao tác', 100, 'c']] : []), l,
+    (x) => `<td>${esc(x.code)}</td><td>${k.clamp(x.content)}</td><td>${esc(NT_LEVEL[x.level] || '')}</td><td class="num">${x.date ? esc(dmy(x.date)) : k.dash}</td><td class="r num">${x.pct || 0}%</td><td class="c">${badge(...(NT_ST[x.st] || NT_ST.CHUA))}</td>
+      <td>${x.file ? `<a class="link">${esc(x.file)}</a>` : k.dash}</td><td>${x.note ? k.clamp(x.note) : k.dash}</td>
+      ${can ? `<td class="c"><div class="acts"><button type="button" class="vbtn icon ghost" aria-label="Sửa" title="Sửa" data-sxnt-ntm-edit="${esc(x.code)}">${icon('edit')}</button><span class="sep"></span><button type="button" class="vbtn icon ghost" aria-label="Xoá" title="Xoá" data-sxnt-ntm-del="${esc(x.code)}">${icon('del')}</button></div></td>` : ''}`)}`;
+  }
+  async function ntmDlg(code, edit) {
+    const p = P().byCode(edit ? (U.ntm.find((y) => y.code === edit) || {}).project : code), cur = edit ? U.ntm.find((y) => y.code === edit) : null, { txt, tf, dt, num: n, sel, ta, file, req, opts } = window.EForms.b, L = (c) => ({ layout: { columns: c } });
+    const iso = (s) => { const m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(String(s || '')); return m ? `${m[3]}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}` : null; };
+    const r = await window.EFormRun.open({ title: edit ? 'Sửa thông tin nghiệm thu' : 'Thêm thông tin nghiệm thu', schema: { id: 'sx-ntm', components: [
+      txt(`Dự án **${p.code}** — ${p.name}. Nhập chủ động nội dung nghiệm thu để theo dõi tiến độ và tình trạng.`),
+      tf('content', 'Nội dung nghiệm thu', req(L(16))), sel('level', 'Cấp nghiệm thu', req(Object.assign(L(8), { searchable: false, values: opts(Object.entries(NT_LEVEL)) }))),
+      sel('st', 'Tình trạng', req(Object.assign(L(8), { searchable: false, values: opts(Object.entries(NT_ST).map(([a, b]) => [a, b[0]])) }))),
+      dt('date', 'Ngày dự kiến / thực hiện', L(8)), n('pct', 'Tiến độ (%)', Object.assign({ validate: { min: 0, max: 100 } }, L(8))),
+      file('file', 'Biên bản nghiệm thu', L(16)), ta('note', 'Ghi chú', { rows: 2 })] },
+    values: cur ? { content: cur.content, level: cur.level, st: cur.st, date: cur.date ? dmy(cur.date) : '', pct: cur.pct || 0, file: cur.file || '', note: cur.note || '' } : { level: 'TCT', st: 'CHUA', pct: 0 },
+    check: (v) => (v.date && !iso(v.date) ? 'Ngày phải đúng định dạng DD/MM/YYYY.' : null) });
+    if (!r || !r.submit) return;
+    const v = r.values, d = { content: String(v.content || '').trim(), level: v.level, st: v.st, date: iso(v.date), pct: Number(v.pct || 0), file: v.file || '', note: String(v.note || '').trim() };
+    if (cur) Object.assign(cur, d);
+    else U.ntm = [Object.assign({ code: nextCode(U.ntm || [], 'code', 'NTT-' + p.code.slice(-3) + '-', 2), project: p.code, who: pid(), at: D.sxToday }, d)].concat(U.ntm || []);
+    persist();
+    if (v.file) P().addDoc(p.code, [v.file, 'NT', 'v1.0', pid(), D.sxToday]);
+    P().log(p.code, edit ? 'Sửa thông tin nghiệm thu' : 'Thêm thông tin nghiệm thu', d.content);
+    toast('<b>Thành công</b><br>' + (edit ? 'Cập nhật thành công!' : 'Thêm mới thành công!')); rerender();
+  }
   function projectTab(p) {
     const k = K(), l = all().filter((x) => x.project === p.code).map((x) => Object.assign(x, { st: stOf(x) }));
     const iqc = D.sxIqc[p.code] || [];
-    return `<div data-sx-nt>${ipqcCard(p)}${trialCard(p)}
-      <section class="vcard pad24"><div class="vcard-h"><h3>Nghiệm thu theo lô</h3>${canRequest(p) ? `<button type="button" class="vbtn secondary" data-sxnt-new="${esc(p.code)}">${icon('add')} Đề nghị nghiệm thu</button>` : ''}</div>
+    return `<div data-sx-nt>${ipqcCard(p)}${trialCard(p)}${oqcCard(p)}
+      <section class="vcard pad24"><div class="vcard-h"><h3>Nghiệm thu</h3>${canRequest(p) ? `<button type="button" class="vbtn secondary" data-sxnt-new="${esc(p.code)}">${icon('add')} Đề nghị nghiệm thu</button>` : ''}</div>
         ${k.table([['Mã đề nghị', 120], ['Hạng mục / lô', 220], ['Số lượng', 100, 'r'], ['Dải sê-ri', 220], ['Chứng chỉ', 130], ['Phiếu nhập kho', 140], ['Trạng thái', 150, 'c']], l,
     (x) => `<td><a class="link" data-go="${href(x)}">${esc(x.code)}</a></td><td>${k.clamp(x.itemText)}</td><td class="r num">${num(x.qty)}</td><td class="num">${esc(x.serials)}</td>
-      <td>${x.cert ? esc(x.cert) : k.dash}</td><td>${x.pnk ? esc(x.pnk) : k.dash}</td><td class="c">${badge(...x.st)}</td>`)}</section>
+      <td>${x.cert ? esc(x.cert) : k.dash}</td><td>${x.pnk ? esc(x.pnk) : k.dash}</td><td class="c">${badge(...x.st)}</td>`)}
+        ${ntManualCard(p)}</section>
       <section class="vcard pad24"><div class="vcard-h"><h3>Kiểm tra vật tư đầu vào (IQC)</h3><span class="cap">Chỉ xem — đồng bộ từ VMMS</span></div>
         ${iqc.length ? k.table([['Lô IQC', 140], ['Mã vật tư', 160], ['Số lượng', 120, 'r'], ['Kết quả', 260], ['Ngày', 120]], iqc,
     (r) => `<td>${esc(r[0])}</td><td>${esc(r[1])}</td><td class="r num">${num(r[2])}</td><td>${k.clamp(r[3])}</td><td class="num">${esc(dmy(r[4]))}</td>`) : '<p class="faint">Chưa có kết quả IQC đồng bộ từ VMMS.</p>'}</section></div>`;
@@ -290,6 +363,15 @@
   document.addEventListener('click', (e) => {
     const t = e.target;
     if (!t.closest) return;
+    const oa = t.closest('[data-sxnt-oqc-add]'); if (oa) { oqcDlg(oa.dataset.sxntOqcAdd); return; }
+    const od = t.closest('[data-sxnt-oqc-del]');
+    if (od) { const c = od.dataset.sxntOqcDel; U.oqc = (U.oqc || []).filter((y) => y.code !== c); U.oqcDel = (U.oqcDel || []).concat(c); persist(); rerender(); return; }
+    const ok = t.closest('[data-sxnt-oqc-done]');
+    if (ok && !ok.disabled) { const code = ok.dataset.sxntOqcDone; U.oqcDone = Object.assign({}, U.oqcDone, { [code]: { at: D.sxToday, who: pid() } }); persist(); P().log(code, 'Hoàn thành đánh giá chất lượng xuất xưởng (OQC)', 'Đáp ứng đầy đủ điều kiện đánh giá'); toast('<b>Thành công</b><br>Đã xác nhận hoàn thành OQC.'); rerender(); return; }
+    const ob = t.closest('[data-sxnt-oqc-bt]'); if (ob) { e.preventDefault(); window.SxBt.create(ob.dataset.sxntOqcBt); return; }
+    const na = t.closest('[data-sxnt-ntm-add]'); if (na) { ntmDlg(na.dataset.sxntNtmAdd, null); return; }
+    const ne = t.closest('[data-sxnt-ntm-edit]'); if (ne) { ntmDlg(null, ne.dataset.sxntNtmEdit); return; }
+    const nd = t.closest('[data-sxnt-ntm-del]'); if (nd) { U.ntm = (U.ntm || []).filter((y) => y.code !== nd.dataset.sxntNtmDel); persist(); rerender(); return; }
     const q = t.closest('[data-sxnt-ipqc-new]'); if (q) { ipqcDlg(q.dataset.sxntIpqcNew); return; }
     const tr = t.closest('[data-sxnt-trial-up]'); if (tr) { trialDlg(tr.dataset.sxntTrialUp); return; }
     const cl = t.closest('[data-sxnt-close]'); if (cl) { closeDlg(cl.dataset.sxntClose); return; }

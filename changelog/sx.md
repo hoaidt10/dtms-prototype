@@ -3,6 +3,11 @@
 > Mỗi PR một mục, mới nhất trên cùng: `## YYYY-MM-DD — <việc> (#PR)` + 2–5 gạch đầu dòng (màn, thay đổi, nguồn, điểm treo mới).
 > Lịch sử trước T77: [lich-su-chung.md](lich-su-chung.md).
 
+## 2026-11-19 · Bất thường: form Thêm mới; Dự án: Kế hoạch 11–15, OQC, Nghiệm thu
+- Thêm mới phiếu bất thường: bỏ bắt buộc BM.QLBT.01; Các tài liệu liên quan = tải nhiều tệp, có nút xoá tệp chọn nhầm (eform-run: filepicker `accumulate`); Thời gian xảy ra lỗi = một ô ngày giờ (datetime `withTime`).
+- Dự án › Kế hoạch: nút Xem chi tiết thêm mục 11–13 → tab Chất lượng & nghiệm thu, 14 → Nghiệm thu sản phẩm, 15 → tab Tài liệu; route `#/sx/du-an/<mã>/<tab>`.
+- Tab Chất lượng & nghiệm thu: thêm khối Đánh giá chất lượng xuất xưởng (OQC) — tự thêm nội dung đánh giá, đạt đủ thì xác nhận hoàn thành, có nội dung không đạt thì liên kết Tạo phiếu bất thường, bảng lưu dữ liệu OQC; đổi Nghiệm thu theo lô thành Nghiệm thu, thêm bảng Thông tin nghiệm thu nhập tay (thêm / sửa / xoá).
+
 ## 2026-11-19 · Bất thường: chi tiết phiếu theo BM.QLBT.02
 - Tab Thông tin phiếu: thêm khối Thông tin xác nhận của hai bên tại hiện trường (đã có ảnh / video lỗi, hồ sơ đính kèm, đối sách tức thời).
 - Tab Phân tích và xử lý: 4 khối — Xác minh & phân tích nguyên nhân (6M+1), Phương án xử lý (số PAXL, cấp duyệt, 2 bảng khắc phục / ngăn ngừa, lịch sử NOK), Triển khai & bàn giao tiền xử lý, Lịch sử nghiệm thu & bài học kinh nghiệm (tag).

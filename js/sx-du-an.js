@@ -423,7 +423,7 @@
         ${k.kv('Người tạo', esc(pName(p.creator)))}${k.kv('Ngày tạo', esc(dmy(p.created)))}${k.kv('Kế hoạch gốc', p.baseline ? 'Chốt ngày ' + esc(dmy(p.baseline)) : 'Chưa chốt')}
         ${k.kv('Điều kiện sản xuất', window.SxCg.gateBadge(p))}</div>`);
     /* Cột Thao tác của tab Kế hoạch: nút Xem chi tiết đi tới màn / tab tương ứng của mục (4 → Đề xuất mua sắm, 5 → Chuyển giao từ nghiên cứu, 6–7 → tab Điều kiện sản xuất, 9 → Bán thành phẩm & tiến độ, 10 → Chất lượng & nghiệm thu). */
-    const NAV = { B4: ['go', 'sx/mua-sam'], B5: ['go', 'sx/chuyen-giao'], B6: ['tab', 'm4'], B7: ['tab', 'm4'], B9: ['tab', 'btp'], B10: ['tab', 'nt'] };
+    const NAV = { B4: ['go', 'sx/mua-sam'], B5: ['go', 'sx/chuyen-giao'], B6: ['tab', 'm4'], B7: ['tab', 'm4'], B9: ['tab', 'btp'], B10: ['tab', 'nt'], B11: ['tab', 'nt'], B12: ['tab', 'nt'], B13: ['tab', 'nt'], B14: ['go', 'sx/nghiem-thu'], B15: ['tab', 'docs'] };
     const detailBtn = (r) => {
       const n = NAV[r.key.split('.').slice(1).join('.')];
       if (!n) return '';
@@ -624,7 +624,7 @@
     const [a, b] = parts;
     if (a === 'create') return form(null);
     if (a && b === 'edit') return form(decodeURIComponent(a));
-    if (a) { if (b === 'ke-hoach') K().setTab('sx:' + decodeURIComponent(a), 'plan'); return detail(decodeURIComponent(a)); }
+    if (a) { if (b === 'ke-hoach') K().setTab('sx:' + decodeURIComponent(a), 'plan'); else if (['info', 'kh', 'ns', 'cg', 'm4', 'ms', 'btp', 'bt', 'nt', 'vmms', 'docs', 'hist'].includes(b)) K().setTab('sx:' + decodeURIComponent(a), b); return detail(decodeURIComponent(a)); }
     return list();
   }
   function enter(parts) {

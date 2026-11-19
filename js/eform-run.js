@@ -160,15 +160,25 @@
   }
 
   /* fk = khoá đầy đủ của ô: key (cấp form) hoặc path::chỉ số::key (dòng của dynamiclist). */
+  /* dd/mm/yyyy hh:mm <-> yyyy-mm-ddThh:mm (ô datetime-local) */
+  const dtlIn = (s) => { const m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s+(\d{1,2}):(\d{2}))?$/.exec(String(s || '').trim()); return m ? `${m[3]}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}T${(m[4] || '00').padStart(2, '0')}:${m[5] || '00'}` : ''; };
+  const dtlOut = (s) => { const m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/.exec(String(s || '')); return m ? `${m[3]}/${m[2]}/${m[1]} ${m[4]}:${m[5]}` : ''; };
+  const inVal = (t) => (t.dataset.num ? (t.value === '' ? null : Number(t.value)) : t.dataset.dtl ? dtlOut(t.value) : t.value);
   function control(c, fk, v, ctx, form, row) {
     const dis = form.readOnly || c.disabled ? 'disabled' : '';
     const ph = esc(c.placeholder || '');
     if (c.type === 'textfield') return `<input class="vctl" data-ef="${esc(fk)}" value="${esc(v == null ? '' : v)}" placeholder="${ph}" ${dis}>`;
+    if (c.type === 'datetime' && c.withTime) return `<input class="vctl" type="datetime-local" data-ef="${esc(fk)}" data-dtl="1" value="${esc(dtlIn(v))}" ${dis}>`;
     if (c.type === 'datetime') return `<input class="vctl" data-ef="${esc(fk)}" value="${esc(v == null ? '' : v)}" placeholder="dd/mm/yyyy" ${dis}>`;
     if (c.type === 'number') return `<input class="vctl num-in" type="number" data-ef="${esc(fk)}" data-num="1" value="${v == null ? '' : v}" ${c.validate && c.validate.min != null ? `min="${c.validate.min}"` : ''} ${dis}>`;
     if (c.type === 'textarea') return `<textarea class="vctl ta" rows="${c.rows || 3}" data-ef="${esc(fk)}" placeholder="${ph}" ${dis}>${esc(v == null ? '' : v)}</textarea>`;
     if (c.type === 'checkbox') return `<label class="check"><input type="checkbox" data-ef-chk="${esc(fk)}" ${v ? 'checked' : ''} ${dis}> ${esc(c.text || '')}</label>`;
     /* filepicker (Camunda form-js): giá trị = tên tệp đã chọn; thật: tệp tải lên MinIO, biến giữ id tệp. */
+    if (c.type === 'filepicker' && c.accumulate) {
+      const names = String(v || '').split(', ').filter(Boolean);
+      return `<div class="ef-files"><label class="vbtn sm secondary ${dis ? 'dis' : ''}">${icon('upload')} Tải file lên<input type="file" hidden data-ef-file="${esc(fk)}" data-acc="1" multiple ${dis}></label>
+        ${names.length ? `<ul class="ef-file-list" style="list-style:none;margin:8px 0 0;padding:0">${names.map((n, i) => `<li class="row" style="gap:8px;align-items:center;padding:4px 0"><a class="link-red" href="#" data-dl="${esc(n)}">${esc(n)}</a><button type="button" class="vbtn icon ghost" aria-label="Xoá tệp" title="Xoá tệp" data-ef-filedel="${esc(fk)}" data-i="${i}">${icon('del')}</button></li>`).join('')}</ul>` : '<p class="faint" style="margin:6px 0 0">Chưa có tệp nào.</p>'}</div>`;
+    }
     if (c.type === 'filepicker') return `<div class="row ef-file"><label class="vbtn sm secondary ${dis ? 'dis' : ''}">${icon('upload')} Tải file lên<input type="file" hidden data-ef-file="${esc(fk)}" ${c.multiple ? 'multiple' : ''} ${dis}></label>${v ? `<span class="rsk-file">${String(v).split(', ').map((n) => `<a class="link-red" href="#" data-dl="${esc(n)}">${esc(n)}</a>`).join(', ')}</span>` : ''}</div>`;
     const opts = optsOf(c, ctx, row);
     if (c.type === 'radio') return `<div class="vradio ${opts.length <= 4 ? 'h' : ''}">${opts.map((o) => vRadio(esc(o.label), v === o.value, `data-ef-radio="${esc(fk)}" data-v='${esc(JSON.stringify(o.value))}'`, !!dis)).join('')}</div>`;
@@ -301,14 +311,18 @@
         if (n) { n.focus(); try { if (pos != null) n.setSelectionRange(pos, pos); } catch (e) { /* number */ } }
       }
       const parse = (v) => { try { return JSON.parse(v); } catch (e) { return v; } };
-      m.el.addEventListener('input', (e) => { const k = e.target.dataset.ef; if (k) form.set(k, e.target.dataset.num ? (e.target.value === '' ? null : Number(e.target.value)) : e.target.value); });
+      m.el.addEventListener('input', (e) => { const k = e.target.dataset.ef; if (k) form.set(k, inVal(e.target)); });
       m.el.addEventListener('change', (e) => {
         const t = e.target;
         /* Ô nhập: vẽ lại sau khi sự kiện focus sang ô kế tiếp chạy xong, giữ con trỏ ở ô đang nhập (không mất chữ đang gõ). */
-        if (t.dataset.ef) { form.set(t.dataset.ef, t.dataset.num ? (t.value === '' ? null : Number(t.value)) : t.value); setTimeout(redraw, 0); return; }
+        if (t.dataset.ef) { form.set(t.dataset.ef, inVal(t)); setTimeout(redraw, 0); return; }
         if (t.dataset.efChk) { form.set(t.dataset.efChk, t.checked, true); return; }
         if (t.dataset.efDoc) { if (t.files.length) { window.Flow.setUi(t.dataset.efDoc, true); toast('<b>Thành công</b><br>Đã tải tài liệu lên hồ sơ.'); drawDocs(); } return; }
-        if (t.dataset.efFile) { form.set(t.dataset.efFile, [...t.files].map((f) => f.name).join(', '), true); return; }
+        if (t.dataset.efFile) {
+          const add = [...t.files].map((f) => f.name);
+          if (t.dataset.acc) { const cur = String(form.get(t.dataset.efFile) || '').split(', ').filter(Boolean); form.set(t.dataset.efFile, cur.concat(add.filter((n) => !cur.includes(n))).join(', '), true); t.value = ''; return; }
+          form.set(t.dataset.efFile, add.join(', '), true); return;
+        }
         if (t.dataset.efList) {
           const cur = (form.get(t.dataset.efList) || []).slice(), v = parse(t.dataset.v), i = cur.indexOf(v);
           if (t.checked && i < 0) cur.push(v); if (!t.checked && i >= 0) cur.splice(i, 1);
@@ -317,6 +331,8 @@
       });
       m.el.addEventListener('click', (e) => {
         const t = e.target;
+        const fd = t.closest('[data-ef-filedel]');
+        if (fd) { e.preventDefault(); const cur = String(form.get(fd.dataset.efFiledel) || '').split(', ').filter(Boolean); cur.splice(Number(fd.dataset.i), 1); form.set(fd.dataset.efFiledel, cur.join(', '), true); return; }
         const r = t.closest('[data-ef-radio]');
         if (r) { e.preventDefault(); form.set(r.dataset.efRadio, parse(r.dataset.v), true); return; }
         const add = t.closest('[data-ef-add]'), dup = t.closest('[data-ef-dup]'), del = t.closest('[data-ef-del]');
