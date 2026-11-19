@@ -298,7 +298,7 @@
       <h4 class="ginfo-sub">Bài học kinh nghiệm</h4>
       <div class="ginfo c3">${k.kv('Nội dung bài học', v.bhBaiHoc ? esc(v.bhBaiHoc) : null, 'span3')}${k.kv('Thẻ (Tag)', v.bhBaiHoc && tags ? tags : null, 'span3')}</div>`);
     const canXl = st[0] === 'Đang xử lý' && !x.closed && !x.draft;
-    const tXl = () => `<div data-sxbt-xl>${canXl ? `<div class="row" style="justify-content:flex-end;margin-bottom:12px"><button type="button" class="vbtn primary" data-sxbt-xl-edit="${esc(x.code)}">${icon('edit')} Chỉnh sửa</button></div>` : ''}${b1}${b2}${b3}${b4}</div>`;
+    const tXl = () => `<div data-sxbt-xl style="display:flex;flex-direction:column;gap:20px">${canXl ? `<div class="row" style="justify-content:flex-end"><button type="button" class="vbtn primary" data-sxbt-xl-edit="${esc(x.code)}">${icon('edit')} Chỉnh sửa</button></div>` : ''}${b1}${b2}${b3}${b4}</div>`;
     /* Tab Tiến trình: tách Hạn xử lý (SLA) / Hoàn thành thực tế; chọn phiên bản hồ sơ (HSBT-…-01, -02) để xem lại vòng trước khi phiếu bị NOK. */
     const tTt = () => {
       if (!allC.length) return k.card('Tiến trình', '<p class="faint">Chưa có hồ sơ.</p>');
