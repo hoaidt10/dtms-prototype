@@ -203,6 +203,9 @@
 
   /* ---------- Chi tiết phiếu (cũng là thân màn xử lý việc của SX-BT) ---------- */
   const tabKey = (code) => 'bt:' + code;
+  const VER = {};
+  const num = (n) => Number(n || 0).toLocaleString('vi-VN');
+  document.addEventListener('change', (e) => { const s = e.target.closest && e.target.closest('[data-sxbt-ver]'); if (s) { VER[s.dataset.sxbtVer] = s.value; rerender(); } });
   function detail(code, opt) {
     const o = opt || {}, k = K(), x = byCode(code);
     if (!x || !visible().some((y) => y.code === code)) return `<div class="pg">${head({ title: o.title || 'Xem chi tiết phiếu bất thường', back: o.back || 'sx/bat-thuong', lg: true })}${k.emptyCard('Thông tin chung', 'Không tìm thấy phiếu bất thường hoặc bạn không có quyền xem.')}</div>`;
@@ -233,14 +236,67 @@
       + k.card('Phân tích sơ bộ và xác nhận hiện trường', `<div class="ginfo c3">
         ${k.kv('Nhóm nguyên nhân', causesText(x) ? esc(causesText(x)) : null, 'span3')}${k.kv('Dự đoán sơ bộ nguyên nhân', x.guess ? esc(x.guess) : null, 'span3')}
         ${k.kv('Nhân sự kiểm tra (TT.SX - VHT)', (x.inspect || []).length ? esc((x.inspect || []).map(pName).join(', ')) : null, 'span2')}${k.kv('Nhân sự tham gia (Đối tác SX)', (x.partner || []).length ? esc((x.partner || []).map(pName).join(', ')) : null)}</div>`)
+      + k.card('Thông tin xác nhận của hai bên tại hiện trường', k.table([['Bên xác nhận', 260], ['Người xác nhận', 320], ['Ngày xác nhận', 140], ['Trạng thái', 140, 'c'], ['Ý kiến', 400]],
+        [['Trung tâm Sản xuất — VHT', (x.inspect || []).map(pName).join(', ')], ['Đối tác sản xuất / Nhà máy', (x.partner || []).map(pName).join(', ')]],
+        (r) => `<td>${esc(r[0])}</td><td>${r[1] ? k.clamp(r[1]) : k.dash}</td><td class="num">${r[1] ? esc(dmy(x.found)) : '-'}</td><td class="c">${r[1] ? badge('Đã xác nhận', 'success') : badge('Chưa xác nhận', 'default')}</td><td>${r[1] ? 'Xác nhận hiện tượng, số lượng ảnh hưởng đúng như mô tả tại hiện trường' : k.dash}</td>`))
       + k.card('Ảnh / video lỗi', k.table([['Tệp', 640]], x.media ? [[x.media]] : [], (r) => `<td><a class="link">${esc(r[0])}</a></td>`))
       + k.card('Các tài liệu liên quan (BM.QLBT.01)', k.table([['Mục hồ sơ', 360], ['Tệp', 320]], FILE_ITEMS.map(([key, lb]) => [lb, filesOf(x)[key]]).concat(v.blFile ? [['Tài liệu tiếp nhận (bước 2)', v.blFile]] : []),
         (r) => `<td>${esc(r[0])}</td><td>${r[1] ? `<a class="link">${esc(r[1])}</a>` : k.dash}</td>`));
-    const tXl = () => `<div data-sxbt-xl>${k.card('Phân tích và xử lý', `<div class="ginfo c3">
-        ${k.kv('Nguyên nhân', v.blNguyenNhan ? esc(v.blNguyenNhan) : null, 'span3')}${k.kv('Biện pháp xử lý (BM.QLBT.02)', v.paBienPhap ? esc(v.paBienPhap) : null, 'span2')}${k.kv('Hạn hoàn thành dự kiến', v.paHan ? esc(v.paHan) : null)}
-        ${k.kv('Kết quả triển khai', v.tkKetQua ? esc(v.tkKetQua) : null, 'span2')}${k.kv('Yêu cầu thay đổi kỹ thuật', ecr ? `<a class="link" data-go="sx/thay-doi/${encodeURIComponent(ecr.code)}">${esc(ecr.code)}</a>` : v.tkEcr ? 'Đề nghị mở' : null)}
-        ${k.kv('Kiểm tra kết quả', v.ktKetQua ? esc(v.ktKetQua) : null, 'span3')}${k.kv('Bài học kinh nghiệm', v.bhBaiHoc ? esc(v.bhBaiHoc) : null, 'span3')}</div>`)}</div>`;
-    const tTt = () => { if (!c) return k.card('Tiến trình', '<p class="faint">Chưa có hồ sơ.</p>'); const pr = F().progress(c); return k.card('Hồ sơ xử lý bất thường', pr.top + pr.steps) + k.card('Lịch sử xử lý', pr.hist); };
+    /* ---- Tab Phân tích và xử lý: 4 khối theo BM.QLBT.02 (mockup: dữ liệu suy từ hồ sơ + biến của luồng SX-BT) ---- */
+    const allC = F().cases(x.code, 'SX-BT'), evs = allC.flatMap((cc) => cc.hist.map((h) => Object.assign({ cc }, h)));
+    const cur = c && c.status !== 'done' && c.tokens[0] ? Number(c.tokens[0].step) : c ? 8 : 0, passed = (n) => cur > n;
+    const evAt = (n) => { const h = c && c.hist.slice().reverse().find((y) => y.step === n); return h || null; };
+    const parts = (t) => String(t || '').split(/(?<=\.)\s+|;\s*/).map((s) => s.trim()).filter(Boolean);
+    const han = v.paHan || (x.due ? dmy(x.due) : '');
+    const fix = Array.isArray(v.paKhacPhuc) ? v.paKhacPhuc : parts(v.paBienPhap).map((hd, i) => ({ hd, who: x.handler, han, img: i === 0 && passed(3) ? 'HinhAnh-' + x.code + '-KP01.jpg' : '' }));
+    const prevent = Array.isArray(v.paNgan) ? v.paNgan : parts(v.bhBaiHoc).map((hd) => ({ hd, who: x.pm, han, img: '' }));
+    const apprLevel = x.sev && x.sev <= 2 ? 'Ban Giám đốc Khối (Phó Giám đốc Khối)' : 'PM dự án';
+    const groups = window.Catalog.rows('sx-nhom-nguyen-nhan'), chosen = x.causes || [];
+    const hanTxt = (h) => (h ? (String(h).includes('-') ? dmy(h) : h) : '');
+    const actTbl = (rows) => k.table([['Hành động', 460], ['Người thực hiện', 200], ['Thời hạn', 120], ['Hình ảnh mô tả', 240]], rows,
+      (r) => `<td>${k.clamp(r.hd)}</td><td>${r.who ? esc(pName(r.who)) : k.dash}</td><td class="num">${r.han ? esc(hanTxt(r.han)) : k.dash}</td><td>${r.img ? `<a class="link">${esc(r.img)}</a>` : k.dash}</td>`);
+    const rejected = evs.filter((h) => h.step != null && h.step !== 2 && /Trả lại|Không đạt/.test(h.act));
+    const stepName = (n) => { const s = D.sxFlows['SX-BT'].steps.find((y) => y[0] === n); return s ? `${n}. ${s[1]}` : String(n); };
+    const b1 = k.card('Khối 1 — Xác minh & phân tích nguyên nhân', `<div class="ginfo c3">
+        ${k.kv('Trạng thái xác minh của QLSX', passed(2) ? badge('Đã xác minh', 'success') : badge('Chờ xác minh', 'warning'))}${k.kv('Người xác minh', evAt(2) ? esc(pName(evAt(2).who)) : null)}${k.kv('Ngày xác minh', evAt(2) ? esc(dmy(evAt(2).at)) : null)}
+        ${k.kv('Loại bất thường (xác nhận lại)', x.type ? esc(typeText(x.type)) : null, 'span2')}${k.kv('Mức độ (xác nhận lại)', x.sev ? esc(D.sxSev[x.sev]) : null)}</div>
+      <h4 class="ginfo-sub">Phân loại nguyên nhân chính thức (6M + 1, BM.QLBT.02)</h4>
+      <div class="row" style="gap:8px;flex-wrap:wrap;margin:4px 0 12px">${groups.map((g) => badge(g.name, chosen.includes(g.code) ? 'success' : 'default')).join('')}</div>
+      <div class="ginfo c3">${k.kv('Nội dung phân tích chi tiết', v.blNguyenNhan ? esc(v.blNguyenNhan) : null, 'span3')}${k.kv('File đo kiểm bổ sung', v.blFile ? `<a class="link">${esc(v.blFile)}</a>` : null, 'span3')}</div>`);
+    const b2 = k.card('Khối 2 — Phương án xử lý', `<div class="ginfo c3">
+        ${k.kv('Số phương án xử lý bất thường', fix.length || passed(2) ? esc('PAXL-' + x.code.slice(3) + '-' + String(allC.length).padStart(2, '0')) : null)}${k.kv('Cấp duyệt', esc(apprLevel))}${k.kv('Kết quả phê duyệt', passed(4) ? badge('Đã phê duyệt', 'success') : cur === 4 ? badge('Chờ phê duyệt', 'warning') : null)}</div>
+      <h4 class="ginfo-sub">Phương án khắc phục bất thường</h4>${actTbl(fix)}
+      <h4 class="ginfo-sub">Hành động ngăn ngừa tái diễn</h4>${actTbl(prevent)}
+      <h4 class="ginfo-sub">Lịch sử lý do bị từ chối / đánh giá NOK</h4>
+      ${k.table([['Hồ sơ', 200], ['Thời gian', 150], ['Người thực hiện', 200], ['Bước', 260], ['Kết quả', 160], ['Lý do', 460]], rejected, (h) => `<td>${esc(h.cc.code)}</td><td class="num">${esc(dmy(h.at))}</td><td>${esc(pName(h.who))}</td><td>${k.clamp(stepName(h.step))}</td><td>${badge(h.act, 'error')}</td><td>${h.note ? k.clamp(h.note) : k.dash}</td>`)}`);
+    const items = fix.map((r) => Object.assign({ kind: 'Khắc phục' }, r)).concat(prevent.map((r) => Object.assign({ kind: 'Ngăn ngừa' }, r)));
+    const pct = passed(5) ? 100 : cur === 5 ? 50 : 0, hand = evAt(5);
+    const itemPct = (r) => (r.kind === 'Khắc phục' ? pct : passed(7) ? 100 : 0);
+    const itemSt = (r) => { const p = itemPct(r); return p >= 100 ? ['Hoàn thành', 'success'] : p ? ['Đang thực hiện', 'info'] : ['Chưa bắt đầu', 'default']; };
+    const b3 = k.card('Khối 3 — Triển khai & bàn giao tiền xử lý', `${k.table([['Đầu việc', 460], ['Loại', 120], ['Người thực hiện', 200], ['Thời hạn', 120], ['% hoàn thành', 120, 'r'], ['Trạng thái', 150, 'c']], items,
+        (r) => `<td>${k.clamp(r.hd)}</td><td>${esc(r.kind)}</td><td>${r.who ? esc(pName(r.who)) : k.dash}</td><td class="num">${r.han ? esc(hanTxt(r.han)) : k.dash}</td><td class="r num">${itemPct(r)}%</td><td class="c">${badge(...itemSt(r))}</td>`)}
+      <h4 class="ginfo-sub">Cổng xác nhận bàn giao kết quả tiền xử lý cho đơn vị sản xuất</h4>
+      <div class="ginfo c3">${k.kv('Kết quả triển khai', v.tkKetQua ? esc(v.tkKetQua) : null, 'span3')}
+        ${k.kv('Trạng thái bàn giao', passed(5) ? badge('Đã bàn giao', 'success') : badge('Chưa bàn giao', 'default'))}${k.kv('Ngày bàn giao', passed(5) && hand ? esc(dmy(hand.at)) : null)}${k.kv('Người bàn giao', passed(5) && hand ? esc(pName(hand.who)) : null)}
+        ${k.kv('Đơn vị sản xuất tiếp nhận', x.donViN ? esc(x.donViN) : null)}${k.kv('Biên bản bàn giao', passed(5) ? `<a class="link">${esc('BBBG-TienXuLy-' + x.code + '.pdf')}</a>` : null)}
+        ${k.kv('Yêu cầu thay đổi kỹ thuật', ecr ? `<a class="link" data-go="sx/thay-doi/${encodeURIComponent(ecr.code)}">${esc(ecr.code)}</a>` : v.tkEcr ? 'Đề nghị mở' : null)}</div>`);
+    const checks = evs.filter((h) => h.step === 6).map((h, i) => { const ok = !/NOK|Không đạt/.test(h.act), tot = x.qty || 0, bad = ok ? 0 : Math.ceil(tot / 4); return { lan: i + 1, at: h.at, who: h.who, form: i % 2 ? 'Trực tiếp trên chuyền' : 'Kiểm tra hồ sơ', good: tot - bad, bad, ok }; });
+    if (cur === 6) checks.push({ lan: checks.length + 1, at: null, who: c.tokens[0].who, form: 'Trực tiếp trên chuyền', running: true });
+    const tags = [['Mã SP', x.spMa], ['Công đoạn', x.stage ? catN('sx-cong-doan', x.stage) : ''], ['Nhóm nguyên nhân', causesText(x)]].filter((t) => t[1]).map((t) => badge(t[0] + ': ' + t[1], 'default')).join(' ');
+    const b4 = k.card('Khối 4 — Lịch sử nghiệm thu & bài học kinh nghiệm', `${k.table([['Lần kiểm tra', 110, 'c'], ['Ngày kiểm', 130], ['Người kiểm', 200], ['Hình thức', 190], ['Số lượng đạt / hỏng', 160, 'r'], ['Kết luận', 130, 'c'], ['Biên bản đo kiểm', 300]], checks,
+        (r) => `<td class="c">Lần ${r.lan}</td><td class="num">${r.at ? esc(dmy(r.at)) : k.dash}</td><td>${esc(pName(r.who))}</td><td>${esc(r.form)}</td><td class="r num">${r.running ? '-' : `${num(r.good)} / ${num(r.bad)}`}</td><td class="c">${r.running ? badge('Đang kiểm tra', 'info') : r.ok ? badge('OK', 'success') : badge('NOK', 'error')}</td><td>${r.running ? k.dash : `<a class="link">${esc('BBDK-' + x.code + '-L' + r.lan + '.pdf')}</a>`}</td>`)}
+      <h4 class="ginfo-sub">Bài học kinh nghiệm</h4>
+      <div class="ginfo c3">${k.kv('Nội dung bài học', v.bhBaiHoc ? esc(v.bhBaiHoc) : null, 'span3')}${k.kv('Thẻ (Tag)', v.bhBaiHoc && tags ? tags : null, 'span3')}</div>`);
+    const tXl = () => `<div data-sxbt-xl>${b1}${b2}${b3}${b4}</div>`;
+    /* Tab Tiến trình: tách Hạn xử lý (SLA) / Hoàn thành thực tế; chọn phiên bản hồ sơ (HSBT-…-01, -02) để xem lại vòng trước khi phiếu bị NOK. */
+    const tTt = () => {
+      if (!allC.length) return k.card('Tiến trình', '<p class="faint">Chưa có hồ sơ.</p>');
+      const sel = allC.find((y) => y.code === VER[x.code]) || allC[allC.length - 1], pr = F().progress(sel, '', true);
+      const bar = `<div class="row" style="gap:12px;align-items:center;margin-bottom:12px"><label class="cap" for="sxbt-ver">Phiên bản hồ sơ</label>
+        <select class="vctl" id="sxbt-ver" data-sxbt-ver="${esc(x.code)}" style="width:340px">${allC.map((y) => `<option value="${esc(y.code)}" ${y.code === sel.code ? 'selected' : ''}>${esc(y.code)}${y === allC[allC.length - 1] ? ' (hiện hành)' : ' (vòng trước)'}</option>`).join('')}</select>
+        ${allC.length > 1 ? '<span class="cap">Phiếu từng bị đánh giá NOK: chọn vòng để xem lại tiến trình và người xử lý.</span>' : ''}</div>`;
+      return bar + k.card('Hồ sơ xử lý bất thường', pr.top + pr.steps) + k.card('Lịch sử xử lý', pr.hist);
+    };
     return `<div class="pg" data-sxbt-detail="${esc(x.code)}">
       ${head({ title: o.title || 'Xem chi tiết phiếu bất thường', back: o.back || 'sx/bat-thuong', lg: true, info, right: o.task || !window.SxTd ? '' : window.SxTd.issueBtn(x) })}
       ${o.bar || ''}${alert}
@@ -273,7 +329,7 @@
 
   document.addEventListener('click', (e) => { const b = e.target.closest && e.target.closest('[data-sxbt-new]'); if (b) create(b.dataset.sxbtNew || null); });
   function route(parts) { return parts[1] ? detail(decodeURIComponent(parts[1])) : list(); }
-  function enter(parts) { if (parts[0] === 'bat-thuong' && parts[1]) K().setTab(tabKey(decodeURIComponent(parts[1])), 'info'); }
+  function enter(parts) { if (parts[0] === 'bat-thuong' && parts[1]) K().setTab(tabKey(decodeURIComponent(parts[1])), ['info', 'xl', 'tt'].includes(parts[2]) ? parts[2] : 'info'); }
   function reset() { U = blank(); persist(); }
 
   window.SxBt = { route, enter, reset, all, byCode, detail, ctx, createAuto, tabKey, viewTitle: 'Xem chi tiết phiếu bất thường', classText, stOf, isOver, ST_LIST, leftOf, addWd, wdBetween, projectTab };

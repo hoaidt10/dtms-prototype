@@ -269,19 +269,28 @@
   });
 
   /* Tiến trình hồ sơ dùng chung mọi luồng: thông tin hồ sơ (top), bảng bước (steps), lịch sử xử lý (hist). more = ô thêm ở thông tin hồ sơ. */
-  function progress(c, more) {
+  function progress(c, more, split) {
     const k = K(), F = FL(c.flow), o = objRec(c);
     const stRow = (s) => {
       const tok = c.tokens.find((t) => String(t.step) === String(s[0])), h = c.hist.slice().reverse().find((x) => String(x.step) === String(s[0]) && !x.sys);
       const state = tok ? (late(c, tok) ? ['Quá hạn', 'error'] : ['Đang xử lý', 'info']) : h ? ['Đã xử lý', 'success'] : ['Chưa tới', 'default'];
       const who = s[2] === 'svc' ? null : tok ? tok.who : h ? h.who : D.sxAssign(s[2], o);
-      return `<td>${k.clamp(`${s[0]}. ${s[1]}`)}</td><td>${s[2] === 'svc' ? 'Hệ thống' : k.clamp(pName(who))}</td><td class="c">${badge(...state)}</td>
-        <td class="num">${tok ? esc(dmy(dueOf(c, tok))) : h ? esc(dmy(h.at)) : k.dash}</td><td>${h && !tok ? k.clamp(h.act) + (h.sign ? ' ' + window.SxChung.signedBadge(h.sign) : '') : k.dash}</td>`;
+      const head3 = `<td>${k.clamp(`${s[0]}. ${s[1]}`)}</td><td>${s[2] === 'svc' ? 'Hệ thống' : k.clamp(pName(who))}</td><td class="c">${badge(...state)}</td>`;
+      const result = h && !tok ? k.clamp(h.act) + (h.sign ? ' ' + window.SxChung.signedBadge(h.sign) : '') : k.dash;
+      if (split) {
+        /* Hạn xử lý (SLA) = hạn của bước; Hoàn thành thực tế = lúc xử lý xong (bước đã xong chỉ có thời điểm bắt đầu 'since' nên SLA = since + số ngày làm việc của bước). */
+        const sla = tok ? dueOf(c, tok) : h && h.since ? addDays(h.since, (s[3] || {}).nlv || 2) : null, fin = h && !tok ? h.at : null;
+        const over = fin && sla && String(fin).slice(0, 10) > String(sla).slice(0, 10);
+        return `${head3}<td class="num${tok && late(c, tok) ? ' t-err' : ''}">${sla ? esc(dmy(sla)) : k.dash}</td><td class="num${over ? ' t-err' : ''}">${fin ? esc(dmy(fin)) : k.dash}</td><td>${result}</td>`;
+      }
+      return `${head3}
+        <td class="num">${tok ? esc(dmy(dueOf(c, tok))) : h ? esc(dmy(h.at)) : k.dash}</td><td>${result}</td>`;
     };
     const top = `<div class="ginfo c3">${k.kv('Mã hồ sơ', esc(c.code))}${k.kv('Quy trình', esc(F.name))}${k.kv('Trạng thái', c.status === 'done' ? badge('Hoàn thành', 'success') : badge('Đang xử lý', 'info'))}
       ${k.kv('Ngày khởi tạo', esc(dmy(c.started)))}${k.kv('Ngày kết thúc', c.ended ? esc(dmy(c.ended)) : null)}${more || ''}
       ${(c.vars.kySo || []).length ? k.kv('Tài liệu đã ký số', c.vars.kySo.map((s) => `${esc(s.doc)} ${window.SxChung.signedBadge(s)}`).join('<br>'), 'span3') : ''}</div>`;
-    const steps = k.table([['Tên bước', 400], ['Người xử lý', 200], ['Trạng thái', 130, 'c'], ['Hạn / ngày xử lý', 150], ['Kết quả', 180]], F.steps, stRow);
+    const steps = k.table(split ? [['Tên bước', 400], ['Người xử lý', 200], ['Trạng thái', 130, 'c'], ['Hạn xử lý (SLA)', 150], ['Hoàn thành thực tế', 160], ['Kết quả', 180]]
+      : [['Tên bước', 400], ['Người xử lý', 200], ['Trạng thái', 130, 'c'], ['Hạn / ngày xử lý', 150], ['Kết quả', 180]], F.steps, stRow);
     const hist = k.table([['Thời gian', 160], ['Người thực hiện', 200], ['Bước', 300], ['Hành động', 200], ['Nội dung', 360]], c.hist.slice().reverse(),
       (h) => `<td class="num">${esc(dmy(h.at))}</td><td>${h.who ? k.clamp(pName(h.who)) : 'Hệ thống'}</td><td>${h.step != null ? k.clamp(`${h.step}. ${stepOf(c.flow, h.step)[1]}`) : k.dash}</td>
         <td>${k.clamp(h.act)}</td><td>${h.sign ? k.clamp(`Ký số MySign: ${h.sign.doc}${h.note ? ' · ' + h.note : ''}`) : h.note ? k.clamp(h.note) : k.dash}</td>`);

@@ -3,6 +3,11 @@
 > Mỗi PR một mục, mới nhất trên cùng: `## YYYY-MM-DD — <việc> (#PR)` + 2–5 gạch đầu dòng (màn, thay đổi, nguồn, điểm treo mới).
 > Lịch sử trước T77: [lich-su-chung.md](lich-su-chung.md).
 
+## 2026-11-19 · Bất thường: chi tiết phiếu theo BM.QLBT.02
+- Tab Thông tin phiếu: thêm khối Thông tin xác nhận của hai bên tại hiện trường (đã có ảnh / video lỗi, hồ sơ đính kèm, đối sách tức thời).
+- Tab Phân tích và xử lý: 4 khối — Xác minh & phân tích nguyên nhân (6M+1), Phương án xử lý (số PAXL, cấp duyệt, 2 bảng khắc phục / ngăn ngừa, lịch sử NOK), Triển khai & bàn giao tiền xử lý, Lịch sử nghiệm thu & bài học kinh nghiệm (tag).
+- Tab Tiến trình: tách Hạn xử lý (SLA) / Hoàn thành thực tế (`js/sx-flow.js`), chọn phiên bản hồ sơ HSBT-…-01/-02; route `#/sx/bat-thuong/<mã>/<info|xl|tt>`. Dữ liệu mẫu BT-2026-001 có 2 vòng (vòng 1 NOK).
+
 ## 2026-11-19 · Dự án sản xuất: Thông tin chung theo BM.QLHDSX.01, tab Kế hoạch
 - Tab Kế hoạch & mốc đổi tên Kế hoạch; cột Công việc thay bằng cột Thao tác với nút Xem chi tiết: mục 4 → Đề xuất mua sắm, mục 5 → Hồ sơ chuyển giao, mục 6, 7 → tab Điều kiện sản xuất, mục 9 → tab Bán thành phẩm & tiến độ, mục 10 → tab Chất lượng & nghiệm thu (`js/sx-du-an.js`).
 - Thông tin chung thêm theo BM.QLHDSX.01: Số kế hoạch, Ngày phê duyệt, Cấp phê duyệt, Đơn vị lập, Đơn vị phối hợp, Mục tiêu (Objective), OKRs, Yêu cầu, Rủi ro đề xuất (GIẢ LẬP dữ liệu mẫu).

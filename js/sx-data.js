@@ -401,12 +401,20 @@
         { step: 8, who: null, act: 'Hệ thống cấp mã ECN, ghi nhật ký quản lý dự án', at: '2026-07-30 11:00' }, { step: 9, who: 'sxpm', act: 'Hoàn thành bàn giao', since: '2026-07-30 11:00', at: '2026-08-05 15:00' },
         { step: null, who: null, act: 'Kết thúc — thay đổi đã bàn giao nhà máy áp dụng', at: '2026-08-05 15:00' }] },
     /* T71 S6 — hồ sơ xử lý bất thường mẫu. */
-    { code: 'HSBT-BT-2026-001-01', flow: 'SX-BT', obj: 'BT-2026-001', status: 'done', started: '2026-09-02 09:20', ended: '2026-09-15 16:30', tokens: [],
-      vars: { blNguyenNhan: 'Cấu hình suy hao cáp của máy đo công suất RF tại trạm đo VMC chưa cập nhật sau khi thay cáp.', paBienPhap: 'Cập nhật bảng suy hao cáp, đo lại 8 bộ bị ảnh hưởng.', tkKetQua: 'Đã cập nhật cấu hình, đo lại 8 / 8 bộ đạt.', bhBaiHoc: 'Bổ sung bước kiểm tra cấu hình suy hao vào checklist đầu ca của trạm đo.' },
+    { code: 'HSBT-BT-2026-001-01', flow: 'SX-BT', obj: 'BT-2026-001', status: 'done', started: '2026-09-02 09:20', ended: '2026-09-10 16:00', tokens: [],
+      vars: { blNguyenNhan: 'Cấu hình suy hao cáp của máy đo công suất RF tại trạm đo VMC chưa cập nhật sau khi thay cáp.', paBienPhap: 'Cập nhật bảng suy hao cáp. Đo lại 8 bộ bị ảnh hưởng.', tkKetQua: 'Đã cập nhật bảng suy hao, đo lại 6 / 8 bộ đạt.' },
       hist: [{ step: null, who: 'sxqa', act: 'Khởi tạo hồ sơ', at: '2026-09-02 09:20' }, { step: 1, who: 'sxqa', act: 'Gửi', since: '2026-09-02 09:20', at: '2026-09-02 09:20' },
         { step: 2, who: 'sxpm', act: 'Hoàn thành tiếp nhận', since: '2026-09-02 09:20', at: '2026-09-03 08:40', note: 'Loại 1 · Trung bình' }, { step: 3, who: 'sxpm', act: 'Trình phê duyệt', since: '2026-09-03 08:40', at: '2026-09-04 10:00' },
-        { step: 4, who: 'sxld', act: 'Phê duyệt', since: '2026-09-04 10:00', at: '2026-09-05 09:15' }, { step: 5, who: 'sxpm', act: 'Hoàn thành triển khai', since: '2026-09-05 09:15', at: '2026-09-11 15:00' },
-        { step: 6, who: 'sxqa', act: 'Đạt (OK)', since: '2026-09-11 15:00', at: '2026-09-14 10:30' }, { step: 7, who: 'sxpm', act: 'Đóng phiếu', since: '2026-09-14 10:30', at: '2026-09-15 16:30' },
+        { step: 4, who: 'sxld', act: 'Phê duyệt', since: '2026-09-04 10:00', at: '2026-09-05 09:15' }, { step: 5, who: 'sxpm', act: 'Hoàn thành triển khai', since: '2026-09-05 09:15', at: '2026-09-09 15:00' },
+        { step: 6, who: 'sxqa', act: 'Không đạt (NOK)', since: '2026-09-09 15:00', at: '2026-09-10 16:00', note: 'Còn 2 / 8 bộ suy hao vượt ngưỡng ±0,5 dB, cần xử lý lại cáp nối' },
+        { step: null, who: null, act: 'Kết thúc vòng 1 — mở vòng xử lý mới do kiểm tra không đạt', at: '2026-09-10 16:00' }] },
+    { code: 'HSBT-BT-2026-001-02', flow: 'SX-BT', obj: 'BT-2026-001', status: 'done', started: '2026-09-10 16:00', ended: '2026-09-15 16:30', tokens: [],
+      vars: { blNguyenNhan: 'Cấu hình suy hao cáp của máy đo công suất RF tại trạm đo VMC chưa cập nhật sau khi thay cáp.', paBienPhap: 'Cập nhật bảng suy hao cáp. Đo lại 8 bộ bị ảnh hưởng. Thay 2 đoạn cáp nối suy hao cao.', tkKetQua: 'Đã cập nhật cấu hình, thay cáp nối, đo lại 8 / 8 bộ đạt.', bhBaiHoc: 'Bổ sung bước kiểm tra cấu hình suy hao vào checklist đầu ca của trạm đo.' },
+      hist: [{ step: null, who: 'sxpm', act: 'Khởi tạo hồ sơ (vòng 2 sau NOK)', at: '2026-09-10 16:00' },
+        { step: 1, who: 'sxqa', act: 'Kế thừa từ vòng 1', since: '2026-09-10 16:00', at: '2026-09-10 16:00' }, { step: 2, who: 'sxpm', act: 'Kế thừa từ vòng 1', since: '2026-09-10 16:00', at: '2026-09-10 16:00', note: 'Loại 1 · Trung bình' },
+        { step: 3, who: 'sxpm', act: 'Trình phê duyệt', since: '2026-09-10 16:00', at: '2026-09-11 09:00' }, { step: 4, who: 'sxld', act: 'Phê duyệt', since: '2026-09-11 09:00', at: '2026-09-11 15:00' },
+        { step: 5, who: 'sxpm', act: 'Hoàn thành triển khai', since: '2026-09-11 15:00', at: '2026-09-12 16:00' }, { step: 6, who: 'sxqa', act: 'Đạt (OK)', since: '2026-09-12 16:00', at: '2026-09-14 10:30' },
+        { step: 7, who: 'sxpm', act: 'Đóng phiếu', since: '2026-09-14 10:30', at: '2026-09-15 16:30' },
         { step: null, who: null, act: 'Kết thúc — phiếu bất thường đã đóng', at: '2026-09-15 16:30' }] },
     { code: 'HSBT-BT-2026-002-01', flow: 'SX-BT', obj: 'BT-2026-002', status: 'running', started: '2026-10-19 14:00', tokens: [{ id: 's3', step: 5, who: 'sxrd', since: '2026-10-29 10:00' }],
       vars: { blNguyenNhan: 'Gá đỡ cụm thấu kính thiết kế dung sai ±0,05 mm không đủ cứng; sau thử rung trục quang lệch 0,3 mrad.', paBienPhap: 'R&D thiết kế lại gá đỡ (tăng gân cứng), đánh giá ảnh hưởng tới bản vẽ cơ khí và eBOM; đề xuất mở yêu cầu thay đổi kỹ thuật.' },
@@ -503,7 +511,7 @@
      received: ngày tiếp nhận ở bước 2; guess: dự đoán sơ bộ nguyên nhân; files: tệp đính kèm theo mục BM.QLBT.01 (bm, iqc, qc, kd, khac). ---------- */
   D.sxSev = { 1: 'Rất nghiêm trọng', 2: 'Nghiêm trọng', 3: 'Trung bình', 4: 'Thấp' };
   D.sxIssues = [
-    { code: 'BT-2026-001', project: 'DA-SX-2026-001', title: 'Sai lệch cấu hình máy đo công suất RF tại trạm đo VMC', desc: '8 bộ VT-25 đo công suất phát thấp hơn chỉ tiêu 0,8 dB, đo lại bằng máy khác đạt.',
+    { code: 'BT-2026-001', nok: 1, project: 'DA-SX-2026-001', title: 'Sai lệch cấu hình máy đo công suất RF tại trạm đo VMC', desc: '8 bộ VT-25 đo công suất phát thấp hơn chỉ tiêu 0,8 dB, đo lại bằng máy khác đạt.',
       found: '2026-09-02', foundTime: '14:20', place: 'NPH-05', qty: 8, unit: 'DVT-02', spMa: 'VT-25', serial: 'VT25-0003', sample: 20, stage: 'CD-06', op: 'ĐK-05', shift: 'CA-2',
       req: 'Công suất phát đo tại trạm đo kiểm cuối thấp hơn chỉ tiêu 0,8 dB', causes: ['NN2', 'NN4'], guess: 'Máy đo công suất sai lệch cấu hình sau lần cập nhật phần mềm công cụ.',
       actions: [{ hd: 'Dừng đo, cách ly 8 bộ nghi vấn', who: 'sxqa', han: '2026-09-02' }, { hd: 'Kiểm tra lại cấu hình, hiệu chuẩn máy đo công suất RF', who: 'sxqa', han: '2026-09-03' }],
