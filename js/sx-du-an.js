@@ -471,7 +471,11 @@
     e.stopPropagation(); e.preventDefault();
     K().setTab('sx:' + b.dataset.sxdaCode, b.dataset.sxdaTab);
     rerender();
+    toTop();
   }, true);
+  /* Xem chi tiết ở tab Kế hoạch: sang màn / tab khác thì về đầu trang. */
+  const toTop = () => { window.scrollTo(0, 0); setTimeout(() => window.scrollTo(0, 0), 0); document.querySelectorAll('main, .main, .content, .vmain').forEach((el) => { el.scrollTop = 0; }); };
+  document.addEventListener('click', (e) => { if (e.target.closest && e.target.closest('[data-sx-plan] button[data-go]')) toTop(); });
   /* T74 #97: Mã / Tên nhiệm vụ = nhiệm vụ đơn vị cấp 1 của dự án (giao khi kick-off hoặc Giao việc), mở Chi tiết nhiệm vụ đơn vị. */
   function nvKv(p, k) {
     const l = window.SxCv ? window.SxCv.all().filter((x) => x.kind === 'DV' && x.project === p.code && !x.parent).sort((a, b) => ((a.created || a.start) < (b.created || b.start) ? -1 : 1)) : [];
