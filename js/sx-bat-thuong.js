@@ -299,7 +299,7 @@
       <h4 class="ginfo-sub">Bài học kinh nghiệm</h4>
       <div class="ginfo c3">${k.kv('Nội dung bài học', v.bhBaiHoc ? esc(v.bhBaiHoc) : null, 'span3')}${k.kv('Thẻ (Tag)', v.bhBaiHoc && tags ? tags : null, 'span3')}</div>`);
     const canXl = st[0] === 'Đang xử lý' && !x.closed && !x.draft;
-    const tXl = () => `<div data-sxbt-xl>${canXl ? `<div class="row" style="justify-content:flex-end;margin-bottom:12px"><button type="button" class="vbtn primary" data-sxbt-xl-edit="${esc(x.code)}">${icon('edit')} Chỉnh sửa</button></div>` : ''}<style>.sxbt-zone{border-left:4px solid #e4002b;border-radius:10px;margin:0 0 24px;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.10);overflow:hidden}.sxbt-zone>.vcard{margin:0;box-shadow:none;border-radius:0}.sxbt-zone>.vcard>.vcard-h{background:#fafafa;margin:-24px -24px 16px;padding:14px 24px;border-bottom:1px solid #eee}.sxbt-zone>.vcard>.vcard-h h3{color:#e4002b}</style>${[b1, b2, b3, b4].map((h) => `<div class="sxbt-zone">${h}</div>`).join('')}</div>`;
+    const tXl = () => `<div data-sxbt-xl>${canXl ? `<div class="row" style="justify-content:flex-end;margin-bottom:12px"><button type="button" class="vbtn primary" data-sxbt-xl-edit="${esc(x.code)}">${icon('edit')} Chỉnh sửa</button></div>` : ''}${b1}${b2}${b3}${b4}</div>`;
     /* Tab Tiến trình: tách Hạn xử lý (SLA) / Hoàn thành thực tế; chọn phiên bản hồ sơ (HSBT-…-01, -02) để xem lại vòng trước khi phiếu bị NOK. */
     const tTt = () => {
       if (!allC.length) return k.card('Tiến trình', '<p class="faint">Chưa có hồ sơ.</p>');
