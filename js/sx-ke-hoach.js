@@ -31,10 +31,48 @@
 
   /* ---------- Hạng mục thêm mới (đọc ở SxDuAn.planOf) ---------- */
   const BT_ST = { DRAFT: ['Nháp', 'default'], PENDING: ['Chờ phê duyệt', 'warning'], APPROVED: ['Đã phê duyệt', 'success'], RETURNED: ['Trả lại', 'error'] };
-  const batches = (code) => U.batches[code] || [];
+  /* ---------- Dữ liệu mẫu các lần bổ sung / điều chỉnh kế hoạch (nạp một lần, sau đó lưu cùng localStorage) ----------
+     Ngày trước khi sửa lấy từ cây kế hoạch lúc nạp; SEEDING chặn gọi lồng (planOf → extra / override → seed). */
+  let SEEDING = false;
+  function ensureSeed() {
+    if (U.seeded || SEEDING || !window.SxDuAn) return;
+    SEEDING = true;
+    try {
+      const adj = (code, key, ch, meta) => {
+        const p = P().byCode(code), r = p && findRow(P().planOf(p), key); if (!r || r.children) return;
+        const l = U.adj[code] || (U.adj[code] = []);
+        const a = { id: `ads-${code.slice(-3)}-${l.length + 1}`, no: l.length + 1, key, name: itemName(p, key), old: { who: r.who, s: r.s, e: r.e }, who: r.who, s: r.s, e: r.e };
+        ch(a); l.push(Object.assign(a, meta));
+      };
+      if (!U.adj['DA-SX-2026-002']) {
+        adj('DA-SX-2026-002', 'B4.CU', (a) => { a.e += 10 * DAY; }, { reason: 'Nhà cung cấp đầu thu hồng ngoại lùi lịch giao 10 ngày', st: 'APPROVED', by: 'sxpm', at: '2026-07-02 09:15', ap: 'sxld', apAt: '2026-07-03 14:20' });
+        adj('DA-SX-2026-002', 'B4.MS', (a) => { a.who = pName('sxsub'); a.s += 7 * DAY; }, { reason: 'Bổ sung đề xuất mua sắm cho vật tư còn thiếu sau rà soát tồn kho; giao Sub PM theo dõi', st: 'PENDING', by: 'sxpm', at: '2026-11-14 10:30' });
+      }
+      if (!U.adj['DA-SX-2026-001']) {
+        adj('DA-SX-2026-001', 'B10', (a) => { a.s += 5 * DAY; a.e += 14 * DAY; }, { reason: 'Nhà máy đề nghị dời lịch kiểm soát IPQC theo lịch dây chuyền', st: 'RETURNED', by: 'sxpm', at: '2026-10-20 16:05', ap: 'sxld', note: 'Chưa có văn bản xác nhận lịch của nhà máy' });
+      }
+      const p2 = P().byCode('DA-SX-2026-002');
+      if (p2 && !U.batches[p2.code]) {
+        U.batches[p2.code] = [{ id: 'bss-002-1', no: 1, st: 'APPROVED', by: 'sxpm', created: '2026-07-05 08:40', sentAt: '2026-07-05 08:45', ap: 'sxld', apAt: '2026-07-06 10:00' }];
+        U.adds[p2.code] = (U.adds[p2.code] || []).concat([{ key: 'XS1', name: 'Kiểm tra đầu vào vật tư nhập khẩu', parent: 'B4', who: pName(p2.pm), s: ms('2026-07-10'), e: ms('2026-07-31'), batch: 'bss-002-1' }]);
+      }
+      U.seeded = true; persist();
+    } finally { SEEDING = false; }
+  }
+  /* Tên hạng mục bỏ số thứ tự; mục con của bước (4, 9) ghép tên bước: "Bảo đảm vật tư và kinh phí › Đề xuất mua sắm". */
+  function itemName(p, key) {
+    const strip = (n) => String(n).replace(/^\d+\.\s*/, '');
+    for (const g of P().planOf(p, true)) for (const c of g.children || []) {
+      if (c.key === key) return strip(c.name);
+      const k = (c.children || []).find((y) => y.key === key); if (k) return `${strip(c.name)} › ${k.name}`;
+    }
+    return key;
+  }
+  const batches = (code) => { ensureSeed(); return U.batches[code] || []; };
   const batchOf = (code, id) => batches(code).find((b) => b.id === id) || null;
   /* Hạng mục thêm vào nhóm / bước có mã parent; pending = lần bổ sung chưa được duyệt. */
   function extra(p, parent) {
+    ensureSeed();
     return (U.adds[p.code] || []).filter((a) => a.parent === parent).map((a) => {
       const b = batchOf(p.code, a.batch) || {};
       return Object.assign({}, a, { pending: b.st !== 'APPROVED' });
@@ -98,7 +136,7 @@
   /* ---------- Điều chỉnh kế hoạch từng dòng (cột Thao tác › Sửa) ----------
      Sửa người phụ trách / ngày bắt đầu / ngày kết thúc của một hạng mục lá, bắt buộc có lý do; [Gửi duyệt] tạo lần điều chỉnh chờ duyệt (tab Phê duyệt kế hoạch);
      được duyệt mới đổi trên cây Kế hoạch & mốc (SxDuAn.leaf đọc override). GIẢ LẬP P-270: duyệt bằng nút trên dòng; thật: luồng điều chỉnh kế hoạch trên Camunda. */
-  const adjOf = (code) => U.adj[code] || [];
+  const adjOf = (code) => { ensureSeed(); return U.adj[code] || []; };
   const override = (p, key) => adjOf(p.code).filter((a) => a.key === key && a.st === 'APPROVED').pop() || null;
   const pendingAdj = (p, key) => adjOf(p.code).find((a) => a.key === key && a.st === 'PENDING') || null;
   const canEdit = (p, key) => canPlan(p) && !pendingAdj(p, key);
@@ -106,7 +144,7 @@
   const fld = (label, ctl, o) => `<div class="vfield"${o && o.id ? ` id="${o.id}"` : ''}><div class="lr"><label>${esc(label)}</label>${o && o.req ? '<span class="req">*</span>' : ''}</div>${ctl}<p class="msg" hidden></p></div>`;
   function editDlg(code, key) {
     const p = P().byCode(code), row = p && findRow(P().planOf(p), key);
-    if (!row || row.children || !canEdit(p, key)) return;
+    if (!row || row.children || row.pct >= 100 || !canEdit(p, key)) return;
     const names = staff(p).map((m) => m.name); if (!names.includes(row.who)) names.unshift(row.who);
     const m = window.UI.vModal({ title: 'Sửa kế hoạch', size: 'md', body: `<div class="stack" data-sxkh-edit-form>
         <p class="cap">${esc(row.name)} · điều chỉnh được gửi duyệt ở tab Phê duyệt kế hoạch, được duyệt mới có hiệu lực.</p>
@@ -126,19 +164,21 @@
       if (!bad && who === row.who && s === iso(row.s) && e === iso(row.e)) { fail('#ae-why', 'Chưa có thay đổi nào so với kế hoạch hiện tại.'); bad = true; }
       if (bad) return;
       const l = U.adj[code] || (U.adj[code] = []);
-      l.push({ id: 'ad' + (U.seq += 1), no: l.length + 1, key, name: row.name, old: { who: row.who, s: row.s, e: row.e }, who, s: ms(s), e: ms(e), reason: why, st: 'PENDING', by: pid(), at: nowStamp() });
+      l.push({ id: 'ad' + (U.seq += 1), no: l.length + 1, key, name: itemName(p, key), old: { who: row.who, s: row.s, e: row.e }, who, s: ms(s), e: ms(e), reason: why, st: 'PENDING', by: pid(), at: nowStamp() });
       persist(); m.close();
       P().log(code, 'Gửi duyệt điều chỉnh kế hoạch', `${row.name} — ${why}`);
       toast('<b>Thành công</b><br>Gửi duyệt thành công!'); rerender();
     };
   }
-  function adjDiff(a) {
+  /* Trường thay đổi của một lần điều chỉnh: [tên cột trên Kế hoạch, trước, sau]. */
+  function adjFields(a) {
     const o = [];
-    if (a.who !== a.old.who) o.push(`Người phụ trách: ${a.old.who} → ${a.who}`);
-    if (a.s !== a.old.s) o.push(`Bắt đầu: ${dmy(iso(a.old.s))} → ${dmy(iso(a.s))}`);
-    if (a.e !== a.old.e) o.push(`Kết thúc: ${dmy(iso(a.old.e))} → ${dmy(iso(a.e))}`);
+    if (a.who !== a.old.who) o.push(['Người / đơn vị phụ trách', a.old.who, a.who]);
+    if (a.s !== a.old.s) o.push(['Bắt đầu kế hoạch', dmy(iso(a.old.s)), dmy(iso(a.s))]);
+    if (a.e !== a.old.e) o.push(['Kết thúc kế hoạch', dmy(iso(a.old.e)), dmy(iso(a.e))]);
     return o;
   }
+  const adjDiff = (a) => adjFields(a).map(([f, x, y]) => `${f}: ${x} → ${y}`);
   function viewDlg(code, key) {
     const p = P().byCode(code), row = p && findRow(P().planOf(p), key); if (!row) return;
     const k = K(), st = P().stOf(row), hist = adjOf(code).filter((a) => a.key === key);
@@ -184,38 +224,40 @@
 
   /* ---------- Phê duyệt kế hoạch: danh sách các lần phê duyệt ---------- */
   const SEL = { row: {} };
+  /* Mỗi dòng: Nội dung (hạng mục nào), Thay đổi kế hoạch (sửa cột nào / thêm mới), focus = hạng mục mở ở tab Kế hoạch khi bấm Lần phê duyệt. */
   function approvalRows(p) {
     const rows = window.SxFlow.cases(p.code, 'SX-KH').map((c, i) => {
       const sub = c.hist.find((h) => /Trình kế hoạch/.test(h.act || '')), ok = c.status === 'done';
-      return { id: 'c:' + c.code, no: `Kế hoạch gốc${i ? ` (lần ${i + 1})` : ''}`, what: `Kế hoạch sản xuất${c.vars.khSo ? ` số ${c.vars.khSo}` : ''} — hồ sơ ${c.code}`,
+      return { id: 'c:' + c.code, no: `Kế hoạch gốc${i ? ` (lần ${i + 1})` : ''}`, what: `Kế hoạch sản xuất${c.vars.khSo ? ` số ${c.vars.khSo}` : ''} — hồ sơ ${c.code}`, chg: ['Lập kế hoạch gốc'],
         by: sub ? sub.who : null, at: sub ? sub.at : c.started, st: ok ? BT_ST.APPROVED : ['Đang phê duyệt', 'warning'], ap: ok ? (c.hist.filter((h) => /Phê duyệt/.test(h.act || '')).pop() || {}).who : null, open: !ok };
     });
-    if (!rows.length && p.baseline) rows.push({ id: 'c:-', no: 'Kế hoạch gốc', what: 'Phê duyệt trước khi đưa vào hệ thống', by: p.pm, at: p.baseline, st: BT_ST.APPROVED, ap: null, open: false });
+    if (!rows.length && p.baseline) rows.push({ id: 'c:-', no: 'Kế hoạch gốc', what: 'Phê duyệt trước khi đưa vào hệ thống', chg: ['Lập kế hoạch gốc'], by: p.pm, at: p.baseline, st: BT_ST.APPROVED, ap: null, open: false });
     batches(p.code).forEach((b) => {
       const it = (U.adds[p.code] || []).filter((a) => a.batch === b.id);
-      rows.push({ id: 'b:' + b.id, no: `Bổ sung kế hoạch lần ${b.no}`, what: it.map((a) => a.name).join('; ') || 'Chưa có hạng mục', by: b.by, at: b.sentAt || b.created, st: BT_ST[b.st], ap: b.ap || null, open: b.st !== 'APPROVED', b, it });
+      rows.push({ id: 'b:' + b.id, no: `Bổ sung kế hoạch lần ${b.no}`, what: it.length ? `Thêm hạng mục ${it.map((a) => a.name).join('; ')}` : 'Chưa có hạng mục', chg: ['Thêm mới hạng mục'], focus: it.length ? it[0].key : null,
+        by: b.by, at: b.sentAt || b.created, st: BT_ST[b.st], ap: b.ap || null, open: b.st !== 'APPROVED', b, it });
     });
-    adjOf(p.code).forEach((a) => rows.push({ id: 'a:' + a.id, no: `Điều chỉnh kế hoạch lần ${a.no}`, what: `${a.name}: ${adjDiff(a).join('; ') || 'Không đổi'}`, by: a.by, at: a.at, st: BT_ST[a.st], ap: a.ap || null, open: a.st !== 'APPROVED', adj: a }));
+    adjOf(p.code).forEach((a) => rows.push({ id: 'a:' + a.id, no: `Điều chỉnh kế hoạch lần ${a.no}`, what: `Cập nhật hạng mục ${a.name}`, chg: adjFields(a).map((f) => `Sửa ${f[0]}`), focus: a.key,
+      by: a.by, at: a.at, st: BT_ST[a.st], ap: a.ap || null, open: a.st !== 'APPROVED', adj: a }));
     return rows.sort((a, b) => (a.open === b.open ? 0 : a.open ? -1 : 1));
   }
   function tabApproval(p) {
     const k = K(), rows = approvalRows(p);
     if (!rows.length) return window.SxFlow.planTab(p);
     const cur = rows.find((r) => r.id === SEL.row[p.code]) || rows.find((r) => r.id.startsWith('c:')) || rows[0];
+    const EYE = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M2.5 12S5.5 5.5 12 5.5 21.5 12 21.5 12 18.5 18.5 12 18.5 2.5 12 2.5 12Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.5"/></svg>';
     const acts = (r) => {
-      if (r.adj) {
-        if (r.adj.st !== 'PENDING' || !canApprove()) return '';
-        return `<span class="row" style="gap:8px;justify-content:center"><button type="button" class="vbtn sm secondary" data-sxkh-aback="${esc(p.code)}|${esc(r.adj.id)}">Trả lại</button><button type="button" class="vbtn sm primary" data-sxkh-aok="${esc(p.code)}|${esc(r.adj.id)}">Phê duyệt</button></span>`;
-      }
-      if (!r.b) return '';
-      const b = r.b, out = [];
-      if ((b.st === 'DRAFT' || b.st === 'RETURNED') && canPlan(p) && r.it.length) out.push(`<button type="button" class="vbtn sm primary" data-sxkh-send="${esc(p.code)}|${esc(b.id)}">Trình phê duyệt</button>`);
-      if (b.st === 'PENDING' && canApprove()) out.push(`<button type="button" class="vbtn sm secondary" data-sxkh-back="${esc(p.code)}|${esc(b.id)}">Trả lại</button>`, `<button type="button" class="vbtn sm primary" data-sxkh-ok="${esc(p.code)}|${esc(b.id)}">Phê duyệt</button>`);
-      return `<span class="row" style="gap:8px;justify-content:center">${out.join('')}</span>`;
+      const out = [`<button type="button" class="vbtn icon ghost" aria-label="Xem chi tiết" title="Xem chi tiết" data-sxkh-sel="${esc(p.code)}|${esc(r.id)}">${EYE}</button>`];
+      if (r.adj && r.adj.st === 'PENDING' && canApprove()) out.push(`<button type="button" class="vbtn sm secondary" data-sxkh-aback="${esc(p.code)}|${esc(r.adj.id)}">Trả lại</button>`, `<button type="button" class="vbtn sm primary" data-sxkh-aok="${esc(p.code)}|${esc(r.adj.id)}">Phê duyệt</button>`);
+      const b = r.b;
+      if (b && (b.st === 'DRAFT' || b.st === 'RETURNED') && canPlan(p) && r.it.length) out.push(`<button type="button" class="vbtn sm primary" data-sxkh-send="${esc(p.code)}|${esc(b.id)}">Trình phê duyệt</button>`);
+      if (b && b.st === 'PENDING' && canApprove()) out.push(`<button type="button" class="vbtn sm secondary" data-sxkh-back="${esc(p.code)}|${esc(b.id)}">Trả lại</button>`, `<button type="button" class="vbtn sm primary" data-sxkh-ok="${esc(p.code)}|${esc(b.id)}">Phê duyệt</button>`);
+      return `<span class="row" style="gap:8px;justify-content:center;align-items:center">${out.join('')}</span>`;
     };
-    const list = k.card('Danh sách phê duyệt kế hoạch', k.table([['Lần phê duyệt', 200], ['Nội dung', 380], ['Người trình', 180], ['Ngày trình', 140], ['Trạng thái', 150, 'c'], ['Người duyệt', 180], ['Thao tác', 220, 'c']], rows,
-      (r) => `<td><a class="link" data-sxkh-sel="${esc(p.code)}|${esc(r.id)}">${esc(r.no)}</a></td><td>${k.clamp(r.what)}</td><td>${r.by ? k.clamp(pName(r.by)) : k.dash}</td>
-        <td class="num">${r.at ? esc(dmy(r.at)) : k.dash}</td><td class="c">${badge(...r.st)}</td><td>${r.ap ? k.clamp(pName(r.ap)) : k.dash}</td><td class="c">${acts(r)}</td>`), 'Lần chưa phê duyệt đứng đầu; bấm tên lần phê duyệt để xem chi tiết');
+    const noCell = (r) => (r.focus ? `<a class="link" data-sxkh-focus="${esc(p.code)}|${esc(r.focus)}" title="Mở dòng này ở tab Kế hoạch">${esc(r.no)}</a>` : `<a class="link" data-sxkh-sel="${esc(p.code)}|${esc(r.id)}">${esc(r.no)}</a>`);
+    const list = k.card('Danh sách phê duyệt kế hoạch', k.table([['Lần phê duyệt', 200], ['Nội dung', 320], ['Thay đổi kế hoạch', 240], ['Người trình', 170], ['Ngày trình', 140], ['Trạng thái', 140, 'c'], ['Người duyệt', 170], ['Thao tác', 240, 'c']], rows,
+      (r) => `<td>${noCell(r)}</td><td>${k.clamp(r.what)}</td><td>${(r.chg || []).length ? r.chg.map(esc).join('<br>') : k.dash}</td><td>${r.by ? k.clamp(pName(r.by)) : k.dash}</td>
+        <td class="num">${r.at ? esc(dmy(r.at)) : k.dash}</td><td class="c">${badge(...r.st)}</td><td>${r.ap ? k.clamp(pName(r.ap)) : k.dash}</td><td class="c">${acts(r)}</td>`), 'Lần chưa phê duyệt đứng đầu; bấm Lần phê duyệt để mở dòng tương ứng ở tab Kế hoạch');
     let det;
     if (cur.b) {
       det = k.card(`Chi tiết: ${cur.no}`, `${cur.b.note ? `<div class="hd-alerts"><div class="hd-alert error">${icon('info')}<span>Lý do trả lại: ${esc(cur.b.note)}</span></div></div>` : ''}
@@ -224,7 +266,8 @@
     } else if (cur.adj) {
       const a = cur.adj;
       det = k.card(`Chi tiết: ${cur.no}`, `${a.note ? `<div class="hd-alerts"><div class="hd-alert error">${icon('info')}<span>Lý do trả lại: ${esc(a.note)}</span></div></div>` : ''}
-        ${k.table([['Hạng mục / mốc', 300], ['Nội dung thay đổi', 460], ['Lý do sửa', 300]], [a], (x) => `<td>${k.clamp(x.name)}</td><td>${k.clamp(adjDiff(x).join('; '))}</td><td>${k.clamp(x.reason)}</td>`)}`);
+        <div class="ginfo c2">${k.kv('Hạng mục', esc(a.name))}${k.kv('Lý do sửa', esc(a.reason))}</div>
+        ${k.table([['Thay đổi kế hoạch', 300], ['Kế hoạch hiện tại', 300], ['Đề xuất sửa', 300]], adjFields(a), (f) => `<td>Sửa ${esc(f[0])}</td><td>${k.clamp(f[1])}</td><td><b>${k.clamp(f[2])}</b></td>`)}`);
     } else det = window.SxFlow.planTab(p);
     return `<div data-sx-kh-list>${list}${det}</div>`;
   }
@@ -248,6 +291,7 @@
     if ((v = g('data-sxns-del'))) { staffDel(v[0], v[1]); return; }
     if ((v = g('data-sxkh-add'))) { addDlg(v[0]); return; }
     if ((v = g('data-sxkh-edit'))) { editDlg(v[0], v[1]); return; }
+    if ((v = g('data-sxkh-focus'))) { P().focusPlan(v[0], v[1]); return; }
     if ((v = g('data-sxkh-view'))) { viewDlg(v[0], v[1]); return; }
     if ((v = g('data-sxkh-aok'))) { setAdj(v[0], v[1], 'APPROVED', { ap: pid(), apAt: nowStamp() }, 'Phê duyệt điều chỉnh kế hoạch'); toast('<b>Thành công</b><br>Phê duyệt thành công!'); rerender(); return; }
     if ((v = g('data-sxkh-aback'))) {
