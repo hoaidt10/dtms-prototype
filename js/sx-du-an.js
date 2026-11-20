@@ -91,7 +91,15 @@
     return p.factory ? catName('sx-don-vi', p.factory) : 'Đơn vị sản xuất (chưa chọn)';
   }
   /* Tiến độ GIẢ LẬP theo ngày (thật: cập nhật ở các bước luồng, sản lượng nhập tay / trạm đo VMMS — S2, S5): leaf qua hạn = hoàn thành nếu dự án bám kế hoạch (perf ≥ 0,9). */
+  /* Điều chỉnh kế hoạch (popup Sửa ở tab Kế hoạch & mốc, sx-ke-hoach.js): lần đã duyệt thay người phụ trách, ngày bắt đầu / kết thúc của hạng mục; lần chờ duyệt chỉ gắn cờ. */
   function leaf(p, gi, key, name, role, s, e) {
+    const kh = window.SxKh, ov = kh && kh.override(p, key);
+    const r = leaf0(p, gi, key, name, role, ov ? ov.s : s, ov ? ov.e : e);
+    if (ov) r.who = ov.who;
+    if (kh && kh.pendingAdj(p, key)) r.adjPending = true;
+    return r;
+  }
+  function leaf0(p, gi, key, name, role, s, e) {
     let pct = 0, act = null;
     /* Đã chốt kế hoạch gốc (bước 3 kick-off) nghĩa là giai đoạn Lập kế hoạch đã xong — thực tế không muộn hơn ngày chốt. */
     if (gi === 0 && p.baseline) return { key, name, who: who(p, role), s, e, pct: 100, act: Math.min(e, ms(p.baseline)) };
@@ -387,6 +395,7 @@
       notes: [
         '<b>T74 (comment #97, hoaidt10 17/11):</b> Thông tin chung thêm <b>Mã / Tên nhiệm vụ</b> (nhiệm vụ đơn vị cấp 1 của dự án, mở Chi tiết nhiệm vụ đơn vị). Tab <b>Kế hoạch & mốc</b> đứng trước <b>Phê duyệt kế hoạch</b>. Cây kế hoạch: bước 4 có 2 mục con <b>Đề xuất mua sắm</b> (% dòng nhu cầu VHT mua đã gửi ĐTMS) và <b>Tiến độ cung ứng</b> (% số lượng đã tập kết); mô hình VMC tổng thầu: mốc <b>Ký hợp đồng tổng thầu với VMC</b> đứng đầu giai đoạn 3 trước bước 8, bỏ mốc "Vật tư, linh kiện về đủ" (GIẢ LẬP P-270). Nút <b>Thêm kế hoạch</b> thêm hạng mục vào một giai đoạn / bước 4 / bước 9, ở trạng thái Chưa phê duyệt (không tính vào tiến độ) tới khi lần bổ sung được duyệt. Tab <b>Phê duyệt kế hoạch</b> = danh sách các lần phê duyệt (kế hoạch gốc, các lần bổ sung), chưa duyệt đứng đầu, bấm để xem chi tiết; Lãnh đạo Phê duyệt / Trả lại ngay trên dòng (GIẢ LẬP P-270; thật: luồng điều chỉnh kế hoạch). Tab <b>Nhân sự</b>: người phụ trách trong kế hoạch (BM.QLHDSX.01 — Nhân sự chính), Thêm / Sửa / Xoá; không xoá người đang phụ trách hạng mục. Tab Hồ sơ chuyển giao: <b>Danh mục tài liệu nhận từ COP1</b> có Phiên bản, Nguồn (đồng bộ từ Quản lý hồ sơ KHCN — GIẢ LẬP P-271), mã hồ sơ mở Chuyển giao từ nghiên cứu. <b>Điều kiện 4M → Điều kiện sản xuất</b>: Thêm điều kiện, Sửa (13 tiêu chí QT sửa được nội dung, không xoá), Xoá dòng tự thêm; dòng tự động chỉ đọc. Tab <b>Tài liệu</b> chia theo danh mục loại tài liệu.',
         'Khuôn task-create (mode detail) + app-tabs. Tab: Thông tin chung, Phê duyệt kế hoạch (hồ sơ luồng phê duyệt kế hoạch), Kế hoạch & mốc, Hồ sơ chuyển giao (gói của sản phẩm · phiên bản dự án), <b>Điều kiện 4M</b> (cổng Bắt đầu sản xuất: đủ tiêu chí mới chuyển Đang sản xuất — GIẢ LẬP P-246), <b>Mua sắm & hợp đồng</b> (đề xuất gửi ĐTMS, hợp đồng, nhập kho đọc ngược — P-249), <b>Bán thành phẩm & tiến độ</b> (nhật ký sản lượng, trạm đo VMMS — P-250), <b>Bất thường & thay đổi</b> (phiếu bất thường, hạn xử lý — P-251; thay đổi kỹ thuật, nhật ký quản lý dự án — P-252), <b>Chất lượng & nghiệm thu</b> (nghiệm thu theo lô, IQC từ VMMS — P-253), Tài liệu, Lịch sử.',
+        '<b>Thao tác trên Kế hoạch</b>: icon <b>Xem chi tiết</b> (mục có màn riêng thì mở màn đó, còn lại mở hộp thoại chi tiết hạng mục và lịch sử điều chỉnh) và icon <b>Sửa</b> (chỉ hạng mục lá, người lập kế hoạch). Sửa mở popup đổi người phụ trách, ngày bắt đầu / kết thúc, bắt buộc <b>Lý do sửa</b>; <b>Gửi duyệt</b> tạo lần "Điều chỉnh kế hoạch" ở tab Phê duyệt kế hoạch, dòng hiện nhãn Chờ duyệt điều chỉnh; được duyệt mới đổi trên cây kế hoạch, bị trả lại thì sửa và gửi lại.',
         '<b>Kế hoạch & mốc</b>: khung 15 bước QT.VHT.TTSX.4A.1.1 chia 4 giai đoạn; bước 9 có nhánh con theo <b>Mô hình tổ chức</b> (cấu hình danh mục): tự sản xuất → bán thành phẩm do Sub PM phụ trách; VMC tổng thầu → mốc tổng của gói; thuê gia công → lô (SX-GA-0911 Phần 3). Bước 11 chỉ có khi dự án <b>Có thử nghiệm thực tế</b> (QT-TTSX-4A11-LD nút rẽ "TN?").',
         'Kế hoạch gốc chốt ở bước 5 luồng Phê duyệt kế hoạch sản xuất (S2). Ngày kế hoạch khung chia theo tỷ lệ thời gian dự án; % hoàn thành GIẢ LẬP theo ngày (thật: bước luồng hoàn thành, sản lượng nhập tay / trạm đo VMMS — S5). Ngày hiện tại của phân hệ: ' + dmy(D.sxToday) + '.',
         'Hiển thị bằng bảng cây (vht-tree-table) với cột kế hoạch / thực tế / chênh lệch; <b>biểu đồ Gantt cần dev riêng</b> (@khcn-core/ui chưa có component, D-121 Q8).',
@@ -424,15 +433,20 @@
         ${k.kv('Điều kiện sản xuất', window.SxCg.gateBadge(p))}</div>`);
     /* Cột Thao tác của tab Kế hoạch: nút Xem chi tiết đi tới màn / tab tương ứng của mục (4 → Đề xuất mua sắm, 5 → Chuyển giao từ nghiên cứu, 6–7 → tab Điều kiện sản xuất, 9 → Bán thành phẩm & tiến độ, 10 → Chất lượng & nghiệm thu). */
     const NAV = { B4: ['go', 'sx/mua-sam'], B5: ['go', 'sx/chuyen-giao'], B6: ['tab', 'm4'], B7: ['tab', 'm4'], B9: ['tab', 'btp'], B10: ['tab', 'nt'], B11: ['tab', 'nt'], B12: ['tab', 'nt'], B13: ['tab', 'nt'], B14: ['go', 'sx/nghiem-thu'], B15: ['tab', 'docs'] };
+    /* Thao tác: icon Xem chi tiết (mục có màn riêng → mở màn / tab đó; còn lại → hộp thoại chi tiết hạng mục) và Sửa (hạng mục lá → popup sửa kế hoạch, lý do + Gửi duyệt). */
+    const EYE = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M2.5 12S5.5 5.5 12 5.5 21.5 12 21.5 12 18.5 18.5 12 18.5 2.5 12 2.5 12Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.5"/></svg>';
     const detailBtn = (r) => {
-      const n = NAV[r.key.split('.').slice(1).join('.')];
-      if (!n) return '';
-      return n[0] === 'go' ? `<button type="button" class="vbtn sm secondary" data-go="${n[1]}">Xem chi tiết</button>`
-        : `<button type="button" class="vbtn sm secondary" data-sxda-tab="${n[1]}" data-sxda-code="${esc(p.code)}">Xem chi tiết</button>`;
+      const n = NAV[r.key.split('.').slice(1).join('.')], at = 'class="vbtn icon ghost" aria-label="Xem chi tiết" title="Xem chi tiết"';
+      const view = !n ? `<button type="button" ${at} data-sxkh-view="${esc(p.code)}|${esc(r.okey)}">${EYE}</button>`
+        : n[0] === 'go' ? `<button type="button" ${at} data-go="${n[1]}">${EYE}</button>`
+          : `<button type="button" ${at} data-sxda-tab="${n[1]}" data-sxda-code="${esc(p.code)}">${EYE}</button>`;
+      const can = !r.children && !r.added && window.SxKh && window.SxKh.canEdit(p, r.okey);
+      const edit = can ? `<span class="sep"></span><button type="button" class="vbtn icon ghost" aria-label="Sửa" title="Sửa" data-sxkh-edit="${esc(p.code)}|${esc(r.okey)}">${icon('edit')}</button>` : '';
+      return `<div class="acts">${view}${edit}</div>`;
     };
     const tPlan = () => {
       const cols = [
-        { h: 'Hạng mục / mốc', w: 420, toggler: true, cell: (r) => (r.children ? `<b>${esc(r.name)}</b>` : esc(r.name)) },
+        { h: 'Hạng mục / mốc', w: 420, toggler: true, cell: (r) => (r.children ? `<b>${esc(r.name)}</b>` : esc(r.name)) + (r.adjPending ? ` ${badge('Chờ duyệt điều chỉnh', 'warning')}` : '') },
         { h: 'Người / đơn vị phụ trách', w: 230, cell: (r) => k.clamp(r.who) },
         { h: 'Bắt đầu kế hoạch', w: 130, cell: (r) => `<span class="num">${esc(dmy(iso(r.s)))}</span>` },
         { h: 'Kết thúc kế hoạch', w: 130, cell: (r) => `<span class="num">${esc(dmy(iso(r.e)))}</span>` },
@@ -440,9 +454,9 @@
         { h: 'Hoàn thành', w: 110, align: 'r', cell: (r) => `<span class="num">${r.pct}%</span>` },
         { h: 'Chênh lệch (ngày)', w: 130, align: 'r', cell: (r) => { const d = delay(r); return d == null ? k.dash : `<span class="num ${d > 0 ? 't-err' : ''}">${d > 0 ? '+' + d : 0}</span>`; } },
         { h: 'Trạng thái', w: 150, align: 'c', cell: (r) => badge(...stOf(r)) },
-      ].concat([{ h: 'Thao tác', w: 130, align: 'c', cell: (r) => detailBtn(r) }]);
+      ].concat([{ h: 'Thao tác', w: 110, align: 'c', cell: (r) => detailBtn(r) }]);
       const open = T.open[p.code] || (T.open[p.code] = new Set(['G1', 'G2', 'G2.B4', 'G3', 'G3.B9', 'G4']));
-      const keyed = (rows, pre) => rows.map((r) => Object.assign({}, r, { key: pre ? `${pre}.${r.key.split('.').pop()}` : r.key, children: r.children ? keyed(r.children, pre ? `${pre}.${r.key.split('.').pop()}` : r.key) : null }));
+      const keyed = (rows, pre) => rows.map((r) => Object.assign({}, r, { okey: r.okey || r.key, key: pre ? `${pre}.${r.key.split('.').pop()}` : r.key, children: r.children ? keyed(r.children, pre ? `${pre}.${r.key.split('.').pop()}` : r.key) : null }));
       const cap = p.baseline ? `Kế hoạch gốc chốt ngày ${dmy(p.baseline)}${p.planNo ? ` · Kế hoạch số ${p.planNo}` : ''}` : 'Chưa có kế hoạch gốc — kế hoạch được chốt khi phê duyệt kế hoạch sản xuất';
       return `<section class="vcard" data-sx-plan><div class="vcard-h"><h3>Kế hoạch</h3><div class="row"><span class="cap">${esc(cap)}</span>${window.SxKh ? window.SxKh.planBtn(p) : ''}</div></div>
         ${vTreeTable({ id: 'sx-plan', columns: cols, rows: keyed(plan), expanded: open, empty: 'Chưa có kế hoạch',
