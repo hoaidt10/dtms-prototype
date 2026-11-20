@@ -146,10 +146,10 @@
     const tot = items.reduce((a, x) => a + x.value, 0), R = 52, L = 2 * Math.PI * R;
     let off = 0;
     const arcs = tot ? items.filter((x) => x.value > 0).map((x) => {
-      const len = x.value / tot * L, s = `<circle cx="70" cy="70" r="${R}" fill="none" stroke="${x.color}" stroke-width="22" stroke-dasharray="${len} ${L - len}" stroke-dashoffset="${-off}" transform="rotate(-90 70 70)"${x.tq ? ` data-sxtq="${x.tq}" style="cursor:pointer"` : ''} data-tip="${esc(x.label)}: ${num(x.value)} (${Math.round(x.value / tot * 100)}%)"></circle>`;
+      const len = x.value / tot * L, s = `<circle cx="70" cy="70" r="${R}" fill="none" stroke="${x.color}" stroke-width="22" stroke-dasharray="${len} ${L - len}" stroke-dashoffset="${-off}" transform="rotate(-90 70 70)"${x.tq ? ` data-sxtq="${x.tq}" style="cursor:pointer"` : ''} data-sxtip="${esc(x.label)}: ${num(x.value)}${o && o.unit ? ' ' + esc(o.unit) : ''} (${Math.round(x.value / tot * 100)}%)${x.tq ? ' — nhấn để xem danh sách' : ''}"></circle>`;
       off += len; return s;
     }).join('') : `<circle cx="70" cy="70" r="${R}" fill="none" stroke="#98a2b3" stroke-opacity=".35" stroke-width="22"></circle>`;
-    const leg = items.map((x) => `<li style="display:flex;align-items:center;gap:8px;padding:3px 0${x.tq ? ';cursor:pointer' : ''}"${x.tq ? ` data-sxtq="${x.tq}"` : ''}><span class="sw" style="width:10px;height:10px;border-radius:2px;flex:none;background:${x.color}"></span><span style="flex:1;min-width:0">${esc(x.label)}</span><b class="num">${num(x.value)}</b><span class="num" style="width:44px;text-align:right;opacity:.7">${tot ? Math.round(x.value / tot * 100) : 0}%</span></li>`).join('');
+    const leg = items.map((x) => `<li style="display:flex;align-items:center;gap:8px;padding:3px 0${x.tq ? ';cursor:pointer' : ''}"${x.tq ? ` data-sxtq="${x.tq}"` : ''} data-sxtip="${esc(x.label)}: ${num(x.value)}${o && o.unit ? ' ' + esc(o.unit) : ''}${x.tq ? ' — nhấn để xem danh sách' : ''}"><span class="sw" style="width:10px;height:10px;border-radius:2px;flex:none;background:${x.color}"></span><span style="flex:1;min-width:0">${esc(x.label)}</span><b class="num">${num(x.value)}</b><span class="num" style="width:44px;text-align:right;opacity:.7">${tot ? Math.round(x.value / tot * 100) : 0}%</span></li>`).join('');
     return `<section class="bc-card"><h3 class="bc-t">${esc(title)}</h3>
       <div style="display:flex;align-items:center;gap:24px;flex-wrap:wrap;padding:8px 4px">
         <svg viewBox="0 0 140 140" width="150" height="150" role="img" aria-label="${esc(title)}" style="flex:none">${arcs}
@@ -489,7 +489,11 @@
     const cTd = hbars('Thay đổi kỹ thuật theo trạng thái', withColor(countBy(tdAll, (x) => window.SxTd.stOf(x)[0]), [C[4], C[0], C[3], C[2], C[5]]), { unit: 'yêu cầu' });
     const cKpi = hbars('KPI quy trình so với mục tiêu', kpis().filter((x) => x.value != null).map((x) => ({ label: x.name, value: x.value, sub: 'MT ' + x.target + '%', color: x.value >= x.target ? C[2] : C[1] })), { pct: true, max: 100 });
     const STC = { PLANNING: C[5], PREPARING: C[3], IN_PRODUCTION: C[2], ACCEPTANCE: C[0], DONE: C[4] };
-    const dStatus = donut('Dự án theo trạng thái', stKeys.map((k) => ({ label: D.sxStatus[k], value: ps.filter((x) => x.p.status === k).length, color: STC[k] || C[5] })), { unit: 'dự án' });
+    const sCols = [['Mã dự án', 140], ['Tên dự án', 280], ['Khối', 80], ['Giai đoạn hiện tại', 220], ['Thực hiện', 100, 'r'], ['Kế hoạch đến ngày', 140, 'r'], ['Hạng mục chậm', 120, 'r']];
+    const sCell = (x) => `<td><a class="link" data-go="${x.href}" data-close>${esc(x.code)}</a></td><td>${K().clamp(x.title)}</td><td>${esc(KHOI[x.p.khoi])}</td><td>${K().clamp(x.stage)}</td>
+      <td class="r num">${x.act}%</td><td class="r num">${x.plan}%</td><td class="r num ${x.late.length ? 't-err' : ''}">${x.late.length}</td>`;
+    stKeys.forEach((k, i) => { TQD['s' + i] = [`Dự án ${String(D.sxStatus[k]).toLowerCase()}`, `Trạng thái: ${D.sxStatus[k]}`, ps.filter((x) => x.p.status === k), sCols, sCell]; });
+    const dStatus = donut('Dự án theo trạng thái', stKeys.map((k, i) => ({ label: D.sxStatus[k], value: ps.filter((x) => x.p.status === k).length, color: STC[k] || C[5], tq: 's' + i })), { unit: 'dự án', note: 'Nhấn vào biểu đồ để xem danh sách dự án theo trạng thái' });
     /* Tiến độ theo giai đoạn chậm: dự án chưa hoàn thành xếp vào giai đoạn có hạng mục chậm đầu tiên theo thứ tự kế hoạch (điểm nghẽn hiện tại); không có hạng mục chậm = đúng tiến độ. */
     const LCAT = [['ok', 'Đúng tiến độ', C[2]], ['plan', 'Chậm tiến độ lên kế hoạch', C[5]], ['vt', 'Chậm tiến độ đảm bảo vật tư', C[3]], ['sx', 'Chậm tiến độ sản xuất', C[1]], ['xx', 'Chậm tiến độ đánh giá xuất xưởng', C[4]], ['nt', 'Chậm tiến độ nghiệm thu TCT', '#d92d20']];
     const stepCat = (g, k) => (g === 'G1' ? 'plan' : /^B4/.test(k) ? 'vt' : k === 'B12' ? 'xx' : (['B13', 'B14', 'B15'].includes(k) || g === 'G4') ? 'nt' : 'sx');
@@ -511,7 +515,7 @@
       notes: [
         '<b>T74 (comment #95):</b> mục menu <b>Tổng quan</b> đổi tên <b>Dashboard</b>, đứng đầu menu như phân hệ KHCN. Khối <b>Gợi ý cho bạn</b> đã bỏ khỏi trang (nhánh hoaidt10).',
         '<b>Số dự án</b> — 5 chỉ số của SX-ULNL: lũy kế, đang thực hiện (Chuẩn bị sản xuất, Đang sản xuất, Nghiệm thu), đúng tiến độ (đang thực hiện, % thực hiện thấp hơn % kế hoạch đến ngày dưới 15 điểm — ngưỡng nguy cơ chậm P-250; cột Hạng mục chậm vẫn đếm hạng mục quá hạn chưa xong như cột Mốc chậm ở Danh sách dự án), đang nghiệm thu (trạng thái Nghiệm thu hoặc có lô đang nghiệm thu / chờ nhập kho), mới mở (tạo trong 30 ngày gần nhất).',
-        '<b>Biểu đồ tiến độ</b> (người review 20/11): dự án chưa hoàn thành chia Đúng tiến độ và 5 loại chậm — lên kế hoạch (giai đoạn 1), đảm bảo vật tư (bước 4), sản xuất (bước 5–11, mốc nhà máy), đánh giá xuất xưởng (bước 12 OQC), nghiệm thu TCT (bước 13–15). Mỗi dự án xếp vào giai đoạn có hạng mục quá hạn chưa xong đầu tiên theo thứ tự kế hoạch. Bấm phần biểu đồ / dòng chú giải mở danh sách dự án. Biểu đồ trạng thái vẽ đủ 5 trạng thái (thêm dữ liệu mẫu DA-SX-2026-005 Nghiệm thu, DA-SX-2025-011 Hoàn thành).',
+        '<b>Biểu đồ tiến độ</b> (người review 20/11): dự án chưa hoàn thành chia Đúng tiến độ và 5 loại chậm — lên kế hoạch (giai đoạn 1), đảm bảo vật tư (bước 4), sản xuất (bước 5–11, mốc nhà máy), đánh giá xuất xưởng (bước 12 OQC), nghiệm thu TCT (bước 13–15). Mỗi dự án xếp vào giai đoạn có hạng mục quá hạn chưa xong đầu tiên theo thứ tự kế hoạch. Bấm phần biểu đồ / dòng chú giải mở danh sách dự án. Biểu đồ trạng thái: rê chuột / chạm hiện số dự án, bấm phần / dòng chú giải mở danh sách dự án của trạng thái đó; vẽ đủ 5 trạng thái (thêm dữ liệu mẫu DA-SX-2026-005 Nghiệm thu, DA-SX-2025-011 Hoàn thành).',
         '<b>Cần chú ý</b>: phiếu bất thường quá hạn / còn dưới 3 ngày làm việc (SLA), vật tư trễ hạn đặt hàng (Nhu cầu vật tư), thay đổi kỹ thuật chưa hoàn thành, lô chờ nghiệm thu / nhập kho.',
         'Bấm ô chỉ số → ngăn chi tiết bên phải: danh sách bản ghi cấu thành con số, bấm mã mở màn chi tiết. Bảng <b>Tiến độ dự án so với kế hoạch</b>: dự án chưa hoàn thành; biểu đồ phân tích xem ở mục Báo cáo.',
         '<b>Cấu hình</b>: một dòng định nghĩa báo cáo loại Tổng quan (như D-119) — chỉ số, nguồn, ngưỡng sắp đến hạn. Bộ lọc Khối, Dự án theo phạm vi dữ liệu của vai. Thật: API tổng hợp của BE; "Làm mới dữ liệu" gọi lại API.',
@@ -574,6 +578,17 @@
     if (t.closest('[data-sxr-refresh]')) { const n = new Date(), p2 = (v) => String(v).padStart(2, '0'); F.at = `${dmy(D.sxToday)} ${p2(n.getHours())}:${p2(n.getMinutes())}`; rerender(); toast('<b>Thành công</b><br>Đã làm mới dữ liệu'); }
   });
 
+  let TIP = null;
+  const tipShow = (t, x, y) => {
+    if (!TIP) { TIP = document.createElement('div'); TIP.className = 'sx-tip'; document.body.appendChild(TIP); }
+    TIP.textContent = t; TIP.hidden = false; TIP.style.left = (x + 14) + 'px'; TIP.style.top = (y + 14) + 'px';
+  };
+  document.addEventListener('mousemove', (e) => {
+    const t = e.target.closest && e.target.closest('[data-sxtip]');
+    if (t) tipShow(t.getAttribute('data-sxtip'), e.clientX, e.clientY); else if (TIP) TIP.hidden = true;
+  });
+  document.addEventListener('touchstart', (e) => { const t = e.target.closest && e.target.closest('[data-sxtip]'), p = e.touches[0]; if (t && p) tipShow(t.getAttribute('data-sxtip'), p.clientX, p.clientY - 40); else if (TIP) TIP.hidden = true; }, { passive: true });
+  document.addEventListener('click', () => { if (TIP) TIP.hidden = true; }, true);
   const reset = () => { F.khoi = null; F.project = null; F.year = null; F.period = 'DX'; clearDrill(); };
   window.SxBc = { overview, report, REPORTS, kpis, vtlk, settle, waits, prog, reset };
 })();
