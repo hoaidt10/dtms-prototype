@@ -515,5 +515,7 @@
   }
   function reset() { U = blank(); persist(); Object.keys(TILE).forEach((k) => delete TILE[k]); }
 
-  window.SxCv = { route, enter, reset, all, byCode, activePath, planProgress, planCell, fromPlan, remindCount, remindBar, reminders, stOf };
+  /* Số việc chưa hoàn thành người đang đăng nhập xem được (số đỏ ở menu Việc cá nhân). */
+  const openCount = (kind) => base(kind).filter((x) => !x.done).length;
+  window.SxCv = { openCount, route, enter, reset, all, byCode, activePath, planProgress, planCell, fromPlan, remindCount, remindBar, reminders, stOf };
 })();

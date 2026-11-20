@@ -30,7 +30,7 @@
     /* T74 #94 / #96 (Q1): Việc của tôi thành mục con (giữ số việc) của nhóm Quản lý nhiệm vụ, cùng Nhiệm vụ đơn vị và Việc cá nhân — như KHCN. */
     { label: 'Quản lý nhiệm vụ', icon: 'menu_square', open: true, children: [
       { label: 'Nhiệm vụ đơn vị', path: 'sx/cong-viec/don-vi', scr: 'SX-16' },
-      { label: 'Việc cá nhân', path: 'sx/cong-viec/ca-nhan', scr: 'SX-16' }] },
+      { label: 'Việc cá nhân', path: 'sx/cong-viec/ca-nhan', scr: 'SX-16', badge: () => (window.SxCv ? window.SxCv.openCount('CN') : 0) }] },
     { label: 'Dự án sản xuất', icon: 'view_list', path: 'sx/du-an', scr: 'SX-02', notes: soon('S1', 'SX-02…04') },
     { label: 'Chuyển giao từ nghiên cứu', icon: 'view_flow', open: true, children: [
       { label: 'Hồ sơ chuyển giao', path: 'sx/chuyen-giao', scr: 'SX-06', notes: soon('S3', 'SX-06') },
@@ -209,6 +209,11 @@
       qty: 120000, unitName: 'thiết bị', pm: 'sxk2', factory: 'NM-HP', start: '2026-04-15', end: '2026-11-30', status: 'IN_PRODUCTION' },
     { code: 'DA-SX-2026-004', name: 'Sản xuất trạm 5G Macro gNB-M3 năm 2026', khoi: 'K2', model: 'VMC_TONG_THAU', product: 'gNB-M3', version: 'v1.2',
       qty: 3000, unitName: 'trạm', pm: 'sxk2', factory: 'VMC', start: '2026-12-01', end: '2027-06-30', status: 'PLANNING' },
+    /* Dashboard (nhánh hoaidt10): thêm dự án ở trạng thái Nghiệm thu và Hoàn thành để biểu đồ trạng thái có đủ 5 trạng thái. */
+    { code: 'DA-SX-2026-005', name: 'Sản xuất bộ phát Wi-Fi Mesh WM-6 cho thị trường Campuchia', khoi: 'K2', model: 'GIA_CONG', product: 'WM-6', version: 'v3.0.1_HW_Rev2',
+      qty: 30000, unitName: 'thiết bị', pm: 'sxk2', factory: 'NM-HP', start: '2026-03-01', end: '2026-11-25', status: 'ACCEPTANCE' },
+    { code: 'DA-SX-2025-011', name: 'Sản xuất loạt đài thu phát vô tuyến chiến thuật VT-25 — đợt thử nghiệm', khoi: 'K1', model: 'VMC_TONG_THAU', product: 'VT-25', version: 'v2.0_HW_Rev2',
+      qty: 10, unitName: 'bộ', pm: 'sxpm', factory: 'VMC', start: '2025-06-02', end: '2025-12-20', status: 'DONE' },
   ];
   /* T71 S1: thông tin bổ sung của dự án mẫu. perf = mức bám kế hoạch (sinh % hoàn thành theo ngày, xem sx-du-an.js planOf); cap = giai đoạn cuối đã bắt đầu
      (dự án chưa sản xuất thì giai đoạn sau 0%); baseline = ngày chốt kế hoạch gốc (luồng SX-KH bước 5, S2). Tài liệu / lịch sử hư cấu. */
@@ -234,6 +239,16 @@
       goal: 'Tổ chức sản xuất 3.000 trạm 5G Macro gNB-M3 qua VMC tổng thầu, triển khai theo kế hoạch năm 2027.',
       creator: 'sxk2', created: '2026-11-10', docs: [['PAKD 352-PAKD-VHT.pdf', 'PAKD', 'v1.0', 'sxk2', '2026-11-10']], hist: [['2026-11-10 10:20', 'sxk2', 'Tạo dự án', '']] },
   };
+  Object.assign(EXTRA, {
+    'DA-SX-2026-005': { trial: false, basis: ['HD', 'Hợp đồng cung cấp thiết bị số 41/2026/HĐ-MTC ngày 10/02/2026'], customer: 'Metfone Campuchia (khách hàng thị trường)', perf: 0.97, cap: 3, baseline: '2026-03-06', lot: 10000,
+      goal: 'Thuê gia công 30.000 bộ phát WM-6, nghiệm thu theo lô 10.000 thiết bị, giao khách hàng trước 25/11/2026.',
+      creator: 'sxk2', created: '2026-02-15', docs: [['Kế hoạch sản xuất WM-6 Campuchia (đã phê duyệt).pdf', 'KH', 'v1.0', 'sxk2', '2026-03-06']],
+      hist: [['2026-02-15 09:00', 'sxk2', 'Tạo dự án', ''], ['2026-03-04 15:30', 'sxld', 'Phê duyệt kế hoạch sản xuất', 'Kế hoạch v1.0'], ['2026-03-06 10:00', 'sxk2', 'Chốt kế hoạch gốc', 'Kick-off dự án'], ['2026-11-12 14:00', 'sxk2', 'Chuyển nghiệm thu', 'Hoàn thành sản xuất lô cuối']] },
+    'DA-SX-2025-011': { trial: true, basis: ['NV', 'Nhiệm vụ sản xuất thử nghiệm tại Quyết định số 980/QĐ-VHT ngày 20/05/2025'], customer: 'Đơn vị sử dụng thuộc Bộ Quốc phòng', perf: 1, cap: 4, baseline: '2025-06-10',
+      goal: 'Sản xuất thử nghiệm 10 bộ VT-25 v2.0 phục vụ thử nghiệm thực tế, làm căn cứ sản xuất loạt.',
+      creator: 'sxpm', created: '2025-05-25', docs: [['Kế hoạch sản xuất VT-25 đợt thử nghiệm (đã phê duyệt).pdf', 'KH', 'v1.0', 'sxpm', '2025-06-10']],
+      hist: [['2025-05-25 08:30', 'sxpm', 'Tạo dự án', ''], ['2025-06-08 16:00', 'sxld', 'Phê duyệt kế hoạch sản xuất', 'Kế hoạch v1.0'], ['2025-06-10 09:00', 'sxpm', 'Chốt kế hoạch gốc', 'Kick-off dự án'], ['2025-12-18 15:00', 'sxpm', 'Hoàn thành dự án', 'Nhập kho đủ 10 bộ']] },
+  });
   D.sxProjects.forEach((p) => Object.assign(p, EXTRA[p.code]));
   D.sxStatus = { PLANNING: 'Lập kế hoạch', PREPARING: 'Chuẩn bị sản xuất', IN_PRODUCTION: 'Đang sản xuất', ACCEPTANCE: 'Nghiệm thu', DONE: 'Hoàn thành' };
   D.sxStatusV = { PLANNING: 'default', PREPARING: 'warning', IN_PRODUCTION: 'info', ACCEPTANCE: 'warning', DONE: 'success' };

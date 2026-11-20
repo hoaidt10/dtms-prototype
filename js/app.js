@@ -78,7 +78,7 @@
     const childActive = kids.some((k) => k.path === act);
     const isActive = m.path && m.path === act;
     const open = openGroups.has(m.label) || childActive;
-    const badge = m.badge === 'tasks' ? Flow.pendingCount(Flow.state.persona) : m.badge === 'sx-tasks' ? window.SxFlow.pending(Flow.state.persona) : 0;
+    const badge = m.badge === 'tasks' ? Flow.pendingCount(Flow.state.persona) : m.badge === 'sx-tasks' ? window.SxFlow.pending(Flow.state.persona) : typeof m.badge === 'function' ? m.badge() : 0;
     const cls = ['nav', level ? 'child' : '', isActive ? 'active' : '', childActive ? 'has-active' : '', open ? 'open' : ''].join(' ');
     const btn = `<button class="${cls}" ${m.path ? `data-go="${m.path}"` : `data-toggle="${esc(m.label)}"`} title="${esc(m.label)}">
       ${m.icon ? `<span class="i">${icon(m.icon)}</span>` : ''}<span class="l">${esc(m.label)}</span>

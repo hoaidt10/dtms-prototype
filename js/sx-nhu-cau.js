@@ -31,7 +31,7 @@
   /* Dữ liệu mẫu: dự án đã chốt kế hoạch có MBOM — toàn bộ dòng MBOM. */
   function seed() {
     const out = [];
-    D.sxProjects.filter((p) => p.baseline && D.sxMbom[p.product]).forEach((p0) => {
+    D.sxProjects.filter((p) => p.baseline && D.sxMbom[p.product] && !['ACCEPTANCE', 'DONE'].includes(p.status)).forEach((p0) => {
       const p = P().byCode(p0.code), need = needDateOf(p);
       /* T73: Danh mục = tổng số lượng; Nhu cầu = số lượng cần có trước từng ngày. Vật tư từ 10 đơn vị: tách 2 đợt (60% trước ngày cần, 40% trước ngày cần + 30 ngày). */
       mbomOf(p).forEach((m) => {

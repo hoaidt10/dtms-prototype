@@ -156,11 +156,19 @@
 
   /* ---------- SX-06 Chi tiết gói (cũng là thân màn xử lý việc của SX-BG) ---------- */
   const tabKey = (code) => 'cg:' + code;
+  /* Bảng có phân trang (bộ phân trang chung của kit — trạng thái trang ở kit.LST, sự kiện bấm do thau.js xử lý). */
+  function paged(k, id, cols, rows, cell) {
+    const L = k.LST[id] || (k.LST[id] = { page: 1, size: 10, psOpen: false });
+    const pages = Math.max(1, Math.ceil(rows.length / L.size)); if (L.page > pages) L.page = pages;
+    const off = (L.page - 1) * L.size;
+    return k.table(cols, rows.slice(off, off + L.size), cell).replace(/<td class="ord">(\d+)<\/td>/g, (m, n) => `<td class="ord">${Number(n) + off}</td>`)
+      + window.UI.pager({ id, total: rows.length, page: L.page, size: L.size, open: L.psOpen });
+  }
   function docTable(g, editable, link) {
     const k = K(), rows = docs(g);
     const st = (d) => (d.need ? badge('Cần bổ sung', 'warning') : d.file ? badge('Đã tải lên', 'success') : d.buoc === 4 ? badge('Lập ở bước 4', 'default') : d.req ? badge('Chưa tải lên', 'error') : badge('Không bắt buộc', 'default'));
     /* T74 #97: thêm Phiên bản, Nguồn; ở tab dự án (link) mã hồ sơ mở chi tiết gói chuyển giao (SX-06). */
-    return k.table([['Mã hồ sơ', 100], ['Tên hồ sơ', 300], ['Nhóm', 180], ['Bắt buộc', 90, 'c'], ['Tệp', 220], ['Phiên bản', 90], ['Nguồn', 210], ['Trạng thái', 130, 'c']].concat(editable ? [['', 130, 'c']] : []), rows,
+    return paged(k, `sx-cg-doc:${g.code}:${link ? 'p' : 'd'}`, [['Mã hồ sơ', 100], ['Tên hồ sơ', 300], ['Nhóm', 180], ['Bắt buộc', 90, 'c'], ['Tệp', 220], ['Phiên bản', 90], ['Nguồn', 210], ['Trạng thái', 130, 'c']].concat(editable ? [['', 130, 'c']] : []), rows,
       (d) => `<td>${link ? `<a class="link" data-go="${link}" title="Xem chi tiết tài liệu ở Hồ sơ chuyển giao">${esc(d.code)}</a>` : esc(d.code)}</td><td>${k.clamp(d.name)}</td><td>${k.clamp(NHOM[d.nhom] || d.nhom)}</td><td class="c">${d.req || d.buoc === 4 ? 'Có' : 'Không'}</td><td>${d.file ? k.clamp(d.file) : k.dash}</td>
         <td>${d.ver ? esc(d.ver) : k.dash}</td><td>${d.src ? k.clamp(d.src) : k.dash}</td><td class="c">${st(d)}</td>
         ${editable ? `<td class="c">${d.buoc !== 4 ? `<label class="vbtn sm secondary">${icon('upload')} ${d.file ? 'Tải lại' : 'Tải file lên'}<input type="file" hidden data-cg-up="${esc(g.code)}|${esc(d.code)}"></label>` : ''}</td>` : ''}`);
@@ -258,7 +266,7 @@
   /* T74 #97: sản phẩm đã vào Kho trước khi có hệ thống (không có gói) — danh mục tài liệu nhận từ COP1 theo danh mục hồ sơ chuyển giao của khối, đồng bộ từ Quản lý hồ sơ KHCN (GIẢ LẬP P-271). */
   function relDocCard(p, k) {
     const rows = window.Catalog.rows('sx-ho-so-chuyen-giao').filter((r) => r.khoi === p.khoi && r.active !== false && r.buoc !== 4);
-    return k.card('Danh mục tài liệu nhận từ COP1', k.table([['Mã hồ sơ', 100], ['Tên hồ sơ', 300], ['Nhóm', 180], ['Tệp', 260], ['Phiên bản', 90], ['Nguồn', 210], ['Trạng thái', 130, 'c']], rows,
+    return k.card('Danh mục tài liệu nhận từ COP1', paged(k, `sx-cg-rel:${p.code}`, [['Mã hồ sơ', 100], ['Tên hồ sơ', 300], ['Nhóm', 180], ['Tệp', 260], ['Phiên bản', 90], ['Nguồn', 210], ['Trạng thái', 130, 'c']], rows,
       (d) => `<td><a class="link" data-go="sx/san-pham" title="Xem ở Sản phẩm sẵn sàng sản xuất">${esc(d.code)}</a></td><td>${k.clamp(d.name)}</td><td>${k.clamp(NHOM[d.nhom] || d.nhom)}</td>
         <td>${k.clamp(`${d.code} ${d.name}.pdf`)}</td><td>v1.0</td><td>${k.clamp('Đồng bộ từ Quản lý hồ sơ KHCN')}</td><td class="c">${badge('Đã nhận', 'success')}</td>`),
     'Đồng bộ từ Quản lý hồ sơ KHCN; bấm mã hồ sơ để xem ở Chuyển giao từ nghiên cứu');
@@ -267,11 +275,10 @@
     const k = K(), g = pkgOf(p), r = relOf(p.product);
     if (!g) {
       return `<div data-sx-cg>${k.card('Hồ sơ chuyển giao từ nghiên cứu', r ? `<p>Sản phẩm ${esc(p.product)} · ${esc(p.version)} đã có trong Kho sản phẩm sẵn sàng sản xuất${r.date ? ` từ ${esc(dmy(r.date))}` : ''} (phát hành trước khi có hệ thống).</p>`
-        : '<p class="faint">Chưa có gói chuyển giao cho sản phẩm · phiên bản của dự án.</p>')}${r ? relDocCard(p, k) : ''}${projectNm(p)}</div>`;
+        : '<p class="faint">Chưa có gói chuyển giao cho sản phẩm · phiên bản của dự án.</p>')}${r ? relDocCard(p, k) : ''}</div>`;
     }
     const x = byCode(g.code), [du, tong] = docCount(x);
     return `<div data-sx-cg>${k.card('Gói chuyển giao từ nghiên cứu', `<div class="ginfo c3">${k.kv('Mã gói', `<a class="link" data-go="${href(x)}">${esc(x.code)}</a>`)}${k.kv('Trạng thái', badge(...stOf(x)))}${k.kv('Hồ sơ bắt buộc', `${du} / ${tong}`)}</div>`)}
-      ${projectNm(p)}
       ${k.card('Danh mục tài liệu nhận từ COP1', docTable(x, false, href(x)), 'Đồng bộ từ Quản lý hồ sơ KHCN; bấm mã hồ sơ để xem chi tiết ở Chuyển giao từ nghiên cứu')}</div>`;
   }
   /* 4M: dự án đã sản xuất trước khi có hệ thống coi như đạt (dữ liệu chuyển đổi); tiêu chí auto đọc từ Kho Release. */
