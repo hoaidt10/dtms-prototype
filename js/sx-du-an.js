@@ -419,7 +419,8 @@
       + (canDel(p) ? `<button type="button" class="vbtn secondary" data-sx-del="${esc(p.code)}">${icon('del')} Xoá</button>` : '')
       + (canEdit(p) ? `<button type="button" class="vbtn primary" data-go="${href(p)}/edit">${icon('edit')} Chỉnh sửa</button>` : '')
       + (p.status === 'DONE' && canCreate() ? `<button type="button" class="vbtn secondary" data-sx-next="${esc(p.code)}">${icon('add')} Lập dự án đợt tiếp theo</button>` : '');
-    const alerts = late.length ? `<div class="hd-alerts"><div class="hd-alert error">${icon('info')}<span>${late.length} hạng mục chậm tiến độ: ${esc(late.slice(0, 3).map((r) => r.name).join('; '))}${late.length > 3 ? '…' : ''}</span></div></div>` : '';
+    const dvAl = window.SxDv ? window.SxDv.headAlert(p) : '';
+    const alerts = late.length || dvAl ? `<div class="hd-alerts">${dvAl}${late.length ? `<div class="hd-alert error">${icon('info')}<span>${late.length} hạng mục chậm tiến độ: ${esc(late.slice(0, 3).map((r) => r.name).join('; '))}${late.length > 3 ? '…' : ''}</span></div>` : ''}</div>` : '';
     const tInfo = () => k.card('Thông tin chung', `<div class="ginfo c3">
         ${k.kv('Mã dự án', esc(p.code))}${k.kv('Tên dự án', esc(p.name), 'span2')}
         ${k.kv('Trạng thái', stBadge(p))}${k.kv('Khối', esc(KHOI[p.khoi]))}${k.kv('Mô hình tổ chức sản xuất', esc(catName('sx-mo-hinh', p.model)))}
@@ -483,8 +484,8 @@
       ${head({ title: o.title || 'Xem chi tiết dự án sản xuất', back: o.back || 'sx/du-an', lg: true, info: o.info || info, right })}
       ${o.bar || ''}
       ${alerts}
-      ${k.tabs('sx:' + p.code, [['info', 'Thông tin chung'], ['plan', 'Kế hoạch'], ['kh', 'Phê duyệt kế hoạch'], ['ns', 'Nhân sự'], ['cg', 'Hồ sơ chuyển giao'], ['m4', 'Điều kiện sản xuất'], ['ms', 'Mua sắm & hợp đồng'], ['btp', 'Bán thành phẩm & tiến độ'], ['bt', 'Bất thường & thay đổi'], ['nt', 'Chất lượng & nghiệm thu'], ['vmms', 'Dữ liệu VMMS'], ['docs', 'Tài liệu'], ['hist', 'Lịch sử']],
-    { info: tInfo, kh: tKh, plan: tPlan, ns: () => window.SxKh.tabStaff(p), cg: () => window.SxCg.projectCg(p), m4: () => window.SxCg.projectM4(p), ms: () => window.SxMs.projectTab(p), btp: () => window.SxBtp.projectTab(p), bt: () => window.SxBt.projectTab(p), nt: () => window.SxNt.projectTab(p), vmms: () => window.SxVmms.projectTab(p), docs: tDocs, hist: tHist })}</div>`;
+      ${k.tabs('sx:' + p.code, [['info', 'Thông tin chung'], ['dv', 'Đầu vào (B1)'], ['plan', 'Kế hoạch'], ['kh', 'Phê duyệt kế hoạch'], ['ns', 'Nhân sự'], ['cg', 'Hồ sơ chuyển giao'], ['m4', 'Điều kiện sản xuất'], ['ms', 'Mua sắm & hợp đồng'], ['btp', 'Bán thành phẩm & tiến độ'], ['bt', 'Bất thường & thay đổi'], ['nt', 'Chất lượng & nghiệm thu'], ['vmms', 'Dữ liệu VMMS'], ['docs', 'Tài liệu'], ['hist', 'Lịch sử']],
+    { info: tInfo, dv: () => window.SxDv.projectTab(p), kh: tKh, plan: tPlan, ns: () => window.SxKh.tabStaff(p), cg: () => window.SxCg.projectCg(p), m4: () => window.SxCg.projectM4(p), ms: () => window.SxMs.projectTab(p), btp: () => window.SxBtp.projectTab(p), bt: () => window.SxBt.projectTab(p), nt: () => window.SxNt.projectTab(p), vmms: () => window.SxVmms.projectTab(p), docs: tDocs, hist: tHist })}</div>`;
   }
   const T = { open: {} };
   /* Mở tab Kế hoạch tại một hạng mục (từ Lần phê duyệt ở tab Phê duyệt kế hoạch): mở các nhóm cha, tô và cuộn tới dòng. */
@@ -662,7 +663,7 @@
     const [a, b] = parts;
     if (a === 'create') return form(null);
     if (a && b === 'edit') return form(decodeURIComponent(a));
-    if (a) { if (b === 'ke-hoach') K().setTab('sx:' + decodeURIComponent(a), 'plan'); else if (['info', 'kh', 'ns', 'cg', 'm4', 'ms', 'btp', 'bt', 'nt', 'vmms', 'docs', 'hist'].includes(b)) K().setTab('sx:' + decodeURIComponent(a), b); return detail(decodeURIComponent(a)); }
+    if (a) { if (b === 'ke-hoach') K().setTab('sx:' + decodeURIComponent(a), 'plan'); else if (['info', 'dv', 'kh', 'ns', 'cg', 'm4', 'ms', 'btp', 'bt', 'nt', 'vmms', 'docs', 'hist'].includes(b)) K().setTab('sx:' + decodeURIComponent(a), b); return detail(decodeURIComponent(a)); }
     return list();
   }
   function enter(parts) {

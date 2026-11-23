@@ -32,6 +32,8 @@
       { label: 'Nhiệm vụ đơn vị', path: 'sx/cong-viec/don-vi', scr: 'SX-16' },
       { label: 'Việc cá nhân', path: 'sx/cong-viec/ca-nhan', scr: 'SX-16', badge: () => (window.SxCv ? window.SxCv.openCount('CN') : 0) }] },
     { label: 'Dự án sản xuất', icon: 'view_list', path: 'sx/du-an', scr: 'SX-02', notes: soon('S1', 'SX-02…04') },
+    /* COP2 B1 (CDS-BT-03COP tr. 84–85): tiếp nhận nhiệm vụ, hoàn thiện đầu vào — sx-dau-vao.js. */
+    { label: 'Tiếp nhận nhiệm vụ, đầu vào', icon: 'menu_square', path: 'sx/dau-vao', scr: 'SX-22' },
     { label: 'Chuyển giao từ nghiên cứu', icon: 'view_flow', open: true, children: [
       { label: 'Hồ sơ chuyển giao', path: 'sx/chuyen-giao', scr: 'SX-06', notes: soon('S3', 'SX-06') },
       { label: 'Sản phẩm sẵn sàng sản xuất', path: 'sx/san-pham', scr: 'SX-07', notes: soon('S3', 'SX-07') }] },
