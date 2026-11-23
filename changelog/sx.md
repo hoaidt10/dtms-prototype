@@ -1,12 +1,6 @@
 # Nhật ký — Quản lý sản xuất (`sx`)
 
-> Mỗi PR một mục, mới nhất trên cùng: `## 2026-11-23 · COP2 B1: Tiếp nhận nhiệm vụ, hoàn thiện đầu vào (B1.1–B1.4)
-- Màn mới SX-22 `#/sx/dau-vao` (menu "Tiếp nhận nhiệm vụ, đầu vào"): KPI Đang chuẩn bị / Sẵn sàng chốt / Đã chốt, % đủ căn cứ theo 4 nội dung của từng dự án.
-- Chi tiết dự án thêm tab **Đầu vào (B1)** (`js/sx-dau-vao.js`): B1.1 giao đầu vào (người cung cấp, nguồn, hạn, trạng thái, quá hạn); B1.2 tiếp nhận hồ sơ theo cấu hình × lô (chặn "Tiếp nhận đủ" khi thiếu BOM/HSKT/định mức/chỉ tiêu hoặc lệch phiên bản); B1.3 phạm vi VHT/VMC/thuê ngoài, chỉ chốt khi có đầu mối + điều kiện bàn giao; B1.4 chi phí có căn cứ giá, hiệu lực, leadtime dài, chênh lệch so với PAKD.
-- Cổng "Chốt đầu vào" chỉ bật khi đủ 4 nội dung; cảnh báo đầu trang dự án đang Lập kế hoạch. Nguồn: CDS-BT-03COP tr. 84–85.
-- Q-SX-01: cổng có chặn cứng nút Khởi tạo phê duyệt kế hoạch hay chỉ cảnh báo (prototype: chỉ cảnh báo).
-
-## YYYY-MM-DD — <việc> (#PR)` + 2–5 gạch đầu dòng (màn, thay đổi, nguồn, điểm treo mới).
+> Mỗi PR một mục, mới nhất trên cùng: `## YYYY-MM-DD — <việc> (#PR)` + 2–5 gạch đầu dòng (màn, thay đổi, nguồn, điểm treo mới).
 > Lịch sử trước T77: [lich-su-chung.md](lich-su-chung.md).
 
 ## 2026-11-23 · Luồng Nhiệm vụ → Phương án sản xuất kinh doanh → Dự án
