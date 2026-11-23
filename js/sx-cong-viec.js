@@ -315,6 +315,7 @@
       notes: [
         'Khuôn task-create (mode create / edit), trang riêng có route (B6). Mã do hệ thống sinh: NV-SX-… nhiệm vụ đơn vị, CV-SX-… việc cá nhân.',
         'Mở từ <b>Giao việc</b> ở tab Kế hoạch & mốc: Dự án và Hạng mục kế hoạch khoá sẵn. Mở từ <b>Thêm công việc con</b>: khoá Công việc cha; hạn việc con không được sau hạn việc cha.',
+        '<b>Nhiệm vụ đơn vị chưa có dự án</b> (hoaidt10 23/11): nhiệm vụ sản xuất được giao trước khi có dự án — đầu mối lập Phương án sản xuất kinh doanh từ nhiệm vụ; PASXKD được phê duyệt thì lập dự án, dự án tự gắn vào nhiệm vụ.',
         'Việc cá nhân: người không phải PM / Sub PM / Lãnh đạo chỉ tạo việc cho chính mình. Nhiệm vụ đơn vị: Đơn vị thực hiện = đơn vị của người đầu mối (thật: danh mục đơn vị + nhân sự từ hệ thống Nhân sự).',
       ],
       q: ['P-254'], src: 'task-management/components/task-create · /task-management/create',
@@ -331,7 +332,7 @@
         <div class="grid3">
           ${k.field('Mã công việc', `<input class="vctl" value="${x ? esc(x.code) : ''}" placeholder="Hệ thống tự sinh" disabled>`)}
           ${k.field('Tên công việc', `<input class="vctl" id="cvf-title" maxlength="500" placeholder="Nhập tên công việc" value="${esc(v.title)}" ${err.title ? 'aria-invalid="true"' : ''}>`, { req: true, err: err.title, cls: 'span2' })}
-          ${k.field('Dự án sản xuất', sel('cvf-project', 'project', P().visible().map((p) => ({ value: p.code, label: `${p.code} — ${p.name}` })), { ph: 'dự án', clear: !dv }), { req: dv, err: err.project })}
+          ${k.field('Dự án sản xuất', sel('cvf-project', 'project', P().visible().map((p) => ({ value: p.code, label: `${p.code} — ${p.name}` })), { ph: 'dự án', clear: true }), { err: err.project })}
           ${k.field('Hạng mục kế hoạch', sel('cvf-plan', 'plan', leafOpts(v.project), { ph: 'hạng mục', clear: true, disabled: !!F.lock.plan || !v.project }))}
           ${k.field('Công việc cha', sel('cvf-parent', 'parent', parents, { ph: 'công việc cha', clear: true }), { err: err.parent })}
           ${k.field(dv ? 'Người đầu mối' : 'Người thực hiện', sel('cvf-owner', 'owner', ppl, { ph: dv ? 'người đầu mối' : 'người thực hiện' }), { req: true, err: err.owner })}
@@ -351,7 +352,6 @@
     keep();
     const v = F.v, err = F.err = {}, x = F.code && byCode(F.code), kind = x ? x.kind : F.kind;
     if (!v.title.trim()) err.title = 'Bạn cần nhập Tên công việc.';
-    if (kind === 'DV' && !v.project) err.project = 'Bạn cần chọn Dự án sản xuất.';
     if (!v.owner) err.owner = kind === 'DV' ? 'Bạn cần chọn Người đầu mối.' : 'Bạn cần chọn Người thực hiện.';
     const s = fromDmy(v.start), e = fromDmy(v.due);
     if (!s) err.start = 'Bạn cần nhập Ngày bắt đầu đúng định dạng DD/MM/YYYY.';
@@ -389,7 +389,8 @@
         'Việc gắn hạng mục kế hoạch: % của hạng mục ở tab Kế hoạch & mốc là trung bình các công việc cấp 1 của hạng mục.'],
       q: ['P-254'], src: 'task-management/components/task-create (mode detail) · @khcn-core/ui app-tabs, vht-tree-table',
     };
-    const right = (canUpdate(x) ? `<button type="button" class="vbtn primary" data-sxcv-upd="${esc(x.code)}">Cập nhật tiến độ</button>` : '')
+    const canPa = x.kind === 'DV' && !x.project && !x.parent && !!window.SxPa && !window.SxPa.all().some((y) => y.nv === x.code) && (x.owner === pid() || isAdmin());
+    const right = (canPa ? `<button type="button" class="vbtn primary" data-sxpa-new="${esc(x.code)}">${icon('add')} Lập phương án SXKD</button>` : '') + (canUpdate(x) ? `<button type="button" class="vbtn primary" data-sxcv-upd="${esc(x.code)}">Cập nhật tiến độ</button>` : '')
       + (!x.done && (canEdit(x) || x.owner === pid()) ? `<button type="button" class="vbtn secondary" data-go="sx/cong-viec/create/CN/cha/${encodeURIComponent(x.code)}">${icon('add')} Thêm công việc con</button>` : '')
       + (canEdit(x) ? `<button type="button" class="vbtn secondary" data-go="${href(x)}/edit">${icon('edit')} Chỉnh sửa</button>` : '');
     const d = daysLeft(x.due);
@@ -400,6 +401,7 @@
         ${k.kv('Mã công việc', esc(x.code))}${k.kv('Tên công việc', esc(x.title), 'span2')}
         ${k.kv('Loại', esc(KIND[x.kind]))}${k.kv('Trạng thái', badge(...st))}${k.kv('Hoàn thành', `${x.pct}%${x.kids.length ? ' (theo công việc con)' : ''}`)}
         ${k.kv('Dự án sản xuất', x.project ? `<a class="link" data-go="sx/du-an/${encodeURIComponent(x.project)}">${esc(x.project)}</a>` : null)}${k.kv('Hạng mục kế hoạch', x.plan ? esc(planName(x)) : null, 'span2')}
+        ${dv && window.SxPa ? k.kv('Phương án sản xuất kinh doanh', ((pa) => (pa ? `<a class="link" data-go="sx/pasxkd/${encodeURIComponent(pa.code)}">${esc(pa.no)} — ${esc(pa.title)}</a>` : null))(window.SxPa.all().find((y) => y.nv === x.code)), 'span3') : ''}
         ${k.kv('Công việc cha', anc.length ? anc.map((a) => `<a class="link" data-go="${href(a)}">${esc(a.code)}</a>`).join(' › ') : null, 'span3')}
         ${k.kv(dv ? 'Người đầu mối' : 'Người thực hiện', esc(pName(x.owner)))}${k.kv('Đơn vị thực hiện', esc(unitOf(x.owner)))}${k.kv('Người giao', esc(pName(x.assigner)))}
         ${k.kv('Ngày bắt đầu', esc(dmy(x.start)))}${k.kv('Hạn hoàn thành', esc(dmy(x.due)))}${k.kv('Ngày hoàn thành', x.doneAt ? esc(dmy(x.doneAt)) : null)}
@@ -517,5 +519,11 @@
 
   /* Số việc chưa hoàn thành người đang đăng nhập xem được (số đỏ ở menu Việc cá nhân). */
   const openCount = (kind) => base(kind).filter((x) => !x.done).length;
-  window.SxCv = { openCount, route, enter, reset, all, byCode, activePath, planProgress, planCell, fromPlan, remindCount, remindBar, reminders, stOf };
+  /* PASXKD được lập dự án → gắn dự án vào nhiệm vụ (sx-du-an.js save). */
+  function linkProject(code, project) {
+    const own = U.created.find((y) => y.code === code);
+    if (own) own.project = project; else U.edit[code] = Object.assign(U.edit[code] || {}, { project });
+    persist();
+  }
+  window.SxCv = { linkProject, openCount, route, enter, reset, all, byCode, activePath, planProgress, planCell, fromPlan, remindCount, remindBar, reminders, stOf };
 })();

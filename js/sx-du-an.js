@@ -251,7 +251,7 @@
     F.v = p ? { name: p.name, khoi: p.khoi, basisKind: (p.basis || [])[0] || null, basisNo: p.pakd ? '' : (p.basis || [])[1] || '', pakd: p.pakd || null, basisFile: p.basisFile || '', khsxkd: p.khsxkd || null,
       product: p.product, model: p.model, qty: String(p.qty), unitName: p.unitName, trial: p.trial == null ? null : p.trial ? 'Y' : 'N', prev: p.prev || null,
       factory: p.factory || null, pm: p.pm, start: dmy(p.start), end: dmy(p.end), customer: p.customer || '', goal: p.goal || '' }
-      : { name: '', khoi: (SCOPE[Flow.state.persona] || {}).khoi || null, basisKind: null, basisNo: '', pakd: null, basisFile: '', khsxkd: null, product: null, model: null, qty: '', unitName: 'bộ',
+      : { name: '', khoi: (SCOPE[Flow.state.persona] || {}).khoi || null, basisKind: 'PAKD', basisNo: '', pakd: null, basisFile: '', khsxkd: null, product: null, model: null, qty: '', unitName: 'bộ',
         trial: null, prev: null, factory: null, pm: D.roleOf(Flow.state.persona) === 'R-SX-PM' ? Flow.state.persona : null, start: '', end: '', customer: '', goal: '' };
     /* (b) Q13: Lập dự án đợt tiếp theo từ dự án Hoàn thành — chép thông tin, để trống căn cứ (P-265). */
     if (!p && NEXT.from) {
@@ -263,7 +263,10 @@
   }
   const NEXT = { from: null };
   /* (b) Q14: PAKD đã phê duyệt còn dùng được (chưa lập dự án khác), theo khối. GIẢ LẬP P-264. */
-  const pakdOf = (code) => (D.sxPakd || []).find((x) => x.code === code) || null;
+  /* Luồng Nhiệm vụ → PASXKD → Dự án (hoaidt10 23/11): nguồn PASXKD là SxPa (sx-pasxkd.js); chỉ PASXKD Đã phê duyệt mới lập được dự án. */
+  const pakdAll = () => (window.SxPa ? window.SxPa.all() : D.sxPakd || []);
+  const pakdOf = (code) => pakdAll().find((x) => x.code === code) || null;
+  const pakdOk = (x) => !!x && (!x.status || x.status === 'APPROVED');
   const pakdUsedBy = (code, self) => all().find((x) => x.pakd === code && x.code !== self) || null;
   function form(code) {
     // Theo: fe/repo-khcn-bpmn-fe/src/app/features/task-management/components/task-create/task-create.component.html (mode create / edit)
@@ -273,9 +276,10 @@
     const info = {
       scr: 'SX-03', name: p ? 'Chỉnh sửa dự án sản xuất' : 'Thêm mới dự án sản xuất', uc: 'CDS-BT-03COP COP2 B1 (tiếp nhận nhiệm vụ, hoàn thiện đầu vào); SX-KS-K2 §4.3 bước 1; RBAC F4.1',
       notes: [
+        '<b>Luồng (hoaidt10 23/11)</b>: Nhiệm vụ đơn vị → Phương án sản xuất kinh doanh (PASXKD) đã phê duyệt → Thêm mới dự án. Dự án mới chỉ lập từ PASXKD <b>Đã phê duyệt</b>, chưa lập dự án (căn cứ Nhiệm vụ / Hợp đồng chỉ còn ở dự án cũ). Chọn PASXKD điền sẵn sản phẩm, số lượng, khách hàng, mô hình tổ chức, giám đốc dự án, ngày bắt đầu / kết thúc (sửa được); lưu xong gắn dự án vào nhiệm vụ của PASXKD.',
         'Khuôn task-create (mode create / edit), trang riêng có route (B6). Lưu = tạo dự án ở trạng thái <b>Lập kế hoạch</b>, chưa khởi tạo quy trình; luồng Phê duyệt kế hoạch sản xuất khởi tạo từ dự án ở S2.',
         'Mã dự án do hệ thống sinh (P-242). Khối quyết định danh mục hồ sơ chuyển giao (27 / 20 hồ sơ); Mô hình tổ chức quyết định cách chia kế hoạch ở bước 9 (bán thành phẩm / mốc tổng VMC / lô gia công) — đều là cấu hình danh mục.',
-        '<b>Căn cứ hình thành</b> (QT-TTSX-4A11 §5.1: quy trình bắt đầu khi phương án kinh doanh được phê duyệt): Phương án kinh doanh → chọn từ danh sách PAKD đã phê duyệt, hệ thống điền sẵn sản phẩm, số lượng, khách hàng, ngày kết thúc, kế hoạch SXKD năm (sửa được); một PAKD lập một dự án (GIẢ LẬP P-264). Nhiệm vụ được giao / Hợp đồng → nhập số văn bản và đính kèm văn bản.',
+        '<b>Căn cứ hình thành</b> (QT-TTSX-4A11 §5.1: quy trình bắt đầu khi phương án sản xuất kinh doanh được phê duyệt): Phương án sản xuất kinh doanh → chọn từ danh sách PAKD đã phê duyệt, hệ thống điền sẵn sản phẩm, số lượng, khách hàng, ngày kết thúc, kế hoạch SXKD năm (sửa được); một PAKD lập một dự án (GIẢ LẬP P-264). Nhiệm vụ được giao / Hợp đồng → nhập số văn bản và đính kèm văn bản.',
         '<b>Sản phẩm</b> chỉ chọn trong Kho sản phẩm sẵn sàng sản xuất: chuyển giao R&D → sản xuất (biên bản thành phần đủ điều kiện sản xuất) là đầu vào của quy trình (QT §5.2 mục 27; P-263).',
         '<b>Có thử nghiệm thực tế</b> quyết định bước 11 của kế hoạch (nút rẽ "TN?" của lưu đồ QT-TTSX-4A11-LD). <b>Dự án đợt trước</b>: liên kết các đợt sản xuất cùng sản phẩm (P-265).',
         'Đơn vị sản xuất có thể để trống khi tạo, chọn sau khi lựa chọn nhà thầu. Chỉnh sửa được khi dự án còn ở trạng thái Lập kế hoạch.',
@@ -284,14 +288,14 @@
     };
     const prods = D.sxProducts.filter((x) => (!v.khoi || x.khoi === v.khoi) && (window.SxCg.ready(x.code) || (p && p.product === x.code))).map((x) => ({ value: x.code, label: `${x.code} — ${x.name} (${x.version})` }));
     const prod = prodOf(v.product);
-    const pakds = (D.sxPakd || []).filter((x) => (!v.khoi || x.khoi === v.khoi) && !pakdUsedBy(x.code, p && p.code)).map((x) => ({ value: x.code, label: `${x.no} — ${x.title}` }));
+    const pakds = pakdAll().filter((x) => pakdOk(x) && (!v.khoi || x.khoi === v.khoi) && !pakdUsedBy(x.code, p && p.code)).map((x) => ({ value: x.code, label: `${x.no} — ${x.title}` }));
     const khs = (D.sxKhsxkd || []).filter((x) => !v.khoi || x.khoi === v.khoi).map((x) => ({ value: x.code, label: x.title }));
     const prevs = all().filter((x) => (!p || x.code !== p.code) && (!v.product || x.product === v.product)).map((x) => ({ value: x.code, label: `${x.code} — ${x.name}` }));
     const sel = (id, key, opts, o) => vSelect(Object.assign({ id, value: v[key], searchable: true, placeholder: 'Chọn ' + ((o && o.ph) || ''), invalid: !!err[key], options: opts,
       onChange: (x) => { keep(); v[key] = x; delete err[key]; if (key === 'khoi' && prod && prod.khoi !== x) v.product = null; if (key === 'pakd') fillPakd(x); if (key === 'basisKind' && x !== 'PAKD') v.pakd = null; rerender(); } }, o || {}));
     const isPakd = v.basisKind === 'PAKD';
     const basisFields = isPakd
-      ? k.field('Phương án kinh doanh đã phê duyệt', sel('sxf-pakd', 'pakd', pakds, { ph: 'phương án kinh doanh' }), { req: true, err: err.pakd, cls: 'span2' })
+      ? k.field('Phương án sản xuất kinh doanh đã phê duyệt', sel('sxf-pakd', 'pakd', pakds, { ph: 'phương án sản xuất kinh doanh' }), { req: true, err: err.pakd, cls: 'span2' })
       : `${k.field('Số, ký hiệu văn bản căn cứ', `<input class="vctl" id="sxf-basisNo" maxlength="255" placeholder="Nhập số, ký hiệu văn bản" value="${esc(v.basisNo)}" ${err.basisNo ? 'aria-invalid="true"' : ''}>`, { req: true, err: err.basisNo })}
          ${k.field('Văn bản căn cứ', `<label class="vbtn secondary">${icon('upload')} ${v.basisFile ? esc(v.basisFile) : 'Tải file lên'}<input type="file" hidden id="sxf-basisFile"></label>`, { req: !p, err: err.basisFile })}`;
     return `<form class="pg" data-sx-form="${p ? esc(p.code) : ''}">
@@ -302,7 +306,7 @@
           ${k.field('Mã dự án', `<input class="vctl" value="${p ? esc(p.code) : ''}" placeholder="Hệ thống tự sinh" disabled>`)}
           ${k.field('Tên dự án', `<input class="vctl" id="sxf-name" maxlength="500" placeholder="Nhập tên dự án" value="${esc(v.name)}" ${err.name ? 'aria-invalid="true"' : ''}>`, { req: true, err: err.name, cls: 'span2' })}
           ${k.field('Khối', sel('sxf-khoi', 'khoi', Object.entries(KHOI).map(([value, label]) => ({ value, label })), { searchable: false, ph: 'khối' }), { req: true, err: err.khoi })}
-          ${k.field('Căn cứ hình thành', sel('sxf-basis', 'basisKind', Object.entries(D.sxBasis).map(([value, label]) => ({ value, label })), { searchable: false, ph: 'căn cứ' }), { req: true, err: err.basisKind })}
+          ${k.field('Căn cứ hình thành', sel('sxf-basis', 'basisKind', Object.entries(D.sxBasis).filter(([value]) => !!p || value === 'PAKD').map(([value, label]) => ({ value, label })), { searchable: false, ph: 'căn cứ', disabled: !p }), { req: true, err: err.basisKind })}
           ${basisFields}
           ${k.field('Kế hoạch sản xuất kinh doanh năm', sel('sxf-khsxkd', 'khsxkd', khs, { searchable: false, clear: true, ph: 'kế hoạch sản xuất kinh doanh năm' }))}
           ${k.field('Sản phẩm', sel('sxf-product', 'product', prods, { ph: 'sản phẩm sẵn sàng sản xuất' }), { req: true, err: err.product, cls: 'span2' })}
@@ -320,14 +324,17 @@
           ${k.field('Mục tiêu', `<textarea class="vctl" id="sxf-goal" rows="3" maxlength="2000" placeholder="Nhập mục tiêu, kết quả then chốt">${esc(v.goal)}</textarea>`, { cls: 'span3' })}
         </div></section></form>`;
   }
-  /* Chọn PAKD: điền sẵn theo phương án kinh doanh (người dùng sửa được); sản phẩm chưa chuyển giao thì để trống để chọn sản phẩm sẵn sàng sản xuất. */
+  /* Chọn PAKD: điền sẵn theo phương án sản xuất kinh doanh (người dùng sửa được); sản phẩm chưa chuyển giao thì để trống để chọn sản phẩm sẵn sàng sản xuất. */
   function fillPakd(code) {
     const x = pakdOf(code), v = F.v;
     if (!x) return;
     const pr = prodOf(x.product);
     Object.assign(v, { khoi: x.khoi, qty: String(x.qty), unitName: x.unitName, customer: x.customer, end: dmy(x.due), khsxkd: x.kh, product: pr && window.SxCg.ready(pr.code) ? pr.code : null });
-    if (!v.name.trim()) v.name = x.title.replace(/^Phương án kinh doanh/, 'Sản xuất');
-    if (!v.product) F.err.product = `Sản phẩm ${x.product} của phương án kinh doanh chưa có trong Kho sản phẩm sẵn sàng sản xuất.`;
+    if (!v.name.trim()) v.name = x.title.replace(/^Phương án sản xuất kinh doanh/, 'Sản xuất');
+    if (x.model) v.model = x.model;
+    if (x.pm && D.roleOf(x.pm) === 'R-SX-PM') v.pm = x.pm;
+    if (x.start) v.start = dmy(x.start);
+    if (!v.product) F.err.product = `Sản phẩm ${x.product} của phương án sản xuất kinh doanh chưa có trong Kho sản phẩm sẵn sàng sản xuất.`;
   }
   document.addEventListener('change', (e) => {
     if (e.target.id !== 'sxf-basisFile' || !e.target.files || !e.target.files[0]) return;
@@ -346,8 +353,9 @@
     if (!v.khoi) err.khoi = 'Bạn cần chọn Khối.';
     if (!v.basisKind) err.basisKind = 'Bạn cần chọn Căn cứ hình thành.';
     else if (v.basisKind === 'PAKD') {
-      if (!v.pakd) err.pakd = 'Bạn cần chọn Phương án kinh doanh đã phê duyệt.';
-      else if (pakdUsedBy(v.pakd, F.code)) err.pakd = `Phương án kinh doanh đã được lập dự án ${pakdUsedBy(v.pakd, F.code).code}.`;
+      if (!v.pakd) err.pakd = 'Bạn cần chọn Phương án sản xuất kinh doanh đã phê duyệt.';
+      else if (!pakdOk(pakdOf(v.pakd))) err.pakd = 'Phương án sản xuất kinh doanh chưa được phê duyệt.';
+      else if (pakdUsedBy(v.pakd, F.code)) err.pakd = `Phương án sản xuất kinh doanh đã được lập dự án ${pakdUsedBy(v.pakd, F.code).code}.`;
     } else {
       if (!v.basisNo.trim()) err.basisNo = 'Bạn cần nhập Số, ký hiệu văn bản căn cứ.';
       if (!F.code && !v.basisFile) err.basisFile = 'Bạn cần tải lên Văn bản căn cứ.';
@@ -379,7 +387,9 @@
       /* Văn bản căn cứ vào tab Tài liệu: PAKD lấy từ hệ thống nguồn (GIẢ LẬP P-264), Nhiệm vụ / Hợp đồng là tệp người dùng tải lên. */
       const doc = pk ? [`PAKD ${pk.no.replace(/\//g, '-')}.pdf`, 'PAKD', 'v1.0', Flow.state.persona, D.sxToday] : [v.basisFile, v.basisKind, 'v1.0', Flow.state.persona, D.sxToday];
       U.created.unshift(Object.assign({ code, status: 'PLANNING', perf: 0, cap: 0, baseline: null, creator: Flow.state.persona, created: D.sxToday, docs: [doc], hist: [] }, data));
-      addHist(code, 'Tạo dự án', pk ? `Từ phương án kinh doanh ${pk.no}` : '');
+      addHist(code, 'Tạo dự án', pk ? `Từ phương án sản xuất kinh doanh ${pk.no}` : '');
+      /* Gắn dự án vào nhiệm vụ đơn vị của PASXKD (nhiệm vụ → PASXKD → dự án). */
+      if (pk && pk.nv && window.SxCv && window.SxCv.linkProject) window.SxCv.linkProject(pk.nv, code);
       toast('<b>Thành công</b><br>Thêm mới thành công!');
     }
     persist();
@@ -419,13 +429,12 @@
       + (canDel(p) ? `<button type="button" class="vbtn secondary" data-sx-del="${esc(p.code)}">${icon('del')} Xoá</button>` : '')
       + (canEdit(p) ? `<button type="button" class="vbtn primary" data-go="${href(p)}/edit">${icon('edit')} Chỉnh sửa</button>` : '')
       + (p.status === 'DONE' && canCreate() ? `<button type="button" class="vbtn secondary" data-sx-next="${esc(p.code)}">${icon('add')} Lập dự án đợt tiếp theo</button>` : '');
-    const dvAl = window.SxDv ? window.SxDv.headAlert(p) : '';
-    const alerts = late.length || dvAl ? `<div class="hd-alerts">${dvAl}${late.length ? `<div class="hd-alert error">${icon('info')}<span>${late.length} hạng mục chậm tiến độ: ${esc(late.slice(0, 3).map((r) => r.name).join('; '))}${late.length > 3 ? '…' : ''}</span></div>` : ''}</div>` : '';
+    const alerts = late.length ? `<div class="hd-alerts"><div class="hd-alert error">${icon('info')}<span>${late.length} hạng mục chậm tiến độ: ${esc(late.slice(0, 3).map((r) => r.name).join('; '))}${late.length > 3 ? '…' : ''}</span></div></div>` : '';
     const tInfo = () => k.card('Thông tin chung', `<div class="ginfo c3">
         ${k.kv('Mã dự án', esc(p.code))}${k.kv('Tên dự án', esc(p.name), 'span2')}
         ${k.kv('Trạng thái', stBadge(p))}${k.kv('Khối', esc(KHOI[p.khoi]))}${k.kv('Mô hình tổ chức sản xuất', esc(catName('sx-mo-hinh', p.model)))}
         ${k.kv('Sản phẩm', esc(`${p.product} — ${(prodOf(p.product) || {}).name || ''}`))}${k.kv('Phiên bản', esc(p.version))}${k.kv('Số lượng', `${num(p.qty)} ${esc(p.unitName)}`)}
-        ${k.kv('Căn cứ hình thành', esc(D.sxBasis[(p.basis || [])[0]] || ''))}${k.kv('Văn bản căn cứ', esc(p.pakd && pakdOf(p.pakd) ? `${(p.basis || [])[1] || ''} — ${pakdOf(p.pakd).title}` : (p.basis || [])[1] || ''), 'span2')}
+        ${k.kv('Căn cứ hình thành', esc(D.sxBasis[(p.basis || [])[0]] || ''))}${k.kv('Văn bản căn cứ', p.pakd && pakdOf(p.pakd) ? `<a class="link" data-go="sx/pasxkd/${encodeURIComponent(p.pakd)}">${esc(`${(p.basis || [])[1] || ''} — ${pakdOf(p.pakd).title}`)}</a>` : esc((p.basis || [])[1] || ''), 'span2')}
         ${k.kv('Kế hoạch sản xuất kinh doanh năm', p.khsxkd ? esc(((D.sxKhsxkd || []).find((x) => x.code === p.khsxkd) || {}).title || p.khsxkd) : null)}${k.kv('Có thử nghiệm thực tế', p.trial ? 'Có' : 'Không')}
         ${k.kv('Dự án đợt trước', p.prev ? `<a class="link" data-go="${href({ code: p.prev })}">${esc(p.prev)}</a>` : null)}
         ${k.kv('Đơn vị sản xuất', p.factory ? esc(catName('sx-don-vi', p.factory)) : null)}${k.kv('Giám đốc dự án', esc(pName(p.pm)))}${k.kv('Khách hàng / đơn vị sử dụng', esc(p.customer || ''))}
@@ -484,8 +493,8 @@
       ${head({ title: o.title || 'Xem chi tiết dự án sản xuất', back: o.back || 'sx/du-an', lg: true, info: o.info || info, right })}
       ${o.bar || ''}
       ${alerts}
-      ${k.tabs('sx:' + p.code, [['info', 'Thông tin chung'], ['dv', 'Đầu vào (B1)'], ['plan', 'Kế hoạch'], ['kh', 'Phê duyệt kế hoạch'], ['ns', 'Nhân sự'], ['cg', 'Hồ sơ chuyển giao'], ['m4', 'Điều kiện sản xuất'], ['ms', 'Mua sắm & hợp đồng'], ['btp', 'Bán thành phẩm & tiến độ'], ['bt', 'Bất thường & thay đổi'], ['nt', 'Chất lượng & nghiệm thu'], ['vmms', 'Dữ liệu VMMS'], ['docs', 'Tài liệu'], ['hist', 'Lịch sử']],
-    { info: tInfo, dv: () => window.SxDv.projectTab(p), kh: tKh, plan: tPlan, ns: () => window.SxKh.tabStaff(p), cg: () => window.SxCg.projectCg(p), m4: () => window.SxCg.projectM4(p), ms: () => window.SxMs.projectTab(p), btp: () => window.SxBtp.projectTab(p), bt: () => window.SxBt.projectTab(p), nt: () => window.SxNt.projectTab(p), vmms: () => window.SxVmms.projectTab(p), docs: tDocs, hist: tHist })}</div>`;
+      ${k.tabs('sx:' + p.code, [['info', 'Thông tin chung'], ['plan', 'Kế hoạch'], ['kh', 'Phê duyệt kế hoạch'], ['ns', 'Nhân sự'], ['cg', 'Hồ sơ chuyển giao'], ['m4', 'Điều kiện sản xuất'], ['ms', 'Mua sắm & hợp đồng'], ['btp', 'Bán thành phẩm & tiến độ'], ['bt', 'Bất thường & thay đổi'], ['nt', 'Chất lượng & nghiệm thu'], ['vmms', 'Dữ liệu VMMS'], ['docs', 'Tài liệu'], ['hist', 'Lịch sử']],
+    { info: tInfo, kh: tKh, plan: tPlan, ns: () => window.SxKh.tabStaff(p), cg: () => window.SxCg.projectCg(p), m4: () => window.SxCg.projectM4(p), ms: () => window.SxMs.projectTab(p), btp: () => window.SxBtp.projectTab(p), bt: () => window.SxBt.projectTab(p), nt: () => window.SxNt.projectTab(p), vmms: () => window.SxVmms.projectTab(p), docs: tDocs, hist: tHist })}</div>`;
   }
   const T = { open: {} };
   /* Mở tab Kế hoạch tại một hạng mục (từ Lần phê duyệt ở tab Phê duyệt kế hoạch): mở các nhóm cha, tô và cuộn tới dòng. */
@@ -629,9 +638,9 @@
         if (!pr) errs.push(`Sản phẩm ${product} không có trong danh sách sản phẩm.`);
         else if (pr.khoi !== khoi) errs.push(`Sản phẩm ${product} không thuộc ${KHOI[khoi]}.`);
         else if (!window.SxCg.ready(product)) errs.push(`Sản phẩm ${product} chưa có trong Kho sản phẩm sẵn sàng sản xuất.`);
-        const pk = bk === 'PAKD' ? (D.sxPakd || []).find((x) => bn.includes(x.no)) : null;
-        if (bk === 'PAKD' && !pk) errs.push(`Không tìm thấy phương án kinh doanh đã phê duyệt ${bn}.`);
-        else if (pk && pakdUsedBy(pk.code)) errs.push(`Phương án kinh doanh ${pk.no} đã được lập dự án ${pakdUsedBy(pk.code).code}.`);
+        const pk = bk === 'PAKD' ? pakdAll().filter(pakdOk).find((x) => bn.includes(x.no)) : null;
+        if (bk === 'PAKD' && !pk) errs.push(`Không tìm thấy phương án sản xuất kinh doanh đã phê duyệt ${bn}.`);
+        else if (pk && pakdUsedBy(pk.code)) errs.push(`Phương án sản xuất kinh doanh ${pk.no} đã được lập dự án ${pakdUsedBy(pk.code).code}.`);
         if (!window.Catalog.rows('sx-mo-hinh').some((r) => r.code === model)) errs.push(`Mô hình tổ chức ${model} không tồn tại.`);
         if (!D.personas.some((x) => x.id === pm && x.urd === 'R-SX-PM')) errs.push('Giám đốc dự án không có trong hệ thống.');
         if (ms(end) <= ms(start)) errs.push('Ngày kết thúc phải sau Ngày bắt đầu.');
@@ -663,12 +672,16 @@
     const [a, b] = parts;
     if (a === 'create') return form(null);
     if (a && b === 'edit') return form(decodeURIComponent(a));
-    if (a) { if (b === 'ke-hoach') K().setTab('sx:' + decodeURIComponent(a), 'plan'); else if (['info', 'dv', 'kh', 'ns', 'cg', 'm4', 'ms', 'btp', 'bt', 'nt', 'vmms', 'docs', 'hist'].includes(b)) K().setTab('sx:' + decodeURIComponent(a), b); return detail(decodeURIComponent(a)); }
+    if (a) { if (b === 'ke-hoach') K().setTab('sx:' + decodeURIComponent(a), 'plan'); else if (['info', 'kh', 'ns', 'cg', 'm4', 'ms', 'btp', 'bt', 'nt', 'vmms', 'docs', 'hist'].includes(b)) K().setTab('sx:' + decodeURIComponent(a), b); return detail(decodeURIComponent(a)); }
     return list();
   }
   function enter(parts) {
     if (parts[0] !== 'du-an') return;
-    if (parts[1] === 'create') resetForm(null);
+    if (parts[1] === 'create') {
+      resetForm(null);
+      /* Lập dự án từ Chi tiết PASXKD (#/sx/du-an/create/<mã PASXKD>): chọn sẵn phương án, điền sẵn thông tin. */
+      if (parts[2]) { F.v.pakd = decodeURIComponent(parts[2]); fillPakd(F.v.pakd); }
+    }
     else if (parts[2] === 'edit') resetForm(decodeURIComponent(parts[1]));
     /* Mở chi tiết từ danh sách / liên kết: về tab Thông tin chung (tab của luồng chỉ chọn sẵn khi mở từ Việc của tôi). */
     else if (parts[1] && !parts[2]) K().setTab('sx:' + decodeURIComponent(parts[1]), 'info');

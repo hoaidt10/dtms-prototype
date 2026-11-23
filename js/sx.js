@@ -32,8 +32,8 @@
     if (parts[0] === 'bao-cao') return window.SxBc.report(parts[1]);
     /* T71 S1: Dự án sản xuất (sx-du-an.js). */
     if (parts[0] === 'du-an') return window.SxDuAn.route(parts.slice(1));
-    /* COP2 B1: Tiếp nhận nhiệm vụ, hoàn thiện đầu vào (sx-dau-vao.js). */
-    if (parts[0] === 'dau-vao') return window.SxDv.list();
+    /* COP2 B1: Phương án sản xuất kinh doanh (sx-pasxkd.js). */
+    if (parts[0] === 'pasxkd') return window.SxPa.route(parts.slice(1));
     /* T71 S2: Việc của tôi, xử lý việc (sx-flow.js). */
     if (parts[0] === 'viec-cua-toi' || parts[0] === 'viec') return window.SxFlow.route(parts);
     /* T71 S3: Hồ sơ chuyển giao, Sản phẩm sẵn sàng sản xuất (sx-chuyen-giao.js). */

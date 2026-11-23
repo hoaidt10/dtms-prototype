@@ -31,9 +31,9 @@
     { label: 'Quản lý nhiệm vụ', icon: 'menu_square', open: true, children: [
       { label: 'Nhiệm vụ đơn vị', path: 'sx/cong-viec/don-vi', scr: 'SX-16' },
       { label: 'Việc cá nhân', path: 'sx/cong-viec/ca-nhan', scr: 'SX-16', badge: () => (window.SxCv ? window.SxCv.openCount('CN') : 0) }] },
+    /* COP2 B1 (CDS-BT-03COP tr. 84–85): Nhiệm vụ → Phương án sản xuất kinh doanh (hoàn thiện đầu vào, phê duyệt) → Dự án — sx-pasxkd.js. */
+    { label: 'Phương án sản xuất kinh doanh', icon: 'menu_square', path: 'sx/pasxkd', scr: 'SX-22', badge: () => (window.SxPa ? window.SxPa.myCount() : 0) },
     { label: 'Dự án sản xuất', icon: 'view_list', path: 'sx/du-an', scr: 'SX-02', notes: soon('S1', 'SX-02…04') },
-    /* COP2 B1 (CDS-BT-03COP tr. 84–85): tiếp nhận nhiệm vụ, hoàn thiện đầu vào — sx-dau-vao.js. */
-    { label: 'Tiếp nhận nhiệm vụ, đầu vào', icon: 'menu_square', path: 'sx/dau-vao', scr: 'SX-22' },
     { label: 'Chuyển giao từ nghiên cứu', icon: 'view_flow', open: true, children: [
       { label: 'Hồ sơ chuyển giao', path: 'sx/chuyen-giao', scr: 'SX-06', notes: soon('S3', 'SX-06') },
       { label: 'Sản phẩm sẵn sàng sản xuất', path: 'sx/san-pham', scr: 'SX-07', notes: soon('S3', 'SX-07') }] },
@@ -254,16 +254,16 @@
   D.sxProjects.forEach((p) => Object.assign(p, EXTRA[p.code]));
   D.sxStatus = { PLANNING: 'Lập kế hoạch', PREPARING: 'Chuẩn bị sản xuất', IN_PRODUCTION: 'Đang sản xuất', ACCEPTANCE: 'Nghiệm thu', DONE: 'Hoàn thành' };
   D.sxStatusV = { PLANNING: 'default', PREPARING: 'warning', IN_PRODUCTION: 'info', ACCEPTANCE: 'warning', DONE: 'success' };
-  D.sxBasis = { PAKD: 'Phương án kinh doanh', NV: 'Nhiệm vụ được giao', HD: 'Hợp đồng với khách hàng' };
+  D.sxBasis = { PAKD: 'Phương án sản xuất kinh doanh', NV: 'Nhiệm vụ được giao', HD: 'Hợp đồng với khách hàng' };
   /* (b) Q14 — Phương án kinh doanh đã phê duyệt: nguồn căn cứ chọn khi Thêm mới dự án (QT-TTSX-4A11 §5.1 sự kiện bắt đầu, §5.2 đầu vào mục 1).
      GIẢ LẬP P-264: hệ thống nguồn của PAKD chưa rõ — thật: API tra cứu PAKD đã duyệt (hệ thống Kinh doanh / VOffice). Một PAKD lập một dự án. */
   D.sxPakd = [
-    { code: 'PAKD-2026-214', no: '214/PAKD-VHT', date: '2026-01-12', title: 'Phương án kinh doanh đài thu phát VT-25 năm 2026', khoi: 'K1', product: 'VT-25', qty: 40, unitName: 'bộ', customer: 'Đơn vị sử dụng thuộc Bộ Quốc phòng', due: '2026-12-15', kh: 'KHSXKD-K1-2026' },
-    { code: 'PAKD-2026-352', no: '352/PAKD-VHT', date: '2026-10-28', title: 'Phương án kinh doanh trạm 5G Macro gNB-M3 năm 2027', khoi: 'K2', product: 'gNB-M3', qty: 3000, unitName: 'trạm', customer: 'Tổng Công ty Viễn thông (khách hàng nội bộ Tập đoàn)', due: '2027-06-30', kh: 'KHSXKD-K2-2027' },
-    { code: 'PAKD-2026-388', no: '388/PAKD-VHT', date: '2026-11-03', title: 'Phương án kinh doanh thiết bị đầu cuối quang ONT-X2 năm 2027', khoi: 'K2', product: 'ONT-X2', qty: 80000, unitName: 'thiết bị', customer: 'Tổng Công ty Viễn thông (khách hàng nội bộ Tập đoàn)', due: '2027-09-30', kh: 'KHSXKD-K2-2027' },
-    { code: 'PAKD-2026-401', no: '401/PAKD-VHT', date: '2026-11-06', title: 'Phương án kinh doanh thiết bị định tuyến biên ER-9', khoi: 'K2', product: 'ER-9', qty: 2000, unitName: 'thiết bị', customer: 'Viettel Campuchia (khách hàng thị trường)', due: '2027-08-31', kh: 'KHSXKD-K2-2027' },
-    { code: 'PAKD-2026-409', no: '409/PAKD-VHT', date: '2026-11-09', title: 'Phương án kinh doanh đài ra-đa cảnh giới tầm thấp RĐ-40 đợt 2', khoi: 'K1', product: 'RĐ-40', qty: 6, unitName: 'bộ', customer: 'Đơn vị sử dụng thuộc Bộ Quốc phòng', due: '2027-10-31', kh: 'KHSXKD-K1-2027' },
-    { code: 'PAKD-2026-415', no: '415/PAKD-VHT', date: '2026-11-12', title: 'Phương án kinh doanh bộ phát Wi-Fi Mesh WM-6 thị trường Campuchia', khoi: 'K2', product: 'WM-6', qty: 50000, unitName: 'thiết bị', customer: 'Viettel Campuchia (khách hàng thị trường)', due: '2027-05-31', kh: 'KHSXKD-K2-2027' },
+    { code: 'PAKD-2026-214', no: '214/PAKD-VHT', date: '2026-01-12', title: 'Phương án sản xuất kinh doanh đài thu phát VT-25 năm 2026', khoi: 'K1', product: 'VT-25', qty: 40, unitName: 'bộ', customer: 'Đơn vị sử dụng thuộc Bộ Quốc phòng', due: '2026-12-15', kh: 'KHSXKD-K1-2026' },
+    { code: 'PAKD-2026-352', no: '352/PAKD-VHT', date: '2026-10-28', title: 'Phương án sản xuất kinh doanh trạm 5G Macro gNB-M3 năm 2027', khoi: 'K2', product: 'gNB-M3', qty: 3000, unitName: 'trạm', customer: 'Tổng Công ty Viễn thông (khách hàng nội bộ Tập đoàn)', due: '2027-06-30', kh: 'KHSXKD-K2-2027' },
+    { code: 'PAKD-2026-388', no: '388/PAKD-VHT', date: '2026-11-03', title: 'Phương án sản xuất kinh doanh thiết bị đầu cuối quang ONT-X2 năm 2027', khoi: 'K2', product: 'ONT-X2', qty: 80000, unitName: 'thiết bị', customer: 'Tổng Công ty Viễn thông (khách hàng nội bộ Tập đoàn)', due: '2027-09-30', kh: 'KHSXKD-K2-2027' },
+    { code: 'PAKD-2026-401', no: '401/PAKD-VHT', date: '2026-11-06', title: 'Phương án sản xuất kinh doanh thiết bị định tuyến biên ER-9', khoi: 'K2', product: 'ER-9', qty: 2000, unitName: 'thiết bị', customer: 'Viettel Campuchia (khách hàng thị trường)', due: '2027-08-31', kh: 'KHSXKD-K2-2027' },
+    { code: 'PAKD-2026-409', no: '409/PAKD-VHT', date: '2026-11-09', title: 'Phương án sản xuất kinh doanh đài ra-đa cảnh giới tầm thấp RĐ-40 đợt 2', khoi: 'K1', product: 'RĐ-40', qty: 6, unitName: 'bộ', customer: 'Đơn vị sử dụng thuộc Bộ Quốc phòng', due: '2027-10-31', kh: 'KHSXKD-K1-2027' },
+    { code: 'PAKD-2026-415', no: '415/PAKD-VHT', date: '2026-11-12', title: 'Phương án sản xuất kinh doanh bộ phát Wi-Fi Mesh WM-6 thị trường Campuchia', khoi: 'K2', product: 'WM-6', qty: 50000, unitName: 'thiết bị', customer: 'Viettel Campuchia (khách hàng thị trường)', due: '2027-05-31', kh: 'KHSXKD-K2-2027' },
   ];
   /* Kế hoạch sản xuất kinh doanh năm (QT bước 1 đầu vào "KHSXKD năm (nếu có)") — GIẢ LẬP P-264. */
   D.sxKhsxkd = [
@@ -632,6 +632,16 @@
     { code: 'CV-SX-2026-005', kind: 'CN', title: 'Rà soát bản vẽ gá đỡ cụm thấu kính rev B', project: 'DA-SX-2026-002', plan: null, parent: null, owner: 'sxrd', assigner: 'sxpm',
       start: '2026-11-03', due: '2026-11-14', prio: 'CAO', remind: 2, pct: 70, src: 'TAY', created: '2026-11-02', desc: 'Đầu vào cho Jig đo khối quang học (CV-SX-2026-002).', log: [['2026-11-12 14:10', 'sxrd', 70, 'Chờ thử rung mẫu']] },
   ];
+  /* Nhiệm vụ đơn vị giao trước khi có dự án (luồng Nhiệm vụ → PASXKD → Dự án, hoaidt10 23/11). */
+  D.sxWork.push(
+    { code: 'NV-SX-2026-005', kind: 'DV', title: 'Lập phương án sản xuất kinh doanh đài ra-đa RĐ-40 đợt 2', project: null, plan: null, parent: null, owner: 'sxpm', assigner: 'sxld',
+      start: '2026-11-09', due: '2026-11-30', prio: 'CAO', remind: 3, pct: 40, src: 'TAY', created: '2026-11-09', desc: 'Nhiệm vụ sản xuất theo Kế hoạch SXKD 2027 — Khối 1: hoàn thiện đầu vào, lập PASXKD trình Ban Giám đốc Khối.', log: [['2026-11-13 16:00', 'sxpm', 40, 'Đã có cấu hình, lô; chờ báo giá vật tư chính']] },
+    { code: 'NV-SX-2026-006', kind: 'DV', title: 'Lập phương án sản xuất kinh doanh thiết bị định tuyến biên ER-9', project: null, plan: null, parent: null, owner: 'sxk2', assigner: 'sxld',
+      start: '2026-11-02', due: '2026-11-20', prio: 'TB', remind: 3, pct: 80, src: 'TAY', created: '2026-11-02', desc: 'Đơn hàng Viettel Campuchia; lập PASXKD làm căn cứ lập dự án.', log: [['2026-11-14 09:30', 'sxk2', 80, 'Đã trình phương án']] },
+    { code: 'NV-SX-2026-007', kind: 'DV', title: 'Lập phương án sản xuất kinh doanh bộ phát Wi-Fi Mesh WM-6 thị trường Campuchia', project: null, plan: null, parent: null, owner: 'sxk2', assigner: 'sxld',
+      start: '2026-11-05', due: '2026-11-15', prio: 'TB', remind: 3, pct: 100, doneAt: '2026-11-12', src: 'TAY', created: '2026-11-05', desc: '', log: [['2026-11-12 14:00', 'sxk2', 100, 'Phương án đã được phê duyệt']] },
+    { code: 'NV-SX-2026-008', kind: 'DV', title: 'Lập phương án sản xuất kinh doanh trạm 5G Macro gNB-M3 năm 2027', project: 'DA-SX-2026-004', plan: null, parent: null, owner: 'sxk2', assigner: 'sxld',
+      start: '2026-10-15', due: '2026-10-31', prio: 'TB', remind: 3, pct: 100, doneAt: '2026-10-28', src: 'TAY', created: '2026-10-15', desc: '', log: [['2026-10-28 16:30', 'sxk2', 100, 'Phương án đã được phê duyệt, lập dự án DA-SX-2026-004']] });
   D.sxPrio = { CAO: ['Cao', 'error'], TB: ['Trung bình', 'warning'], THAP: ['Thấp', 'default'] };
   D.sxWorkSrc = { KH: 'Từ kế hoạch', TAY: 'Nhập tay', XLS: 'Nhập Excel' };
 

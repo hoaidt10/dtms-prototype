@@ -9,6 +9,12 @@
 ## YYYY-MM-DD — <việc> (#PR)` + 2–5 gạch đầu dòng (màn, thay đổi, nguồn, điểm treo mới).
 > Lịch sử trước T77: [lich-su-chung.md](lich-su-chung.md).
 
+## 2026-11-23 · Luồng Nhiệm vụ → Phương án sản xuất kinh doanh → Dự án
+- Menu "Tiếp nhận nhiệm vụ, đầu vào" đổi thành **Phương án sản xuất kinh doanh** (`js/sx-pasxkd.js`, thay `sx-dau-vao.js`): danh sách (KPI theo trạng thái), chi tiết (Thông tin chung · Hoàn thiện đầu vào B1.1–B1.4 · Lịch sử), lập từ nhiệm vụ đơn vị, Trình (chỉ khi đủ 4 nội dung), Ban Giám đốc Khối Phê duyệt / Trả lại (lý do), nút Lập dự án sản xuất.
+- Bỏ tab Đầu vào (B1) và cảnh báo ở Chi tiết dự án — giữ nguyên các tab cũ.
+- Thêm mới dự án: căn cứ cố định PASXKD, chỉ chọn PASXKD **Đã phê duyệt** chưa lập dự án; điền sẵn mô hình tổ chức, giám đốc dự án, ngày bắt đầu; lưu xong gắn dự án vào nhiệm vụ. Văn bản căn cứ ở Chi tiết dự án mở PASXKD.
+- Nhiệm vụ đơn vị: không bắt buộc Dự án (nhiệm vụ giao trước khi có dự án); chi tiết có nút Lập phương án SXKD và liên kết PASXKD; thêm 4 nhiệm vụ mẫu NV-SX-2026-005…008.
+
 ## 2026-11-19 · Đề xuất mua sắm: cột Dự án
 - Danh sách Đề xuất mua sắm (phân hệ Sản xuất): cột Đề tài / dự án đổi thành Dự án, hiện mã — tên dự án sản xuất; bộ lọc nâng cao theo Dự án (`js/luong.js`, chỉ ở chế độ Sản xuất).
 
