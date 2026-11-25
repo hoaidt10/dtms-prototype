@@ -112,6 +112,7 @@
   }
 
   /* Route cũ của Quy trình BPMN / Ma trận hành động trước khi tách menu Quản trị quy trình (D-2); E-Form, Khoản đầu tư trước khi có màn thật (D-4, D-9). */
+  const sxShared = (p) => (location.hash.startsWith('#/sx/') && /^(quy-trinh|ma-tran|giam-sat-tien-trinh)(\/|$)/.test(p) ? 'sx/' + p : p);
   const MOVED = { 'ph/quy-trinh': 'quy-trinh', 'ph/ma-tran': 'ma-tran/display-rule', 'ma-tran': 'ma-tran/display-rule', 'ph/dieu-chinh': 'ho-so-dxms', 'ph/eform': 'eform', 'ph/kdt': 'kdt', 'ph/ycbg': 'ycbg',
     'ph/ho-so-kdt': 'ho-so-ct-kdt', 'ho-so-kdt': 'ho-so-ct-kdt', 'ph/ycbg-kdt': 'ycbg', 'ycbg-kdt': 'ycbg', 'ph/khlcnt': 'khlcnt', 'ph/goi-thau': 'goi-thau', 'ph/ds-cam': 'nha-thau', 'ph/cong-khai-thau': 'cong-khai-thau',
     'ph/hop-dong': 'hop-dong', 'ph/po': 'thoa-thuan-khung', 'ph/mau-thong-bao': 'mau-thong-bao', 'ph/kenh-thong-bao': 'kenh-thong-bao', 'ph/trigger-thong-bao': 'trigger-thong-bao',
@@ -447,7 +448,7 @@
     /* T71: vai Sản xuất (cờ sx) chỉ hiện khi đang ở phân hệ Quản lý sản xuất; ở đó chỉ có vai Sản xuất + Quản trị hệ thống + toàn quyền.
        Danh mục dùng chung là phân hệ chung nên hiện mọi vai. */
     const app = appOf(route());
-    const list = D.personas.filter((p) => (app === 'dmdc' ? true : app === 'sx' ? p.sx || p.all || p.id === 'qt' : !p.sx));
+    const list = D.personas.filter((p) => (app === 'dmdc' ? true : app === 'sx' ? p.sx || p.all || p.id === 'qt' || p.id === 'qlqt' : !p.sx)); // 25/11: thêm Người dùng quản trị quy trình cho menu Quản lý quy trình của Sản xuất
     el.innerHTML = `<div class="hd"><b>Chuyển tài khoản</b></div>`
       + list.map((p) => { const n = Flow.pendingCount(p.id); return `<button data-persona="${p.id}" class="${p.id === Flow.state.persona ? 'on' : ''}">${avatar(p.id, 'sm')}<span style="flex:1">${esc(p.name)}<br><span class="faint" style="font-size:12px">${esc(p.role)}</span></span>${n ? `<span class="tag red">${n}</span>` : ''}</button>`; }).join('');
     document.body.appendChild(el);
@@ -537,7 +538,7 @@
     if (rs) { runSample(rs.dataset.runSample, rs.dataset.runChoice); return; }
     const ex = t.closest('[data-export]');
     if (ex) { exportNotes(ex.dataset.export); return; }
-    if (go) { e.preventDefault(); location.hash = '#/' + go.dataset.go; }
+    if (go) { e.preventDefault(); location.hash = '#/' + sxShared(go.dataset.go); }
   });
 
   /* ?capture=1: chụp cho Figma — ẩn nút (i), nút công cụ demo, toast (rule A6, C4). */

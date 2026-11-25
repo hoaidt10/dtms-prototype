@@ -3,6 +3,10 @@
 > Mỗi PR một mục, mới nhất trên cùng: `## YYYY-MM-DD — <việc> (#PR)` + 2–5 gạch đầu dòng (màn, thay đổi, nguồn, điểm treo mới).
 > Lịch sử trước T77: [lich-su-chung.md](lich-su-chung.md).
 
+## 2026-11-25 · Menu Quản lý quy trình
+- Thêm nhóm menu **Quản lý quy trình** (Quản lý quy trình, Ma trận hành động, Giám sát tiến trình) dùng nguyên màn của ĐTMS, route `#/sx/quy-trinh`, `#/sx/ma-tran/…`, `#/sx/giam-sat-tien-trinh` (giữ sidebar Sản xuất; link trong màn tự thêm tiền tố `sx/` — `js/app.js`, `js/ma-tran.js`).
+- Đổi tài khoản trong phân hệ Sản xuất có thêm Người dùng quản trị quy trình (Cao Thị Hạnh).
+
 ## 2026-11-25 · Việc của tôi: một danh sách, trạng thái chi tiết, kết quả xử lý
 - Việc của tôi (`js/sx-flow.js`): gộp 2 tab thành 1 danh sách, việc chưa xử lý lên trước; bỏ Mã dự án (hiện tên dự án, link + tooltip "Xem chi tiết dự án"), bỏ Ngày nhận việc, bỏ đếm bước n/N; cột Nội dung cần thực hiện (bấm mở màn Xử lý) + cột Thao tác (icon mở); Ngày xử lý kèm giờ.
 - Thêm cột Kết quả xử lý (Đồng ý / Bị từ chối), bộ lọc Chu kỳ (hôm nay, tuần, tháng, quý, năm); trạng thái chi tiết theo việc của bước (Đang soạn hồ sơ, Chờ phê duyệt, Chờ tiếp nhận…).

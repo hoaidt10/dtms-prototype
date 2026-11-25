@@ -59,6 +59,12 @@
       { label: 'KPI quy trình', path: 'sx/bao-cao/kpi', scr: 'SX-14' },
       { label: 'Thời gian chờ theo bên xử lý', path: 'sx/bao-cao/cho-xu-ly', scr: 'SX-14' },
       { label: 'Đối chiếu quyết toán', path: 'sx/bao-cao/quyet-toan', scr: 'SX-14' }] },
+    /* 25/11 (nhánh hoaidt10): nhóm Quản lý quy trình dùng nguyên 3 màn của phân hệ ĐTMS (SCR-41 Quản lý quy trình, SCR-43 Ma trận hành động, SCR-48 Giám sát tiến trình),
+       route #/sx/… để giữ sidebar Sản xuất; link trong màn tự thêm tiền tố sx/ (app.js sxShared, ma-tran.js BASE). Thật: cùng màn của engine BPMN, lọc theo phân hệ (app SX). */
+    { label: 'Quản lý quy trình', icon: 'phan_he_quy_trinh', children: [
+      { label: 'Quản lý quy trình', path: 'sx/quy-trinh', scr: 'SCR-41' },
+      { label: 'Ma trận hành động', path: 'sx/ma-tran', scr: 'SCR-43' },
+      { label: 'Giám sát tiến trình', path: 'sx/giam-sat-tien-trinh', scr: 'SCR-48' }] },
     /* T71 S12 (D-124): Mẫu thông báo của phân hệ (SX-ULNL "QL thông báo") — màn notification-template dùng chung. */
     { label: 'Mẫu thông báo', icon: 'view_list', path: 'sx/mau-thong-bao', scr: 'SX-21' },
   ];

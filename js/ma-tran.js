@@ -8,7 +8,8 @@
   /* T24 Q3: mỗi tab là một module quyền riêng như action-matrix-permissions (HTN, DMHS / DMHD, DTO); D.perms thay cho danh sách vai (P-41, P-118). */
   const can = (code) => D.can(Flow.state.persona, code);
   const TODAY = '28/09/2026';
-  const BASE = 'ma-tran';
+  /* 25/11: dùng chung cho phân hệ Sản xuất (#/sx/ma-tran/…) — link, điều hướng giữ tiền tố của phân hệ đang mở. */
+  const BASE = () => (location.hash.startsWith('#/sx/') ? 'sx/ma-tran' : 'ma-tran');
 
   /* ---------- Danh mục dùng trong luật (§3.2) ---------- */
   /* Loại — DISPLAY_RULE_TYPE_OPTIONS. */
@@ -134,7 +135,7 @@
     // Theo: fe/repo-khcn-bpmn-fe/src/app/features/action-matrix/action-matrix.component.html (tiêu đề 20, tab pill, nút của tab bên phải)
     return `<div class="pg">
       <h1 class="pg-title">Ma trận hành động${infoBtn(info)}</h1>
-      <div class="pg-head"><nav class="mt-tabs" aria-label="Ma trận hành động">${TABS.filter((t) => can(t.perm)).map((t) => `<a class="mt-tab ${t.path === tab ? 'on' : ''}" href="#/${BASE}/${t.path}" data-go="${BASE}/${t.path}" ${t.path === tab ? 'aria-current="page"' : ''}>${t.label}</a>`).join('')}</nav>
+      <div class="pg-head"><nav class="mt-tabs" aria-label="Ma trận hành động">${TABS.filter((t) => can(t.perm)).map((t) => `<a class="mt-tab ${t.path === tab ? 'on' : ''}" href="#/${BASE()}/${t.path}" data-go="${BASE()}/${t.path}" ${t.path === tab ? 'aria-current="page"' : ''}>${t.label}</a>`).join('')}</nav>
         ${action ? `<div class="r">${action}</div>` : ''}</div>
       ${body}</div>`;
   }
@@ -288,7 +289,7 @@
     const cols = [['Mã hành động', 200], ['Tên hành động', 220], ['Mã luật áp dụng', 420], ['Outcome BPMN', 180]];
     const body = pg.map((a, i) => `<tr data-code="${a.code}">
         <td class="ord">${from + i + 1}</td>
-        <td>${can('DMHD02') ? `<a class="link" href="#/${BASE}/action-catalog/${a.code}" data-go="${BASE}/action-catalog/${a.code}">${esc(a.code)}</a>` : esc(a.code)}</td>
+        <td>${can('DMHD02') ? `<a class="link" href="#/${BASE()}/action-catalog/${a.code}" data-go="${BASE()}/action-catalog/${a.code}">${esc(a.code)}</a>` : esc(a.code)}</td>
         <td>${esc(a.name)}</td><td>${tagList(a.rules)}</td><td>${esc(a.outcome || '-')}</td></tr>`).join('');
     const d = C.d;
     const txt = (k, label, ph) => `<div class="vfield"><div class="lr"><label>${label}</label></div><input class="vctl" data-mcf="${k}" maxlength="255" placeholder="${ph}" value="${esc(d[k])}"></div>`;
@@ -403,8 +404,8 @@
           ${can('HTN05') ? `<button type="button" class="cat-ic del" data-mt-del="${r.id}" title="Xoá" aria-label="Xoá">${icon('del')}</button>` : ''}</div></td>
         <td class="c"><button type="button" class="vswitch ${r.active ? 'on' : ''} ${can('HTN03') ? '' : 'ro'}" role="switch" aria-checked="${r.active}" ${can('HTN03') ? `data-mt-tg="${r.id}"` : 'disabled'}
           aria-label="${r.active ? 'Ngừng kích hoạt' : 'Kích hoạt'}"><span></span></button></td>
-        <td>${can('HTN04') ? `<a class="link clamp" href="#/${BASE}/display-rule/${r.id}/view" data-go="${BASE}/display-rule/${r.id}/view">${esc(r.code)}</a>` : `<span class="clamp">${esc(r.code)}</span>`}</td>
-        <td>${can('DMHD02') ? `<a class="link clamp" href="#/${BASE}/action-catalog/${r.action}" data-go="${BASE}/action-catalog/${r.action}">${esc(r.action)}</a>` : `<span class="clamp">${esc(r.action)}</span>`}</td>
+        <td>${can('HTN04') ? `<a class="link clamp" href="#/${BASE()}/display-rule/${r.id}/view" data-go="${BASE()}/display-rule/${r.id}/view">${esc(r.code)}</a>` : `<span class="clamp">${esc(r.code)}</span>`}</td>
+        <td>${can('DMHD02') ? `<a class="link clamp" href="#/${BASE()}/action-catalog/${r.action}" data-go="${BASE()}/action-catalog/${r.action}">${esc(r.action)}</a>` : `<span class="clamp">${esc(r.action)}</span>`}</td>
         <td><span class="clamp">${esc(a.name || '')}</span></td><td><span class="clamp">${esc(procLabel(r.proc))}</span></td>
         <td class="num">${esc(r.created)}</td><td class="num">${esc(r.updated)}</td></tr>`;
     }).join('');
@@ -416,7 +417,7 @@
       <div class="vtable-vp" style="max-height:calc(100vh - 360px)"><table class="vtable mt-table"><thead><tr><th class="ord">STT</th>${cols.map(([h, w, a, fix]) => `<th class="${a || ''}" style="${fix ? `width:${w}px;max-width:${w}px;` : ''}min-width:${w}px">${h}</th>`).join('')}</tr></thead>
         <tbody>${body || `<tr><td class="vtable-empty" colspan="${cols.length + 1}"><img src="assets/empty-table.svg" alt="">Chưa có dữ liệu</td></tr>`}</tbody></table></div>
       ${pager({ id: 'mt', total: rows.length, page: L.page, size: L.size, open: L.psOpen })}</div>`;
-    return shell('display-rule', info, can('HTN02') ? `<button type="button" class="vbtn primary" data-go="${BASE}/display-rule/create">${icon('add')} Thêm mới</button>` : '', card);
+    return shell('display-rule', info, can('HTN02') ? `<button type="button" class="vbtn primary" data-go="${BASE()}/display-rule/create">${icon('add')} Thêm mới</button>` : '', card);
   }
 
   /* ---------- vht-confirm-dialog (dùng chung với Danh mục dùng chung) ---------- */
@@ -454,9 +455,9 @@
     if (t.closest('[data-pager="mtr"]')) { if (pagerClick(R, t)) rerender(); return; }
     if (t.closest('[data-pager="mtc"]')) { if (pagerClick(C, t)) rerender(); return; }
     if ((L.psOpen || R.psOpen || C.psOpen) && !t.closest('[data-pager]')) { L.psOpen = R.psOpen = C.psOpen = false; rerender(); }
-    if (t.closest('[data-mt-back]')) { if (history.length > 1) history.back(); else location.hash = `#/${BASE}/action-catalog`; return; }
+    if (t.closest('[data-mt-back]')) { if (history.length > 1) history.back(); else location.hash = `#/${BASE()}/action-catalog`; return; }
     const ed = t.closest('[data-mt-edit]');
-    if (ed) { location.hash = `#/${BASE}/display-rule/${ed.dataset.mtEdit}/edit`; return; }
+    if (ed) { location.hash = `#/${BASE()}/display-rule/${ed.dataset.mtEdit}/edit`; return; }
     const dl = t.closest('[data-mt-del]');
     if (dl) { del(byId(dl.dataset.mtDel)); return; }
     const tg = t.closest('[data-mt-tg]');
@@ -542,7 +543,7 @@
     }
     const v = F.v, view = mode === 'view';
     const right = view
-      ? (can('HTN03') ? `<button type="button" class="vbtn primary" data-go="${BASE}/display-rule/${id}/edit">Chỉnh sửa</button>` : '')
+      ? (can('HTN03') ? `<button type="button" class="vbtn primary" data-go="${BASE()}/display-rule/${id}/edit">Chỉnh sửa</button>` : '')
       : '<button type="button" class="vbtn secondary grey" data-mt-cancel>Huỷ</button><button type="button" class="vbtn primary" data-mt-save>Lưu</button>';
     const actionOpts = ACTIONS.map((a) => ({ value: a.code, label: `${a.code} - ${a.name}` }));
     const rolesLabels = v.roles.map((r) => labelOf(ROLES, r)).filter(Boolean);
@@ -583,7 +584,7 @@
       ${preview}</div>`;
   }
 
-  const toList = () => { location.hash = `#/${BASE}/display-rule`; };
+  const toList = () => { location.hash = `#/${BASE()}/display-rule`; };
   function showErr(k) {
     const box = document.querySelector(`[data-mt-field="${k}"]`);
     if (!box) return;

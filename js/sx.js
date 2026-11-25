@@ -54,6 +54,10 @@
     if (parts[0] === 'cong-viec') return window.SxCv.route(parts.slice(1));
     /* T71 S12: Mẫu thông báo của phân hệ — dùng chung màn notification-template (thong-bao.js), lọc mẫu SX. */
     if (parts[0] === 'mau-thong-bao') return window.ThongBao.route(parts);
+    /* 25/11: Quản lý quy trình — nguyên màn của ĐTMS (quy-trinh.js, ma-tran.js). */
+    if (parts[0] === 'quy-trinh') return parts[1] ? window.QuyTrinh.detail(parts[1]) : window.QuyTrinh.list();
+    if (parts[0] === 'giam-sat-tien-trinh') return window.QuyTrinh.monitor();
+    if (parts[0] === 'ma-tran') return window.MaTran.route(parts[1] ? parts.slice(1) : ['display-rule']);
     const path = 'sx/' + parts.join('/');
     const m = find(activePath(path)) || { item: { label: 'Quản lý sản xuất', notes: ['Đường dẫn chưa có trong phân hệ.'] }, group: null };
     const item = Object.assign({}, m.item, { product: D.sxProduct, ph: 'Quản lý sản xuất', notes: (m.item.notes || []).concat(['Phân hệ Quản lý sản xuất — plan T71, D-121; điểm chung P-237, P-243.']) });
