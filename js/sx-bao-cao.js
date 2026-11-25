@@ -30,7 +30,25 @@
   /* Lọc theo năm (nhánh hoaidt10): dự án có thời gian thực hiện giao với năm đã chọn. */
   const inYear = (p) => !F.year || ((!p.start || String(p.start).slice(0, 4) <= F.year) && (!p.end || String(p.end).slice(0, 4) >= F.year));
   const yearsOf = () => [...new Set(['2026'].concat(...P().visible().map((p) => [p.start, p.end].filter(Boolean).map((d) => String(d).slice(0, 4)))))].sort();
-  const projects = () => P().visible().filter((p) => (!F.khoi || p.khoi === F.khoi) && (!F.project || p.code === F.project) && inYear(p));
+  /* ---------- Nhóm vai của Dashboard (nhánh hoaidt10, góp ý 25/11) ----------
+     GIẢ LẬP phạm vi: Phó TGĐ phụ trách 2 khối sản xuất; Ban Giám đốc Khối 1 và Giám đốc TT Nghiên cứu thiết kế thuộc Khối 1;
+     PM xem dự án mình làm chủ nhiệm (Sub PM: dự án tự sản xuất có bán thành phẩm). Thật: phạm vi theo đơn vị / dự án được giao của IAM. */
+  const GRP = {
+    1: ['Nhóm 1 · Tổng Giám đốc', 'Xem dữ liệu toàn bộ VHT'],
+    2: ['Nhóm 2 · Phó TGĐ, Ban Giám đốc Khối, Giám đốc Trung tâm', 'Xem dữ liệu của đơn vị mình quản lý'],
+    3: ['Nhóm 3 · Chủ nhiệm dự án (PM)', 'Xem dữ liệu dự án, nhiệm vụ mình quản lý'],
+    4: ['Nhóm 4 · Chuyên viên quản lý tiến độ sản xuất', 'Xem dữ liệu theo phạm vi được phân công, theo dõi cảnh báo hằng ngày'],
+  };
+  const ROLE_GRP = { sxceo: 1, sxtgd: 2, sxld: 2, sxgdtt: 2, sxpm: 3, sxsub: 3 };
+  const UNIT_KHOI = { sxtgd: ['K1', 'K2'], sxld: ['K1'], sxgdtt: ['K1'] };
+  const grpOf = () => { const id = Flow.state.persona; return ROLE_GRP[id] || (D.allAccess(id) || id === 'qt' ? 1 : 4); };
+  const roleOk = (p) => {
+    const id = Flow.state.persona, g = grpOf();
+    if (g === 2) return (UNIT_KHOI[id] || Object.keys(KHOI)).includes(p.khoi);
+    if (g === 3) return p.pm === id || (id === 'sxsub' && p.model === 'VHT_TU_SX');
+    return true;
+  };
+  const projects = () => P().visible().filter((p) => roleOk(p) && (!F.khoi || p.khoi === F.khoi) && (!F.project || p.code === F.project) && inYear(p));
   const inScope = (code) => projects().some((p) => p.code === code);
 
   /* ---------- Tiến độ dự án: thực hiện (tab Kế hoạch & mốc) và kế hoạch đến ngày (cùng cách gộp của SxDuAn.roll) ---------- */
@@ -381,7 +399,7 @@
 
   /* ---------- Khối lọc ---------- */
   function filterBar(withPeriod) {
-    const ps = P().visible().filter((p) => (!F.khoi || p.khoi === F.khoi) && inYear(p));
+    const ps = P().visible().filter((p) => roleOk(p) && (!F.khoi || p.khoi === F.khoi) && inYear(p));
     return `<section class="rp-filter sxr-filter">
       <div class="vfield" style="width:200px"><div class="lr"><label>Khối</label></div>${vSelect({ id: 'sxr-khoi', value: F.khoi, clear: true, searchable: false, placeholder: 'Tất cả', options: Object.entries(KHOI).map(([value, label]) => ({ value, label })), onChange: (v) => { F.khoi = v || null; if (F.project && !P().visible().some((p) => p.code === F.project && (!F.khoi || p.khoi === F.khoi))) F.project = null; clearDrill(); rerender(); } })}</div>
       <div class="vfield" style="width:360px"><div class="lr"><label>Dự án</label></div>${vSelect({ id: 'sxr-project', value: F.project, clear: true, searchable: true, placeholder: 'Tất cả', options: ps.map((p) => ({ value: p.code, label: `${p.code} — ${p.name}` })), onChange: (v) => { F.project = v || null; clearDrill(); rerender(); } })}</div>
@@ -442,6 +460,59 @@
       ${evTbl}${cfg.extra ? cfg.extra() : ''}</div>`;
   }
 
+  /* ---------- SX-01: mức độ dự án, việc chờ quyết định, dự án bị chậm (nhánh hoaidt10, góp ý 25/11) ---------- */
+  const TIER = { TRONG_YEU: ['Trọng yếu', 'error'], QUAN_TRONG: ['Quan trọng', 'warning'], THUONG: ['Thông thường', 'default'] };
+  const TIER_ORD = { TRONG_YEU: 0, QUAN_TRONG: 1, THUONG: 2 };
+  const tierB = (p) => badge(...(TIER[p.tier] || TIER.THUONG));
+  const pn = (code) => { const p = code && P().byCode(code); return p ? p.name : (code || ''); };
+  const pLink = (code) => (code ? `<a class="link" data-go="sx/du-an/${encodeURIComponent(code)}" data-close title="${esc(code)}">${esc(pn(code))}</a>` : K().dash);
+  /* Cấp quyết định (Step): Tổng Giám đốc → Phó TGĐ → Ban Giám đốc Khối → Ban Giám đốc Trung tâm. */
+  const LV = [['TGD', 'Tổng Giám đốc'], ['PTGD', 'Phó Tổng Giám đốc'], ['BGDK', 'Ban Giám đốc Khối'], ['BGDTT', 'Ban Giám đốc Trung tâm']];
+  const LV_OF = { sxceo: 'TGD', sxtgd: 'PTGD', sxld: 'BGDK', sxgdtt: 'BGDTT' };
+  /* GIẢ LẬP: việc chờ quyết định mẫu (bổ sung cho hồ sơ luồng đang chờ thật) — thật: hàng việc của engine theo vai phê duyệt. [cấp, dự án, việc, hạn, người] */
+  const DEC = [
+    ['TGD', 'DA-SX-2026-004', 'Phê duyệt tờ trình kinh phí sản xuất đợt 1 (tiêu chí MT1 – 4M)', '2026-11-27', 'sxceo'],
+    ['TGD', 'DA-SX-2026-001', 'Phê duyệt điều chỉnh mốc giao hàng đợt 1 với khách hàng', '2026-11-13', 'sxceo'],
+    ['PTGD', 'DA-SX-2026-001', 'Phê duyệt lệnh thay đổi kỹ thuật cấp C4 — chỉ tiêu anten', '2026-11-28', 'sxtgd'],
+    ['PTGD', 'DA-SX-2026-003', 'Cho ý kiến phương án tăng ca nhà máy bù tiến độ lô 5', '2026-11-26', 'sxtgd'],
+    ['BGDK', 'DA-SX-2026-005', 'Phê duyệt biên bản nghiệm thu lô cuối', '2026-11-27', 'Ban Giám đốc Khối 2'],
+    ['BGDK', 'DA-SX-2026-002', 'Phê duyệt phương án bố trí nhân lực bán thành phẩm', '2026-11-25', 'sxld'],
+    ['BGDTT', 'DA-SX-2026-002', 'Phê duyệt hồ sơ chuyển giao thiết kế khối quang học', '2026-11-26', 'sxgdtt'],
+    ['BGDTT', 'DA-SX-2026-001', 'Phê duyệt thay đổi kỹ thuật cấp C2 — firmware v2.1.3', '2026-11-23', 'sxgdtt'],
+  ];
+  function decisions() {
+    const out = DEC.filter((d) => inScope(d[1])).map(([lv, project, task, due, who]) => ({ lv, project, task, due, who: pName(who) || who, href: 'sx/du-an/' + encodeURIComponent(project) }));
+    waits().filter((w) => w.open && LV_OF[w.who] && w.project).forEach((w) => {
+      out.push({ lv: LV_OF[w.who], project: w.project, task: w.step.replace(/^\S+\.\s*/, ''), due: window.SxBt.addWd(w.since.slice(0, 10), w.nlv), who: pName(w.who), href: hrefCase(w) });
+    });
+    return out.sort((a, b) => (a.due < b.due ? -1 : a.due > b.due ? 1 : 0));
+  }
+  const dueB = (iso) => { const d = Math.round((ms(iso) - today()) / DAY); return d < 0 ? badge(`Quá hạn ${-d} ngày`, 'error') : d === 0 ? badge('Đến hạn hôm nay', 'warning') : badge(`Hạn ${dmy(iso)}`, d <= 2 ? 'warning' : 'default'); };
+  function decBlock() {
+    const mine = LV_OF[Flow.state.persona], from = mine ? LV.findIndex((l) => l[0] === mine) : 0, cols = LV.slice(from), all = decisions();
+    const col = ([k, l], i) => {
+      const xs = all.filter((x) => x.lv === k), me = k === mine;
+      return `<div class="sx-step ${me ? 'mine' : ''}"><div class="sx-step-h"><span class="no">${from + i + 1}</span><span class="t">${esc(l)}${me ? ' <small>· của bạn</small>' : ''}</span><span class="c num">${xs.length}</span></div>
+        <div class="sx-step-b">${xs.length ? xs.map((x) => `<a class="sx-dc" data-go="${x.href}"><span class="p">${esc(pn(x.project))}</span><span class="w">${esc(x.task)}</span>
+          <span class="f">${dueB(x.due)}<span class="who">${esc(x.who)}</span></span></a>`).join('') : '<div class="sx-dc-e">Không có việc chờ</div>'}</div></div>`;
+    };
+    const cap = mine ? 'Việc chờ bạn và các cấp dưới quyết định, theo phạm vi đơn vị' : 'Việc của dự án trong phạm vi bạn theo dõi đang chờ lãnh đạo các cấp quyết định';
+    return `<section class="vcard sx-dec" data-sx-viec-cho><div class="vcard-h"><h3>Việc chờ quyết định</h3><span class="cap">${esc(cap)} · ${all.filter((x) => cols.some((c) => c[0] === x.lv)).length} việc</span></div>
+      <div class="sx-steps">${cols.map(col).join('')}</div></section>`;
+  }
+  /* Dự án bị chậm: hạng mục quá hạn chưa xong đầu tiên theo thứ tự kế hoạch → đơn vị đang chậm, số ngày chậm. GIẢ LẬP P-267: đơn vị theo bước của QT 4A.1.1. */
+  const facName = (code) => { for (const c of D.sxCatalogs || []) { const r = (c.seed || []).find((x) => x[0] === code); if (r) return r[1]; } return code || 'Nhà máy, đối tác'; };
+  const unitOf = (p, k) => (/^B4\.MS/.test(k) ? 'Phòng Tài chính – Kế toán' : /^B4/.test(k) ? 'Phòng Mua sắm' : ['B5', 'B11'].includes(k) ? 'Trung tâm Nghiên cứu thiết kế'
+    : ['B10', 'B12', 'B13'].includes(k) ? 'Trung tâm Đảm bảo chất lượng' : /^B9\.BTP/.test(k) ? 'Trung tâm Sản xuất' : (/^B9\./.test(k) || /^M\d/.test(k)) ? facName(p.factory) : 'Phòng Quản lý sản xuất');
+  function lateList(ps) {
+    return ps.filter((x) => x.p.status !== 'DONE').map((x) => {
+      let f = null;
+      for (const g of P().planOf(x.p)) { for (const c of g.children) { const lv = c.children ? P().leaves([c]) : [c]; f = lv.find((r) => P().stOf(r)[0] === 'Chậm tiến độ'); if (f) break; } if (f) break; }
+      return f && Object.assign({}, x, { item: f.name, unit: unitOf(x.p, f.key), days: Math.max(1, Math.round((today() - f.e) / DAY)) });
+    }).filter(Boolean).sort((a, b) => b.days - a.days);
+  }
+  const progCell = (x) => `<div class="sx-pg"><span class="bar"><span style="width:${x.act}%;background:${x.gap <= -LATE_PT ? C[1] : C[0]}"></span><i style="left:${x.plan}%" title="Kế hoạch đến ngày ${x.plan}%"></i></span><span class="num">${x.act}%<small> / KH ${x.plan}%</small></span></div>`;
+
   /* ---------- SX-01 Tổng quan điều hành ---------- */
   const TQD = {};
   function overview() {
@@ -465,19 +536,25 @@
       ['Dự án đang nghiệm thu', 'Có lô đang nghiệm thu hoặc chờ nhập kho', accP, pCols, pCell],
       ['Dự án mới mở', `Tạo trong 30 ngày gần nhất (từ ${dmy(since30)})`, ps.filter((x) => (x.p.created || '') >= since30), pCols, pCell],
     ];
+    /* Góp ý 25/11: ô cảnh báo hiện nội dung bằng chữ (tối đa 3 dòng) và tên dự án thay cho mã; cột Dự án của ngăn chi tiết cũng hiện tên. [.., màu, dòng chữ] */
     const A = [
-      ['Bất thường quá hạn, sắp đến hạn', 'Chưa đóng, còn dưới 3 ngày làm việc', issAtt, [['Mã phiếu', 130], ['Tiêu đề', 280], ['Dự án', 140], ['Hạn xử lý', 120], ['Còn lại', 120, 'c']],
-        (x) => `<td><a class="link" data-go="${x.href}" data-close>${esc(x.code)}</a></td><td>${K().clamp(x.title)}</td><td>${esc(x.project)}</td><td>${esc(dmy(x.due))}</td><td class="c">${x.left < 0 ? badge(`Quá hạn ${-x.left} ngày`, 'error') : x.left === 0 ? badge('Đến hạn hôm nay', 'warning') : badge(`Còn ${x.left} ngày`, 'warning')}</td>`, 'bad'],
-      ['Vật tư trễ hạn đặt hàng', 'Thiếu so với tồn kho, quá hạn đặt hàng', mats, [['Mã nhu cầu', 130], ['Dự án', 140], ['Vật tư', 260], ['Còn thiếu', 110, 'r'], ['Hạn đặt hàng', 120]],
-        (x) => `<td><a class="link" data-go="${x.href}" data-close>${esc(x.code)}</a></td><td>${esc(x.project)}</td><td>${K().clamp(`${x.mat} — ${x.m.name}`)}</td><td class="r num">${num(x.short)}</td><td class="t-err">${esc(dmy(x.order))}</td>`, 'bad'],
-      ['Thay đổi kỹ thuật đang xử lý', 'Chưa bàn giao nhà máy áp dụng', tds, [['Mã yêu cầu', 130], ['Tiêu đề', 300], ['Dự án', 140], ['Trạng thái', 170, 'c']],
-        (x) => `<td><a class="link" data-go="${x.href}" data-close>${esc(x.code)}</a></td><td>${K().clamp(x.title)}</td><td>${esc(x.project)}</td><td class="c">${badge(...x.st)}</td>`, 'warn'],
-      ['Lô chờ nghiệm thu, nhập kho', 'Đề nghị nghiệm thu chưa nhập kho', lots.map((x) => Object.assign({}, x, { href: 'sx/nghiem-thu/' + encodeURIComponent(x.code) })), [['Mã đề nghị', 130], ['Dự án', 140], ['Hạng mục', 220], ['Số lượng', 110, 'r'], ['Trạng thái', 160, 'c']],
-        (x) => `<td><a class="link" data-go="${x.href}" data-close>${esc(x.code)}</a></td><td>${esc(x.project)}</td><td>${K().clamp(x.itemText)}</td><td class="r num">${num(x.qty)}</td><td class="c">${badge(...window.SxNt.stOf(x))}</td>`, 'warn'],
+      ['Bất thường quá hạn, sắp đến hạn', 'Chưa đóng, còn dưới 3 ngày làm việc', issAtt, [['Mã phiếu', 130], ['Tiêu đề', 280], ['Dự án', 260], ['Hạn xử lý', 120], ['Còn lại', 120, 'c']],
+        (x) => `<td><a class="link" data-go="${x.href}" data-close>${esc(x.code)}</a></td><td>${K().clamp(x.title)}</td><td>${pLink(x.project)}</td><td>${esc(dmy(x.due))}</td><td class="c">${x.left < 0 ? badge(`Quá hạn ${-x.left} ngày`, 'error') : x.left === 0 ? badge('Đến hạn hôm nay', 'warning') : badge(`Còn ${x.left} ngày`, 'warning')}</td>`, 'bad',
+        (x) => [x.title, `${pn(x.project)} · ${x.left < 0 ? `quá hạn ${-x.left} ngày` : x.left === 0 ? 'đến hạn hôm nay' : `còn ${x.left} ngày`}`]],
+      ['Vật tư trễ hạn đặt hàng', 'Thiếu so với tồn kho, quá hạn đặt hàng', mats, [['Mã nhu cầu', 130], ['Dự án', 260], ['Vật tư', 260], ['Còn thiếu', 110, 'r'], ['Hạn đặt hàng', 120]],
+        (x) => `<td><a class="link" data-go="${x.href}" data-close>${esc(x.code)}</a></td><td>${pLink(x.project)}</td><td>${K().clamp(`${x.mat} — ${x.m.name}`)}</td><td class="r num">${num(x.short)}</td><td class="t-err">${esc(dmy(x.order))}</td>`, 'bad',
+        (x) => [`${x.m.name} — còn thiếu ${num(x.short)}`, `${pn(x.project)} · hạn đặt hàng ${dmy(x.order)}`]],
+      ['Thay đổi kỹ thuật đang xử lý', 'Chưa bàn giao nhà máy áp dụng', tds, [['Mã yêu cầu', 130], ['Tiêu đề', 300], ['Dự án', 260], ['Trạng thái', 170, 'c']],
+        (x) => `<td><a class="link" data-go="${x.href}" data-close>${esc(x.code)}</a></td><td>${K().clamp(x.title)}</td><td>${pLink(x.project)}</td><td class="c">${badge(...x.st)}</td>`, 'warn',
+        (x) => [x.title, `${pn(x.project)} · ${x.st[0]}`]],
+      ['Lô chờ nghiệm thu, nhập kho', 'Đề nghị nghiệm thu chưa nhập kho', lots.map((x) => Object.assign({}, x, { href: 'sx/nghiem-thu/' + encodeURIComponent(x.code) })), [['Mã đề nghị', 130], ['Dự án', 260], ['Hạng mục', 220], ['Số lượng', 110, 'r'], ['Trạng thái', 160, 'c']],
+        (x) => `<td><a class="link" data-go="${x.href}" data-close>${esc(x.code)}</a></td><td>${pLink(x.project)}</td><td>${K().clamp(x.itemText)}</td><td class="r num">${num(x.qty)}</td><td class="c">${badge(...window.SxNt.stOf(x))}</td>`, 'warn',
+        (x) => [`${x.itemText}: ${num(x.qty)} ${x.unitName}`, `${pn(x.project)} · ${window.SxNt.stOf(x)[0]}`]],
     ];
     M.forEach((m, i) => { TQD['m' + i] = m; }); A.forEach((m, i) => { TQD['a' + i] = m; });
-    const tile = (m, key) => `<button type="button" class="ov-tile rp-tile tq-m" data-sxtq="${key}"><span class="ov-tx"><span class="t">${esc(m[0])}</span><span class="d">${esc(m[1])}</span></span>
-      <span class="ov-n"><span class="n num ${m[5] && m[2].length ? m[5] : ''}">${m[2].length}</span></span></button>`;
+    const tile = (m, key) => `<button type="button" class="ov-tile rp-tile tq-m sx-al ${m[5] && m[2].length ? m[5] : ''}" data-sxtq="${key}">
+      <span class="sx-al-h"><span class="ov-tx"><span class="t">${esc(m[0])}</span><span class="d">${esc(m[1])}</span></span><span class="ov-n"><span class="n num ${m[5] && m[2].length ? m[5] : ''}">${m[2].length}</span></span></span>
+      ${m[2].length ? `<ul class="sx-al-l">${m[2].slice(0, 3).map((x) => { const [a, b] = m[6](x); return `<li><span class="a">${esc(a)}</span><span class="b">${esc(b)}</span></li>`; }).join('')}</ul>${m[2].length > 3 ? `<span class="sx-al-more">+${m[2].length - 3} mục khác — nhấn để xem tất cả</span>` : ''}` : '<span class="sx-al-ok">Không có cảnh báo</span>'}</button>`;
     const run = ps.filter((x) => x.run || x.p.status === 'PLANNING');
     /* Biểu đồ Dashboard (nhánh hoaidt10): cùng nguồn số liệu với các danh sách SX; tái dùng hbars / pairs của Báo cáo. */
     const withColor = (a, cs) => a.map((x, i) => Object.assign(x, { color: cs[i % cs.length] }));
@@ -508,11 +585,10 @@
       <td>${x.item ? K().clamp(x.item) : K().dash}</td><td class="r num">${x.act}%</td><td class="r num ${x.gap < 0 ? 't-err' : ''}">${x.plan}%</td>`;
     LCAT.forEach(([k, l], i) => { TQD['t' + i] = [l, k === 'ok' ? 'Dự án chưa hoàn thành, không có hạng mục quá hạn chưa xong' : 'Dự án chưa hoàn thành có hạng mục quá hạn đầu tiên thuộc giai đoạn này', openP.filter((x) => x.cat === k), tCols, tCell]; });
     const dTrack = donut('Dự án chưa hoàn thành theo tiến độ', LCAT.map(([k, l, c], i) => ({ label: l, value: openP.filter((x) => x.cat === k).length, color: c, tq: 't' + i })), { unit: 'dự án', note: 'Nhấn vào biểu đồ để xem chi tiết tiến độ dự án' });
-    const donuts = `<section class="tq-blk" data-sx-so-du-an><h2 class="rp-h2">Số dự án</h2><p class="cap">Theo bộ lọc Khối, Dự án ở trên</p><div class="rp-g2">${dStatus}${dTrack}</div></section>`;
-    const charts = `<section class="tq-blk" data-sx-bieu-do><h2 class="rp-h2">Biểu đồ</h2><p class="cap">Theo bộ lọc Khối, Dự án ở trên</p><div class="rp-g2">${cProg}${cBt}${cTd}${cKpi}</div></section>`;
     const info = {
       scr: 'SX-01', name: 'Dashboard', uc: 'SX-ULNL sheet NL Chuc nang › Báo cáo thống kê › Tổng quan dự án (dòng 2526–2530); SX-KS-K2 §2.4 (Dashboard KPI sản xuất); plan T71 §4 SX-01',
       notes: [
+        '<b>Góp ý 25/11 (nhánh hoaidt10)</b>: Dashboard chia 4 nhóm vai — (1) Tổng Giám đốc: toàn bộ VHT; (2) Phó TGĐ, Ban Giám đốc Khối, Giám đốc Trung tâm: đơn vị mình quản lý; (3) PM: dự án mình làm chủ nhiệm; (4) Chuyên viên quản lý tiến độ sản xuất: cảnh báo lên đầu. Thêm <b>Việc chờ quyết định</b> dạng Step (kiểu Trello) theo cấp Tổng Giám đốc → Phó TGĐ → Ban Giám đốc Khối → Ban Giám đốc Trung tâm — mỗi người thấy cấp của mình và các cấp dưới, PM / chuyên viên thấy đủ các cấp của dự án mình theo dõi; <b>Danh sách dự án bị chậm</b> (chậm ở đơn vị nào, bao lâu, tiến độ thực tế); ô cảnh báo hiện nội dung chữ và tên dự án; bảng dự án chỉ lấy dự án <b>Trọng yếu, Quan trọng</b> (thuộc tính Mức độ của dự án — GIẢ LẬP). Số liệu tổng hợp đẩy xuống dưới, bộ lọc giữ nguyên.',
         '<b>T74 (comment #95):</b> mục menu <b>Tổng quan</b> đổi tên <b>Dashboard</b>, đứng đầu menu như phân hệ KHCN. Khối <b>Gợi ý cho bạn</b> đã bỏ khỏi trang (nhánh hoaidt10).',
         '<b>Số dự án</b> — 5 chỉ số của SX-ULNL: lũy kế, đang thực hiện (Chuẩn bị sản xuất, Đang sản xuất, Nghiệm thu), đúng tiến độ (đang thực hiện, % thực hiện thấp hơn % kế hoạch đến ngày dưới 15 điểm — ngưỡng nguy cơ chậm P-250; cột Hạng mục chậm vẫn đếm hạng mục quá hạn chưa xong như cột Mốc chậm ở Danh sách dự án), đang nghiệm thu (trạng thái Nghiệm thu hoặc có lô đang nghiệm thu / chờ nhập kho), mới mở (tạo trong 30 ngày gần nhất).',
         '<b>Biểu đồ tiến độ</b> (người review 20/11): dự án chưa hoàn thành chia Đúng tiến độ và 5 loại chậm — lên kế hoạch (giai đoạn 1), đảm bảo vật tư (bước 4), sản xuất (bước 5–11, mốc nhà máy), đánh giá xuất xưởng (bước 12 OQC), nghiệm thu TCT (bước 13–15). Mỗi dự án xếp vào giai đoạn có hạng mục quá hạn chưa xong đầu tiên theo thứ tự kế hoạch. Bấm phần biểu đồ / dòng chú giải mở danh sách dự án. Biểu đồ trạng thái: rê chuột / chạm hiện số dự án, bấm phần / dòng chú giải mở danh sách dự án của trạng thái đó; vẽ đủ 5 trạng thái (thêm dữ liệu mẫu DA-SX-2026-005 Nghiệm thu, DA-SX-2025-011 Hoàn thành).',
@@ -523,16 +599,31 @@
       ],
       q: ['P-243', 'P-267', 'P-268'], src: 'hr-tools reporting/report-dashboard · /reporting',
     };
-    return `<div class="pg" data-sxtq-page>${S.head({ title: 'Dashboard', info, right: `<span class="rp-at">Cập nhật lúc ${esc(F.at)}</span><button type="button" class="vbtn secondary" data-sxr-refresh>${icon('reload')} Làm mới dữ liệu</button>` })}
+    /* Góp ý 25/11: bố cục theo nhóm vai — khối điều hành (Việc chờ quyết định, Dự án bị chậm, Cảnh báo, Dự án trọng yếu / quan trọng) ở trên, số liệu tổng hợp đẩy xuống dưới; giữ nguyên bộ lọc. */
+    const g = grpOf(), me = window.UI.persona(Flow.state.persona);
+    const scopeTxt = g === 2 ? `Đơn vị: ${(UNIT_KHOI[Flow.state.persona] || Object.keys(KHOI)).map((k) => KHOI[k]).join(', ')}` : g === 3 ? 'Dự án bạn làm chủ nhiệm' : g === 1 ? 'Toàn bộ VHT' : 'Theo phạm vi được phân công';
+    const banner = `<div class="sx-grp"><span class="g">${esc(GRP[g][0])}</span><span class="d">${esc(me ? `${me.name} — ${me.role}` : '')} · ${esc(GRP[g][1])} · <b>${esc(scopeTxt)}</b></span></div>`;
+    const late = lateList(ps);
+    const lateBlk = `<section class="vcard" data-sx-du-an-cham><div class="vcard-h"><h3>Danh sách dự án bị chậm</h3><span class="cap">${late.length} dự án · chậm ở đâu, chậm bao lâu theo hạng mục quá hạn chưa xong đầu tiên</span></div>
+      ${late.length ? K().table([['Dự án', 270], ['Mức độ', 110, 'c'], ['Chậm ở đâu', 250], ['Chậm bao lâu', 110, 'c'], ['Tiến độ thực tế', 190]], late,
+        (x) => `<td><a class="link" data-go="${x.href}">${esc(x.title)}</a><div class="cap">${esc(x.code)}</div></td><td class="c">${tierB(x.p)}</td><td><b>${esc(x.unit)}</b><div class="cap">${esc(x.item)}</div></td>
+          <td class="c">${badge(`${x.days} ngày`, x.days > 14 ? 'error' : 'warning')}</td><td>${progCell(x)}</td>`) : '<div class="empty-t">Không có dự án bị chậm theo bộ lọc</div>'}</section>`;
+    const alerts = `<section class="tq-blk" data-sx-canh-bao><h2 class="rp-h2">Cảnh báo</h2><p class="cap">Nhấn ô để xem đầy đủ danh sách</p><div class="rp-tiles sx-als">${A.map((m, i) => tile(m, 'a' + i)).join('')}</div></section>`;
+    const imp = ps.filter((x) => ['TRONG_YEU', 'QUAN_TRONG'].includes(x.p.tier)).sort((a, b) => TIER_ORD[a.p.tier] - TIER_ORD[b.p.tier] || a.code.localeCompare(b.code));
+    const impBlk = K().card('Dự án trọng yếu, quan trọng', imp.length ? K().table([['Dự án', 280], ['Mức độ', 110, 'c'], ['Trạng thái', 140, 'c'], ['Giai đoạn hiện tại', 170], ['Tiến độ thực tế', 200]], imp,
+      (x) => `<td><a class="link" data-go="${x.href}">${esc(x.title)}</a><div class="cap">${esc(x.code)}</div></td><td class="c">${tierB(x.p)}</td><td class="c">${badge(D.sxStatus[x.p.status], D.sxStatusV[x.p.status])}</td><td>${K().clamp(x.stage)}</td>
+        <td>${progCell(x)}</td>`)
+      : '<div class="empty-t">Không có dự án trọng yếu, quan trọng theo bộ lọc</div>', `${imp.length} / ${ps.length} dự án · <a class="link" data-go="sx/du-an">Xem tất cả dự án</a> · <a class="link" data-go="sx/bao-cao/tien-do">Xem báo cáo tiến độ</a>`);
+    /* Số liệu tổng hợp: lãnh đạo (nhóm 1, 2) xem số dự án + KPI; PM, chuyên viên xem đủ biểu đồ. */
+    const sum = `<section class="tq-blk sx-sum" data-sx-tong-hop><h2 class="rp-h2">Số liệu tổng hợp</h2><p class="cap">Theo bộ lọc Khối, Dự án, Năm ở trên</p>
+      <div class="rp-g2">${dStatus}${dTrack}</div>
+      <div class="rp-g2" data-sx-bieu-do>${g <= 2 ? `${cKpi}${cProg}` : `${cProg}${cBt}${cTd}${cKpi}`}</div></section>`;
+    const body = g === 4 ? [alerts, lateBlk, decBlock(), impBlk] : [decBlock(), lateBlk, alerts, impBlk];
+    return `<div class="pg" data-sxtq-page data-sx-grp="${g}">${S.head({ title: 'Dashboard', info, right: `<span class="rp-at">Cập nhật lúc ${esc(F.at)}</span><button type="button" class="vbtn secondary" data-sxr-refresh>${icon('reload')} Làm mới dữ liệu</button>` })}
+      ${banner}
       ${filterBar(false)}
-      ${donuts}
-      <section class="tq-blk"><h2 class="rp-h2">Cần chú ý</h2>
-        <div class="rp-tiles">${A.map((m, i) => tile(m, 'a' + i)).join('')}</div></section>
-      ${charts}
-      ${K().card('Tiến độ dự án so với kế hoạch', run.length ? K().table([['Mã dự án', 140], ['Tên dự án', 280], ['Khối', 80], ['Trạng thái', 150, 'c'], ['Giai đoạn hiện tại', 220], ['Thực hiện', 100, 'r'], ['Kế hoạch đến ngày', 140, 'r'], ['Chênh lệch', 110, 'r'], ['Hạng mục chậm', 120, 'r']], run,
-        (x) => `<td><a class="link" data-go="${x.href}">${esc(x.code)}</a></td><td>${K().clamp(x.title)}</td><td>${esc(KHOI[x.p.khoi])}</td><td class="c">${badge(D.sxStatus[x.p.status], D.sxStatusV[x.p.status])}</td><td>${K().clamp(x.stage)}</td>
-          <td class="r num">${x.act}%</td><td class="r num">${x.plan}%</td><td class="r num ${x.gap < 0 ? 't-err' : ''}">${x.gap > 0 ? '+' : ''}${x.gap} điểm</td><td class="r num ${x.late.length ? 't-err' : ''}">${x.late.length}</td>`)
-        : '<div class="empty-t">Không có dự án chưa hoàn thành theo bộ lọc</div>', `${run.length} dự án chưa hoàn thành · <a class="link" data-go="sx/bao-cao/tien-do">Xem báo cáo tiến độ</a>`)}</div>`;
+      ${body.join('\n')}
+      ${sum}</div>`;
   }
   function tqDrawer(key) {
     const m = TQD[key]; if (!m) return;

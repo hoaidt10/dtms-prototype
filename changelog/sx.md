@@ -3,6 +3,12 @@
 > Mỗi PR một mục, mới nhất trên cùng: `## YYYY-MM-DD — <việc> (#PR)` + 2–5 gạch đầu dòng (màn, thay đổi, nguồn, điểm treo mới).
 > Lịch sử trước T77: [lich-su-chung.md](lich-su-chung.md).
 
+## 2026-11-25 · Dashboard theo nhóm vai
+- Dashboard (SX-01, `js/sx-bao-cao.js`) chia 4 nhóm vai: Tổng Giám đốc (toàn VHT; thêm vai mẫu `sxceo`), Phó TGĐ / Ban Giám đốc Khối / Giám đốc Trung tâm (đơn vị mình), PM (dự án mình), Chuyên viên quản lý tiến độ (cảnh báo lên đầu).
+- Thêm khối **Việc chờ quyết định** dạng Step (kiểu Trello): Tổng Giám đốc → Phó TGĐ → Ban Giám đốc Khối → Ban Giám đốc Trung tâm; thẻ gồm tên dự án, việc, hạn xử lý. Việc mẫu GIẢ LẬP + hồ sơ luồng đang chờ thật.
+- Thêm **Danh sách dự án bị chậm**: chậm ở đơn vị nào, bao lâu, tiến độ thực tế so với kế hoạch.
+- Ô cảnh báo hiện nội dung chữ và tên dự án (không hiện mã); bảng dự án chỉ lấy dự án Trọng yếu, Quan trọng (thuộc tính `tier` của dự án). Số liệu tổng hợp đẩy xuống dưới, giữ nguyên bộ lọc.
+
 ## 2026-11-23 · Luồng Nhiệm vụ → Phương án sản xuất kinh doanh → Dự án
 - Menu "Tiếp nhận nhiệm vụ, đầu vào" đổi thành **Phương án sản xuất kinh doanh** (`js/sx-pasxkd.js`, thay `sx-dau-vao.js`): danh sách (KPI theo trạng thái), chi tiết (Thông tin chung · Hoàn thiện đầu vào B1.1–B1.4 · Lịch sử), lập từ nhiệm vụ đơn vị, Trình (chỉ khi đủ 4 nội dung), Ban Giám đốc Khối Phê duyệt / Trả lại (lý do), nút Lập dự án sản xuất.
 - Bỏ tab Đầu vào (B1) và cảnh báo ở Chi tiết dự án — giữ nguyên các tab cũ.

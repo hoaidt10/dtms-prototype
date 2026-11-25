@@ -18,6 +18,8 @@
     { id: 'sxk2', name: 'Vũ Thị Hương', short: 'Hương', role: 'Chuyên viên Quản lý sản xuất', unit: 'Phòng Quản lý sản xuất — Khối 2', urd: 'R-SX-PM', actor: '—', sx: true },
     { id: 'sxnm', name: 'Hoàng Văn Lực', short: 'Lực', role: 'Cán bộ điều hành sản xuất (nhà máy)', unit: 'Nhà máy đối tác', urd: 'R-SX-NM', actor: '—', sx: true },
     { id: 'sxgdtt', name: 'Bùi Thanh Sơn', short: 'Sơn', role: 'Giám đốc Trung tâm Nghiên cứu thiết kế', unit: 'Trung tâm Nghiên cứu thiết kế — Khối 1', urd: 'R-SX-GDTT', actor: '—', sx: true },
+    /* Dashboard theo nhóm vai (nhánh hoaidt10, 25/11): Tổng Giám đốc — nhóm 1, xem toàn bộ VHT. */
+    { id: 'sxceo', name: 'Lương Đình Bảo', short: 'Bảo', role: 'Tổng Giám đốc', unit: 'Ban Tổng Giám đốc', urd: 'R-SX-TGD', actor: '—', sx: true },
     { id: 'sxtgd', name: 'Đỗ Văn Khang', short: 'Khang', role: 'Phó Tổng Giám đốc', unit: 'Ban Tổng Giám đốc', urd: 'R-SX-TGD', actor: '—', sx: true },
     { id: 'sxkd', name: 'Mai Anh Tuấn', short: 'Tuấn', role: 'Chuyên viên Kinh doanh', unit: 'Trung tâm Kinh doanh', urd: 'R-SX-KD', actor: '—', sx: true },
   );
@@ -203,18 +205,18 @@
 
   /* ---------- Dự án sản xuất mẫu (hư cấu; S1 dựng màn danh sách / chi tiết) ---------- */
   D.sxProjects = [
-    { code: 'DA-SX-2026-001', name: 'Sản xuất loạt đài thu phát vô tuyến chiến thuật VT-25 — đợt 1', khoi: 'K1', model: 'VMC_TONG_THAU', product: 'VT-25', version: 'v2.1_HW_Rev3',
+    { code: 'DA-SX-2026-001', name: 'Sản xuất loạt đài thu phát vô tuyến chiến thuật VT-25 — đợt 1', tier: 'TRONG_YEU', khoi: 'K1', model: 'VMC_TONG_THAU', product: 'VT-25', version: 'v2.1_HW_Rev3',
       qty: 40, unitName: 'bộ', pm: 'sxpm', factory: 'VMC', start: '2026-03-02', end: '2026-12-15', status: 'IN_PRODUCTION' },
-    { code: 'DA-SX-2026-002', name: 'Sản xuất tổ hợp quan sát quang điện tử QĐ-12', khoi: 'K1', model: 'VHT_TU_SX', product: 'QĐ-12', version: 'v1.0_HW_Rev2',
+    { code: 'DA-SX-2026-002', name: 'Sản xuất tổ hợp quan sát quang điện tử QĐ-12', tier: 'QUAN_TRONG', khoi: 'K1', model: 'VHT_TU_SX', product: 'QĐ-12', version: 'v1.0_HW_Rev2',
       qty: 12, unitName: 'bộ', pm: 'sxpm', factory: 'NM-HL', start: '2026-06-01', end: '2027-03-31', status: 'PREPARING' },
-    { code: 'DA-SX-2026-003', name: 'Sản xuất bộ phát Wi-Fi Mesh WM-6 cho thị trường Lào', khoi: 'K2', model: 'GIA_CONG', product: 'WM-6', version: 'v3.0.1_HW_Rev2',
+    { code: 'DA-SX-2026-003', name: 'Sản xuất bộ phát Wi-Fi Mesh WM-6 cho thị trường Lào', tier: 'QUAN_TRONG', khoi: 'K2', model: 'GIA_CONG', product: 'WM-6', version: 'v3.0.1_HW_Rev2',
       qty: 120000, unitName: 'thiết bị', pm: 'sxk2', factory: 'NM-HP', start: '2026-04-15', end: '2026-11-30', status: 'IN_PRODUCTION' },
-    { code: 'DA-SX-2026-004', name: 'Sản xuất trạm 5G Macro gNB-M3 năm 2026', khoi: 'K2', model: 'VMC_TONG_THAU', product: 'gNB-M3', version: 'v1.2',
+    { code: 'DA-SX-2026-004', name: 'Sản xuất trạm 5G Macro gNB-M3 năm 2026', tier: 'TRONG_YEU', khoi: 'K2', model: 'VMC_TONG_THAU', product: 'gNB-M3', version: 'v1.2',
       qty: 3000, unitName: 'trạm', pm: 'sxk2', factory: 'VMC', start: '2026-12-01', end: '2027-06-30', status: 'PLANNING' },
     /* Dashboard (nhánh hoaidt10): thêm dự án ở trạng thái Nghiệm thu và Hoàn thành để biểu đồ trạng thái có đủ 5 trạng thái. */
-    { code: 'DA-SX-2026-005', name: 'Sản xuất bộ phát Wi-Fi Mesh WM-6 cho thị trường Campuchia', khoi: 'K2', model: 'GIA_CONG', product: 'WM-6', version: 'v3.0.1_HW_Rev2',
+    { code: 'DA-SX-2026-005', name: 'Sản xuất bộ phát Wi-Fi Mesh WM-6 cho thị trường Campuchia', tier: 'THUONG', khoi: 'K2', model: 'GIA_CONG', product: 'WM-6', version: 'v3.0.1_HW_Rev2',
       qty: 30000, unitName: 'thiết bị', pm: 'sxk2', factory: 'NM-HP', start: '2026-03-01', end: '2026-11-25', status: 'ACCEPTANCE' },
-    { code: 'DA-SX-2025-011', name: 'Sản xuất loạt đài thu phát vô tuyến chiến thuật VT-25 — đợt thử nghiệm', khoi: 'K1', model: 'VMC_TONG_THAU', product: 'VT-25', version: 'v2.0_HW_Rev2',
+    { code: 'DA-SX-2025-011', name: 'Sản xuất loạt đài thu phát vô tuyến chiến thuật VT-25 — đợt thử nghiệm', tier: 'QUAN_TRONG', khoi: 'K1', model: 'VMC_TONG_THAU', product: 'VT-25', version: 'v2.0_HW_Rev2',
       qty: 10, unitName: 'bộ', pm: 'sxpm', factory: 'VMC', start: '2025-06-02', end: '2025-12-20', status: 'DONE' },
   ];
   /* T71 S1: thông tin bổ sung của dự án mẫu. perf = mức bám kế hoạch (sinh % hoàn thành theo ngày, xem sx-du-an.js planOf); cap = giai đoạn cuối đã bắt đầu

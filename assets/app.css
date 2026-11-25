@@ -1499,3 +1499,44 @@ body.cap .tour-btn, body.cap .tour-layer, body.rv-mode .tour-layer { display: no
 [data-sxtq] { cursor: pointer; }
 /* Tab Kế hoạch: dòng được mở từ Phê duyệt kế hoạch (sx-du-an.js) */
 .vtt tr.row-hl > td { background: #FFF4E0 !important; }
+/* Dashboard QLSX theo nhóm vai (nhánh hoaidt10, góp ý 25/11): dải nhóm vai, Việc chờ quyết định dạng Step (kiểu Trello), ô cảnh báo có nội dung chữ, thanh tiến độ thực tế. */
+[data-sxtq-page] > .vcard, [data-sxtq-page] > .tq-blk { margin-top: 16px; }
+.sx-grp { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin: 0 0 12px; padding: 10px 14px; border-radius: 10px; background: #FFF1F3; border: 1px solid #FFD5DC; }
+.sx-grp .g { font-weight: 600; color: #C8002B; }
+.sx-grp .d { font-size: 13px; color: #344054; }
+.sx-steps { display: flex; gap: 12px; overflow-x: auto; padding: 4px 0 8px; }
+.sx-step { flex: 1 0 250px; min-width: 250px; display: flex; flex-direction: column; gap: 8px; background: #F2F4F7; border-radius: 10px; padding: 0 8px 8px; }
+.sx-step-h { display: flex; align-items: center; gap: 8px; margin: 0 -8px; padding: 10px 26px 10px 14px; background: #E4E7EC; color: #101828; font-weight: 600; font-size: 13px;
+  clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 50%, calc(100% - 14px) 100%, 0 100%, 14px 50%); border-radius: 10px 0 0 0; }
+.sx-step:first-child .sx-step-h { clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 50%, calc(100% - 14px) 100%, 0 100%); }
+.sx-step:not(:first-child) .sx-step-h { padding-left: 24px; border-radius: 0; }
+.sx-step-h .no { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 50%; background: #fff; color: #475467; font-size: 12px; flex: none; }
+.sx-step-h .t { flex: 1; min-width: 0; } .sx-step-h .t small { font-weight: 400; }
+.sx-step-h .c { min-width: 22px; padding: 1px 7px; border-radius: 11px; background: #fff; text-align: center; font-size: 12px; }
+.sx-step.mine { background: #FFF1F3; }
+.sx-step.mine .sx-step-h { background: #EE0033; color: #fff; } .sx-step.mine .sx-step-h .no, .sx-step.mine .sx-step-h .c { color: #EE0033; }
+.sx-step-b { display: flex; flex-direction: column; gap: 8px; }
+.sx-dc { display: flex; flex-direction: column; gap: 4px; padding: 10px 12px; background: #fff; border-radius: 8px; box-shadow: 0 1px 2px rgba(16,24,40,.08); color: inherit; text-decoration: none; cursor: pointer; border: 1px solid transparent; }
+.sx-dc:hover { border-color: #EE0033; }
+.sx-dc .p { font-weight: 600; font-size: 13px; color: #101828; }
+.sx-dc .w { font-size: 13px; color: #344054; }
+.sx-dc .f { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 2px; }
+.sx-dc .who { font-size: 12px; color: #667085; text-align: right; }
+.sx-dc-e { padding: 12px; font-size: 13px; color: #98A2B3; text-align: center; }
+.sx-als .sx-al { flex-direction: column; align-items: stretch; gap: 10px; }
+.sx-al-h { display: flex; align-items: flex-start; gap: 12px; }
+.sx-al.bad { border-left: 3px solid #D92D20; } .sx-al.warn { border-left: 3px solid #F79009; }
+.sx-al .n.bad { color: #D92D20; } .sx-al .n.warn { color: #B25E09; }
+.sx-al-l { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.sx-al-l li { display: flex; flex-direction: column; padding-top: 6px; border-top: 1px dashed #E4E7EC; }
+.sx-al-l .a { font-size: 13px; color: #101828; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+.sx-al-l .b { font-size: 12px; color: #667085; }
+.sx-al-more { font-size: 12px; color: #EE0033; } .sx-al-ok { font-size: 12px; color: #12B76A; }
+.sx-pg { display: flex; align-items: center; gap: 8px; }
+.sx-pg .bar { position: relative; flex: 1; min-width: 80px; height: 8px; border-radius: 4px; background: #EAECF0; }
+.sx-pg .bar > span { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 4px; }
+.sx-pg .bar > i { position: absolute; top: -3px; bottom: -3px; width: 2px; margin-left: -1px; background: #344054; }
+.sx-pg .num { white-space: nowrap; font-size: 13px; } .sx-pg small { color: #667085; }
+@media (max-width: 1100px) { .sx-als { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 640px) { .sx-als { grid-template-columns: 1fr; } .sx-step { flex-basis: 80%; } }
+[data-sxtq-page] .vtable td { white-space: normal; } [data-sxtq-page] .vtable td .link { white-space: normal; }
