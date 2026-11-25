@@ -203,19 +203,19 @@
         ${sel('owner', dv ? 'Người đầu mối' : 'Người thực hiện', { options: people })}
         ${sel('st', 'Trạng thái', { multi: true, searchable: false, options: ST.map((x) => ({ value: x, label: x })) })}
         ${sel('prio', 'Mức ưu tiên', { searchable: false, options: Object.entries(D.sxPrio).map(([value, v]) => ({ value, label: v[0] })) })}
-        ${sel('src', 'Nguồn', { searchable: false, options: Object.entries(D.sxWorkSrc).map(([value, label]) => ({ value, label })) })}`,
+        ${dv ? sel('src', 'Nguồn', { searchable: false, options: Object.entries(D.sxWorkSrc).map(([value, label]) => ({ value, label })) }) : ''}`,
       /* T74 #94 / #96: Nhiệm vụ đơn vị theo bộ cột của KHCN — Trạng thái, Nhiệm vụ, Chủ nhiệm · Đơn vị, Giai đoạn, Tiến độ, Ngày nhận nhiệm vụ, Hạn xử lý, Độ trễ (ngày).
          Việc cá nhân giữ bộ cột cũ. */
       cols: dv ? [['Thao tác', 100, 'c'], ['Trạng thái', 150, 'c'], ['Nhiệm vụ', 340], ['Chủ nhiệm · Đơn vị', 240], ['Giai đoạn', 220], ['Tiến độ', 170], ['Ngày nhận nhiệm vụ', 150], ['Hạn xử lý', 120], ['Độ trễ (ngày)', 120, 'r']]
         : [['Thao tác', 100, 'c'], ['Trạng thái', 150, 'c'], ['Mã công việc', 150], ['Tên công việc', 300], ['Dự án', 140], ['Hạng mục kế hoạch', 220], ['Công việc cha', 150],
-        [dv ? 'Đơn vị thực hiện' : 'Người thực hiện', 220], [dv ? 'Người đầu mối' : 'Người giao', 170], ['Ngày bắt đầu', 120], ['Hạn hoàn thành', 130], ['Còn lại', 110, 'r'], ['Hoàn thành', 110, 'r'], ['Mức ưu tiên', 120, 'c'], ['Nguồn', 130]],
+        [dv ? 'Đơn vị thực hiện' : 'Người thực hiện', 220], [dv ? 'Người đầu mối' : 'Người giao', 170], ['Ngày bắt đầu', 120], ['Hạn hoàn thành', 130], ['Còn lại', 110, 'r'], ['Hoàn thành', 110, 'r'], ['Mức ưu tiên', 120, 'c']],
       href,
       cell: (x) => (dv ? dvCell(x, k) : `<td class="c"><div class="acts">${canEdit(x) ? iconBtn('edit', 'Sửa', `data-go="${href(x)}/edit"`) : ''}${canDel(x) ? `<span class="sep"></span>${iconBtn('del', 'Xoá', `data-sxcv-del="${esc(x.code)}"`)}` : ''}</div></td>
         <td class="c">${badge(...x.st)}</td><td><a class="link" data-go="${href(x)}">${esc(x.code)}</a></td><td>${k.clamp(x.title)}</td><td>${x.project ? esc(x.project) : k.dash}</td>
         <td>${x.plan ? k.clamp(planName(x)) : k.dash}</td><td>${x.parent ? `<a class="link" data-go="${href({ code: x.parent })}">${esc(x.parent)}</a>` : k.dash}</td>
         <td>${k.clamp(dv ? unitOf(x.owner) : pName(x.owner))}</td><td>${k.clamp(pName(dv ? x.owner : x.assigner))}</td><td class="num">${esc(dmy(x.start))}</td>
         <td class="num${x.st[0] === 'Quá hạn' ? ' due-over' : ''}">${esc(dmy(x.due))}</td><td class="r">${leftCell(x, k)}</td><td class="r num">${x.pct}%</td>
-        <td class="c">${badge(...D.sxPrio[x.prio || 'TB'])}</td><td>${esc(D.sxWorkSrc[x.src] || '')}</td>`),
+        <td class="c">${badge(...D.sxPrio[x.prio || 'TB'])}</td>`),
     });
   }
 
@@ -224,9 +224,9 @@
     const dv = kind === 'DV', l = filtered(kind);
     const q = (v) => `"${String(v == null ? '' : v).replace(/"/g, '""')}"`;
     const headRow = ['STT', 'Mã công việc', 'Tên công việc', 'Trạng thái', 'Dự án', 'Hạng mục kế hoạch', 'Công việc cha', dv ? 'Đơn vị thực hiện' : 'Người thực hiện', dv ? 'Người đầu mối' : 'Người giao',
-      'Ngày bắt đầu', 'Hạn hoàn thành', 'Hoàn thành (%)', 'Mức ưu tiên', 'Nguồn'];
+      'Ngày bắt đầu', 'Hạn hoàn thành', 'Hoàn thành (%)', 'Mức ưu tiên'].concat(dv ? ['Nguồn'] : []);
     const lines = [[dv ? 'DANH SÁCH NHIỆM VỤ ĐƠN VỊ' : 'DANH SÁCH VIỆC CÁ NHÂN'], [], headRow].concat(l.map((x, i) => [i + 1, x.code, x.title, x.st[0], x.project || '', planName(x), x.parent || '',
-      dv ? unitOf(x.owner) : pName(x.owner), pName(dv ? x.owner : x.assigner), dmy(x.start), dmy(x.due), x.pct, D.sxPrio[x.prio || 'TB'][0], D.sxWorkSrc[x.src] || '']));
+      dv ? unitOf(x.owner) : pName(x.owner), pName(dv ? x.owner : x.assigner), dmy(x.start), dmy(x.due), x.pct, D.sxPrio[x.prio || 'TB'][0]].concat(dv ? [D.sxWorkSrc[x.src] || ''] : [])));
     const a = document.createElement('a');
     a.href = URL.createObjectURL(new Blob(['﻿' + lines.map((r) => r.map(q).join(',')).join('\n')], { type: 'text/csv;charset=utf-8;' }));
     a.download = dv ? 'Danh sach nhiem vu don vi.csv' : 'Danh sach viec ca nhan.csv';
@@ -405,7 +405,7 @@
         ${k.kv('Công việc cha', anc.length ? anc.map((a) => `<a class="link" data-go="${href(a)}">${esc(a.code)}</a>`).join(' › ') : null, 'span3')}
         ${k.kv(dv ? 'Người đầu mối' : 'Người thực hiện', esc(pName(x.owner)))}${k.kv('Đơn vị thực hiện', esc(unitOf(x.owner)))}${k.kv('Người giao', esc(pName(x.assigner)))}
         ${k.kv('Ngày bắt đầu', esc(dmy(x.start)))}${k.kv('Hạn hoàn thành', esc(dmy(x.due)))}${k.kv('Ngày hoàn thành', x.doneAt ? esc(dmy(x.doneAt)) : null)}
-        ${k.kv('Mức ưu tiên', badge(...D.sxPrio[x.prio || 'TB']))}${k.kv('Nhắc trước hạn', `${x.remind == null ? 2 : x.remind} ngày`)}${k.kv('Nguồn', esc(D.sxWorkSrc[x.src] || ''))}
+        ${k.kv('Mức ưu tiên', badge(...D.sxPrio[x.prio || 'TB']))}${k.kv('Nhắc trước hạn', `${x.remind == null ? 2 : x.remind} ngày`)}${dv ? k.kv('Nguồn', esc(D.sxWorkSrc[x.src] || '')) : ''}
         ${k.kv('Mô tả', esc(x.desc || ''), 'span3')}${k.kv('Ngày tạo', esc(dmy(x.created)))}</div>`);
     const open = T.open[x.code] || (T.open[x.code] = new Set());
     const node = (y) => ({ key: y.code, code: y.code, r: y, children: y.kids.length ? y.kids.map(node) : null });
