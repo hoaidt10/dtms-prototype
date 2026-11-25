@@ -514,7 +514,8 @@
     }).filter((x) => x.slow || x.p.tier === 'TRONG_YEU').sort((a, b) => b.days - a.days || a.code.localeCompare(b.code));
   }
   const pace = (x) => (x.slow ? badge('Chậm tiến độ', 'error') : x.act === 0 && x.plan === 0 ? badge('Chưa bắt đầu', 'default') : badge('Đúng tiến độ', 'success'));
-  const progCell = (x) => `<div class="sx-pg"><span class="bar"><span style="width:${x.act}%;background:${x.gap <= -LATE_PT ? C[1] : C[0]}"></span><i style="left:${x.plan}%" title="Kế hoạch đến ngày ${x.plan}%"></i></span><span class="num">${x.act}%<small> / kế hoạch ${x.plan}%</small></span></div>`;
+  /* Góp ý 25/11: 2 thanh — cam = thực hiện, xanh = kế hoạch đến ngày. */
+  const progCell = (x) => `<div class="sx-pg2"><div class="r" title="Thực hiện ${x.act}%"><span class="bar"><span style="width:${x.act}%;background:${C[1]}"></span></span><span class="num">${x.act}%</span></div><div class="r" title="Kế hoạch đến ngày ${x.plan}%"><span class="bar"><span style="width:${x.plan}%;background:${C[0]}"></span></span><span class="num">${x.plan}%</span></div></div>`;
 
   /* ---------- SX-01 Tổng quan điều hành ---------- */
   const TQD = {}, TQN = {};
@@ -612,7 +613,7 @@
     const scopeTxt = g === 2 ? `Đơn vị: ${(UNIT_KHOI[Flow.state.persona] || Object.keys(KHOI)).map((k) => KHOI[k]).join(', ')}` : g === 3 ? 'Dự án bạn làm chủ nhiệm' : g === 1 ? 'Toàn bộ VHT' : 'Theo phạm vi được phân công';
     const banner = `<div class="sx-grp"><span class="g">${esc(GRP[g][0])}</span><span class="d">${esc(me ? `${me.name} — ${me.role}` : '')} · ${esc(GRP[g][1])} · <b>${esc(scopeTxt)}</b></span></div>`;
     const risk = riskList(ps);
-    const lateBlk = `<section class="vcard" data-sx-du-an-cham><div class="vcard-h"><h3>Danh sách dự án trọng yếu, bị chậm</h3><span class="cap">${risk.filter((x) => x.slow).length} dự án bị chậm · ${risk.filter((x) => x.p.tier === 'TRONG_YEU').length} dự án trọng yếu · chậm ở đâu, chậm bao lâu theo hạng mục quá hạn chưa xong đầu tiên</span></div>
+    const lateBlk = `<section class="vcard" data-sx-du-an-cham><div class="vcard-h"><h3>Danh sách dự án trọng yếu, bị chậm</h3><span class="cap">${risk.filter((x) => x.slow).length} dự án bị chậm · ${risk.filter((x) => x.p.tier === 'TRONG_YEU').length} dự án trọng yếu · chậm ở đâu, chậm bao lâu theo hạng mục quá hạn chưa xong đầu tiên · <span class="sx-pg2-lg"><i style="background:${C[1]}"></i>Thực hiện <i style="background:${C[0]}"></i>Kế hoạch đến ngày</span></span></div>
       ${risk.length ? K().table([['Dự án', 200], ['Mức độ', 90, 'c'], ['Giai đoạn hiện tại', 140], ['Tiến độ', 110, 'c'], ['Chậm ở đâu', 180], ['Chậm bao lâu', 100, 'c'], ['Tiến độ thực tế (thực hiện / kế hoạch đến ngày)', 230]], risk,
         (x) => `<td><a class="link" data-go="${x.href}" title="Xem chi tiết dự án">${esc(x.title)}</a><div class="cap">${esc(x.code)}</div></td><td class="c">${tierB(x.p)}</td><td>${esc(x.stage)}</td><td class="c">${pace(x)}</td>
           <td>${x.slow ? `<b>${esc(x.unit)}</b><div class="cap">${esc(x.item)}</div>` : K().dash}</td><td class="c">${x.slow ? badge(`${x.days} ngày`, x.days > 14 ? 'error' : 'warning') : K().dash}</td><td>${progCell(x)}</td>`)

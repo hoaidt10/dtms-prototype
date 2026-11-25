@@ -1549,3 +1549,10 @@ body.cap .tour-btn, body.cap .tour-layer, body.rv-mode .tour-layer { display: no
 /* Việc của tôi (góp ý 25/11): chữ trong bảng xuống dòng; ô lọc Chu kỳ cạnh ô tìm kiếm. */
 [data-sx-tasks] .vtable td { white-space: normal; } [data-sx-tasks] .vtable td .link { white-space: normal; }
 .sxv-flt { display: flex; align-items: flex-end; gap: 12px; } .sxv-flt .vfield { margin: 0; }
+/* Tổng quan — Tiến độ thực tế: 2 thanh (cam = thực hiện, xanh = kế hoạch đến ngày). */
+.sx-pg2 { display: flex; flex-direction: column; gap: 4px; }
+.sx-pg2 .r { display: flex; align-items: center; gap: 8px; }
+.sx-pg2 .bar { position: relative; flex: 1; min-width: 80px; height: 8px; border-radius: 4px; background: #EAECF0; }
+.sx-pg2 .bar > span { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 4px; }
+.sx-pg2 .num { white-space: nowrap; font-size: 12px; min-width: 34px; text-align: right; }
+.sx-pg2-lg { white-space: nowrap; } .sx-pg2-lg i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin: 0 4px 0 6px; vertical-align: -1px; }
