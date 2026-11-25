@@ -28,7 +28,7 @@
   const soon = (slice, scr) => [`Màn ${scr} dựng ở lát ${slice} của plan T71 (docs/sx/T71-prototype-qlsx-ke-hoach.md §5).`];
   D.sxMenu = [
     /* T74 #95: Tổng quan đổi tên Dashboard, đứng đầu menu như KHCN (repo-khcn-bpmn-fe management-sidebar). */
-    { label: 'Dashboard', icon: 'tong_quan', path: 'sx/tong-quan', scr: 'SX-01' },
+    { label: 'Tổng quan', icon: 'tong_quan', path: 'sx/tong-quan', scr: 'SX-01' },
     /* T74 #94 / #96 (Q1): Việc của tôi thành mục con (giữ số việc) của nhóm Quản lý nhiệm vụ, cùng Nhiệm vụ đơn vị và Việc cá nhân — như KHCN. */
     { label: 'Quản lý nhiệm vụ', icon: 'menu_square', open: true, children: [
       { label: 'Nhiệm vụ đơn vị', path: 'sx/cong-viec/don-vi', scr: 'SX-16' },

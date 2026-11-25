@@ -514,7 +514,7 @@
     }).filter((x) => x.slow || x.p.tier === 'TRONG_YEU').sort((a, b) => b.days - a.days || a.code.localeCompare(b.code));
   }
   const pace = (x) => (x.slow ? badge('Chậm tiến độ', 'error') : x.act === 0 && x.plan === 0 ? badge('Chưa bắt đầu', 'default') : badge('Đúng tiến độ', 'success'));
-  const progCell = (x) => `<div class="sx-pg"><span class="bar"><span style="width:${x.act}%;background:${x.gap <= -LATE_PT ? C[1] : C[0]}"></span><i style="left:${x.plan}%" title="Kế hoạch đến ngày ${x.plan}%"></i></span><span class="num">${x.act}%<small> / KH ${x.plan}%</small></span></div>`;
+  const progCell = (x) => `<div class="sx-pg"><span class="bar"><span style="width:${x.act}%;background:${x.gap <= -LATE_PT ? C[1] : C[0]}"></span><i style="left:${x.plan}%" title="Kế hoạch đến ngày ${x.plan}%"></i></span><span class="num">${x.act}%<small> / kế hoạch ${x.plan}%</small></span></div>`;
 
   /* ---------- SX-01 Tổng quan điều hành ---------- */
   const TQD = {}, TQN = {};
@@ -566,7 +566,6 @@
     /* Biểu đồ Dashboard (nhánh hoaidt10): cùng nguồn số liệu với các danh sách SX; tái dùng hbars / pairs của Báo cáo. */
     const withColor = (a, cs) => a.map((x, i) => Object.assign(x, { color: cs[i % cs.length] }));
     const stKeys = Object.keys(D.sxStatus || {});
-    const cProg = pairs('Tiến độ dự án: thực hiện so với kế hoạch đến ngày', run.map((x) => ({ label: x.code, a: x.act, b: x.plan, late: x.gap <= -LATE_PT })));
     const btAll = window.SxBt.all().filter((x) => inScope(x.project));
     const cBt = hbars('Phiếu bất thường theo trạng thái', withColor(countBy(btAll, (x) => window.SxBt.stOf(x)[0]), [C[1], C[3], C[0], C[2], C[5]]), { unit: 'phiếu' });
     const tdAll = window.SxTd.all().filter((x) => inScope(x.project));
@@ -593,11 +592,12 @@
     LCAT.forEach(([k, l], i) => { TQN['t' + i] = { route: 'sx/du-an', id: 'sxda', label: l, codes: openP.filter((x) => x.cat === k).map((x) => x.code) }; TQD['t' + i] = [l, k === 'ok' ? 'Dự án chưa hoàn thành, không có hạng mục quá hạn chưa xong' : 'Dự án chưa hoàn thành có hạng mục quá hạn đầu tiên thuộc giai đoạn này', openP.filter((x) => x.cat === k), tCols, tCell]; });
     const dTrack = donut('Dự án chưa hoàn thành theo tiến độ', LCAT.map(([k, l, c], i) => ({ label: l, value: openP.filter((x) => x.cat === k).length, color: c, tq: 't' + i })), { unit: 'dự án', note: 'Nhấn vào biểu đồ để xem chi tiết tiến độ dự án' });
     const info = {
-      scr: 'SX-01', name: 'Dashboard', uc: 'SX-ULNL sheet NL Chuc nang › Báo cáo thống kê › Tổng quan dự án (dòng 2526–2530); SX-KS-K2 §2.4 (Dashboard KPI sản xuất); plan T71 §4 SX-01',
+      scr: 'SX-01', name: 'Tổng quan', uc: 'SX-ULNL sheet NL Chuc nang › Báo cáo thống kê › Tổng quan dự án (dòng 2526–2530); SX-KS-K2 §2.4 (Dashboard KPI sản xuất); plan T71 §4 SX-01',
       notes: [
         '<b>Góp ý 25/11 lần 2</b>: Số liệu tổng hợp lên đầu; bỏ bảng Dự án trọng yếu, quan trọng — gộp vào <b>Danh sách dự án trọng yếu, bị chậm</b> (thêm cột Giai đoạn hiện tại, Tiến độ; Mức độ chỉ gắn thẻ Trọng yếu). Cảnh báo 5 nhóm: Chuyển giao từ nghiên cứu, Cung ứng vật tư, Bất thường sản xuất, Thay đổi kỹ thuật, Nghiệm thu — quá hạn hoặc sắp đến hạn (trong 1 tuần tới). Nhấn ô cảnh báo / biểu đồ → điều hướng sang màn danh sách tương ứng, lọc sẵn đúng bản ghi (dải Đang lọc từ Dashboard, nút Bỏ lọc) thay cho ngăn chi tiết. Link dự án có tooltip Xem chi tiết dự án.',
         '<b>Góp ý 25/11 (nhánh hoaidt10)</b>: Dashboard chia 4 nhóm vai — (1) Tổng Giám đốc: toàn bộ VHT; (2) Phó TGĐ, Ban Giám đốc Khối, Giám đốc Trung tâm: đơn vị mình quản lý; (3) PM: dự án mình làm chủ nhiệm; (4) Chuyên viên quản lý tiến độ sản xuất: cảnh báo lên đầu. Thêm <b>Việc chờ quyết định</b> dạng Step (kiểu Trello) theo cấp Tổng Giám đốc → Phó TGĐ → Ban Giám đốc Khối → Ban Giám đốc Trung tâm — mỗi người thấy cấp của mình và các cấp dưới, PM / chuyên viên thấy đủ các cấp của dự án mình theo dõi; <b>Danh sách dự án bị chậm</b> (chậm ở đơn vị nào, bao lâu, tiến độ thực tế); ô cảnh báo hiện nội dung chữ và tên dự án; bảng dự án chỉ lấy dự án <b>Trọng yếu, Quan trọng</b> (thuộc tính Mức độ của dự án — GIẢ LẬP). Số liệu tổng hợp đẩy xuống dưới, bộ lọc giữ nguyên.',
         '<b>T74 (comment #95):</b> mục menu <b>Tổng quan</b> đổi tên <b>Dashboard</b>, đứng đầu menu như phân hệ KHCN. Khối <b>Gợi ý cho bạn</b> đã bỏ khỏi trang (nhánh hoaidt10).',
+        '<b>Góp ý 25/11 lần 3</b>: đổi tên lại <b>Tổng quan</b>; bỏ biểu đồ Tiến độ dự án: thực hiện so với kế hoạch đến ngày khỏi Số liệu tổng hợp — xem ở cột <b>Tiến độ thực tế</b> của Danh sách dự án trọng yếu, bị chậm (thanh = % thực hiện, vạch = % kế hoạch đến ngày, tính từ file kế hoạch).',
         '<b>Số dự án</b> — 5 chỉ số của SX-ULNL: lũy kế, đang thực hiện (Chuẩn bị sản xuất, Đang sản xuất, Nghiệm thu), đúng tiến độ (đang thực hiện, % thực hiện thấp hơn % kế hoạch đến ngày dưới 15 điểm — ngưỡng nguy cơ chậm P-250; cột Hạng mục chậm vẫn đếm hạng mục quá hạn chưa xong như cột Mốc chậm ở Danh sách dự án), đang nghiệm thu (trạng thái Nghiệm thu hoặc có lô đang nghiệm thu / chờ nhập kho), mới mở (tạo trong 30 ngày gần nhất).',
         '<b>Biểu đồ tiến độ</b> (người review 20/11): dự án chưa hoàn thành chia Đúng tiến độ và 5 loại chậm — lên kế hoạch (giai đoạn 1), đảm bảo vật tư (bước 4), sản xuất (bước 5–11, mốc nhà máy), đánh giá xuất xưởng (bước 12 OQC), nghiệm thu TCT (bước 13–15). Mỗi dự án xếp vào giai đoạn có hạng mục quá hạn chưa xong đầu tiên theo thứ tự kế hoạch. Bấm phần biểu đồ / dòng chú giải mở danh sách dự án. Biểu đồ trạng thái: rê chuột / chạm hiện số dự án, bấm phần / dòng chú giải mở danh sách dự án của trạng thái đó; vẽ đủ 5 trạng thái (thêm dữ liệu mẫu DA-SX-2026-005 Nghiệm thu, DA-SX-2025-011 Hoàn thành).',
         '<b>Cần chú ý</b>: phiếu bất thường quá hạn / còn dưới 3 ngày làm việc (SLA), vật tư trễ hạn đặt hàng (Nhu cầu vật tư), thay đổi kỹ thuật chưa hoàn thành, lô chờ nghiệm thu / nhập kho.',
@@ -613,7 +613,7 @@
     const banner = `<div class="sx-grp"><span class="g">${esc(GRP[g][0])}</span><span class="d">${esc(me ? `${me.name} — ${me.role}` : '')} · ${esc(GRP[g][1])} · <b>${esc(scopeTxt)}</b></span></div>`;
     const risk = riskList(ps);
     const lateBlk = `<section class="vcard" data-sx-du-an-cham><div class="vcard-h"><h3>Danh sách dự án trọng yếu, bị chậm</h3><span class="cap">${risk.filter((x) => x.slow).length} dự án bị chậm · ${risk.filter((x) => x.p.tier === 'TRONG_YEU').length} dự án trọng yếu · chậm ở đâu, chậm bao lâu theo hạng mục quá hạn chưa xong đầu tiên</span></div>
-      ${risk.length ? K().table([['Dự án', 200], ['Mức độ', 90, 'c'], ['Giai đoạn hiện tại', 140], ['Tiến độ', 110, 'c'], ['Chậm ở đâu', 180], ['Chậm bao lâu', 100, 'c'], ['Tiến độ thực tế', 180]], risk,
+      ${risk.length ? K().table([['Dự án', 200], ['Mức độ', 90, 'c'], ['Giai đoạn hiện tại', 140], ['Tiến độ', 110, 'c'], ['Chậm ở đâu', 180], ['Chậm bao lâu', 100, 'c'], ['Tiến độ thực tế (thực hiện / kế hoạch đến ngày)', 230]], risk,
         (x) => `<td><a class="link" data-go="${x.href}" title="Xem chi tiết dự án">${esc(x.title)}</a><div class="cap">${esc(x.code)}</div></td><td class="c">${tierB(x.p)}</td><td>${esc(x.stage)}</td><td class="c">${pace(x)}</td>
           <td>${x.slow ? `<b>${esc(x.unit)}</b><div class="cap">${esc(x.item)}</div>` : K().dash}</td><td class="c">${x.slow ? badge(`${x.days} ngày`, x.days > 14 ? 'error' : 'warning') : K().dash}</td><td>${progCell(x)}</td>`)
         : '<div class="empty-t">Không có dự án trọng yếu hoặc bị chậm theo bộ lọc</div>'}
@@ -622,9 +622,9 @@
     /* Số liệu tổng hợp: lãnh đạo (nhóm 1, 2) xem số dự án + KPI; PM, chuyên viên xem đủ biểu đồ. */
     const sum = `<section class="tq-blk sx-sum" data-sx-tong-hop><h2 class="rp-h2">Số liệu tổng hợp</h2><p class="cap">Theo bộ lọc Khối, Dự án, Năm ở trên</p>
       <div class="rp-g2">${dStatus}${dTrack}</div>
-      <div class="rp-g2" data-sx-bieu-do>${g <= 2 ? `${cKpi}${cProg}` : `${cProg}${cBt}${cTd}${cKpi}`}</div></section>`;
+      <div class="rp-g2" data-sx-bieu-do>${g <= 2 ? cKpi : `${cBt}${cTd}${cKpi}`}</div></section>`;
     const body = g === 4 ? [alerts, lateBlk, decBlock()] : [decBlock(), lateBlk, alerts];
-    return `<div class="pg" data-sxtq-page data-sx-grp="${g}">${S.head({ title: 'Dashboard', info, right: `<span class="rp-at">Cập nhật lúc ${esc(F.at)}</span><button type="button" class="vbtn secondary" data-sxr-refresh>${icon('reload')} Làm mới dữ liệu</button>` })}
+    return `<div class="pg" data-sxtq-page data-sx-grp="${g}">${S.head({ title: 'Tổng quan', info, right: `<span class="rp-at">Cập nhật lúc ${esc(F.at)}</span><button type="button" class="vbtn secondary" data-sxr-refresh>${icon('reload')} Làm mới dữ liệu</button>` })}
       ${banner}
       ${filterBar(false)}
       ${sum}
