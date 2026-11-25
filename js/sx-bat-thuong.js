@@ -79,7 +79,7 @@
 
   /* ---------- Bộ xử lý hành động của SX-BT ---------- */
   /* Giá trị form lap → bản ghi phiếu (T74 #100). */
-  const fromForm = (v) => ({ project: v.btProject, title: String(v.btTitle || '').trim(), type: v.btLoai || null, sev: v.btMucDo ? Number(v.btMucDo) : null, desc: String(v.btDesc || '').trim(),
+  const fromForm = (v) => ({ project: v.btProject, proc: v.btQuyTrinh || '', title: String(v.btTitle || '').trim(), type: v.btLoai || null, sev: v.btMucDo ? Number(v.btMucDo) : null, desc: String(v.btDesc || '').trim(),
     found: fromDmy(String(v.btFound || '').split(' ')[0]), foundTime: String(v.btFound || '').split(' ')[1] || '', place: v.btPlace || '', qty: v.btQty == null || v.btQty === '' ? null : Number(v.btQty), unit: v.btQtyDvt || '', guess: String(v.btGuess || '').trim(),
     spMa: v.btSpMa || '', khach: v.btKhach || '', donVi: v.btDonVi || '', serial: v.btSerial || '', sample: v.btCoMau == null || v.btCoMau === '' ? null : Number(v.btCoMau),
     stage: v.btCongDoan || '', op: String(v.btThaoTac || '').trim(), shift: v.btCa || '', req: String(v.btYeuCau || '').trim(), causes: v.btNhomNN || [],
@@ -155,11 +155,15 @@
   /* ---------- Thêm mới phiếu (BM.QLBT.01) = bước 1 của luồng ---------- */
   const catTypes = () => window.Catalog.rows('sx-bat-thuong').filter((r) => r.active !== false).map((r) => [r.code, r.name]);
   const catList = (key) => window.Catalog.rows(key).filter((r) => r.active !== false).map((r) => [r.code, r.name]);
+  /* Nhánh hoaidt10 (25/11): trường Quy trình — danh sách của menu Quản lý quy trình (quy-trinh.js), chỉ quy trình có phiên bản ACTIVE. */
+  const procList = () => ((window.QuyTrinh && window.QuyTrinh.WORKFLOWS) || []).filter((w) => w.versions.some((v) => v.status === 'ACTIVE')).map((w) => [w.code, `${w.code} — ${w.name}`]);
+  const procName = (code) => { const p = procList().find((x) => x[0] === code); return p ? p[1] : code; };
   /* Danh sách lựa chọn của form Thêm mới: sản phẩm, khách hàng, đơn vị, serial theo dự án, danh mục chuẩn, nhân sự. */
   function lists() {
     const ps = P().visible().filter((p) => p.status !== 'PLANNING' && p.status !== 'DONE'), staff = D.personas.filter((x) => x.sx), pad = (n, l) => String(n).padStart(l, '0');
     return {
       projects: ps.map((p) => [p.code, `${p.code} — ${p.name}`]),
+      procs: procList(),
       projectOpts: ps.map((p) => ({ label: `${p.code} — ${p.name}`, value: p.code, fill: { btSpTen: p.product, btSpMa: p.product, btKhach: p.customer || '', btDonVi: p.factory || '' } })),
       products: D.sxProducts.map((p) => [p.code, p.name]),
       customers: [...new Set(P().all().map((p) => p.customer).filter(Boolean))].map((c) => [c, c]),
@@ -236,6 +240,7 @@
         ${k.kv('Khách hàng', x.khachN ? esc(x.khachN) : null)}${k.kv('Đơn vị sản xuất', x.donViN ? esc(x.donViN) : null)}${k.kv('Số hiệu thao tác', x.op ? esc(x.op) : null)}
         ${k.kv('Ca sản xuất', x.shift ? esc(catN('sx-ca-san-xuat', x.shift)) : null)}${k.kv('Cỡ mẫu kiểm tra', x.sample ? esc(String(x.sample)) : null)}${k.kv('Số lượng ảnh hưởng', x.qty != null ? esc(`${x.qty}${x.unit ? ' ' + catN('sx-don-vi-tinh', x.unit).toLowerCase() : ''}`) : null)}
         ${k.kv('Tỷ lệ lỗi', defectPct(x) != null ? esc(String(defectPct(x)).replace('.', ',') + ' %') : null)}${k.kv('Yêu cầu kỹ thuật vi phạm', x.req ? esc(x.req) : null, 'span2')}
+        ${k.kv('Quy trình', x.proc ? esc(procName(x.proc)) : null, 'span3')}
         ${k.kv('Mô tả hiện tượng', esc(x.desc || ''), 'span3')}
         ${k.kv('Loại bất thường', x.type ? esc(catRow(x.type).name) : null, 'span2')}${k.kv('Mức độ', x.sev ? esc(D.sxSev[x.sev]) : null)}
         ${k.kv('Đơn vị xử lý', x.unitText ? esc(x.unitText) : null)}${k.kv('Ngày tiếp nhận', x.received ? esc(dmy(x.received)) : null)}
@@ -348,7 +353,7 @@
       types: window.Catalog.rows('sx-bat-thuong').filter((r) => r.active !== false).map((r) => [r.code, r.name]), sevs: Object.entries(D.sxSev).map(([a, b]) => [a, b]),
       projects: P().visible().filter((p) => p.status !== 'PLANNING' && p.status !== 'DONE').map((p) => [p.code, `${p.code} — ${p.name}`]),
       /* T74 Q10: phiếu bị trả lại → bước 1 mở form lap điền sẵn thông tin phiếu hiện tại. */
-      btProject: x.project, btTitle: x.title, btLoai: x.type || null, btMucDo: x.sev ? String(x.sev) : null, btDesc: x.desc || '', btFound: dmy(x.found) + ' ' + (x.foundTime || '00:00'), btPlace: x.place || '',
+      btProject: x.project, btQuyTrinh: x.proc || null, btTitle: x.title, btLoai: x.type || null, btMucDo: x.sev ? String(x.sev) : null, btDesc: x.desc || '', btFound: dmy(x.found) + ' ' + (x.foundTime || '00:00'), btPlace: x.place || '',
       btQty: x.qty, btGuess: x.guess || '', btFiles: docsOf(x).join(', '),
       btSpTen: spOf(x, P().byCode(x.project)), btSpMa: spOf(x, P().byCode(x.project)), btKhach: x.khachN || '', btDonVi: x.donViC || '', btSerial: x.serial || '', btCoMau: x.sample == null ? null : x.sample,
       btFoundTime: x.foundTime || '', btCongDoan: x.stage || null, btThaoTac: x.op || '', btCa: x.shift || null, btYeuCau: x.req || '', btQtyDvt: x.unit || null,

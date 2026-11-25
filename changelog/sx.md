@@ -3,6 +3,11 @@
 > Mỗi PR một mục, mới nhất trên cùng: `## YYYY-MM-DD — <việc> (#PR)` + 2–5 gạch đầu dòng (màn, thay đổi, nguồn, điểm treo mới).
 > Lịch sử trước T77: [lich-su-chung.md](lich-su-chung.md).
 
+## 2026-11-25 · Phiếu bất thường: trường Quy trình
+- Form Thêm mới / Sửa phiếu bất thường (`js/eforms/sx-bt.js`, BM.QLBT.01): thêm trường **Quy trình** (bắt buộc, có tìm kiếm) đầu nhóm Thông tin bất thường.
+- Danh sách lấy từ menu **Quản lý quy trình** (`QuyTrinh.WORKFLOWS`, quy trình có phiên bản đang hoạt động); lưu vào phiếu (`proc`), hiện ở Thông tin phiếu của màn chi tiết (`js/sx-bat-thuong.js`).
+- Lưu ý: danh sách Quản lý quy trình hiện chỉ có quy trình ĐTMS (MS01…MS19); phiếu mẫu cũ chưa có quy trình, sửa lại phiếu thì phải chọn.
+
 ## 2026-11-25 · Menu Quản lý quy trình
 - Thêm nhóm menu **Quản lý quy trình** (Quản lý quy trình, Ma trận hành động, Giám sát tiến trình) dùng nguyên màn của ĐTMS, route `#/sx/quy-trinh`, `#/sx/ma-tran/…`, `#/sx/giam-sat-tien-trinh` (giữ sidebar Sản xuất; link trong màn tự thêm tiền tố `sx/` — `js/app.js`, `js/ma-tran.js`).
 - Đổi tài khoản trong phân hệ Sản xuất có thêm Người dùng quản trị quy trình (Cao Thị Hạnh).

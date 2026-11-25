@@ -9,7 +9,7 @@
   const F = {
     /* T74 #100: thêm Phân loại bất thường, Mức độ nghiêm trọng (bắt buộc), Dự đoán sơ bộ nguyên nhân; đính kèm chia theo mục của BM.QLBT.01 — chỉ phiếu BM.QLBT.01 bắt buộc (Q9).
        Dùng cả khi Thêm mới và khi người lập sửa phiếu bị trả lại (bước 1 mở lại). */
-    lap: { id: 'sx-bt-t01-phieu-bao-cao', write: ['btProject', 'btTitle', 'btSpTen', 'btSpMa', 'btKhach', 'btDonVi', 'btSerial', 'btCoMau', 'btLoai', 'btMucDo', 'btDesc',
+    lap: { id: 'sx-bt-t01-phieu-bao-cao', write: ['btProject', 'btQuyTrinh', 'btTitle','btSpTen', 'btSpMa', 'btKhach', 'btDonVi', 'btSerial', 'btCoMau', 'btLoai', 'btMucDo', 'btDesc',
       'btFound', 'btFoundTime', 'btPlace', 'btCongDoan', 'btThaoTac', 'btCa', 'btYeuCau', 'btQty', 'btQtyDvt', 'btDoiSach', 'btNhomNN', 'btGuess', 'btKiemTra', 'btThamGia',
       'btFileMedia', 'btFiles'],
       note: (v) => (window.SxBt && v.btLoai ? window.SxBt.classText(v.btLoai, v.btMucDo) : ''),
@@ -26,6 +26,8 @@
           sel('btSerial', 'Serial', Object.assign(L(8), { searchable: true, valuesExpression: 'serialOpts[item.proj = btProject]', description: 'Số sê-ri của dự án đã chọn' })),
           num('btCoMau', 'Cỡ mẫu kiểm tra', Object.assign({ validate: { min: 1 }, description: 'Số lượng đã kiểm tra, dùng tính tỷ lệ lỗi' }, L(8)))]),
         grp('Thông tin bất thường', [
+          /* Nhánh hoaidt10 (25/11): Quy trình bắt buộc — danh sách lấy từ menu Quản lý quy trình (QuyTrinh.WORKFLOWS, quy trình có phiên bản đang hoạt động). */
+          sel('btQuyTrinh', 'Quy trình', req(Object.assign(L(16), { searchable: true, values: opts(ctx.procs || []), description: 'Quy trình áp dụng, lấy từ danh sách Quản lý quy trình' }))),
           sel('btLoai', 'Loại bất thường', req(Object.assign(L(8), { values: opts(ctx.types || []), description: 'Loại quyết định đơn vị xử lý (Loại 1 QLSX, Loại 2 R&D, Loại 3 Nhà máy)' }))),
           sel('btMucDo', 'Mức độ bất thường', req(Object.assign(L(8), { values: opts(ctx.sevs || []), description: 'Mức độ quyết định thời hạn xử lý (SLA)' }))),
           ta('btDesc', 'Mô tả hiện tượng', req({ rows: 3 })),
