@@ -370,7 +370,13 @@
   /* T71 S12 (D-124): o.exp = tên tệp → nút Xuất Excel đầu hàng tiêu đề; xuất mọi dòng thỏa tìm kiếm / bộ lọc đang áp, đúng các cột đang hiện (bỏ cột Thao tác, cột chọn).
      BE: API xuất .xlsx của danh sách; prototype tải .csv (UTF-8). */
   const EXP = {};
-  const filtered = (o) => { const L = st(o.id, o.empty); return o.rows().filter((r) => (!L.adv ? !L.kw || norm(o.kwText(r)).includes(norm(L.kw)) : o.match(r, L.f))); };
+  /* Lọc sẵn từ Dashboard QLSX (nhánh hoaidt10, 25/11): preset(id, route, nhãn, mã) rồi điều hướng tới route — danh sách chỉ hiện các mã đó, có dải Bỏ lọc.
+     Rời khỏi route (kể cả màn chi tiết con) thì bộ lọc sẵn tự bỏ. Thật: tham số lọc trên URL của màn danh sách. */
+  const PRE = {};
+  const preset = (id, route, label, codes) => { PRE[id] = { route, label, codes: codes.map(String) }; if (LST[id]) { LST[id].page = 1; LST[id].kw = ''; LST[id].adv = false; } };
+  window.addEventListener('hashchange', () => Object.keys(PRE).forEach((k) => { if (!location.hash.startsWith('#/' + PRE[k].route)) delete PRE[k]; }));
+  const preOk = (o, r) => !PRE[o.id] || PRE[o.id].codes.includes(String(r.code));
+  const filtered = (o) => { const L = st(o.id, o.empty); return o.rows().filter((r) => preOk(o, r) && (!L.adv ? !L.kw || norm(o.kwText(r)).includes(norm(L.kw)) : o.match(r, L.f))); };
   function exportList(o) {
     const keep = o.cols.map(([h], i) => (h && h !== 'Thao tác' ? i : -1)).filter((i) => i >= 0);
     const t = document.createElement('table');
@@ -403,6 +409,7 @@
     return `<div class="pg">
       ${head({ title: o.title, info: o.info, right: (o.exp ? `<button type="button" class="vbtn secondary" data-lx="${o.id}">${icon('excel')} Xuất Excel</button>` : '') + (o.right || '') })}
       ${o.top || ''}
+      ${PRE[o.id] ? `<div class="sx-pre"><span>Đang lọc từ Dashboard: <b>${esc(PRE[o.id].label)}</b> · ${rows.length} bản ghi</span><button type="button" class="vbtn secondary" data-tpre="${o.id}">Bỏ lọc</button></div>` : ''}
       <div class="vcard">
         <div class="pg-head"><span></span><div class="r">
           ${L.adv ? '' : `<label class="vsearch" style="width:264px">${icon('search')}<input id="${o.id}-kw" data-tkw="${o.id}" maxlength="255" placeholder="${o.ph}" value="${esc(L.kw)}"></label>`}
@@ -1114,6 +1121,7 @@
     }
     const lx = t.closest('[data-lx]');
     if (lx && EXP[lx.dataset.lx]) { exportList(EXP[lx.dataset.lx]); return; }
+    const tp = t.closest('[data-tpre]'); if (tp) { delete PRE[tp.dataset.tpre]; rerender(); return; }
     const tl = t.closest('[data-tl]');
     if (!tl) return;
     const [id, act] = tl.dataset.tl.split(':'), L = LST[id];
@@ -1154,7 +1162,7 @@
 
   /* Khuôn dùng chung cho các phân hệ B3 (hop-dong.js, thong-bao.js, bao-cao.js): danh sách, bảng, card, tab, trường. */
   const setTab = (key, tab) => { TB.key = key; TB.tab = tab; };
-  const kit = { listPage, table, card, emptyCard, tabs, setTab, kv, field, money, clamp, dash, has, inSet, catOpts, cat, nccName, sum, dkey, LST };
+  const kit = { preset, listPage, table, card, emptyCard, tabs, setTab, kv, field, money, clamp, dash, has, inSet, catOpts, cat, nccName, sum, dkey, LST };
   /* Nhãn trạng thái cho màn khác (Chi tiết KĐT / ĐXMS, đề tài, biến eForm): theo KHL / LC. */
   const khStLabel = (k) => { const x = (khOf(k.code) || k).prog || khProg(k); return [KHL[x.khl][0], KHL[x.khl][1]]; };
   const pkStLabel = (g) => { const r = pkRow(g); return [LC[r.lc][0], LC[r.lc][1]]; };

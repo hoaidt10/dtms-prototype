@@ -1540,3 +1540,9 @@ body.cap .tour-btn, body.cap .tour-layer, body.rv-mode .tour-layer { display: no
 @media (max-width: 1100px) { .sx-als { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 640px) { .sx-als { grid-template-columns: 1fr; } .sx-step { flex-basis: 80%; } }
 [data-sxtq-page] .vtable td { white-space: normal; } [data-sxtq-page] .vtable td .link { white-space: normal; }
+/* Góp ý 25/11 lần 2: 5 ô cảnh báo; dải "Đang lọc từ Dashboard" trên màn danh sách (khuôn listPage dùng chung). */
+.rp-tiles.sx-als { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.sx-blk-f { margin-top: 12px; font-size: 13px; color: #667085; }
+.sx-pre { display: flex; align-items: center; gap: 12px; margin: 0 0 12px; padding: 8px 12px 8px 14px; border-radius: 10px; background: #FFF1F3; border: 1px solid #FFD5DC; font-size: 13px; color: #344054; }
+.sx-pre > span { flex: 1; min-width: 0; }
+.sx-pre .vbtn { height: 32px; padding: 0 12px; }

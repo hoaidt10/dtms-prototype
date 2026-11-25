@@ -3,6 +3,12 @@
 > Mỗi PR một mục, mới nhất trên cùng: `## YYYY-MM-DD — <việc> (#PR)` + 2–5 gạch đầu dòng (màn, thay đổi, nguồn, điểm treo mới).
 > Lịch sử trước T77: [lich-su-chung.md](lich-su-chung.md).
 
+## 2026-11-25 · Dashboard: góp ý lần 2
+- Số liệu tổng hợp lên đầu trang; bỏ bảng Dự án trọng yếu, quan trọng — gộp vào **Danh sách dự án trọng yếu, bị chậm** (thêm cột Giai đoạn hiện tại, Tiến độ; Mức độ chỉ gắn thẻ Trọng yếu).
+- Cảnh báo 5 nhóm: Chuyển giao từ nghiên cứu, Cung ứng vật tư, Bất thường sản xuất, Thay đổi kỹ thuật, Nghiệm thu — quá hạn hoặc sắp đến hạn (ghi chú: sắp đến hạn = trong 1 tuần tới).
+- Nhấn ô cảnh báo / biểu đồ: điều hướng sang màn danh sách tương ứng, lọc sẵn đúng bản ghi (dải Đang lọc từ Dashboard + Bỏ lọc, `js/thau.js` listPage dùng chung) thay cho ngăn chi tiết.
+- Link dự án có tooltip "Xem chi tiết dự án".
+
 ## 2026-11-25 · Dashboard theo nhóm vai
 - Dashboard (SX-01, `js/sx-bao-cao.js`) chia 4 nhóm vai: Tổng Giám đốc (toàn VHT; thêm vai mẫu `sxceo`), Phó TGĐ / Ban Giám đốc Khối / Giám đốc Trung tâm (đơn vị mình), PM (dự án mình), Chuyên viên quản lý tiến độ (cảnh báo lên đầu).
 - Thêm khối **Việc chờ quyết định** dạng Step (kiểu Trello): Tổng Giám đốc → Phó TGĐ → Ban Giám đốc Khối → Ban Giám đốc Trung tâm; thẻ gồm tên dự án, việc, hạn xử lý. Việc mẫu GIẢ LẬP + hồ sơ luồng đang chờ thật.
