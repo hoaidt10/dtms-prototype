@@ -155,7 +155,7 @@
     const body = items.length ? items.map((x) => `<div class="bc-hr ${x.drill ? 'click' : ''}" ${x.drill ? `data-sxr-drill="${esc(x.drill)}"` : ''}>
         <span class="bc-hl" title="${esc(x.label)}">${esc(x.label)}</span>
         <span class="bc-ht sxr-pair"><span class="bc-hb" style="width:${x.a}%;background:${x.late ? C[1] : C[0]}" data-tip="Thực hiện: ${x.a}%"></span><span class="bc-hb" style="width:${x.b}%;background:${C[5]}" data-tip="Kế hoạch đến ngày: ${x.b}%"></span></span>
-        <span class="bc-hv num">${x.a}%<span class="bc-sub">KH ${x.b}%</span></span></div>`).join('') : '<div class="empty-t">Không có dữ liệu</div>';
+        <span class="bc-hv num">${x.a}%<span class="bc-sub">Kế hoạch ${x.b}%</span></span></div>`).join('') : '<div class="empty-t">Không có dữ liệu</div>';
     return `<section class="bc-card"><h3 class="bc-t">${esc(title)}</h3><div class="bc-h">${body}</div>
       <ul class="bc-legend"><li><span class="sw" style="background:${C[0]}"></span>Thực hiện</li><li><span class="sw" style="background:${C[1]}"></span>Thực hiện — chậm tiến độ</li><li><span class="sw" style="background:${C[5]}"></span>Kế hoạch đến ngày</li></ul></section>`;
   }
@@ -571,7 +571,7 @@
     const cBt = hbars('Phiếu bất thường theo trạng thái', withColor(countBy(btAll, (x) => window.SxBt.stOf(x)[0]), [C[1], C[3], C[0], C[2], C[5]]), { unit: 'phiếu' });
     const tdAll = window.SxTd.all().filter((x) => inScope(x.project));
     const cTd = hbars('Thay đổi kỹ thuật theo trạng thái', withColor(countBy(tdAll, (x) => window.SxTd.stOf(x)[0]), [C[4], C[0], C[3], C[2], C[5]]), { unit: 'yêu cầu' });
-    const cKpi = hbars('KPI quy trình so với mục tiêu', kpis().filter((x) => x.value != null).map((x) => ({ label: x.name, value: x.value, sub: 'MT ' + x.target + '%', color: x.value >= x.target ? C[2] : C[1] })), { pct: true, max: 100 });
+    const cKpi = hbars('KPI quy trình so với mục tiêu', kpis().filter((x) => x.value != null).map((x) => ({ label: x.name, value: x.value, sub: 'Mục tiêu ' + x.target + '%', color: x.value >= x.target ? C[2] : C[1] })), { pct: true, max: 100 });
     const STC = { PLANNING: C[5], PREPARING: C[3], IN_PRODUCTION: C[2], ACCEPTANCE: C[0], DONE: C[4] };
     const sCols = [['Mã dự án', 140], ['Tên dự án', 280], ['Khối', 80], ['Giai đoạn hiện tại', 220], ['Thực hiện', 100, 'r'], ['Kế hoạch đến ngày', 140, 'r'], ['Hạng mục chậm', 120, 'r']];
     const sCell = (x) => `<td><a class="link" data-go="${x.href}" data-close>${esc(x.code)}</a></td><td>${K().clamp(x.title)}</td><td>${esc(KHOI[x.p.khoi])}</td><td>${K().clamp(x.stage)}</td>
@@ -618,7 +618,7 @@
           <td>${x.slow ? `<b>${esc(x.unit)}</b><div class="cap">${esc(x.item)}</div>` : K().dash}</td><td class="c">${x.slow ? badge(`${x.days} ngày`, x.days > 14 ? 'error' : 'warning') : K().dash}</td><td>${progCell(x)}</td>`)
         : '<div class="empty-t">Không có dự án trọng yếu hoặc bị chậm theo bộ lọc</div>'}
       <div class="sx-blk-f"><a class="link" data-go="sx/du-an">Xem tất cả dự án</a> · <a class="link" data-go="sx/bao-cao/tien-do">Xem báo cáo tiến độ</a></div></section>`;
-    const alerts = `<section class="tq-blk" data-sx-canh-bao><h2 class="rp-h2">Cảnh báo</h2><p class="cap"><b>Sắp đến hạn = trong 1 tuần tới</b> (đến ${dmy(isoL(WEEK))}) · nhấn ô để mở danh sách tương ứng, đã lọc sẵn</p><div class="rp-tiles sx-als">${A.map((m, i) => tile(m, 'a' + i)).join('')}</div></section>`;
+    const alerts = `<section class="tq-blk" data-sx-canh-bao><h2 class="rp-h2">Cảnh báo sắp đến hạn</h2><p class="cap"><b>Sắp đến hạn = trong 1 tuần tới</b> (đến ${dmy(isoL(WEEK))}) · nhấn ô để mở danh sách tương ứng, đã lọc sẵn</p><div class="rp-tiles sx-als">${A.map((m, i) => tile(m, 'a' + i)).join('')}</div></section>`;
     /* Số liệu tổng hợp: lãnh đạo (nhóm 1, 2) xem số dự án + KPI; PM, chuyên viên xem đủ biểu đồ. */
     const sum = `<section class="tq-blk sx-sum" data-sx-tong-hop><h2 class="rp-h2">Số liệu tổng hợp</h2><p class="cap">Theo bộ lọc Khối, Dự án, Năm ở trên</p>
       <div class="rp-g2">${dStatus}${dTrack}</div>
