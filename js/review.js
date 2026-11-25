@@ -192,7 +192,8 @@
   const hl = document.createElement('div'); hl.className = 'rv-hl'; layer.appendChild(hl);
   const pins = document.createElement('div'); pins.className = 'rv-pins'; layer.appendChild(pins);
   const fab = document.createElement('div'); fab.className = 'rv-fab'; layer.appendChild(fab);
-  let pop = null, panel = null, menuOpen = false, mode = false, hidePins = false, panelFilter = 'screen';
+  /* hoaidt10 25/11: ghim comment mặc định ẩn (không che giao diện); bật lại bằng menu comment › Hiện ghim, nhớ theo trình duyệt. Chế độ comment vẫn hiện ghim. */
+  let pop = null, panel = null, menuOpen = false, mode = false, hidePins = (() => { try { return localStorage.getItem('dtms-review-hide-pins') !== '0'; } catch (e) { return true; } })(), panelFilter = 'screen';
   const SVG = {
     cmt: '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/></svg>',
   };
@@ -220,12 +221,12 @@
     mode = on; menuOpen = false;
     document.body.classList.toggle('rv-mode', on);
     if (!on) hl.style.display = 'none';
-    drawFab();
+    drawFab(); schedule();
     if (on) toast('Chế độ comment: bấm vào chỗ cần góp ý. Esc để thoát.');
   }
 
   function place() {
-    if (hidePins) { pins.innerHTML = ''; return; }
+    if (hidePins && !mode) { pins.innerHTML = ''; return; }
     const html = [];
     DB.comments.forEach((c) => {
       const el = locate(c);
@@ -549,7 +550,7 @@
     if (a === 'mode') setMode(!mode);
     else if (a === 'panel') { togglePanel(!panel); drawFab(); }
     else if (a === 'panel-close') togglePanel(false);
-    else if (a === 'pins') { hidePins = !hidePins; drawFab(); schedule(); }
+    else if (a === 'pins') { hidePins = !hidePins; try { localStorage.setItem('dtms-review-hide-pins', hidePins ? '1' : '0'); } catch (e) { /* bỏ qua */ } drawFab(); schedule(); }
     else if (a === 'export') { menuOpen = false; drawFab(); exportJson(); }
     else if (a === 'import') { menuOpen = false; drawFab(); importFile(); }
     else if (a === 'author') { const v = prompt('Tên người review (hiện trên comment):', author); if (v != null && v.trim()) { author = v.trim(); try { localStorage.setItem(AUTHOR, author); } catch (err) { /* bỏ qua */ } } drawFab(); }
