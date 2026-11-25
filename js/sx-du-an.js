@@ -236,7 +236,7 @@
       cols: [['Trạng thái', 160, 'c'], ['Mã dự án', 150], ['Tên dự án', 320], ['Sản phẩm · phiên bản', 200], ['Khối', 90], ['Mô hình tổ chức', 200], ['Số lượng', 120, 'r'],
         ['Đơn vị sản xuất', 220], ['Giám đốc dự án', 180], ['Ngày bắt đầu', 120], ['Ngày kết thúc', 120], ['Tiến độ', 100, 'r'], ['Mốc chậm', 100, 'c']],
       href,
-      cell: (p) => `<td class="c">${stBadge(p)}</td><td><a class="link" data-go="${href(p)}">${esc(p.code)}</a></td><td>${k.clamp(p.name)}</td><td>${k.clamp(p.prodN)}</td>
+      cell: (p) => `<td class="c">${stBadge(p)}</td><td><a class="link" data-go="${href(p)}" title="Xem chi tiết dự án">${esc(p.code)}</a></td><td>${k.clamp(p.name)}</td><td>${k.clamp(p.prodN)}</td>
         <td>${esc(KHOI[p.khoi])}</td><td>${k.clamp(p.modelN)}</td><td class="r num">${num(p.qty)} ${esc(p.unitName)}</td><td>${k.clamp(p.facN)}</td><td>${k.clamp(p.pmN)}</td>
         <td class="num">${esc(dmy(p.start))}</td><td class="num">${esc(dmy(p.end))}</td><td class="r num">${p.prog}%</td>
         <td class="c">${p.late ? badge(String(p.late), 'error') : k.dash}</td>`,
@@ -430,7 +430,13 @@
       + (canEdit(p) ? `<button type="button" class="vbtn primary" data-go="${href(p)}/edit">${icon('edit')} Chỉnh sửa</button>` : '')
       + (p.status === 'DONE' && canCreate() ? `<button type="button" class="vbtn secondary" data-sx-next="${esc(p.code)}">${icon('add')} Lập dự án đợt tiếp theo</button>` : '');
     const alerts = late.length ? `<div class="hd-alerts"><div class="hd-alert error">${icon('info')}<span>${late.length} hạng mục chậm tiến độ: ${esc(late.slice(0, 3).map((r) => r.name).join('; '))}${late.length > 3 ? '…' : ''}</span></div></div>` : '';
-    const tInfo = () => k.card('Thông tin chung', `<div class="ginfo c3">
+    /* Góp ý 25/11: ở màn Xử lý công việc chỉ hiện thông tin chính của dự án (ẩn mã, căn cứ, mục tiêu, OKR, yêu cầu…); xem đủ ở Chi tiết dự án. */
+    const tInfoTask = () => k.card('Thông tin chính của dự án', `<div class="ginfo c3">
+        ${k.kv('Tên dự án', `<a class="link" data-go="${href(p)}" title="Xem chi tiết dự án">${esc(p.name)}</a>`, 'span2')}${k.kv('Trạng thái', stBadge(p))}
+        ${k.kv('Sản phẩm', esc(`${p.product} — ${(prodOf(p.product) || {}).name || ''}`))}${k.kv('Số lượng', `${num(p.qty)} ${esc(p.unitName)}`)}${k.kv('Giám đốc dự án', esc(pName(p.pm)))}
+        ${k.kv('Thời gian thực hiện', esc(`${dmy(p.start)} – ${dmy(p.end)}`))}${k.kv('Tiến độ chung', `${prog}%`)}${k.kv('Đơn vị sản xuất', p.factory ? esc(catName('sx-don-vi', p.factory)) : null)}</div>`);
+    const tInfo = () => (o.task ? tInfoTask() : tInfoFull());
+    const tInfoFull = () => k.card('Thông tin chung', `<div class="ginfo c3">
         ${k.kv('Mã dự án', esc(p.code))}${k.kv('Tên dự án', esc(p.name), 'span2')}
         ${k.kv('Trạng thái', stBadge(p))}${k.kv('Khối', esc(KHOI[p.khoi]))}${k.kv('Mô hình tổ chức sản xuất', esc(catName('sx-mo-hinh', p.model)))}
         ${k.kv('Sản phẩm', esc(`${p.product} — ${(prodOf(p.product) || {}).name || ''}`))}${k.kv('Phiên bản', esc(p.version))}${k.kv('Số lượng', `${num(p.qty)} ${esc(p.unitName)}`)}

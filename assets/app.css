@@ -1546,3 +1546,6 @@ body.cap .tour-btn, body.cap .tour-layer, body.rv-mode .tour-layer { display: no
 .sx-pre { display: flex; align-items: center; gap: 12px; margin: 0 0 12px; padding: 8px 12px 8px 14px; border-radius: 10px; background: #FFF1F3; border: 1px solid #FFD5DC; font-size: 13px; color: #344054; }
 .sx-pre > span { flex: 1; min-width: 0; }
 .sx-pre .vbtn { height: 32px; padding: 0 12px; }
+/* Việc của tôi (góp ý 25/11): chữ trong bảng xuống dòng; ô lọc Chu kỳ cạnh ô tìm kiếm. */
+[data-sx-tasks] .vtable td { white-space: normal; } [data-sx-tasks] .vtable td .link { white-space: normal; }
+.sxv-flt { display: flex; align-items: flex-end; gap: 12px; } .sxv-flt .vfield { margin: 0; }

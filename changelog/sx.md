@@ -3,6 +3,11 @@
 > Mỗi PR một mục, mới nhất trên cùng: `## YYYY-MM-DD — <việc> (#PR)` + 2–5 gạch đầu dòng (màn, thay đổi, nguồn, điểm treo mới).
 > Lịch sử trước T77: [lich-su-chung.md](lich-su-chung.md).
 
+## 2026-11-25 · Việc của tôi: một danh sách, trạng thái chi tiết, kết quả xử lý
+- Việc của tôi (`js/sx-flow.js`): gộp 2 tab thành 1 danh sách, việc chưa xử lý lên trước; bỏ Mã dự án (hiện tên dự án, link + tooltip "Xem chi tiết dự án"), bỏ Ngày nhận việc, bỏ đếm bước n/N; cột Nội dung cần thực hiện (bấm mở màn Xử lý) + cột Thao tác (icon mở); Ngày xử lý kèm giờ.
+- Thêm cột Kết quả xử lý (Đồng ý / Bị từ chối), bộ lọc Chu kỳ (hôm nay, tuần, tháng, quý, năm); trạng thái chi tiết theo việc của bước (Đang soạn hồ sơ, Chờ phê duyệt, Chờ tiếp nhận…).
+- Màn Xử lý công việc của dự án: Thông tin chung rút gọn còn thông tin chính. Danh sách dự án sản xuất: link mã dự án có tooltip "Xem chi tiết dự án".
+
 ## 2026-11-25 · Dashboard: góp ý lần 2
 - Số liệu tổng hợp lên đầu trang; bỏ bảng Dự án trọng yếu, quan trọng — gộp vào **Danh sách dự án trọng yếu, bị chậm** (thêm cột Giai đoạn hiện tại, Tiến độ; Mức độ chỉ gắn thẻ Trọng yếu).
 - Cảnh báo 5 nhóm: Chuyển giao từ nghiên cứu, Cung ứng vật tư, Bất thường sản xuất, Thay đổi kỹ thuật, Nghiệm thu — quá hạn hoặc sắp đến hạn (ghi chú: sắp đến hạn = trong 1 tuần tới).
