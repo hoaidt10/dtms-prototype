@@ -6,6 +6,8 @@
   const D = window.D, Flow = window.Flow;
   const { esc, icon, badge, toast, vSelect, vModal, vTreeTable, persona } = window.UI;
   const K = () => window.Thau.kit;
+  /* Góp ý 26/11 mục 3: không hiện cột mã riêng — tên kèm mã (SxChung.nameCode), dự án hiện tên kèm mã. */
+  const NC = (n, c, o) => window.SxChung.nameCode(n, c, o), PJ = (c) => window.SxChung.projCell(c);
   const head = (o) => window.Screens.head(o);
   const rerender = () => window.App.render();
 
@@ -233,10 +235,10 @@
         ${sel('factory', 'Đơn vị sản xuất', { options: k.catOpts('sx-don-vi') })}
         ${sel('pm', 'Giám đốc dự án', { options: D.personas.filter((x) => x.urd === 'R-SX-PM').map((x) => ({ value: x.id, label: x.name })) })}
         ${sel('late', 'Có mốc chậm', { searchable: false, options: yes })}`,
-      cols: [['Trạng thái', 160, 'c'], ['Mã dự án', 150], ['Tên dự án', 320], ['Sản phẩm · phiên bản', 200], ['Khối', 90], ['Mô hình tổ chức', 200], ['Số lượng', 120, 'r'],
+      cols: [['Trạng thái', 160, 'c'], ['Dự án', 380], ['Sản phẩm · phiên bản', 200], ['Khối', 90], ['Mô hình tổ chức', 200], ['Số lượng', 120, 'r'],
         ['Đơn vị sản xuất', 220], ['Giám đốc dự án', 180], ['Ngày bắt đầu', 120], ['Ngày kết thúc', 120], ['Tiến độ', 100, 'r'], ['Mốc chậm', 100, 'c']],
       href,
-      cell: (p) => `<td class="c">${stBadge(p)}</td><td><a class="link" data-go="${href(p)}" title="Xem chi tiết dự án">${esc(p.code)}</a></td><td>${k.clamp(p.name)}</td><td>${k.clamp(p.prodN)}</td>
+      cell: (p) => `<td class="c">${stBadge(p)}</td><td>${NC(p.name, p.code, { go: href(p), tip: 'Xem chi tiết dự án' })}</td><td>${k.clamp(p.prodN)}</td>
         <td>${esc(KHOI[p.khoi])}</td><td>${k.clamp(p.modelN)}</td><td class="r num">${num(p.qty)} ${esc(p.unitName)}</td><td>${k.clamp(p.facN)}</td><td>${k.clamp(p.pmN)}</td>
         <td class="num">${esc(dmy(p.start))}</td><td class="num">${esc(dmy(p.end))}</td><td class="r num">${p.prog}%</td>
         <td class="c">${p.late ? badge(String(p.late), 'error') : k.dash}</td>`,
@@ -535,7 +537,7 @@
   function nvKv(p, k) {
     const l = window.SxCv ? window.SxCv.all().filter((x) => x.kind === 'DV' && x.project === p.code && !x.parent).sort((a, b) => ((a.created || a.start) < (b.created || b.start) ? -1 : 1)) : [];
     const x = l[0], more = l.length > 1 ? ` <a class="link" data-go="sx/cong-viec/don-vi">+${l.length - 1} nhiệm vụ khác</a>` : '';
-    return k.kv('Mã nhiệm vụ', x ? `<a class="link" data-go="sx/cong-viec/${encodeURIComponent(x.code)}">${esc(x.code)}</a>${more}` : null) + k.kv('Tên nhiệm vụ', x ? esc(x.title) : null, 'span2');
+    return k.kv('Nhiệm vụ đơn vị', x ? `${NC(x.title, x.code, { go: `sx/cong-viec/${encodeURIComponent(x.code)}`, tip: 'Xem chi tiết nhiệm vụ' })}${more}` : null, 'span3'); // góp ý 26/11 mục 3: mã kèm tên
   }
   function docGroups(p, k) {
     const by = {};
@@ -552,8 +554,8 @@
   const TPL = () => window.Catalog.rows('sx-bieu-mau').filter((r) => r.active !== false && r.file).map((r) => [r.code, r.kind, r.name]);
   function tplDlg(code) {
     const m = vModal({ title: 'Chọn mẫu tài liệu', size: 'md',
-      body: K().table([['Mã biểu mẫu', 200], ['Tên biểu mẫu', 300], ['Loại tài liệu', 260], ['', 120, 'c']], TPL(),
-        (t) => `<td>${esc(t[0])}</td><td>${esc(t[2])}</td><td>${esc(D.sxDocKind[t[1]] || '')}</td><td class="c"><button type="button" class="vbtn sm secondary" data-sx-tpl-use="${esc(t[0])}">Sử dụng</button></td>`),
+      body: K().table([['Biểu mẫu', 420], ['Loại tài liệu', 260], ['', 120, 'c']], TPL(),
+        (t) => `<td>${NC(t[2], t[0])}</td><td>${esc(D.sxDocKind[t[1]] || '')}</td><td class="c"><button type="button" class="vbtn sm secondary" data-sx-tpl-use="${esc(t[0])}">Sử dụng</button></td>`),
       actions: '<button type="button" class="vbtn secondary" data-close>Đóng</button>' });
     m.el.addEventListener('click', (e) => {
       const b = e.target.closest('[data-sx-tpl-use]');

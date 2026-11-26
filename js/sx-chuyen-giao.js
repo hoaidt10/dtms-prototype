@@ -7,6 +7,8 @@
   const D = window.D, Flow = window.Flow;
   const { esc, icon, badge, toast, vModal, vSelect } = window.UI;
   const K = () => window.Thau.kit;
+  /* Góp ý 26/11 mục 3: không hiện cột mã riêng — tên kèm mã (SxChung.nameCode), dự án hiện tên kèm mã. */
+  const NC = (n, c, o) => window.SxChung.nameCode(n, c, o), PJ = (c) => window.SxChung.projCell(c);
   const head = (o) => window.Screens.head(o);
   const rerender = () => window.App.render();
   const F = () => window.SxFlow;
@@ -125,9 +127,9 @@
       adv: (txt, sel) => `${txt('code', 'Mã gói')}${txt('product', 'Sản phẩm')}
         ${sel('khoi', 'Khối', { searchable: false, options: Object.entries(KHOI).map(([value, label]) => ({ value, label })) })}
         ${sel('st', 'Trạng thái', { multi: true, searchable: false, options: ST.map((x) => ({ value: x, label: x })) })}`,
-      cols: [['Trạng thái', 170, 'c'], ['Mã gói', 160], ['Sản phẩm', 260], ['Phiên bản', 150], ['Khối', 90], ['Hồ sơ', 100, 'c'], ['Cán bộ R&D', 180], ['Ngày tạo', 120], ['Dự án sử dụng', 200]],
+      cols: [['Trạng thái', 170, 'c'], ['Gói chuyển giao', 320], ['Phiên bản', 150], ['Khối', 90], ['Hồ sơ', 100, 'c'], ['Cán bộ R&D', 180], ['Ngày tạo', 120], ['Dự án sử dụng', 200]],
       href,
-      cell: (g) => `<td class="c">${badge(...g.st)}</td><td><a class="link" data-go="${href(g)}">${esc(g.code)}</a></td><td>${k.clamp(`${g.product} — ${(prod(g.product) || {}).name || ''}`)}</td>
+      cell: (g) => `<td class="c">${badge(...g.st)}</td><td>${NC((prod(g.product) || {}).name || g.product, g.code, { go: href(g), tip: 'Xem chi tiết hồ sơ chuyển giao' })}</td>
         <td>${esc(g.version)}</td><td>${esc(KHOI[g.khoi])}</td><td class="c num">${g.du} / ${g.tong}</td><td>${k.clamp(pName(g.rd))}</td><td class="num">${esc(dmy(g.created))}</td><td>${g.used ? k.clamp(g.used) : k.dash}</td>`,
     });
   }
@@ -168,8 +170,8 @@
     const k = K(), rows = docs(g);
     const st = (d) => (d.need ? badge('Cần bổ sung', 'warning') : d.file ? badge('Đã tải lên', 'success') : d.buoc === 4 ? badge('Lập ở bước 4', 'default') : d.req ? badge('Chưa tải lên', 'error') : badge('Không bắt buộc', 'default'));
     /* T74 #97: thêm Phiên bản, Nguồn; ở tab dự án (link) mã hồ sơ mở chi tiết gói chuyển giao (SX-06). */
-    return paged(k, `sx-cg-doc:${g.code}:${link ? 'p' : 'd'}`, [['Mã hồ sơ', 100], ['Tên hồ sơ', 300], ['Nhóm', 180], ['Bắt buộc', 90, 'c'], ['Tệp', 220], ['Phiên bản', 90], ['Nguồn', 210], ['Trạng thái', 130, 'c']].concat(editable ? [['', 130, 'c']] : []), rows,
-      (d) => `<td>${link ? `<a class="link" data-go="${link}" title="Xem chi tiết tài liệu ở Hồ sơ chuyển giao">${esc(d.code)}</a>` : esc(d.code)}</td><td>${k.clamp(d.name)}</td><td>${k.clamp(NHOM[d.nhom] || d.nhom)}</td><td class="c">${d.req || d.buoc === 4 ? 'Có' : 'Không'}</td><td>${d.file ? k.clamp(d.file) : k.dash}</td>
+    return paged(k, `sx-cg-doc:${g.code}:${link ? 'p' : 'd'}`, [['Hồ sơ', 380], ['Nhóm', 180], ['Bắt buộc', 90, 'c'], ['Tệp', 220], ['Phiên bản', 90], ['Nguồn', 210], ['Trạng thái', 130, 'c']].concat(editable ? [['', 130, 'c']] : []), rows,
+      (d) => `<td>${NC(d.name, d.code, link ? { go: link, tip: 'Xem chi tiết tài liệu ở Hồ sơ chuyển giao' } : {})}</td><td>${k.clamp(NHOM[d.nhom] || d.nhom)}</td><td class="c">${d.req || d.buoc === 4 ? 'Có' : 'Không'}</td><td>${d.file ? k.clamp(d.file) : k.dash}</td>
         <td>${d.ver ? esc(d.ver) : k.dash}</td><td>${d.src ? k.clamp(d.src) : k.dash}</td><td class="c">${st(d)}</td>
         ${editable ? `<td class="c">${d.buoc !== 4 ? `<label class="vbtn sm secondary">${icon('upload')} ${d.file ? 'Tải lại' : 'Tải file lên'}<input type="file" hidden data-cg-up="${esc(g.code)}|${esc(d.code)}"></label>` : ''}</td>` : ''}`);
   }
@@ -236,10 +238,10 @@
       empty: () => ({ code: '', name: '', khoi: null }),
       match: (p, f) => k.has(f.code, p.code) && k.has(f.name, p.name) && (!f.khoi || p.khoi === f.khoi),
       adv: (txt, sel) => `${txt('code', 'Mã sản phẩm')}${txt('name', 'Tên sản phẩm')}${sel('khoi', 'Khối', { searchable: false, options: Object.entries(KHOI).map(([value, label]) => ({ value, label })) })}`,
-      cols: [['Mã sản phẩm', 140], ['Tên sản phẩm', 320], ['Phiên bản', 160], ['Khối', 90], ['Ngày phát hành', 140], ['Gói chuyển giao', 180], ['Trạng thái', 190, 'c']],
+      cols: [['Sản phẩm', 400], ['Phiên bản', 160], ['Khối', 90], ['Ngày phát hành', 140], ['Gói chuyển giao', 180], ['Trạng thái', 190, 'c']],
       href: (p) => (p.r.pkg ? href({ code: p.r.pkg }) : 'sx/san-pham'),
-      cell: (p) => `<td>${esc(p.code)}</td><td>${k.clamp(p.name)}</td><td>${esc(p.r.ver || p.version)}</td><td>${esc(KHOI[p.khoi])}</td><td class="num">${p.r.date ? esc(dmy(p.r.date)) : k.dash}</td>
-        <td>${p.r.pkg ? `<a class="link" data-go="${href({ code: p.r.pkg })}">${esc(p.r.pkg)}</a>` : k.dash}</td><td class="c">${badge('Sẵn sàng sản xuất', 'success')}</td>`,
+      cell: (p) => `<td>${NC(p.name, p.code)}</td><td>${esc(p.r.ver || p.version)}</td><td>${esc(KHOI[p.khoi])}</td><td class="num">${p.r.date ? esc(dmy(p.r.date)) : k.dash}</td>
+        <td>${p.r.pkg ? `<a class="link" data-go="${href({ code: p.r.pkg })}" title="Xem chi tiết hồ sơ chuyển giao">${esc(p.r.pkg)}</a>` : k.dash}</td><td class="c">${badge('Sẵn sàng sản xuất', 'success')}</td>`,
     });
   }
 
@@ -259,15 +261,15 @@
     const headH = `<div class="vcard-h"><h3>Bàn giao tài liệu cho đơn vị sản xuất</h3><div class="row"><span class="cap">BM.QLHDSX.03</span>${btn}</div></div>`;
     if (!c) return `<section class="vcard pad24" data-sx-nm>${headH}<p class="faint">${p.baseline ? 'Chưa bàn giao tài liệu sản xuất cho đơn vị sản xuất.' : 'Bàn giao tài liệu sau khi chốt kế hoạch gốc.'}</p></section>`;
     const pr = F().progress(c, k.kv('Lần bàn giao', esc(String(c.vars.ckLan || 1))));
-    const list = (c.vars.ckTaiLieu || []).length ? `<h4 class="ginfo-sub">Checklist tài liệu bàn giao</h4>${k.table([['Mã hồ sơ', 110], ['Tài liệu', 420], ['Revision', 140], ['Bàn giao', 100, 'c']], c.vars.ckTaiLieu,
-      (d) => `<td>${esc(d.ma)}</td><td>${k.clamp(d.ten)}</td><td>${esc(d.rev || '')}</td><td class="c">${d.giao === 'N' ? 'Không' : 'Có'}</td>`)}` : '';
+    const list = (c.vars.ckTaiLieu || []).length ? `<h4 class="ginfo-sub">Checklist tài liệu bàn giao</h4>${k.table([['Tài liệu', 480], ['Revision', 140], ['Bàn giao', 100, 'c']], c.vars.ckTaiLieu,
+      (d) => `<td>${NC(d.ten, d.ma)}</td><td>${esc(d.rev || '')}</td><td class="c">${d.giao === 'N' ? 'Không' : 'Có'}</td>`)}` : '';
     return `<section class="vcard pad24" data-sx-nm>${headH}${pr.top}${pr.steps}${list}</section>`;
   }
   /* T74 #97: sản phẩm đã vào Kho trước khi có hệ thống (không có gói) — danh mục tài liệu nhận từ COP1 theo danh mục hồ sơ chuyển giao của khối, đồng bộ từ Quản lý hồ sơ KHCN (GIẢ LẬP P-271). */
   function relDocCard(p, k) {
     const rows = window.Catalog.rows('sx-ho-so-chuyen-giao').filter((r) => r.khoi === p.khoi && r.active !== false && r.buoc !== 4);
-    return k.card('Danh mục tài liệu nhận từ COP1', paged(k, `sx-cg-rel:${p.code}`, [['Mã hồ sơ', 100], ['Tên hồ sơ', 300], ['Nhóm', 180], ['Tệp', 260], ['Phiên bản', 90], ['Nguồn', 210], ['Trạng thái', 130, 'c']], rows,
-      (d) => `<td><a class="link" data-go="sx/san-pham" title="Xem ở Sản phẩm sẵn sàng sản xuất">${esc(d.code)}</a></td><td>${k.clamp(d.name)}</td><td>${k.clamp(NHOM[d.nhom] || d.nhom)}</td>
+    return k.card('Danh mục tài liệu nhận từ COP1', paged(k, `sx-cg-rel:${p.code}`, [['Hồ sơ', 380], ['Nhóm', 180], ['Tệp', 260], ['Phiên bản', 90], ['Nguồn', 210], ['Trạng thái', 130, 'c']], rows,
+      (d) => `<td>${NC(d.name, d.code, { go: 'sx/san-pham', tip: 'Xem ở Sản phẩm sẵn sàng sản xuất' })}</td><td>${k.clamp(NHOM[d.nhom] || d.nhom)}</td>
         <td>${k.clamp(`${d.code} ${d.name}.pdf`)}</td><td>v1.0</td><td>${k.clamp('Đồng bộ từ Quản lý hồ sơ KHCN')}</td><td class="c">${badge('Đã nhận', 'success')}</td>`),
     'Đồng bộ từ Quản lý hồ sơ KHCN; bấm mã hồ sơ để xem ở Chuyển giao từ nghiên cứu');
   }

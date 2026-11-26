@@ -113,3 +113,18 @@ test('Công việc từ kế hoạch: chi tiết 3 tab, thêm công việc con (
   await expect(page.locator('[data-sxcv-detail]')).toHaveCount(0);
   expect(page.errors).toEqual([]);
 });
+
+test('Mục 3: không còn cột mã riêng — mã kèm dưới tên (link có tooltip), dự án hiện tên kèm mã', async ({ page }) => {
+  await fresh(page, '#/sx/bat-thuong');
+  for (const r of ['sx/viec-cua-toi', 'sx/cong-viec/don-vi', 'sx/du-an', 'sx/bat-thuong', 'sx/thay-doi', 'sx/nghiem-thu', 'sx/mua-sam', 'sx/nhu-cau', 'sx/chuyen-giao', 'sx/pasxkd']) {
+    await as(page, 'qt', '#/' + r);
+    const heads = await page.locator('main th').evaluateAll((l) => l.map((x) => x.textContent.trim()));
+    expect(heads.filter((h) => /^Mã\b/.test(h)), r).toEqual([]);
+  }
+  await as(page, 'sxpm', '#/sx/bat-thuong');
+  const cell = rowCode(page, 'BT-2026-002').locator('td').nth(2); // STT, Trạng thái, Phiếu bất thường
+  await expect(cell.locator('a[title="Xem chi tiết phiếu bất thường"]')).toContainText('Khối quang học lệch trục quang');
+  await expect(cell.locator('.faint')).toHaveText('BT-2026-002');
+  await expect(rowCode(page, 'BT-2026-002')).toContainText('Sản xuất tổ hợp quan sát quang điện tử QĐ-12');
+  expect(page.errors).toEqual([]);
+});

@@ -7,6 +7,8 @@
   const D = window.D, Flow = window.Flow;
   const { esc, icon, badge, toast, vSelect, vModal, vTreeTable } = window.UI;
   const K = () => window.Thau.kit;
+  /* Góp ý 26/11 mục 3: không hiện cột mã riêng — tên kèm mã (SxChung.nameCode), dự án hiện tên kèm mã. */
+  const NC = (n, c, o) => window.SxChung.nameCode(n, c, o), PJ = (c) => window.SxChung.projCell(c);
   const head = (o) => window.Screens.head(o);
   const rerender = () => window.App.render();
   const P = () => window.SxDuAn;
@@ -194,7 +196,7 @@
   function dvCell(x, k) {
     const st = window.SxDuAn.stageName(x.plan), late = lateDays(x), pj = x.project && P().byCode(x.project);
     return `<td class="c"><div class="acts">${canEdit(x) ? iconBtn('edit', 'Sửa', `data-go="${href(x)}/edit"`) : ''}${canDel(x) ? `<span class="sep"></span>${iconBtn('del', 'Xoá', `data-sxcv-del="${esc(x.code)}"`)}` : ''}</div></td>
-      <td class="c">${badge(...x.st)}</td><td><a class="link" data-go="${href(x)}" title="Xem chi tiết nhiệm vụ">${esc(x.code)}</a><div>${k.clamp(x.title)}</div>${pj ? `<div class="faint">Dự án ${esc(pj.code)} · ${esc(D.sxStatus[pj.status] || '')}</div>` : ''}</td>
+      <td class="c">${badge(...x.st)}</td><td>${NC(x.title, x.code, { go: href(x), tip: 'Xem chi tiết nhiệm vụ' })}${pj ? `<div class="faint">Dự án ${esc(pj.name)} (${esc(pj.code)}) · ${esc(D.sxStatus[pj.status] || '')}</div>` : ''}</td>
       <td>${k.clamp(pName(x.owner))}<div class="faint">${k.clamp(unitOf(x.owner))}</div></td><td>${st ? k.clamp(st) : k.dash}</td>
       <td><div style="display:flex;align-items:center;gap:8px"><div class="hd-bar" style="flex:1" role="img" aria-label="Tiến độ ${x.pct}%"><span style="width:${x.pct}%"></span></div><span class="num">${x.pct}%</span></div>${x.byProject ? '<div class="faint">Theo tiến độ dự án</div>' : ''}</td>
       <td class="num">${esc(dmy(x.created || x.start))}</td><td class="num${x.st[0] === 'Quá hạn' ? ' due-over' : ''}">${esc(dmy(x.due))}</td>
@@ -204,17 +206,17 @@
   function myCell(x, k) {
     if (x.kind === 'QT') {
       return `<td class="c"><div class="acts">${iconBtn('check', x.done ? 'Xem việc đã xử lý' : 'Mở màn hình xử lý', `data-go="${x.go}"`)}</div></td>
-        <td class="c">${badge(...x.st)}</td><td class="c">${badge(...LOAI.QT)}</td><td>${esc(x.code)}</td>
+        <td class="c">${badge(...x.st)}</td><td class="c">${badge(...LOAI.QT)}</td>
         <td><a class="link" data-go="${x.go}" title="${x.done ? 'Xem việc đã xử lý' : 'Mở màn hình xử lý'}">${k.clamp(x.title)}</a><div class="faint">${window.SxFlow.objLink(x.c)}</div></td>
-        <td>${x.project ? esc(x.project) : k.dash}</td><td>${k.dash}</td><td>${k.dash}</td><td>${k.clamp(pName(x.owner))}</td><td>Quy trình</td><td class="num">${esc(dmy(x.start))}</td>
+        <td>${PJ(x.project)}</td><td>${k.dash}</td><td>${k.dash}</td><td>${k.clamp(pName(x.owner))}</td><td>Quy trình</td><td class="num">${esc(dmy(x.start))}</td>
         <td class="num${x.st[1] === 'error' ? ' due-over' : ''}">${esc(dmy(x.due))}</td><td class="r">${leftCell(x, k)}</td><td class="r">${x.done ? '<span class="num">100%</span>' : k.dash}</td><td class="c">${k.dash}</td>`;
     }
     const acts = (canSplit(x) ? iconBtn('add', 'Thêm công việc con', `data-go="sx/cong-viec/create/CN/cha/${encodeURIComponent(x.code)}"`) : '')
       + (canUpdate(x) ? iconBtn('reload', 'Cập nhật tiến độ', `data-sxcv-upd="${esc(x.code)}"`) : '')
       + (canEdit(x) ? iconBtn('edit', 'Sửa', `data-go="${href(x)}/edit"`) : '') + (canDel(x) ? iconBtn('del', 'Xoá', `data-sxcv-del="${esc(x.code)}"`) : '');
     return `<td class="c"><div class="acts">${acts}</div></td>
-      <td class="c">${badge(...x.st)}</td><td class="c">${badge(...LOAI.KH)}</td><td><a class="link" data-go="${href(x)}" title="Xem chi tiết công việc">${esc(x.code)}</a></td><td>${k.clamp(x.title)}</td><td>${x.project ? esc(x.project) : k.dash}</td>
-      <td>${x.plan ? k.clamp(planName(x)) : k.dash}</td><td>${x.parent ? `<a class="link" data-go="${href({ code: x.parent })}" title="Xem chi tiết công việc cha">${esc(x.parent)}</a>` : k.dash}</td>
+      <td class="c">${badge(...x.st)}</td><td class="c">${badge(...LOAI.KH)}</td><td>${NC(x.title, x.code, { go: href(x), tip: 'Xem chi tiết công việc' })}</td><td>${PJ(x.project)}</td>
+      <td>${x.plan ? k.clamp(planName(x)) : k.dash}</td><td>${x.parent ? NC((byCode(x.parent) || {}).title, x.parent, { go: href({ code: x.parent }), tip: 'Xem chi tiết công việc cha' }) : k.dash}</td>
       <td>${k.clamp(pName(x.owner))}</td><td>${k.clamp(pName(x.assigner))}</td><td class="num">${esc(dmy(x.start))}</td>
       <td class="num${x.st[0] === 'Quá hạn' ? ' due-over' : ''}">${esc(dmy(x.due))}</td><td class="r">${leftCell(x, k)}</td><td class="r num">${x.pct}%</td>
       <td class="c">${badge(...D.sxPrio[x.prio || 'TB'])}</td>`;
@@ -258,7 +260,7 @@
         ${dv ? sel('src', 'Nguồn', { searchable: false, options: Object.entries(D.sxWorkSrc).map(([value, label]) => ({ value, label })) }) : ''}`,
       /* T74 #94 / #96: Nhiệm vụ đơn vị theo bộ cột của KHCN. Việc của tôi giữ bộ cột Việc cá nhân cũ + Phân loại. */
       cols: dv ? [['Thao tác', 100, 'c'], ['Trạng thái', 150, 'c'], ['Nhiệm vụ', 340], ['Chủ nhiệm · Đơn vị', 240], ['Giai đoạn', 220], ['Tiến độ', 170], ['Ngày nhận nhiệm vụ', 150], ['Hạn xử lý', 120], ['Độ trễ (ngày)', 120, 'r']]
-        : [['Thao tác', 150, 'c'], ['Trạng thái', 160, 'c'], ['Phân loại', 180, 'c'], ['Mã công việc', 170], ['Tên công việc', 300], ['Dự án', 140], ['Hạng mục kế hoạch', 220], ['Công việc cha', 150],
+        : [['Thao tác', 150, 'c'], ['Trạng thái', 160, 'c'], ['Phân loại', 180, 'c'], ['Công việc', 340], ['Dự án', 240], ['Hạng mục kế hoạch', 220], ['Công việc cha', 240],
           ['Người thực hiện', 200], ['Người giao', 170], ['Ngày bắt đầu', 120], ['Hạn hoàn thành', 130], ['Còn lại', 110, 'r'], ['Hoàn thành', 110, 'r'], ['Mức ưu tiên', 120, 'c']],
       href: (x) => x.go || href(x),
       cell: (x) => (dv ? dvCell(x, k) : myCell(x, k)),
@@ -463,8 +465,7 @@
       ${vTreeTable({ id: 'sxcv-kids', expanded: open, empty: 'Chưa có công việc con', rows: x.kids.map(node),
     onToggle: (key) => { if (open.has(key)) open.delete(key); else open.add(key); rerender(); },
     columns: [
-      { h: 'Mã công việc', w: 220, toggler: true, cell: (n) => `<a class="link" data-go="${href(n.r)}">${esc(n.r.code)}</a>` },
-      { h: 'Tên công việc', w: 320, cell: (n) => k.clamp(n.r.title) },
+      { h: 'Công việc', w: 440, toggler: true, cell: (n) => NC(n.r.title, n.r.code, { go: href(n.r), tip: 'Xem chi tiết công việc' }) },
       { h: 'Người thực hiện', w: 200, cell: (n) => k.clamp(pName(n.r.owner)) },
       { h: 'Hạn hoàn thành', w: 130, cell: (n) => `<span class="num${!n.r.done && n.r.due < D.sxToday ? ' t-err' : ''}">${esc(dmy(n.r.due))}</span>` },
       { h: 'Hoàn thành', w: 110, align: 'r', cell: (n) => `<span class="num">${n.r.pct}%</span>` },

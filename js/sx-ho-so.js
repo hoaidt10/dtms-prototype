@@ -7,6 +7,8 @@
   const D = window.D, Flow = window.Flow;
   const { esc, icon, badge, toast } = window.UI;
   const K = () => window.Thau.kit;
+  /* Góp ý 26/11 mục 3: không hiện cột mã riêng — tên kèm mã (SxChung.nameCode), dự án hiện tên kèm mã. */
+  const NC = (n, c, o) => window.SxChung.nameCode(n, c, o), PJ = (c) => window.SxChung.projCell(c);
   const head = (o) => window.Screens.head(o);
   const rerender = () => window.App.render();
   const P = () => window.SxDuAn;
@@ -129,11 +131,11 @@
       adv: (txt, sel) => `${sel('kind', 'Lĩnh vực', { searchable: false, options: Object.entries(D.sxLessonKind).map(([value, label]) => ({ value, label })) })}
         ${sel('project', 'Dự án', { options: P().all().map((p) => ({ value: p.code, label: `${p.code} — ${p.name}` })) })}
         ${sel('st', 'Trạng thái', { multi: true, searchable: false, options: ['Nháp', 'Đã ban hành'].map((x) => ({ value: x, label: x })) })}`,
-      cols: [['Thao tác', 100, 'c'], ['Trạng thái', 140, 'c'], ['Mã bài học', 140], ['Tiêu đề', 320], ['Lĩnh vực', 170], ['Dự án', 140], ['Nguồn', 150], ['Người lập', 180], ['Ngày ban hành', 130]],
+      cols: [['Thao tác', 100, 'c'], ['Trạng thái', 140, 'c'], ['Bài học', 380], ['Lĩnh vực', 170], ['Dự án', 240], ['Nguồn', 150], ['Người lập', 180], ['Ngày ban hành', 130]],
       href: lHref,
       cell: (x) => `<td class="c"><div class="acts">${lCanEdit(x) ? `${iconBtn('edit', 'Sửa', `data-sxbh-edit="${esc(x.code)}"`)}<span class="sep"></span>${iconBtn('del', 'Xoá', `data-sxbh-del="${esc(x.code)}"`)}` : ''}</div></td>
-        <td class="c">${badge(...x.st)}</td><td><a class="link" data-go="${lHref(x)}">${esc(x.code)}</a></td><td>${k.clamp(x.title)}</td><td>${esc(D.sxLessonKind[x.kind] || '')}</td>
-        <td>${x.project ? esc(x.project) : k.dash}</td><td>${x.src ? `<a class="link" data-go="sx/bat-thuong/${encodeURIComponent(x.src)}">${esc(x.src)}</a>` : 'Nhập tay'}</td>
+        <td class="c">${badge(...x.st)}</td><td>${NC(x.title, x.code, { go: lHref(x), tip: 'Xem chi tiết bài học' })}</td><td>${esc(D.sxLessonKind[x.kind] || '')}</td>
+        <td>${PJ(x.project)}</td><td>${x.src ? `<a class="link" data-go="sx/bat-thuong/${encodeURIComponent(x.src)}" title="Xem chi tiết phiếu bất thường">${esc(x.src)}</a>` : 'Nhập tay'}</td>
         <td>${k.clamp(pName(x.author))}</td><td class="num">${x.pub ? esc(dmy(x.pub)) : k.dash}</td>`,
     });
   }

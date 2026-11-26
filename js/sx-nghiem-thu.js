@@ -6,6 +6,9 @@
   const D = window.D, Flow = window.Flow;
   const { esc, icon, badge, toast } = window.UI;
   const K = () => window.Thau.kit;
+  /* Góp ý 26/11 mục 3: không hiện cột mã riêng — tên kèm mã (SxChung.nameCode), dự án hiện tên kèm mã. */
+  const NC = (n, c, o) => window.SxChung.nameCode(n, c, o), PJ = (c) => window.SxChung.projCell(c);
+  const matName = (c) => (Object.values(window.D.sxMbom || {}).flat().find((m) => m.code === c) || {}).name || '';
   const head = (o) => window.Screens.head(o);
   const rerender = () => window.App.render();
   const F = () => window.SxFlow;
@@ -146,9 +149,9 @@
       empty: () => ({ code: '', project: null }),
       match: (x, f) => k.has(f.code, x.code) && (!f.project || x.project === f.project),
       adv: (txt, sel) => `${txt('code', 'Mã đề nghị')}${sel('project', 'Dự án', { options: P().visible().map((p) => ({ value: p.code, label: `${p.code} — ${p.name}` })) })}`,
-      cols: [['Trạng thái', 150, 'c'], ['Mã đề nghị', 120], ['Dự án', 140], ['Hạng mục / lô', 220], ['Số lượng', 110, 'r'], ['Dải sê-ri', 220], ['Biên bản', 110], ['Chứng chỉ', 130], ['Phiếu nhập kho', 140], ['Bước hiện tại', 240]],
+      cols: [['Trạng thái', 150, 'c'], ['Đề nghị nghiệm thu (hạng mục / lô)', 300], ['Dự án', 240], ['Số lượng', 110, 'r'], ['Dải sê-ri', 220], ['Biên bản', 110], ['Chứng chỉ', 130], ['Phiếu nhập kho', 140], ['Bước hiện tại', 240]],
       href,
-      cell: (x) => `<td class="c">${badge(...x.st)}</td><td><a class="link" data-go="${href(x)}">${esc(x.code)}</a></td><td>${esc(x.project)}</td><td>${k.clamp(x.itemText)}</td><td class="r num">${num(x.qty)}</td>
+      cell: (x) => `<td class="c">${badge(...x.st)}</td><td>${NC(x.itemText, x.code, { go: href(x), tip: 'Xem chi tiết đề nghị nghiệm thu' })}</td><td>${PJ(x.project)}</td><td class="r num">${num(x.qty)}</td>
         <td class="num">${esc(x.serials)}</td><td>${x.bb ? esc(x.bb) : k.dash}</td><td>${x.cert ? esc(x.cert) : k.dash}</td><td>${x.pnk ? esc(x.pnk) : k.dash}</td><td>${x.step ? k.clamp(x.step) : k.dash}</td>`,
     });
   }
@@ -204,8 +207,8 @@
     const k = K(), l = ipqcAll().filter((x) => x.project === p.code).sort((a, b) => (a.at < b.at ? 1 : -1)), items = itemsOf(p);
     const itName = (key) => (items.find((i) => i.key === key) || {}).name || key;
     return `<section class="vcard pad24" data-sxnt-ipqc><div class="vcard-h"><h3>Kiểm soát chất lượng công đoạn (IPQC)</h3>${canQa(p) ? `<button type="button" class="vbtn secondary" data-sxnt-ipqc-new="${esc(p.code)}">${icon('add')} Thêm kết quả IPQC</button>` : ''}</div>
-      ${k.table([['Mã', 130], ['Hạng mục / lô', 220], ['Công đoạn', 200], ['Số kiểm', 100, 'r'], ['Số đạt', 100, 'r'], ['Kết quả', 120, 'c'], ['Nội dung', 300], ['Phiếu bất thường', 150], ['Người kiểm', 170], ['Ngày', 110]], l,
-    (x) => `<td>${esc(x.code)}</td><td>${k.clamp(itName(x.item))}</td><td>${k.clamp(x.stage)}</td><td class="r num">${num(x.n)}</td><td class="r num">${num(x.ok)}</td>
+      ${k.table([['Lần kiểm tra (hạng mục / lô)', 300], ['Công đoạn', 200], ['Số kiểm', 100, 'r'], ['Số đạt', 100, 'r'], ['Kết quả', 120, 'c'], ['Nội dung', 300], ['Phiếu bất thường', 150], ['Người kiểm', 170], ['Ngày', 110]], l,
+    (x) => `<td>${NC(itName(x.item), x.code)}</td><td>${k.clamp(x.stage)}</td><td class="r num">${num(x.n)}</td><td class="r num">${num(x.ok)}</td>
       <td class="c">${x.kq === 'DAT' ? badge('Đạt', 'success') : badge('Không đạt', 'error')}</td><td>${x.note ? k.clamp(x.note) : k.dash}</td>
       <td>${x.issue ? `<a class="link" data-go="sx/bat-thuong/${encodeURIComponent(x.issue)}">${esc(x.issue)}</a>` : k.dash}</td><td>${k.clamp(pName(x.who))}</td><td class="num">${esc(dmy(x.at))}</td>`)}</section>`;
   }
@@ -293,8 +296,8 @@
     return `<section class="vcard pad24" data-sxnt-oqc><div class="vcard-h"><h3>Đánh giá chất lượng xuất xưởng (OQC)</h3><div class="row">${st}
         ${can ? `<button type="button" class="vbtn secondary" data-sxnt-oqc-add="${esc(p.code)}">${icon('add')} Thêm nội dung đánh giá</button>
         <button type="button" class="vbtn primary" data-sxnt-oqc-done="${esc(p.code)}" ${l.length && !bad.length ? '' : 'disabled'}>Xác nhận hoàn thành OQC</button>` : ''}</div></div>${gate}
-      ${k.table([['Mã', 120], ['Hạng mục / lô', 200], ['Nội dung đánh giá', 300], ['Tiêu chí / yêu cầu', 280], ['Kết quả ghi nhận', 220], ['Kết luận', 120, 'c'], ['Người đánh giá', 170], ['Ngày', 110], ['Tệp', 200]].concat(can ? [['', 70, 'c']] : []), l,
-    (x) => `<td>${esc(x.code)}</td><td>${k.clamp(itName(x.item))}</td><td>${k.clamp(x.content)}</td><td>${x.criteria ? k.clamp(x.criteria) : k.dash}</td><td>${x.actual ? k.clamp(x.actual) : k.dash}</td>
+      ${k.table([['Hạng mục / lô', 200], ['Nội dung đánh giá', 380], ['Tiêu chí / yêu cầu', 280], ['Kết quả ghi nhận', 220], ['Kết luận', 120, 'c'], ['Người đánh giá', 170], ['Ngày', 110], ['Tệp', 200]].concat(can ? [['', 70, 'c']] : []), l,
+    (x) => `<td>${k.clamp(itName(x.item))}</td><td>${NC(x.content, x.code)}</td><td>${x.criteria ? k.clamp(x.criteria) : k.dash}</td><td>${x.actual ? k.clamp(x.actual) : k.dash}</td>
       <td class="c">${x.kq === 'DAT' ? badge('Đạt', 'success') : badge('Không đạt', 'error')}</td><td>${k.clamp(pName(x.who))}</td><td class="num">${esc(dmy(x.at))}</td><td>${x.file ? `<a class="link">${esc(x.file)}</a>` : k.dash}</td>
       ${can ? `<td class="c"><button type="button" class="vbtn icon ghost" aria-label="Xoá" title="Xoá" data-sxnt-oqc-del="${esc(x.code)}">${icon('del')}</button></td>` : ''}`)}</section>`;
   }
@@ -321,8 +324,8 @@
     const k = K(), l = ntManual(p), can = canNtm(p), avg = l.length ? Math.round(l.reduce((a, x) => a + (x.pct || 0), 0) / l.length) : null;
     return `<h4 class="ginfo-sub" style="margin-top:20px">Thông tin nghiệm thu nhập tay${avg == null ? '' : ` <span class="faint">(${l.length} nội dung · tiến độ trung bình ${avg}%)</span>`}</h4>
       <div class="row" style="justify-content:flex-end;margin-bottom:8px">${can ? `<button type="button" class="vbtn secondary" data-sxnt-ntm-add="${esc(p.code)}">${icon('add')} Thêm thông tin nghiệm thu</button>` : ''}</div>
-      ${k.table([['Mã', 120], ['Nội dung nghiệm thu', 300], ['Cấp nghiệm thu', 190], ['Ngày dự kiến / thực hiện', 150], ['Tiến độ', 100, 'r'], ['Tình trạng', 150, 'c'], ['Biên bản', 200], ['Ghi chú', 240]].concat(can ? [['Thao tác', 100, 'c']] : []), l,
-    (x) => `<td>${esc(x.code)}</td><td>${k.clamp(x.content)}</td><td>${esc(NT_LEVEL[x.level] || '')}</td><td class="num">${x.date ? esc(dmy(x.date)) : k.dash}</td><td class="r num">${x.pct || 0}%</td><td class="c">${badge(...(NT_ST[x.st] || NT_ST.CHUA))}</td>
+      ${k.table([['Nội dung nghiệm thu', 380], ['Cấp nghiệm thu', 190], ['Ngày dự kiến / thực hiện', 150], ['Tiến độ', 100, 'r'], ['Tình trạng', 150, 'c'], ['Biên bản', 200], ['Ghi chú', 240]].concat(can ? [['Thao tác', 100, 'c']] : []), l,
+    (x) => `<td>${NC(x.content, x.code)}</td><td>${esc(NT_LEVEL[x.level] || '')}</td><td class="num">${x.date ? esc(dmy(x.date)) : k.dash}</td><td class="r num">${x.pct || 0}%</td><td class="c">${badge(...(NT_ST[x.st] || NT_ST.CHUA))}</td>
       <td>${x.file ? `<a class="link">${esc(x.file)}</a>` : k.dash}</td><td>${x.note ? k.clamp(x.note) : k.dash}</td>
       ${can ? `<td class="c"><div class="acts"><button type="button" class="vbtn icon ghost" aria-label="Sửa" title="Sửa" data-sxnt-ntm-edit="${esc(x.code)}">${icon('edit')}</button><span class="sep"></span><button type="button" class="vbtn icon ghost" aria-label="Xoá" title="Xoá" data-sxnt-ntm-del="${esc(x.code)}">${icon('del')}</button></div></td>` : ''}`)}`;
   }
@@ -351,13 +354,13 @@
     const iqc = D.sxIqc[p.code] || [];
     return `<div data-sx-nt>${ipqcCard(p)}${trialCard(p)}${oqcCard(p)}
       <section class="vcard pad24"><div class="vcard-h"><h3>Nghiệm thu</h3>${canRequest(p) ? `<button type="button" class="vbtn secondary" data-sxnt-new="${esc(p.code)}">${icon('add')} Đề nghị nghiệm thu</button>` : ''}</div>
-        ${k.table([['Mã đề nghị', 120], ['Hạng mục / lô', 220], ['Số lượng', 100, 'r'], ['Dải sê-ri', 220], ['Chứng chỉ', 130], ['Phiếu nhập kho', 140], ['Trạng thái', 150, 'c']], l,
-    (x) => `<td><a class="link" data-go="${href(x)}">${esc(x.code)}</a></td><td>${k.clamp(x.itemText)}</td><td class="r num">${num(x.qty)}</td><td class="num">${esc(x.serials)}</td>
+        ${k.table([['Đề nghị nghiệm thu (hạng mục / lô)', 320], ['Số lượng', 100, 'r'], ['Dải sê-ri', 220], ['Chứng chỉ', 130], ['Phiếu nhập kho', 140], ['Trạng thái', 150, 'c']], l,
+    (x) => `<td>${NC(x.itemText, x.code, { go: href(x), tip: 'Xem chi tiết đề nghị nghiệm thu' })}</td><td class="r num">${num(x.qty)}</td><td class="num">${esc(x.serials)}</td>
       <td>${x.cert ? esc(x.cert) : k.dash}</td><td>${x.pnk ? esc(x.pnk) : k.dash}</td><td class="c">${badge(...x.st)}</td>`)}
         ${ntManualCard(p)}</section>
       <section class="vcard pad24"><div class="vcard-h"><h3>Kiểm tra vật tư đầu vào (IQC)</h3><span class="cap">Chỉ xem — đồng bộ từ VMMS</span></div>
-        ${iqc.length ? k.table([['Lô IQC', 140], ['Mã vật tư', 160], ['Số lượng', 120, 'r'], ['Kết quả', 260], ['Ngày', 120]], iqc,
-    (r) => `<td>${esc(r[0])}</td><td>${esc(r[1])}</td><td class="r num">${num(r[2])}</td><td>${k.clamp(r[3])}</td><td class="num">${esc(dmy(r[4]))}</td>`) : '<p class="faint">Chưa có kết quả IQC đồng bộ từ VMMS.</p>'}</section></div>`;
+        ${iqc.length ? k.table([['Lô IQC', 140], ['Vật tư', 300], ['Số lượng', 120, 'r'], ['Kết quả', 260], ['Ngày', 120]], iqc,
+    (r) => `<td>${esc(r[0])}</td><td>${NC(matName(r[1]), r[1])}</td><td class="r num">${num(r[2])}</td><td>${k.clamp(r[3])}</td><td class="num">${esc(dmy(r[4]))}</td>`) : '<p class="faint">Chưa có kết quả IQC đồng bộ từ VMMS.</p>'}</section></div>`;
   }
 
   document.addEventListener('click', (e) => {

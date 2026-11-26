@@ -7,6 +7,8 @@
   const D = window.D, Flow = window.Flow;
   const { esc, icon, badge, toast, vSelect, vModal } = window.UI;
   const K = () => window.Thau.kit;
+  /* Góp ý 26/11 mục 3: không hiện cột mã riêng — tên kèm mã (SxChung.nameCode), dự án hiện tên kèm mã. */
+  const NC = (n, c, o) => window.SxChung.nameCode(n, c, o), PJ = (c) => window.SxChung.projCell(c);
   const head = (o) => window.Screens.head(o);
   const rerender = () => window.App.render();
   const P = () => window.SxDuAn;
@@ -64,8 +66,8 @@
       .concat(c.pkgs.map((g) => ['Gói thầu', g[0], g[1], [g[2], g[3]], '', 'API-02', c.live ? `goi-thau/${encodeURIComponent(g[0])}` : null]))
       .concat(c.hd.map((h) => ['Hợp đồng', h[0], `${h[1]}${h[4] ? ` · ${h[4]}` : ''}${h[5] ? ` · ${num(h[5])} đồng` : ''}`, [h[2], h[3]], d(h[6]), 'API-03', null]))
       .concat(c.kho.map((n) => ['Phiếu nhập kho TCT', n[0], n[1], [n[3], 'success'], d(n[2]), 'API-04', null]));
-    return k.table([['Đối tượng trên ĐTMS', 180], ['Mã', 150], ['Nội dung', 320], ['Trạng thái', 180, 'c'], ['Ngày cập nhật', 120], ['Luồng tích hợp', 110, 'c']], rows,
-      (r) => `<td>${esc(r[0])}</td><td>${r[6] ? `<a class="link" data-go="${r[6]}">${esc(r[1])}</a>` : esc(r[1])}</td><td>${r[2] ? k.clamp(r[2]) : k.dash}</td><td class="c">${badge(r[3][0], r[3][1])}</td>
+    return k.table([['Đối tượng trên ĐTMS', 180], ['Nội dung', 420], ['Trạng thái', 180, 'c'], ['Ngày cập nhật', 120], ['Luồng tích hợp', 110, 'c']], rows,
+      (r) => `<td>${esc(r[0])}</td><td>${NC(r[2], r[1], r[6] ? { go: r[6], tip: 'Xem chi tiết' } : {})}</td><td class="c">${badge(r[3][0], r[3][1])}</td>
         <td class="num">${r[4] ? esc(r[4]) : k.dash}</td><td class="c">${esc(r[5])}</td>`)
       + (c.live && !c.pkgs.length ? '<p class="cap">Kế hoạch lựa chọn nhà thầu, gói thầu, hợp đồng và nhập kho hiện ở đây khi ĐTMS xử lý xong các bước tương ứng.</p>' : '');
   }
@@ -96,9 +98,9 @@
         ${sel('project', 'Dự án', { options: P().visible().map((p) => ({ value: p.code, label: `${p.code} — ${p.name}` })) })}
         ${sel('dot', 'Đợt', { searchable: false, options: [{ value: '1', label: 'Đợt 1' }, { value: '2', label: 'Đợt 2' }] })}
         ${sel('st', 'Trạng thái', { multi: true, searchable: false, options: ['Nháp', 'Chờ phê duyệt', 'Bị từ chối', 'Đã gửi ĐTMS'].map((x) => ({ value: x, label: x })) })}`,
-      cols: [['Trạng thái', 150, 'c'], ['Mã đề xuất', 140], ['Tên đề xuất', 300], ['Dự án', 150], ['Đợt', 70, 'c'], ['Giá trị dự toán (đồng)', 180, 'r'], ['Mã ĐXMS', 150], ['Trạng thái trên ĐTMS', 170, 'c'], ['Ngày gửi', 120]],
+      cols: [['Trạng thái', 150, 'c'], ['Đề xuất mua sắm', 360], ['Dự án', 240], ['Đợt', 70, 'c'], ['Giá trị dự toán (đồng)', 180, 'r'], ['ĐXMS', 150], ['Trạng thái trên ĐTMS', 170, 'c'], ['Ngày gửi', 120]],
       href,
-      cell: (x) => `<td class="c">${badge(...x.st)}</td><td><a class="link" data-go="${href(x)}">${esc(x.code)}</a></td><td>${k.clamp(x.title)}</td><td>${esc(x.project)}</td><td class="c">${x.dot}</td>
+      cell: (x) => `<td class="c">${badge(...x.st)}</td><td>${NC(x.title, x.code, { go: href(x), tip: 'Xem chi tiết đề xuất mua sắm' })}</td><td>${PJ(x.project)}</td><td class="c">${x.dot}</td>
         <td class="r num">${num(x.total)}</td><td>${x.dx ? esc(x.dx) : k.dash}</td><td class="c">${x.ds ? badge(...x.ds) : k.dash}</td><td class="num">${x.sent ? esc(dmy(x.sent)) : k.dash}</td>`,
     });
   }
@@ -158,9 +160,9 @@
     const m = p ? mbomOf(p) : [];
     const rows = v.rows.map((r) => Object.assign({}, m.find((y) => y.code === r.code), r));
     const total = rows.filter((r) => r.on).reduce((a, r) => a + r.qty * r.price, 0);
-    const tbl = p ? k.table([['', 50, 'c'], ['Mã vật tư', 140], ['Tên vật tư', 260], ['ĐVT', 70], ['Định mức / bộ', 110, 'r'], ['Nhu cầu', 110, 'r'], ['Tồn kho TCT', 120, 'r'], ['Đề xuất mua', 130, 'r'],
+    const tbl = p ? k.table([['', 50, 'c'], ['Vật tư', 340], ['ĐVT', 70], ['Định mức / bộ', 110, 'r'], ['Nhu cầu', 110, 'r'], ['Tồn kho TCT', 120, 'r'], ['Đề xuất mua', 130, 'r'],
       ['Đơn giá dự toán (đồng)', 170, 'r'], ['Thành tiền (đồng)', 170, 'r'], ['Leadtime (tuần)', 120, 'r'], ['Export License', 120, 'c']], rows,
-    (r) => `<td class="c"><input type="checkbox" data-sxm-on="${esc(r.code)}" ${r.on ? 'checked' : ''} aria-label="Chọn ${esc(r.code)}"></td><td>${esc(r.code)}</td><td>${k.clamp(r.name)}</td><td>${esc(r.unit)}</td>
+    (r) => `<td class="c"><input type="checkbox" data-sxm-on="${esc(r.code)}" ${r.on ? 'checked' : ''} aria-label="Chọn ${esc(r.code)}"></td><td>${NC(r.name, r.code)}</td><td>${esc(r.unit)}</td>
       <td class="r num">${num(r.per)}</td><td class="r num">${num(r.per * p.qty)}</td><td class="r num">${num(stockOf(r.code))}</td>
       <td class="r"><input class="vctl num r" style="width:100px" inputmode="numeric" data-sxm-qty="${esc(r.code)}" value="${r.qty}" ${r.on ? '' : 'disabled'}></td>
       <td class="r num">${num(r.price)}</td><td class="r num">${r.on ? num(r.qty * r.price) : k.dash}</td><td class="r num">${r.lt}</td><td class="c">${r.el ? 'Có' : 'Không'}</td>`) : '<p class="faint">Chọn dự án để lấy nhu cầu vật tư theo MBOM dự toán (xem Danh mục vật tư ở màn Nhu cầu vật tư).</p>';
@@ -287,8 +289,8 @@
         ${k.kv('Người lập', esc(pName(x.creator)))}${k.kv('Ngày lập', esc(dmy(x.created)))}${k.kv('Ngày gửi ĐTMS', x.sent ? esc(dmy(x.sent)) : null)}
         ${k.kv('Người duyệt', x.approver ? esc(pName(x.approver)) : null)}${k.kv('Ngày duyệt', x.approved ? esc(dmy(x.approved)) : null)}
         ${k.kv('Ghi chú', x.note ? esc(x.note) : null, 'span3')}</div>`)}
-      ${k.card('Nhu cầu vật tư đề xuất mua', k.table([['Mã vật tư', 130], ['Tên vật tư', 250], ['ĐVT', 60], ['Đề xuất mua', 110, 'r'], ['Đơn giá dự toán (đồng)', 150, 'r'], ['Thành tiền (đồng)', 150, 'r'], ['Leadtime (tuần)', 100, 'r'], ['Export License', 100, 'c']], lines,
-        (r) => `<td>${esc(r.code)}</td><td>${k.clamp(r.name)}</td><td>${esc(r.unit)}</td><td class="r num">${num(r.qty)}</td><td class="r num">${num(r.price)}</td><td class="r num">${num(r.qty * r.price)}</td><td class="r num">${r.lt}</td><td class="c">${r.el ? 'Có' : 'Không'}</td>`))}
+      ${k.card('Nhu cầu vật tư đề xuất mua', k.table([['Vật tư', 330], ['ĐVT', 60], ['Đề xuất mua', 110, 'r'], ['Đơn giá dự toán (đồng)', 150, 'r'], ['Thành tiền (đồng)', 150, 'r'], ['Leadtime (tuần)', 100, 'r'], ['Export License', 100, 'c']], lines,
+        (r) => `<td>${NC(r.name, r.code)}</td><td>${esc(r.unit)}</td><td class="r num">${num(r.qty)}</td><td class="r num">${num(r.price)}</td><td class="r num">${num(r.qty * r.price)}</td><td class="r num">${r.lt}</td><td class="c">${r.el ? 'Có' : 'Không'}</td>`))}
       ${pr ? `<div data-sxm-hs>${k.card('Hồ sơ phê duyệt đề xuất', pr.top + pr.steps)}${k.card('Lịch sử xử lý', pr.hist)}</div>` : ''}
       <section class="vcard pad24" data-sxm-chain><div class="vcard-h"><h3>Tiến trình trên ĐTMS</h3>${c && !c.live ? '<span class="cap">Dữ liệu đồng bộ từ ĐTMS</span>' : ''}</div>${chainTable(x)}</section></div>`;
   }
@@ -324,9 +326,9 @@
       match: (r, f) => (!f.kind || r.kind === f.kind) && (!f.project || r.x.project === f.project) && k.has(f.code, r.code),
       adv: (txt, sel) => `${sel('kind', 'Loại', { searchable: false, options: Object.entries(KIND).map(([value, label]) => ({ value, label })) })}
         ${sel('project', 'Dự án', { options: P().visible().map((pp) => ({ value: pp.code, label: `${pp.code} — ${pp.name}` })) })}${txt('code', 'Mã gói thầu / hợp đồng')}`,
-      cols: [['Trạng thái', 170, 'c'], ['Loại', 100], ['Mã', 150], ['Tên', 340], ['Dự án', 140], ['Đề xuất mua sắm', 150], ['Nhà thầu', 240], ['Giá trị (đồng)', 170, 'r'], ['Ngày ký', 120]],
+      cols: [['Trạng thái', 170, 'c'], ['Loại', 100], ['Tên', 400], ['Dự án', 240], ['Đề xuất mua sắm', 150], ['Nhà thầu', 240], ['Giá trị (đồng)', 170, 'r'], ['Ngày ký', 120]],
       href: (r) => r.go,
-      cell: (r) => `<td class="c">${badge(...r.st)}</td><td>${KIND[r.kind]}</td><td><a class="link" data-go="${r.go}">${esc(r.code)}</a></td><td>${k.clamp(r.name)}</td><td>${esc(r.x.project)}</td>
+      cell: (r) => `<td class="c">${badge(...r.st)}</td><td>${KIND[r.kind]}</td><td>${NC(r.name, r.code, { go: r.go, tip: 'Xem chi tiết' })}</td><td>${PJ(r.x.project)}</td>
         <td><a class="link" data-go="${href(r.x)}">${esc(r.x.code)}</a></td><td>${r.ncc ? k.clamp(r.ncc) : k.dash}</td><td class="r num">${r.value ? num(r.value) : k.dash}</td><td class="num">${r.at ? esc(dmy(r.at)) : k.dash}</td>`,
     });
   }
@@ -339,13 +341,13 @@
     const kho = l.flatMap((x) => { const c = chain(x); return c ? c.kho.map((n) => [x, n]) : []; });
     return `<div data-sx-ms>
       <section class="vcard pad24"><div class="vcard-h"><h3>Đề xuất mua sắm</h3>${can ? `<button type="button" class="vbtn secondary" data-go="sx/mua-sam/create/${encodeURIComponent(p.code)}">${icon('add')} Lập đề xuất mua sắm</button>` : ''}</div>
-        ${k.table([['Mã đề xuất', 140], ['Tên đề xuất', 320], ['Đợt', 70, 'c'], ['Giá trị dự toán (đồng)', 180, 'r'], ['Trạng thái', 140, 'c'], ['Mã ĐXMS', 150], ['Trạng thái trên ĐTMS', 170, 'c']], l,
-    (x) => { const ds = dxmsSt(x), c = chain(x); return `<td><a class="link" data-go="${href(x)}">${esc(x.code)}</a></td><td>${k.clamp(x.title)}</td><td class="c">${x.dot}</td><td class="r num">${num(totalOf(x))}</td>
+        ${k.table([['Đề xuất mua sắm', 400], ['Đợt', 70, 'c'], ['Giá trị dự toán (đồng)', 180, 'r'], ['Trạng thái', 140, 'c'], ['ĐXMS', 150], ['Trạng thái trên ĐTMS', 170, 'c']], l,
+    (x) => { const ds = dxmsSt(x), c = chain(x); return `<td>${NC(x.title, x.code, { go: href(x), tip: 'Xem chi tiết đề xuất mua sắm' })}</td><td class="c">${x.dot}</td><td class="r num">${num(totalOf(x))}</td>
       <td class="c">${badge(...sentSt(x))}</td><td>${c ? esc(c.dxms[0]) : k.dash}</td><td class="c">${ds ? badge(...ds) : k.dash}</td>`; })}</section>
-      ${k.card('Hợp đồng', k.table([['Mã hợp đồng', 150], ['Tên hợp đồng', 340], ['Nhà thầu', 260], ['Giá trị (đồng)', 170, 'r'], ['Trạng thái', 150, 'c']], hd,
-    ([, h]) => `<td>${esc(h[0])}</td><td>${k.clamp(h[1])}</td><td>${h[4] ? k.clamp(h[4]) : k.dash}</td><td class="r num">${h[5] ? num(h[5]) : k.dash}</td><td class="c">${badge(h[2], h[3])}</td>`))}
-      ${k.card('Nhập kho Tổng công ty', k.table([['Số phiếu', 150], ['Nội dung', 380], ['Ngày nhập', 130], ['Trạng thái', 150, 'c']], kho,
-    ([, n]) => `<td>${esc(n[0])}</td><td>${k.clamp(n[1])}</td><td class="num">${esc(dmy(n[2]))}</td><td class="c">${badge(n[3], 'success')}</td>`))}
+      ${k.card('Hợp đồng', k.table([['Hợp đồng', 420], ['Nhà thầu', 260], ['Giá trị (đồng)', 170, 'r'], ['Trạng thái', 150, 'c']], hd,
+    ([, h]) => `<td>${NC(h[1], h[0])}</td><td>${h[4] ? k.clamp(h[4]) : k.dash}</td><td class="r num">${h[5] ? num(h[5]) : k.dash}</td><td class="c">${badge(h[2], h[3])}</td>`))}
+      ${k.card('Nhập kho Tổng công ty', k.table([['Phiếu nhập kho', 460], ['Ngày nhập', 130], ['Trạng thái', 150, 'c']], kho,
+    ([, n]) => `<td>${NC(n[1], n[0])}</td><td class="num">${esc(dmy(n[2]))}</td><td class="c">${badge(n[3], 'success')}</td>`))}
       ${window.SxNc ? window.SxNc.supplyCard(p) : ''}</div>`;
   }
 

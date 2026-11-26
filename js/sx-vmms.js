@@ -7,6 +7,8 @@
   const D = window.D, Flow = window.Flow;
   const { esc, badge, toast, vSelect } = window.UI;
   const K = () => window.Thau.kit;
+  /* Góp ý 26/11 mục 3: không hiện cột mã riêng — tên kèm mã (SxChung.nameCode), dự án hiện tên kèm mã. */
+  const NC = (n, c, o) => window.SxChung.nameCode(n, c, o), PJ = (c) => window.SxChung.projCell(c);
   const rerender = () => window.App.render();
   const dmy = (s) => { if (!s) return ''; const [d, t] = String(s).split(' '); const [y, m, dd] = d.split('-'); return `${dd}/${m}/${y}${t ? ' ' + t : ''}`; };
   const num = (n) => Number(n || 0).toLocaleString('vi-VN');
@@ -112,16 +114,16 @@
         return `<td>${esc(v[0])}${v[0] === p.version ? ` ${badge('Đang dùng', 'info')}` : ''}</td><td class="num">${esc(dmy(v[1]))}</td><td>${v[2] ? esc(v[2]) : k.dash}</td><td>${txt ? k.clamp(txt) : 'Phiên bản phát hành ban đầu'}</td>`;
       });
     } else if (part === 'tb') {
-      body = fac ? k.table([['Mã thiết bị', 140], ['Tên thiết bị', 300], ['Loại', 160], ['Trạm / dây chuyền', 200], ['Trạng thái', 150, 'c'], ['Hạn kiểm định', 130]], EQUIP[fac] || [],
-        (r) => `<td>${esc(r[0])}</td><td>${k.clamp(r[1])}</td><td>${esc(r[2])}</td><td>${k.clamp(r[3])}</td><td class="c">${badge(r[4], EQ_V[r[4]] || 'default')}</td><td class="num${r[5] < D.sxToday ? ' due-over' : ''}">${esc(dmy(r[5]))}</td>`)
+      body = fac ? k.table([['Thiết bị', 380], ['Loại', 160], ['Trạm / dây chuyền', 200], ['Trạng thái', 150, 'c'], ['Hạn kiểm định', 130]], EQUIP[fac] || [],
+        (r) => `<td>${NC(r[1], r[0])}</td><td>${esc(r[2])}</td><td>${k.clamp(r[3])}</td><td class="c">${badge(r[4], EQ_V[r[4]] || 'default')}</td><td class="num${r[5] < D.sxToday ? ' due-over' : ''}">${esc(dmy(r[5]))}</td>`)
         : '<p class="faint">Dự án chưa chọn đơn vị sản xuất.</p>';
     } else if (part === 'nc') {
       body = fac ? k.table([['Tổ / nhóm', 200], ['Công đoạn', 220], ['Số người', 100, 'r'], ['Đã đào tạo', 110, 'r'], ['Chứng chỉ, kỹ năng yêu cầu', 280]], LABOR[fac] || [],
         (r) => `<td>${esc(r[0])}</td><td>${esc(r[1])}</td><td class="r num">${r[2]}</td><td class="r num${r[3] < r[2] ? ' t-err' : ''}">${r[3]}</td><td>${k.clamp(r[4])}</td>`)
         : '<p class="faint">Dự án chưa chọn đơn vị sản xuất.</p>';
     } else {
-      body = k.table([['Mã lệnh', 140], ['Hạng mục / lô', 260], ['Số lượng', 110, 'r'], ['Đã hoàn thành', 120, 'r'], ['Trạm hiện tại', 180], ['Trạng thái', 140, 'c'], ['Bắt đầu', 120], ['Kết thúc', 120]], orders(p),
-        (r) => `<td>${esc(r[0])}</td><td>${k.clamp(r[1])}</td><td class="r num">${num(r[2])}</td><td class="r num">${num(r[3])}</td><td>${esc(r[4])}</td><td class="c">${badge(...r[5])}</td><td class="num">${esc(dmy(iso(r[6])))}</td><td class="num">${esc(dmy(iso(r[7])))}</td>`);
+      body = k.table([['Lệnh sản xuất (hạng mục / lô)', 340], ['Số lượng', 110, 'r'], ['Đã hoàn thành', 120, 'r'], ['Trạm hiện tại', 180], ['Trạng thái', 140, 'c'], ['Bắt đầu', 120], ['Kết thúc', 120]], orders(p),
+        (r) => `<td>${NC(r[1], r[0])}</td><td class="r num">${num(r[2])}</td><td class="r num">${num(r[3])}</td><td>${esc(r[4])}</td><td class="c">${badge(...r[5])}</td><td class="num">${esc(dmy(iso(r[6])))}</td><td class="num">${esc(dmy(iso(r[7])))}</td>`);
     }
     return `<section class="vcard pad24" data-vmms="${esc(p.code)}">
       <div class="vcard-h"><h3>Dữ liệu VMMS</h3><div class="row"><span class="cap" data-vmms-at>Đồng bộ lần cuối ${esc(dmy(syncAt(p.code)))}</span>

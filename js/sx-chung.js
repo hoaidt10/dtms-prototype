@@ -80,5 +80,13 @@
   /* Nhãn "Đã ký số" cho tài liệu / bước đã ký. */
   const signedBadge = (s) => `<span class="sx-signed" title="${esc(`${pName(s.who)} · ${s.cert} · ${s.at}`)}">${badge('Đã ký số', 'success')}</span>`;
 
-  window.SxChung = { importDlg, mySign, signedBadge };
+  /* Góp ý 26/11 mục 3: không hiện cột mã riêng — ô tên kèm mã (tên trên, là link nếu mở được chi tiết; mã dòng nhỏ bên dưới). Dùng chung mọi bảng của phân hệ. */
+  function nameCode(name, code, o) {
+    const k = window.Thau.kit, opt = o || {}, label = name ? k.clamp(name) : esc(code || '');
+    const head = opt.go ? `<a class="link" data-go="${opt.go}" title="${esc(opt.tip || 'Xem chi tiết')}">${label}</a>` : label;
+    return name && code ? `${head}<div class="faint">${esc(code)}</div>` : head || k.dash;
+  }
+  /* Dự án: tên dự án kèm mã (không link — điều hướng dự án ở màn Dự án sản xuất). */
+  const projCell = (code) => { const p = code && window.SxDuAn && window.SxDuAn.byCode(code); return p ? nameCode(p.name, p.code) : code ? esc(code) : window.Thau.kit.dash; };
+  window.SxChung = { importDlg, mySign, signedBadge, nameCode, projCell };
 })();

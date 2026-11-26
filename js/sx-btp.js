@@ -6,6 +6,8 @@
   const D = window.D, Flow = window.Flow;
   const { esc, icon, badge, toast } = window.UI;
   const K = () => window.Thau.kit;
+  /* Góp ý 26/11 mục 3: không hiện cột mã riêng — tên kèm mã (SxChung.nameCode), dự án hiện tên kèm mã. */
+  const NC = (n, c, o) => window.SxChung.nameCode(n, c, o), PJ = (c) => window.SxChung.projCell(c);
   const P = () => window.SxDuAn;
   const rerender = () => window.App.render();
   const DAY = 86400000;
@@ -74,12 +76,12 @@
       (x) => { const t = targetOf(p, x.item); return `<td class="num">${esc(dmy(x.date))}</td><td>${k.clamp(name(x.item))}</td><td class="r num">${t == null ? x.qty + '%' : num(x.qty)}</td><td class="r num">${t == null ? '-' : num(x.ng)}</td>
         <td>${x.src === 'TRAM' ? 'Trạm đo VMMS' : 'Nhập tay'}</td><td>${k.clamp(pName(x.by))}</td><td>${x.note ? k.clamp(x.note) : k.dash}</td>`; });
     const st = stations(p);
-    const stTbl = st.length ? k.table([['Mã trạm', 130], ['Trạm đo', 320], ['Hạng mục', 220], ['Số đạt (lũy kế)', 140, 'r'], ['Số lỗi', 100, 'r'], ['Tỷ lệ đạt', 110, 'r'], ['Đồng bộ lúc', 150]], st,
-      (s) => `<td>${esc(s.code)}</td><td>${k.clamp(s.name)}</td><td>${k.clamp(name(s.item))}</td><td class="r num">${num(s.ok)}</td><td class="r num">${num(s.ng)}</td><td class="r num">${(s.ok / Math.max(1, s.ok + s.ng) * 100).toFixed(1).replace('.', ',')}%</td><td class="num">${esc(dmy(s.at))}</td>`)
+    const stTbl = st.length ? k.table([['Trạm đo', 380], ['Hạng mục', 220], ['Số đạt (lũy kế)', 140, 'r'], ['Số lỗi', 100, 'r'], ['Tỷ lệ đạt', 110, 'r'], ['Đồng bộ lúc', 150]], st,
+      (s) => `<td>${NC(s.name, s.code)}</td><td>${k.clamp(name(s.item))}</td><td class="r num">${num(s.ok)}</td><td class="r num">${num(s.ng)}</td><td class="r num">${(s.ok / Math.max(1, s.ok + s.ng) * 100).toFixed(1).replace('.', ',')}%</td><td class="num">${esc(dmy(s.at))}</td>`)
       : '<p class="faint">Dự án không có trạm đo đồng bộ từ VMMS.</p>';
     const bom = (D.sxMbom[p.product] || []);
-    const bomTbl = k.table([['Mã vật tư', 140], ['Tên vật tư', 300], ['ĐVT', 70], ['Định mức / bộ', 120, 'r'], ['Leadtime (tuần)', 120, 'r']], bom,
-      (r) => `<td>${esc(r.code)}</td><td>${k.clamp(r.name)}</td><td>${esc(r.unit)}</td><td class="r num">${num(r.per)}</td><td class="r num">${r.lt}</td>`);
+    const bomTbl = k.table([['Vật tư', 380], ['ĐVT', 70], ['Định mức / bộ', 120, 'r'], ['Leadtime (tuần)', 120, 'r']], bom,
+      (r) => `<td>${NC(r.name, r.code)}</td><td>${esc(r.unit)}</td><td class="r num">${num(r.per)}</td><td class="r num">${r.lt}</td>`);
     return `<div data-sx-btp>
       <section class="vcard pad24"><div class="vcard-h"><h3>Tiến độ sản xuất</h3><span class="cap">${esc(KIND[p.model] || '')}</span></div>
         ${alerts ? `<div class="hd-alerts">${alerts}</div>` : ''}${note}${tbl}</section>

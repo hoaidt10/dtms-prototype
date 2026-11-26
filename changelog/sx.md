@@ -3,6 +3,12 @@
 > Mỗi PR một mục, mới nhất trên cùng: `## YYYY-MM-DD — <việc> (#PR)` + 2–5 gạch đầu dòng (màn, thay đổi, nguồn, điểm treo mới).
 > Lịch sử trước T77: [lich-su-chung.md](lich-su-chung.md).
 
+## 2026-11-26 · Mục 3: không hiện cột mã riêng — mã kèm tên, rà soát mọi màn của phân hệ
+- Hàm dùng chung `SxChung.nameCode` / `projCell` (`js/sx-chung.js`): ô tên (link có tooltip "Xem chi tiết …" nếu mở được) + mã dòng nhỏ bên dưới; cột Dự án hiện tên dự án kèm mã.
+- Bỏ cột Mã riêng, gộp vào tên ở mọi bảng: Việc của tôi, Nhiệm vụ đơn vị, công việc con, Dự án, Phương án SXKD, Hồ sơ chuyển giao / sản phẩm / danh mục hồ sơ, Nhu cầu vật tư, Đề xuất mua sắm, hợp đồng, phiếu nhập kho, Bất thường, Thay đổi kỹ thuật, Nghiệm thu (đề nghị, IPQC, đánh giá, nghiệm thu thủ công), Bán thành phẩm (trạm đo, định mức), Dữ liệu VMMS (thiết bị, lệnh sản xuất), Bài học, Báo cáo / Tổng quan (popup dự án, vật tư leadtime, sự kiện).
+- Cột tham chiếu sang đối tượng khác bỏ chữ "Mã" (ĐXMS, ECO, ECN, Thay đổi kỹ thuật liên kết…). Chi tiết dự án: Mã / Tên nhiệm vụ → Nhiệm vụ đơn vị (tên kèm mã). Danh mục dùng chung (Danh mục) là màn chung của người tích hợp — chưa đổi.
+- Kiểm tra: mở mọi màn / tab của phân hệ không lỗi, không còn tiêu đề cột "Mã …"; thêm ca e2e mục 3.
+
 ## 2026-11-26 · Việc của tôi = giao diện Việc cá nhân cũ; việc giao theo kế hoạch là công việc (không phải nhiệm vụ đơn vị); nhiệm vụ đơn vị theo tiến độ dự án
 - **Việc của tôi** (`#/sx/viec-cua-toi`, `js/sx-cong-viec.js` list('CN')): giao diện danh sách Việc cá nhân cũ (ô chỉ số, tìm kiếm nâng cao, phân trang, Xuất Excel), tiêu đề Việc của tôi; tổng hợp **công việc từ kế hoạch** (tôi thực hiện / tôi giao) và **công việc từ quy trình** (user task — `SxFlow.flowItems`) — cột + lọc nâng cao **Phân loại**. Việc quy trình: không Thêm công việc con / Cập nhật tiến độ, mở màn Xử lý (menu sáng mục nghiệp vụ), dòng phụ link tới phiếu / yêu cầu / lô; dự án không còn là link.
 - **Việc giao theo bước kế hoạch** (kick-off `fromPlan`, Giao việc theo hạng mục) tạo **công việc** (CN, nguồn Từ kế hoạch) ở Việc của tôi của người được giao, không tạo nhiệm vụ đơn vị. Dữ liệu mẫu: các việc theo bước 6, 7 và việc lẻ chuyển thành CV-SX-2026-006…009 (CV-SX-2026-006 có 3 công việc con) (`js/sx-data.js`).

@@ -7,6 +7,8 @@
   const D = window.D, Flow = window.Flow;
   const { esc, icon, badge, toast } = window.UI;
   const K = () => window.Thau.kit;
+  /* Góp ý 26/11 mục 3: không hiện cột mã riêng — tên kèm mã (SxChung.nameCode), dự án hiện tên kèm mã. */
+  const NC = (n, c, o) => window.SxChung.nameCode(n, c, o), PJ = (c) => window.SxChung.projCell(c);
   const rerender = () => window.App.render();
   const P = () => window.SxDuAn;
   const B = () => window.EForms.b;
@@ -102,8 +104,8 @@
     const cpages = Math.max(1, Math.ceil(catRows.length / CAT.size));
     if (CAT.page > cpages) CAT.page = cpages;
     const catalog = `<section class="vcard pad24" data-sxnc-cat><div class="vcard-h"><h3>Danh mục vật tư</h3><span class="cap">Tổng số lượng theo MBOM dự toán (VMMS, chỉ xem) × số lượng dự án</span></div>
-      ${k.table([['Dự án', 140], ['Mã vật tư', 150], ['Tên vật tư', 260], ['ĐVT', 70], ['Định mức / bộ', 110, 'r'], ['Tổng số lượng', 120, 'r'], ['Tồn kho TCT', 120, 'r'], ['Đơn giá dự toán (đồng)', 160, 'r'], ['Leadtime (tuần)', 120, 'r'], ['Export License', 120, 'c']], catRows.slice((CAT.page - 1) * CAT.size, CAT.page * CAT.size),
-      (m) => `<td>${esc(m.project)}</td><td>${esc(m.code)}</td><td>${k.clamp(m.name)}</td><td>${esc(m.unit)}</td><td class="r num">${num(m.per)}</td><td class="r num">${num(m.total)}</td><td class="r num">${num(stockOf(m.code))}</td><td class="r num">${num(m.price)}</td><td class="r num">${m.lt}</td><td class="c">${m.el ? 'Có' : 'Không'}</td>`)}
+      ${k.table([['Dự án', 240], ['Vật tư', 340], ['ĐVT', 70], ['Định mức / bộ', 110, 'r'], ['Tổng số lượng', 120, 'r'], ['Tồn kho TCT', 120, 'r'], ['Đơn giá dự toán (đồng)', 160, 'r'], ['Leadtime (tuần)', 120, 'r'], ['Export License', 120, 'c']], catRows.slice((CAT.page - 1) * CAT.size, CAT.page * CAT.size),
+      (m) => `<td>${PJ(m.project)}</td><td>${NC(m.name, m.code)}</td><td>${esc(m.unit)}</td><td class="r num">${num(m.per)}</td><td class="r num">${num(m.total)}</td><td class="r num">${num(stockOf(m.code))}</td><td class="r num">${num(m.price)}</td><td class="r num">${m.lt}</td><td class="c">${m.el ? 'Có' : 'Không'}</td>`)}
       <div class="row" style="justify-content:flex-end;gap:8px;align-items:center;padding-top:12px"><span class="cap">${catRows.length ? (CAT.page - 1) * CAT.size + 1 : 0}–${Math.min(CAT.page * CAT.size, catRows.length)} / ${catRows.length} vật tư</span><button type="button" class="vbtn secondary sm" data-sxnc-cat="prev" ${CAT.page <= 1 ? 'disabled' : ''}>Trước</button><span class="cap">Trang ${CAT.page} / ${cpages}</span><button type="button" class="vbtn secondary sm" data-sxnc-cat="next" ${CAT.page >= cpages ? 'disabled' : ''}>Sau</button></div></section>`;
     const pageHtml = k.listPage({
       id: 'sxnc', exp: 'Danh sach nhu cau vat tu', title: 'Nhu cầu vật tư', ph: 'Tìm kiếm theo mã đề xuất, vật tư, dự án', info, right,
@@ -116,12 +118,12 @@
       adv: (txt, sel) => `${sel('project', 'Dự án', { options: visibleProjects().map((p) => ({ value: p.code, label: `${p.code} — ${p.name}` })) })}${txt('mat', 'Vật tư')}
         ${sel('st', 'Trạng thái', { multi: true, searchable: false, options: ST.map((x) => ({ value: x, label: x })) })}
         ${sel('lt', 'Leadtime', { searchable: false, options: [{ value: 'DAI', label: 'Dài (từ 16 tuần)' }, { value: 'NGAN', label: 'Dưới 16 tuần' }] })}`,
-      cols: [['', 48, 'c'], ['Thao tác', 100, 'c'], ['Trạng thái', 170, 'c'], ['Mã đề xuất', 140], ['Dự án', 140], ['Mã vật tư', 150], ['Tên vật tư', 260], ['Bên mua sắm', 150], ['ĐVT', 70], ['Số lượng cần', 110, 'r'],
+      cols: [['', 48, 'c'], ['Thao tác', 100, 'c'], ['Trạng thái', 170, 'c'], ['Vật tư', 340], ['Dự án', 240], ['Đề xuất mua sắm', 150], ['Bên mua sắm', 150], ['ĐVT', 70], ['Số lượng cần', 110, 'r'],
         ['Tồn kho TCT', 120, 'r'], ['Còn thiếu', 110, 'r'], ['Cần trước ngày', 130], ['Leadtime (tuần)', 120, 'r'], ['Hạn đặt hàng', 130]],
       href: () => 'sx/nhu-cau',
       cell: (r) => `<td class="c">${r.free && canManage(r.project) ? `<input type="checkbox" data-sxnc-sel="${esc(r.code)}" ${SEL.has(r.code) ? 'checked' : ''} aria-label="Chọn ${esc(r.code)}">` : ''}</td>
         <td class="c"><div class="acts">${canManage(r.project) ? iconBtn('edit', 'Sửa', `data-sxnc-edit="${esc(r.code)}"`) : ''}${canManage(r.project) && !r.prop ? `<span class="sep"></span>${iconBtn('del', 'Xoá', `data-sxnc-del="${esc(r.code)}"`)}` : ''}</div></td>
-        <td class="c">${badge(...r.st)}</td><td>${r.prop ? `<a class="link" data-go="sx/mua-sam/${encodeURIComponent(r.prop.code)}">${esc(r.prop.code)}</a>` : k.dash}</td><td>${esc(r.project)}</td><td><a class="link" data-sxnc-view="${esc(r.code)}">${esc(r.mat)}</a></td><td>${k.clamp(r.m.name)}</td><td>${esc(BUYER[r.buyer])}</td><td>${esc(r.m.unit)}</td>
+        <td class="c">${badge(...r.st)}</td><td><a class="link" data-sxnc-view="${esc(r.code)}" title="Xem chi tiết nhu cầu vật tư">${k.clamp(r.m.name)}</a><div class="faint">${esc(r.mat)}</div></td><td>${PJ(r.project)}</td><td>${r.prop ? `<a class="link" data-go="sx/mua-sam/${encodeURIComponent(r.prop.code)}" title="Xem chi tiết đề xuất mua sắm">${esc(r.prop.code)}</a>` : k.dash}</td><td>${esc(BUYER[r.buyer])}</td><td>${esc(r.m.unit)}</td>
         <td class="r num">${num(r.qty)}</td><td class="r num">${num(r.avail)}</td><td class="r num">${r.short ? num(r.short) : k.dash}</td><td class="num">${esc(dmy(r.need))}</td>
         <td class="r num">${r.m.lt}</td><td class="num${r.st[0] === 'Trễ hạn đặt hàng' ? ' due-over' : ''}">${esc(dmy(r.order))}</td>`,
     });
@@ -248,13 +250,13 @@
     ['DA-SX-2026-003', 'SOC-MT7981', 120000, '2026-06-01'], ['DA-SX-2026-009', 'SOC-ONT-X2', 5000, '2027-02-01']];
   function importDlg() {
     window.SxChung.importDlg({ entity: 'nhu cầu vật tư', tpl: 'mau-nhap-nhu-cau-vat-tu.xlsx', file: 'nhu-cau-vat-tu.xlsx', unit: 'dòng nhu cầu',
-      cols: [['Dự án', 140], ['Mã vật tư', 150], ['Tên vật tư', 240], ['Số lượng', 110], ['Ngày cần', 120]],
+      cols: [['Dự án', 160], ['Vật tư', 360], ['Số lượng', 110], ['Ngày cần', 120]],
       rows: () => IMP.map(([project, mat, qty, need]) => {
         const errs = [], p = P().byCode(project), m = p ? mbomOf(p).find((x) => x.code === mat) : null;
         if (!p) errs.push(`Dự án ${project} không tồn tại.`);
         else if (!canManage(project)) errs.push(`Bạn không quản lý dự án ${project}.`);
         else if (!m) errs.push(`Vật tư ${mat} không thuộc MBOM của sản phẩm ${p.product}.`);
-        return { errs, data: { project, mat, qty, need }, cells: [project, mat, m ? m.name : '', num(qty), dmy(need)] };
+        return { errs, data: { project, mat, qty, need }, cells: [project, m ? `${m.name} (${mat})` : mat, num(qty), dmy(need)] };
       }),
       commit: (ok) => {
         const list = rows().slice();
@@ -273,8 +275,8 @@
     const stS = (r) => { const q = r.sup.qty - r.sup.ret; return q >= r.qty ? ['Đã tập kết đủ', 'success'] : q > 0 ? ['Đang tập kết', 'info'] : r.need < D.sxToday ? ['Chậm tập kết', 'error'] : ['Chưa về', 'default']; };
     const done = l.filter((r) => r.sup.qty - r.sup.ret >= r.qty).length;
     return `<section class="vcard pad24" data-sxnc-sup><div class="vcard-h"><h3>Tiến độ tập kết vật tư</h3><span class="cap">${done} / ${l.length} vật tư đã tập kết đủ</span></div>
-      ${k.table([['Mã vật tư', 150], ['Tên vật tư', 260], ['Bên mua sắm', 150], ['Nhu cầu', 110, 'r'], ['Đã về', 110, 'r'], ['Trả hàng', 100, 'r'], ['Ngày cần', 120], ['Ngày về gần nhất', 140], ['Biên bản bàn giao / trả hàng', 240], ['Trạng thái', 150, 'c']].concat(can ? [['', 110, 'c']] : []), l,
-    (r) => `<td>${esc(r.mat)}</td><td>${k.clamp(r.m.name)}</td><td>${esc(BUYER[r.buyer])}</td><td class="r num">${num(r.qty)}</td><td class="r num">${num(r.sup.qty)}</td><td class="r num">${r.sup.ret ? num(r.sup.ret) : k.dash}</td>
+      ${k.table([['Vật tư', 380], ['Bên mua sắm', 150], ['Nhu cầu', 110, 'r'], ['Đã về', 110, 'r'], ['Trả hàng', 100, 'r'], ['Ngày cần', 120], ['Ngày về gần nhất', 140], ['Biên bản bàn giao / trả hàng', 240], ['Trạng thái', 150, 'c']].concat(can ? [['', 110, 'c']] : []), l,
+    (r) => `<td>${NC(r.m.name, r.mat)}</td><td>${esc(BUYER[r.buyer])}</td><td class="r num">${num(r.qty)}</td><td class="r num">${num(r.sup.qty)}</td><td class="r num">${r.sup.ret ? num(r.sup.ret) : k.dash}</td>
       <td class="num">${esc(dmy(r.need))}</td><td class="num">${r.sup.date ? esc(dmy(r.sup.date)) : k.dash}</td><td>${r.sup.file ? k.clamp(r.sup.file) : k.dash}</td><td class="c">${badge(...stS(r))}</td>
       ${can ? `<td class="c"><button type="button" class="vbtn sm secondary" data-sxnc-sup-up="${esc(r.code)}">Cập nhật</button></td>` : ''}`)}</section>`;
   }

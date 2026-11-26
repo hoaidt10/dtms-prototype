@@ -7,6 +7,8 @@
   const D = window.D, Flow = window.Flow, S = window.Screens;
   const { esc, icon, badge, vSelect, toast } = window.UI;
   const K = () => window.Thau.kit;
+  /* Góp ý 26/11 mục 3: không hiện cột mã riêng — tên kèm mã (SxChung.nameCode), dự án hiện tên kèm mã. */
+  const NC = (n, c, o) => window.SxChung.nameCode(n, c, o), PJ = (c) => window.SxChung.projCell(c);
   const P = () => window.SxDuAn;
   const rerender = () => window.App.render();
   const DAY = 86400000;
@@ -321,8 +323,8 @@
         ['Hạn đặt hàng', 120, '', (r) => `<span class="${r.st[0] === 'Trễ hạn đặt hàng' ? 't-err' : ''}">${esc(dmy(r.order))}</span>`, (r) => dmy(r.order)], ['Tình trạng', 160, 'c', (r) => badge(...r.st), (r) => r.st[0]]],
       extra: () => {
         const list = vtlk();
-        const body = list.length ? K().table([['Mã vật tư', 150], ['Tên vật tư', 240], ['Leadtime (tuần)', 120, 'r'], ['Export License', 120, 'c'], ['Dự án sử dụng', 200], ['Nhu cầu', 110, 'r'], ['Tồn kho', 100, 'r'], ['Mã tương đương có thể đổi chéo', 340]], list,
-          (r) => `<td>${esc(r.code)}</td><td>${K().clamp(r.name)}</td><td class="r num">${r.lt}</td><td class="c">${r.el ? badge('Cần', 'warning') : K().dash}</td><td>${r.projects.map(projCell).join(', ')}</td>
+        const body = list.length ? K().table([['Vật tư', 300], ['Leadtime (tuần)', 120, 'r'], ['Export License', 120, 'c'], ['Dự án sử dụng', 200], ['Nhu cầu', 110, 'r'], ['Tồn kho', 100, 'r'], ['Vật tư tương đương có thể đổi chéo', 340]], list,
+          (r) => `<td>${NC(r.name, r.code)}</td><td class="r num">${r.lt}</td><td class="c">${r.el ? badge('Cần', 'warning') : K().dash}</td><td>${r.projects.map(projCell).join(', ')}</td>
             <td class="r num">${num(r.need)}</td><td class="r num">${num(r.stock)}</td><td>${r.alt.length ? r.alt.map(([c, n, note]) => `<div><b>${esc(c)}</b> — ${esc(n)}${note ? `<span class="bc-sub">${esc(note)}</span>` : ''}</div>`).join('') : '<span class="cap">Chưa có mã tương đương</span>'}</td>`)
           : '<div class="empty-t">Không có vật tư leadtime dài hoặc cần Export License theo bộ lọc</div>';
         return `<section class="vcard" data-sxr-vtlk><div class="vcard-h"><h3>Danh sách vật tư leadtime dài, Export License</h3><span class="cap">${list.length} mã · leadtime từ 16 tuần hoặc cần Export License · lập từ MBOM và dữ liệu mua sắm các dự án</span></div>${body}</section>`;
@@ -446,7 +448,7 @@
     const tbl = det.length ? k.table(cols.map((c) => [c[0], c[1], c[2]]), det, (r) => cols.map((c) => `<td class="${c[2] || ''}">${c[3](r)}</td>`).join(''))
       : '<div class="empty-t">Không có dữ liệu phù hợp</div>';
     const evTbl = cfg.period ? `<section class="vcard" data-sxr-events><div class="vcard-h"><h3>Sự kiện trong kỳ — ${esc(pLabel)}</h3><span class="cap">${ev.length} sự kiện</span></div>
-      ${ev.length ? k.table([['Ngày', 110], ['Dự án', 140], ['Loại', 160], ['Mã', 150], ['Nội dung', 420]], ev, (e) => `<td>${esc(dmy(e.date))}</td><td>${projCell(e.project)}</td><td>${esc(e.kind)}</td><td><a class="link" data-go="${e.href}">${esc(e.code)}</a></td><td>${k.clamp(e.text)}</td>`) : '<div class="empty-t">Không có sự kiện trong kỳ</div>'}</section>` : '';
+      ${ev.length ? k.table([['Ngày', 110], ['Dự án', 140], ['Loại', 160], ['Nội dung', 520]], ev, (e) => `<td>${esc(dmy(e.date))}</td><td>${projCell(e.project)}</td><td>${esc(e.kind)}</td><td>${NC(e.text, e.code, { go: e.href, tip: 'Xem chi tiết' })}</td>`) : '<div class="empty-t">Không có sự kiện trong kỳ</div>'}</section>` : '';
     return `<div class="pg" data-sxr="${id}">${S.head({ title: cfg.title, info, right: `<span class="rp-at">Cập nhật lúc ${esc(F.at)}</span><button type="button" class="vbtn secondary" data-sxr-refresh>${icon('reload')} Làm mới dữ liệu</button>` })}
       ${filterBar(!!cfg.period)}
       ${cfg.period ? `<h2 class="rp-h2">Báo cáo tiến độ sản xuất — ${esc(PERIOD[F.period])} · ${esc(pLabel)}</h2>` : `<h2 class="rp-h2">${esc(cfg.title)}</h2>`}
@@ -530,8 +532,8 @@
     const dTxt = (iso) => { const d = Math.round((ms(iso) - today()) / DAY); return d < 0 ? `quá hạn ${-d} ngày` : d === 0 ? 'đến hạn hôm nay' : `còn ${d} ngày`; };
     const flowDue = (flow) => waits().filter((w) => w.open && w.flow === flow).map((w) => Object.assign({}, w, { due: window.SxBt.addWd(w.since.slice(0, 10), w.nlv) }));
     const stepTx = (w) => w.step.replace(/^\S+\.\s*/, '');
-    const pCols = [['Mã dự án', 140], ['Tên dự án', 280], ['Trạng thái', 150, 'c'], ['Thực hiện', 100, 'r'], ['Kế hoạch đến ngày', 140, 'r'], ['Hạng mục chậm', 120, 'r']];
-    const pCell = (x) => `<td><a class="link" data-go="${x.href}" data-close>${esc(x.code)}</a></td><td>${K().clamp(x.title)}</td><td class="c">${badge(D.sxStatus[x.p.status], D.sxStatusV[x.p.status])}</td>
+    const pCols = [['Dự án', 380], ['Trạng thái', 150, 'c'], ['Thực hiện', 100, 'r'], ['Kế hoạch đến ngày', 140, 'r'], ['Hạng mục chậm', 120, 'r']];
+    const pCell = (x) => `<td data-close>${NC(x.title, x.code, { go: x.href, tip: 'Xem chi tiết dự án' })}</td><td class="c">${badge(D.sxStatus[x.p.status], D.sxStatusV[x.p.status])}</td>
       <td class="r num">${x.act}%</td><td class="r num">${x.plan}%</td><td class="r num ${x.late.length ? 't-err' : ''}">${x.late.length}</td>`;
     /* [tên, mô tả (nguồn), danh sách cấu thành, cột, ô, màu] — SX-ULNL dòng 2526–2530 (5 chỉ số) + mục Cần chú ý của SX-01 (plan T71 §4). */
     const M = [
@@ -573,8 +575,8 @@
     const cTd = hbars('Thay đổi kỹ thuật theo trạng thái', withColor(countBy(tdAll, (x) => window.SxTd.stOf(x)[0]), [C[4], C[0], C[3], C[2], C[5]]), { unit: 'yêu cầu' });
     const cKpi = hbars('KPI quy trình so với mục tiêu', kpis().filter((x) => x.value != null).map((x) => ({ label: x.name, value: x.value, sub: 'Mục tiêu ' + x.target + '%', color: x.value >= x.target ? C[2] : C[1] })), { pct: true, max: 100 });
     const STC = { PLANNING: C[5], PREPARING: C[3], IN_PRODUCTION: C[2], ACCEPTANCE: C[0], DONE: C[4] };
-    const sCols = [['Mã dự án', 140], ['Tên dự án', 280], ['Khối', 80], ['Giai đoạn hiện tại', 220], ['Thực hiện', 100, 'r'], ['Kế hoạch đến ngày', 140, 'r'], ['Hạng mục chậm', 120, 'r']];
-    const sCell = (x) => `<td><a class="link" data-go="${x.href}" data-close>${esc(x.code)}</a></td><td>${K().clamp(x.title)}</td><td>${esc(KHOI[x.p.khoi])}</td><td>${K().clamp(x.stage)}</td>
+    const sCols = [['Dự án', 380], ['Khối', 80], ['Giai đoạn hiện tại', 220], ['Thực hiện', 100, 'r'], ['Kế hoạch đến ngày', 140, 'r'], ['Hạng mục chậm', 120, 'r']];
+    const sCell = (x) => `<td data-close>${NC(x.title, x.code, { go: x.href, tip: 'Xem chi tiết dự án' })}</td><td>${esc(KHOI[x.p.khoi])}</td><td>${K().clamp(x.stage)}</td>
       <td class="r num">${x.act}%</td><td class="r num">${x.plan}%</td><td class="r num ${x.late.length ? 't-err' : ''}">${x.late.length}</td>`;
     stKeys.forEach((k, i) => { TQN['s' + i] = { route: 'sx/du-an', id: 'sxda', label: `Dự án ${String(D.sxStatus[k]).toLowerCase()}`, codes: ps.filter((x) => x.p.status === k).map((x) => x.code) }; TQD['s' + i] = [`Dự án ${String(D.sxStatus[k]).toLowerCase()}`, `Trạng thái: ${D.sxStatus[k]}`, ps.filter((x) => x.p.status === k), sCols, sCell]; });
     const dStatus = donut('Dự án theo trạng thái', stKeys.map((k, i) => ({ label: D.sxStatus[k], value: ps.filter((x) => x.p.status === k).length, color: STC[k] || C[5], tq: 's' + i })), { unit: 'dự án', note: 'Nhấn vào biểu đồ để xem danh sách dự án theo trạng thái' });
@@ -587,8 +589,8 @@
       return { cat: 'ok', item: '' };
     };
     const openP = ps.filter((x) => x.p.status !== 'DONE').map((x) => Object.assign({}, x, lateCat(x.p)));
-    const tCols = [['Mã dự án', 140], ['Tên dự án', 260], ['Trạng thái', 150, 'c'], ['Hạng mục chậm đầu tiên', 260], ['Thực hiện', 100, 'r'], ['Kế hoạch đến ngày', 140, 'r']];
-    const tCell = (x) => `<td><a class="link" data-go="${x.href}" data-close>${esc(x.code)}</a></td><td>${K().clamp(x.title)}</td><td class="c">${badge(D.sxStatus[x.p.status], D.sxStatusV[x.p.status])}</td>
+    const tCols = [['Dự án', 360], ['Trạng thái', 150, 'c'], ['Hạng mục chậm đầu tiên', 260], ['Thực hiện', 100, 'r'], ['Kế hoạch đến ngày', 140, 'r']];
+    const tCell = (x) => `<td data-close>${NC(x.title, x.code, { go: x.href, tip: 'Xem chi tiết dự án' })}</td><td class="c">${badge(D.sxStatus[x.p.status], D.sxStatusV[x.p.status])}</td>
       <td>${x.item ? K().clamp(x.item) : K().dash}</td><td class="r num">${x.act}%</td><td class="r num ${x.gap < 0 ? 't-err' : ''}">${x.plan}%</td>`;
     LCAT.forEach(([k, l], i) => { TQN['t' + i] = { route: 'sx/du-an', id: 'sxda', label: l, codes: openP.filter((x) => x.cat === k).map((x) => x.code) }; TQD['t' + i] = [l, k === 'ok' ? 'Dự án chưa hoàn thành, không có hạng mục quá hạn chưa xong' : 'Dự án chưa hoàn thành có hạng mục quá hạn đầu tiên thuộc giai đoạn này', openP.filter((x) => x.cat === k), tCols, tCell]; });
     const dTrack = donut('Dự án chưa hoàn thành theo tiến độ', LCAT.map(([k, l, c], i) => ({ label: l, value: openP.filter((x) => x.cat === k).length, color: c, tq: 't' + i })), { unit: 'dự án', note: 'Nhấn vào biểu đồ để xem chi tiết tiến độ dự án' });

@@ -6,6 +6,9 @@
   const D = window.D, Flow = window.Flow;
   const { esc, icon, badge, toast } = window.UI;
   const K = () => window.Thau.kit;
+  /* Góp ý 26/11 mục 3: không hiện cột mã riêng — tên kèm mã (SxChung.nameCode), dự án hiện tên kèm mã. */
+  const NC = (n, c, o) => window.SxChung.nameCode(n, c, o), PJ = (c) => window.SxChung.projCell(c);
+  const prodName = (c) => ((D.sxProducts || []).find((p) => p.code === c) || {}).name || '';
   const head = (o) => window.Screens.head(o);
   const rerender = () => window.App.render();
   const F = () => window.SxFlow;
@@ -138,17 +141,18 @@
         ${txt('sp', 'Mã SP')}${txt('serial', 'Serial')}
         ${sel('type', 'Loại bất thường', { options: k.catOpts('sx-bat-thuong') })}
         ${sel('sev', 'Mức độ', { searchable: false, options: Object.entries(D.sxSev).map(([value, label]) => ({ value, label })) })}
-        ${sel('nn', 'Nhóm nguyên nhân', { searchable: false, options: k.catOpts('sx-nhom-nguyen-nhan') })}${txt('ecr', 'Mã TĐKT liên kết')}
+        ${sel('nn', 'Nhóm nguyên nhân', { searchable: false, options: k.catOpts('sx-nhom-nguyen-nhan') })}${txt('ecr', 'Thay đổi kỹ thuật liên kết')}
         ${sel('st', 'Trạng thái', { multi: true, searchable: false, options: ST.map((x) => ({ value: x, label: x })) })}`,
-      cols: [['Trạng thái', 160, 'c'], ['Mã phiếu', 120], ['Tiêu đề', 280], ['Dự án', 140], ['Mã SP', 110], ['Serial', 130], ['Loại', 90], ['Mức độ', 140], ['Nhóm nguyên nhân', 220], ['Đơn vị xử lý', 190],
-        ['Bước hiện tại', 240], ['Người đang xử lý', 170], ['Ngày tiếp nhận', 130], ['Hạn xử lý', 120], ['Còn lại', 110, 'r'], ['Ngày xử lý', 120], ['Mã TĐKT liên kết', 150]],
+      /* Góp ý 26/11 mục 3: bỏ cột Mã phiếu / Mã SP — mã kèm dưới tên (SxChung.nameCode); dự án hiện tên kèm mã. */
+      cols: [['Trạng thái', 160, 'c'], ['Phiếu bất thường', 300], ['Dự án', 220], ['Sản phẩm', 200], ['Serial', 130], ['Loại', 90], ['Mức độ', 140], ['Nhóm nguyên nhân', 220], ['Đơn vị xử lý', 190],
+        ['Bước hiện tại', 240], ['Người đang xử lý', 170], ['Ngày tiếp nhận', 130], ['Hạn xử lý', 120], ['Còn lại', 110, 'r'], ['Ngày xử lý', 120], ['Thay đổi kỹ thuật liên kết', 170]],
       href,
-      cell: (x) => `<td class="c">${badge(...x.st)}</td><td><a class="link" data-go="${href(x)}">${esc(x.code)}</a></td><td>${k.clamp(x.title)}</td><td>${esc(x.project)}</td>
-        <td>${x.spMa ? esc(x.spMa) : k.dash}</td><td>${x.serial ? esc(x.serial) : k.dash}</td>
+      cell: (x) => `<td class="c">${badge(...x.st)}</td><td>${NC(x.title, x.code, { go: href(x), tip: 'Xem chi tiết phiếu bất thường' })}</td><td>${PJ(x.project)}</td>
+        <td>${x.spMa ? NC(prodName(x.spMa), x.spMa) : k.dash}</td><td>${x.serial ? esc(x.serial) : k.dash}</td>
         <td>${x.type ? esc(typeText(x.type)) : k.dash}</td><td>${x.sev ? esc(D.sxSev[x.sev]) : k.dash}</td><td>${(x.causes || []).length ? k.clamp(causesText(x)) : k.dash}</td><td>${x.unitText ? k.clamp(x.unitText) : k.dash}</td>
         <td>${x.step ? k.clamp(x.step) : k.dash}</td><td>${x.who ? k.clamp(x.who) : k.dash}</td><td class="num">${x.received ? esc(dmy(x.received)) : k.dash}</td>
         <td class="num${isOver(x) ? ' due-over' : ''}">${x.due ? esc(dmy(x.due)) : x.type && !x.sla ? 'Theo nhà máy' : k.dash}</td><td class="r">${leftCell(x, k)}</td>
-        <td class="num">${x.closed ? esc(dmy(x.closed)) : k.dash}</td><td>${x.ecrCode ? `<a class="link" data-go="sx/thay-doi/${encodeURIComponent(x.ecrCode)}">${esc(x.ecrCode)}</a>` : k.dash}</td>`,
+        <td class="num">${x.closed ? esc(dmy(x.closed)) : k.dash}</td><td>${x.ecrCode ? `<a class="link" data-go="sx/thay-doi/${encodeURIComponent(x.ecrCode)}" title="Xem chi tiết yêu cầu thay đổi kỹ thuật">${esc(x.ecrCode)}</a>` : k.dash}</td>`,
     });
   }
 
@@ -365,8 +369,8 @@
     const k = K(), l = all().filter((x) => x.project === p.code).map((x) => Object.assign(x, { st: stOf(x) }));
     const can = canCreate() && p.status !== 'PLANNING' && p.status !== 'DONE';
     return `<div data-sx-bt><section class="vcard pad24"><div class="vcard-h"><h3>Phiếu bất thường</h3>${can ? `<button type="button" class="vbtn secondary" data-sxbt-new="${esc(p.code)}">${icon('add')} Thêm mới phiếu</button>` : ''}</div>
-      ${k.table([['Mã phiếu', 120], ['Tiêu đề', 320], ['Loại', 90], ['Mức độ', 140], ['Trạng thái', 160, 'c'], ['Hạn xử lý', 120], ['Còn lại', 110, 'r']], l,
-    (x) => `<td><a class="link" data-go="${href(x)}">${esc(x.code)}</a></td><td>${k.clamp(x.title)}</td><td>${x.type ? esc(typeText(x.type)) : k.dash}</td><td>${x.sev ? esc(D.sxSev[x.sev]) : k.dash}</td>
+      ${k.table([['Phiếu bất thường', 380], ['Loại', 90], ['Mức độ', 140], ['Trạng thái', 160, 'c'], ['Hạn xử lý', 120], ['Còn lại', 110, 'r']], l,
+    (x) => `<td>${NC(x.title, x.code, { go: href(x), tip: 'Xem chi tiết phiếu bất thường' })}</td><td>${x.type ? esc(typeText(x.type)) : k.dash}</td><td>${x.sev ? esc(D.sxSev[x.sev]) : k.dash}</td>
       <td class="c">${badge(...x.st)}</td><td class="num${isOver(x) ? ' due-over' : ''}">${x.due ? esc(dmy(x.due)) : k.dash}</td><td class="r">${leftCell(x, k)}</td>`)}
 </section>${window.SxTd ? window.SxTd.projectPart(p) : ''}</div>`;
   }

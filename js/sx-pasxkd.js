@@ -8,6 +8,8 @@
   const D = window.D, Flow = window.Flow;
   const { esc, icon, badge, toast } = window.UI;
   const K = () => window.Thau.kit;
+  /* Góp ý 26/11 mục 3: không hiện cột mã riêng — tên kèm mã (SxChung.nameCode), dự án hiện tên kèm mã. */
+  const NC = (n, c, o) => window.SxChung.nameCode(n, c, o), PJ = (c) => window.SxChung.projCell(c);
   const P = () => window.SxDuAn;
   const CV = () => window.SxCv;
   const head = (o) => window.Screens.head(o);
@@ -186,10 +188,10 @@
     const kpi = [['ALL', 'Tổng số', ''], ['DRAFT', 'Đang chuẩn bị / trả lại', 'warn'], ['SUBMITTED', 'Chờ phê duyệt', 'info'], ['APPROVED', 'Đã duyệt, chưa lập dự án', 'ok'], ['PROJECT', 'Đã lập dự án', '']]
       .map(([g, l, cls]) => `<button type="button" class="sxpa-kpi ${cls} ${F.st === g ? 'on' : ''}" data-sxpa-f="${g}"><span>${l}</span><b>${cnt(g)}</b></button>`).join('');
     const pcs = (x) => { if (x.status === 'APPROVED') return '<span class="faint">Đã đủ</span>'; const r = check(x); return `<span class="num ${r.ready ? '' : 't-err'}">${r.okN}/4</span>`; };
-    const tbl = k.table([['Số PASXKD', 150], ['Tên phương án', 320], ['Nhiệm vụ', 140], ['Sản phẩm', 110], ['Số lượng', 110, 'r'], ['Người lập', 160], ['Đủ đầu vào', 100, 'c'], ['Trạng thái', 150, 'c'], ['Dự án sản xuất', 150]], show,
-      (x) => { const p = projectOf(x.code); return `<td><a class="link" data-go="${href(x)}">${esc(x.no)}</a></td><td>${k.clamp(x.title)}</td>
-        <td>${x.nv ? `<a class="link" data-go="sx/cong-viec/${encodeURIComponent(x.nv)}">${esc(x.nv)}</a>` : k.dash}</td><td>${esc(x.product)}</td><td class="r num">${num(x.qty)} ${esc(x.unitName || '')}</td>
-        <td>${k.clamp(pName(x.pm))}</td><td class="c">${pcs(x)}</td><td class="c">${stBadge(x)}</td><td>${p ? `<a class="link" data-go="sx/du-an/${encodeURIComponent(p.code)}">${esc(p.code)}</a>` : k.dash}</td>`; });
+    const tbl = k.table([['Phương án sản xuất kinh doanh', 380], ['Nhiệm vụ', 300], ['Sản phẩm', 110], ['Số lượng', 110, 'r'], ['Người lập', 160], ['Đủ đầu vào', 100, 'c'], ['Trạng thái', 150, 'c'], ['Dự án sản xuất', 300]], show,
+      (x) => { const p = projectOf(x.code); return `<td>${NC(x.title, x.no, { go: href(x), tip: 'Xem chi tiết phương án sản xuất kinh doanh' })}</td>
+        <td>${x.nv ? NC(((CV() && CV().byCode(x.nv)) || {}).title, x.nv, { go: `sx/cong-viec/${encodeURIComponent(x.nv)}`, tip: 'Xem chi tiết nhiệm vụ' }) : k.dash}</td><td>${esc(x.product)}</td><td class="r num">${num(x.qty)} ${esc(x.unitName || '')}</td>
+        <td>${k.clamp(pName(x.pm))}</td><td class="c">${pcs(x)}</td><td class="c">${stBadge(x)}</td><td>${p ? NC(p.name, p.code, { go: `sx/du-an/${encodeURIComponent(p.code)}`, tip: 'Xem chi tiết dự án' }) : k.dash}</td>`; });
     const right = canCreate() ? `<button type="button" class="vbtn primary" data-sxpa-new="">${icon('add')} Thêm mới</button>` : '';
     return `<div class="pg" data-sx-pa-list>${head({ title: 'Phương án sản xuất kinh doanh', info, right })}<div class="sxpa-kpis">${kpi}</div>${k.card('Danh sách phương án sản xuất kinh doanh', tbl)}</div>`;
   }

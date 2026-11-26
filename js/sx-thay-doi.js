@@ -5,6 +5,8 @@
   const D = window.D, Flow = window.Flow;
   const { esc, icon, badge, toast } = window.UI;
   const K = () => window.Thau.kit;
+  /* Góp ý 26/11 mục 3: không hiện cột mã riêng — tên kèm mã (SxChung.nameCode), dự án hiện tên kèm mã. */
+  const NC = (n, c, o) => window.SxChung.nameCode(n, c, o), PJ = (c) => window.SxChung.projCell(c);
   const head = (o) => window.Screens.head(o);
   const F = () => window.SxFlow;
   const P = () => window.SxDuAn;
@@ -83,10 +85,10 @@
         ${sel('project', 'Dự án', { options: P().visible().map((p) => ({ value: p.code, label: `${p.code} — ${p.name}` })) })}
         ${sel('level', 'Cấp phê duyệt', { options: k.catOpts('sx-cap-duyet') })}
         ${sel('src', 'Nguồn', { searchable: false, options: Object.entries(SRC).map(([value, label]) => ({ value, label })) })}`,
-      cols: [['Trạng thái', 170, 'c'], ['Mã ECR', 130], ['Tên yêu cầu thay đổi', 280], ['Dự án', 140], ['Nguồn', 160], ['Phiếu bất thường', 130], ['Cấp phê duyệt', 200], ['Mã ECO', 130], ['Mã ECN', 130], ['Bước hiện tại', 240], ['Người đang xử lý', 170]],
+      cols: [['Trạng thái', 170, 'c'], ['Yêu cầu thay đổi kỹ thuật (ECR)', 340], ['Dự án', 240], ['Nguồn', 160], ['Phiếu bất thường', 130], ['Cấp phê duyệt', 200], ['ECO', 130], ['ECN', 130], ['Bước hiện tại', 240], ['Người đang xử lý', 170]],
       href,
-      cell: (x) => `<td class="c">${badge(...x.st)}</td><td><a class="link" data-go="${href(x)}">${esc(x.code)}</a></td><td>${k.clamp(x.title)}</td><td>${esc(x.project)}</td><td>${k.clamp(srcText(x))}</td>
-        <td>${x.issue ? `<a class="link" data-go="sx/bat-thuong/${encodeURIComponent(x.issue)}">${esc(x.issue)}</a>` : k.dash}</td><td>${x.level ? k.clamp(`${x.level} — ${levelRow(x.level).name}`) : k.dash}</td>
+      cell: (x) => `<td class="c">${badge(...x.st)}</td><td>${NC(x.title, x.code, { go: href(x), tip: 'Xem chi tiết yêu cầu thay đổi kỹ thuật' })}</td><td>${PJ(x.project)}</td><td>${k.clamp(srcText(x))}</td>
+        <td>${x.issue ? `<a class="link" data-go="sx/bat-thuong/${encodeURIComponent(x.issue)}" title="Xem chi tiết phiếu bất thường">${esc(x.issue)}</a>` : k.dash}</td><td>${x.level ? k.clamp(`${x.level} — ${levelRow(x.level).name}`) : k.dash}</td>
         <td>${x.eco ? esc(x.eco) : k.dash}</td><td>${x.ecn ? esc(x.ecn) : k.dash}</td><td>${x.step ? k.clamp(x.step) : k.dash}</td><td>${x.who ? k.clamp(x.who) : k.dash}</td>`,
     });
   }
@@ -156,11 +158,11 @@
     const can = canCreate() && p.status !== 'PLANNING' && p.status !== 'DONE';
     const log = logOf(p.code).slice().sort((a, b) => (a[0] < b[0] ? 1 : -1));
     return `<section class="vcard pad24" data-sx-td><div class="vcard-h"><h3>Thay đổi kỹ thuật</h3><span class="cap">Đồng bộ từ phân hệ KHCN</span></div>
-      ${k.table([['Mã ECR', 130], ['Tên yêu cầu thay đổi', 320], ['Cấp phê duyệt', 90, 'c'], ['Mã ECO', 130], ['Mã ECN', 130], ['Trạng thái', 170, 'c']], l,
-    (x) => `<td><a class="link" data-go="${href(x)}">${esc(x.code)}</a></td><td>${k.clamp(x.title)}</td><td class="c">${x.level ? esc(x.level) : k.dash}</td><td>${x.eco ? esc(x.eco) : k.dash}</td><td>${x.ecn ? esc(x.ecn) : k.dash}</td><td class="c">${badge(...x.st)}</td>`)}</section>
+      ${k.table([['Yêu cầu thay đổi kỹ thuật (ECR)', 420], ['Cấp phê duyệt', 90, 'c'], ['ECO', 130], ['ECN', 130], ['Trạng thái', 170, 'c']], l,
+    (x) => `<td>${NC(x.title, x.code, { go: href(x), tip: 'Xem chi tiết yêu cầu thay đổi kỹ thuật' })}</td><td class="c">${x.level ? esc(x.level) : k.dash}</td><td>${x.eco ? esc(x.eco) : k.dash}</td><td>${x.ecn ? esc(x.ecn) : k.dash}</td><td class="c">${badge(...x.st)}</td>`)}</section>
       <section class="vcard pad24" data-sx-log><div class="vcard-h"><h3>Nhật ký quản lý dự án</h3><span class="cap">Theo SXL.10 — mã ECO / ECN, ngày ban hành, phiên bản tài liệu</span></div>
-      ${k.table([['Ngày', 120], ['Loại', 80, 'c'], ['Mã', 140], ['Nội dung', 380], ['Phiên bản tài liệu', 160], ['Mã ECR', 130]], log,
-    (r) => `<td class="num">${esc(dmy(r[0]))}</td><td class="c">${esc(r[1])}</td><td>${esc(r[2])}</td><td>${r[3] ? k.clamp(r[3]) : k.dash}</td><td>${r[4] ? esc(r[4]) : k.dash}</td><td><a class="link" data-go="${href({ code: r[5] })}">${esc(r[5])}</a></td>`)}</section>`;
+      ${k.table([['Ngày', 120], ['Loại', 80, 'c'], ['Nội dung', 480], ['Phiên bản tài liệu', 160], ['ECR', 130]], log,
+    (r) => `<td class="num">${esc(dmy(r[0]))}</td><td class="c">${esc(r[1])}</td><td>${NC(r[3], r[2])}</td><td>${r[4] ? esc(r[4]) : k.dash}</td><td><a class="link" data-go="${href({ code: r[5] })}" title="Xem chi tiết yêu cầu thay đổi kỹ thuật">${esc(r[5])}</a></td>`)}</section>`;
   }
   /* Nút mở ECR trên phiếu bất thường Loại 2 chưa đóng, chưa có ECR. */
   const ecrOf = (issue) => all().find((x) => x.issue === issue) || null;
