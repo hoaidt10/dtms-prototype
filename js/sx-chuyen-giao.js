@@ -119,7 +119,7 @@
     const ST = ['Đang lập', 'Yêu cầu bổ sung', 'Đang thẩm định', 'Đang lập biên bản', 'Đã duyệt'];
     return k.listPage({
       id: 'sxcg', exp: 'Danh sach goi chuyen giao', title: 'Danh sách gói chuyển giao', ph: 'Tìm kiếm theo mã gói, sản phẩm', info,
-      right: canCreate() ? `<button class="vbtn primary" data-sx-cg-new>${icon('add')} Thêm mới</button>` : '',
+      right: '', /* Góp ý 26/11 mục 6: bỏ Thêm mới — gói chuyển giao lập / đồng bộ từ phía nghiên cứu (R&D), không thêm ở menu Sản xuất. */
       rows: () => visible().map((g) => { const x = byCode(g.code), [a, b] = docCount(x); return Object.assign(x, { st: stOf(x), du: a, tong: b, used: projectsOf(x).map((p) => p.code).join(', ') }); }),
       kwText: (g) => `${g.code} ${g.product} ${g.version}`,
       empty: () => ({ code: '', product: '', khoi: null, st: [] }),

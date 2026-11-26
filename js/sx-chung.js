@@ -81,12 +81,30 @@
   const signedBadge = (s) => `<span class="sx-signed" title="${esc(`${pName(s.who)} · ${s.cert} · ${s.at}`)}">${badge('Đã ký số', 'success')}</span>`;
 
   /* Góp ý 26/11 mục 3: không hiện cột mã riêng — ô tên kèm mã (tên trên, là link nếu mở được chi tiết; mã dòng nhỏ bên dưới). Dùng chung mọi bảng của phân hệ. */
+  /* Góp ý 26/11 mục 1: tooltip ở mọi chỗ điều hướng sang màn khác — theo đường dẫn đích (xem chi tiết dự án, nhiệm vụ, công việc, phiếu, vật tư…). */
+  const TIPS = [
+    [/^sx\/du-an\/create/, 'Lập dự án sản xuất'], [/\/edit$/, 'Chỉnh sửa'], [/^sx\/du-an\/[^/]+/, 'Xem chi tiết dự án'], [/^sx\/du-an$/, 'Xem danh sách dự án sản xuất'],
+    [/^sx\/bat-thuong\/./, 'Xem chi tiết phiếu bất thường'], [/^sx\/bat-thuong$/, 'Xem danh sách phiếu bất thường'],
+    [/^sx\/thay-doi\/./, 'Xem chi tiết yêu cầu thay đổi kỹ thuật'], [/^sx\/thay-doi$/, 'Xem danh sách thay đổi kỹ thuật'],
+    [/^sx\/nghiem-thu\/./, 'Xem chi tiết đề nghị nghiệm thu'], [/^sx\/nghiem-thu$/, 'Xem danh sách nghiệm thu sản phẩm'],
+    [/^sx\/mua-sam\/create/, 'Lập đề xuất mua sắm'], [/^sx\/mua-sam\/./, 'Xem chi tiết đề xuất mua sắm'], [/^sx\/mua-sam$/, 'Xem danh sách đề xuất mua sắm'],
+    [/^sx\/nhu-cau/, 'Xem nhu cầu vật tư'], [/^sx\/chuyen-giao\/./, 'Xem chi tiết hồ sơ chuyển giao'], [/^sx\/chuyen-giao$/, 'Xem danh sách hồ sơ chuyển giao'],
+    [/^sx\/san-pham/, 'Xem sản phẩm sẵn sàng sản xuất'], [/^sx\/pasxkd\/./, 'Xem chi tiết phương án sản xuất kinh doanh'], [/^sx\/pasxkd$/, 'Xem danh sách phương án sản xuất kinh doanh'],
+    [/^sx\/cong-viec\/create\/CN\/cha\//, 'Thêm công việc con'], [/^sx\/cong-viec\/create/, 'Thêm mới'], [/^sx\/cong-viec\/NV-/, 'Xem chi tiết nhiệm vụ'],
+    [/^sx\/cong-viec\/don-vi$/, 'Xem danh sách nhiệm vụ đơn vị'], [/^sx\/cong-viec\/./, 'Xem chi tiết công việc'], [/^sx\/viec-cua-toi$/, 'Xem việc của tôi'],
+    [/^sx\/viec\/[^/]+\/xem\//, 'Xem việc đã xử lý'], [/^sx\/viec\//, 'Mở màn hình xử lý'], [/^sx\/bao-cao\//, 'Xem báo cáo'], [/^luong\//, 'Xem chi tiết đề xuất mua sắm trên ĐTMS'],
+  ];
+  const tipOf = (go) => (TIPS.find(([re]) => re.test(decodeURIComponent(String(go || '')))) || [0, 'Xem chi tiết'])[1];
+  /* Gắn tooltip tự động cho link / nút chỉ có icon điều hướng (data-go) chưa có title ở các màn Sản xuất — bảng, ô, popup sinh động đều có. */
+  const tipAll = (root) => { if (!location.hash.startsWith('#/sx/')) return; root.querySelectorAll('a[data-go]:not([title]), button[data-go]:not([title])').forEach((el) => { if (el.tagName === 'BUTTON' && el.textContent.trim()) return; el.title = tipOf(el.dataset.go); }); };
+  let tipQueued = false;
+  new MutationObserver(() => { if (tipQueued) return; tipQueued = true; Promise.resolve().then(() => { tipQueued = false; tipAll(document); }); }).observe(document.documentElement, { childList: true, subtree: true });
   function nameCode(name, code, o) {
     const k = window.Thau.kit, opt = o || {}, label = name ? k.clamp(name) : esc(code || '');
-    const head = opt.go ? `<a class="link" data-go="${opt.go}" title="${esc(opt.tip || 'Xem chi tiết')}">${label}</a>` : label;
+    const head = opt.go ? `<a class="link" data-go="${opt.go}" title="${esc(opt.tip || tipOf(opt.go))}">${label}</a>` : label;
     return name && code ? `${head}<div class="faint">${esc(code)}</div>` : head || k.dash;
   }
   /* Dự án: tên dự án kèm mã (không link — điều hướng dự án ở màn Dự án sản xuất). */
   const projCell = (code) => { const p = code && window.SxDuAn && window.SxDuAn.byCode(code); return p ? nameCode(p.name, p.code) : code ? esc(code) : window.Thau.kit.dash; };
-  window.SxChung = { importDlg, mySign, signedBadge, nameCode, projCell };
+  window.SxChung = { importDlg, mySign, signedBadge, nameCode, projCell, tipOf };
 })();

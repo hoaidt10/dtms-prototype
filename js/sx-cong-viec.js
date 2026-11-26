@@ -385,7 +385,7 @@
           ${k.field('Tên công việc', `<input class="vctl" id="cvf-title" maxlength="500" placeholder="Nhập tên công việc" value="${esc(v.title)}" ${err.title ? 'aria-invalid="true"' : ''}>`, { req: true, err: err.title, cls: 'span2' })}
           ${k.field('Dự án sản xuất', sel('cvf-project', 'project', P().visible().map((p) => ({ value: p.code, label: `${p.code} — ${p.name}` })), { ph: 'dự án', clear: true }), { err: err.project })}
           ${k.field('Hạng mục kế hoạch', sel('cvf-plan', 'plan', leafOpts(v.project), { ph: 'hạng mục', clear: true, disabled: !!F.lock.plan || !v.project }))}
-          ${k.field('Công việc cha', sel('cvf-parent', 'parent', parents, { ph: 'công việc cha', clear: true }), { err: err.parent })}
+          ${!dv && v.parent ? k.field('Công việc cha', sel('cvf-parent', 'parent', parents, { ph: 'công việc cha', clear: true }), { err: err.parent }) : '' /* Góp ý 26/11: nhiệm vụ đơn vị không có Công việc cha; công việc con mở từ Thêm công việc con (khoá việc cha) */}
           ${k.field(dv ? 'Người đầu mối' : 'Người thực hiện', sel('cvf-owner', 'owner', ppl, { ph: dv ? 'người đầu mối' : 'người thực hiện' }), { req: true, err: err.owner })}
           ${k.field(dv ? 'Đơn vị thực hiện' : 'Người giao', `<input class="vctl" value="${esc(dv ? unitOf(v.owner) : pName(x ? x.assigner : pid()))}" placeholder="${dv ? 'Theo người đầu mối' : ''}" disabled>`)}
           ${k.field('Mức ưu tiên', sel('cvf-prio', 'prio', Object.entries(D.sxPrio).map(([value, p]) => ({ value, label: p[0] })), { searchable: false, ph: 'mức ưu tiên' }), { req: true })}
@@ -413,7 +413,7 @@
     if (!err.due && par && e > par.due) err.due = `Hạn hoàn thành không được sau hạn của công việc cha (${dmy(par.due)}).`;
     if (!/^\d{1,2}$/.test(String(v.remind).trim())) err.remind = 'Nhắc trước hạn là số ngày từ 0 đến 99.';
     if (Object.keys(err).length) { rerender(); return; }
-    const data = { title: v.title.trim(), project: v.project || null, plan: v.plan || null, parent: v.parent || null, owner: v.owner, start: s, due: e, prio: v.prio, remind: Number(v.remind), desc: v.desc.trim() };
+    const data = { title: v.title.trim(), project: v.project || null, plan: v.plan || null, parent: kind === 'DV' ? null : v.parent || null, owner: v.owner, start: s, due: e, prio: v.prio, remind: Number(v.remind), desc: v.desc.trim() };
     let code = F.code;
     if (x) {
       const own = U.created.find((y) => y.code === code);

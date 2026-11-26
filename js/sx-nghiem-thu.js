@@ -144,6 +144,8 @@
     };
     return k.listPage({
       id: 'sxnt', exp: 'Nghiem thu san pham', title: 'Nghiệm thu sản phẩm', ph: 'Tìm kiếm theo mã, dự án, chứng chỉ', info, top: lookupCard(),
+      /* Góp ý 26/11 mục 5–6: Thêm mới ở menu = cùng hộp thoại Đề nghị nghiệm thu của tab Nghiệm thu sản phẩm trong dự án (chọn dự án trước). */
+      right: P().visible().some(canRequest) ? `<button class="vbtn primary" data-sxnt-pick title="Đề nghị nghiệm thu lô của một dự án">${icon('add')} Đề nghị nghiệm thu</button>` : '',
       rows: () => visible().map((x) => Object.assign(x, { st: stOf(x), step: stepOf(x) })).sort((a, b) => (a.code < b.code ? 1 : -1)),
       kwText: (x) => `${x.code} ${x.project} ${x.cert || ''} ${x.pnk || ''}`,
       empty: () => ({ code: '', project: null }),
@@ -392,6 +394,15 @@
       ${k.table([['Nội dung nghiệm thu', 360], ['Cấp nghiệm thu', 200], ['Số lượng / kết quả', 200], ['Ngày', 150], ['Hồ sơ', 260], ['Tình trạng', 170, 'c'], ['Thao tác', 130, 'c']], rows, cells)}</section></div>`;
   }
   /* Nội dung đánh giá OQC (bấm dòng OQC): bảng đánh giá trong hộp thoại; thao tác trong hộp thoại đóng hộp thoại rồi xử lý như ở màn. */
+  /* Chọn dự án (đang sản xuất / nghiệm thu, có quyền đề nghị) rồi mở hộp thoại Đề nghị nghiệm thu như ở tab dự án. */
+  function pickProject() {
+    const ps = P().visible().filter(canRequest);
+    const m = window.UI.vModal({ title: 'Đề nghị nghiệm thu', size: 'md', body: `<div class="vfield"><div class="lr"><label>Dự án sản xuất</label><span class="req">*</span></div>
+        <select class="vctl" id="sxnt-pick">${ps.map((p) => `<option value="${esc(p.code)}">${esc(p.name)} (${esc(p.code)})</option>`).join('')}</select></div>`,
+      actions: '<button type="button" class="vbtn secondary" data-close>Hủy</button><button type="button" class="vbtn primary" id="sxnt-pick-ok">Tiếp tục</button>' });
+    m.el.querySelector('#sxnt-pick-ok').onclick = () => { const v = m.el.querySelector('#sxnt-pick').value; m.close(); create(v); };
+  }
+  document.addEventListener('click', (e) => { if (e.target.closest && e.target.closest('[data-sxnt-pick]')) pickProject(); });
   function oqcView(code) {
     const p = P().byCode(code), m = window.UI.vModal({ title: 'Đánh giá chất lượng xuất xưởng (OQC)', size: 'xl', body: oqcCard(p), actions: '<button type="button" class="vbtn secondary" data-close>Đóng</button>' });
     m.el.addEventListener('click', (e) => { if (e.target.closest('[data-sxnt-oqc-add],[data-sxnt-oqc-done],[data-sxnt-oqc-del],[data-sxnt-oqc-bt]')) m.close(); });

@@ -176,3 +176,31 @@ test('Mục 4: chi tiết dự án — Tiến độ và chất lượng (Từ VM
   await expect(page.locator('[data-sx-docs] tr', { hasText: 'Biên bản thử rung' })).toContainText('v1.0');
   expect(page.errors).toEqual([]);
 });
+
+test('Mục 5–6 và 1: Thêm mới đồng bộ trong / ngoài dự án; Hồ sơ chuyển giao không Thêm mới; nhiệm vụ đơn vị không có Công việc cha; tooltip điều hướng', async ({ page }) => {
+  await fresh(page, '#/sx/chuyen-giao');
+  await as(page, 'qt', '#/sx/chuyen-giao');
+  await expect(page.locator('[data-sx-cg-new]')).toHaveCount(0);
+  // Nhiệm vụ đơn vị: form Thêm mới không có Công việc cha.
+  await as(page, 'qt', '#/sx/cong-viec/create/DV');
+  await expect(page.locator('.pg-title')).toContainText('Thêm mới nhiệm vụ đơn vị');
+  await expect(page.locator('[data-vsel="cvf-parent"]')).toHaveCount(0);
+  // Công việc con (từ Thêm công việc con) vẫn khoá Công việc cha.
+  await as(page, 'sxpm', '#/sx/cong-viec/create/CN/cha/CV-SX-2026-006');
+  await expect(page.locator('[data-vsel="cvf-parent"]')).toHaveCount(1);
+  // Nghiệm thu ngoài menu: Đề nghị nghiệm thu chọn dự án rồi mở cùng hộp thoại với tab dự án.
+  await as(page, 'qt', '#/sx/nghiem-thu');
+  await page.locator('[data-sxnt-pick]').click();
+  await expect(page.locator('#sxnt-pick option')).not.toHaveCount(0);
+  await page.locator('#sxnt-pick-ok').click();
+  await expect(page.locator('.vmodal, .toast').first()).toBeVisible();
+  // Tooltip: mọi link điều hướng có title.
+  for (const r of ['sx/bat-thuong', 'sx/du-an', 'sx/viec-cua-toi', 'sx/du-an/DA-SX-2026-002']) {
+    await as(page, 'qt', '#/' + r);
+    await expect(page.locator('main a[data-go]').first()).toHaveAttribute('title', /.+/);
+    expect(await page.locator('main a[data-go]:not([title])').count(), r).toBe(0);
+  }
+  await as(page, 'qt', '#/sx/bat-thuong');
+  await expect(page.locator('main a[data-go^="sx/bat-thuong/"]').first()).toHaveAttribute('title', 'Xem chi tiết phiếu bất thường');
+  expect(page.errors).toEqual([]);
+});
