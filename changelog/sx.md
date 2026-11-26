@@ -3,6 +3,12 @@
 > Mỗi PR một mục, mới nhất trên cùng: `## YYYY-MM-DD — <việc> (#PR)` + 2–5 gạch đầu dòng (màn, thay đổi, nguồn, điểm treo mới).
 > Lịch sử trước T77: [lich-su-chung.md](lich-su-chung.md).
 
+## 2026-11-26 · Việc của tôi: về giao diện cũ, tổng hợp 2 nguồn (Kế hoạch / Quy trình); công việc con chỉ ở việc từ Kế hoạch
+- Khôi phục nghiệp vụ, giao diện Việc của tôi trước 26/11 (`js/sx-flow.js`, `js/sx-cong-viec.js`, dữ liệu mẫu `js/sx-data.js` — NV-SX-2026-001 có lại 3 công việc con); bỏ các thay đổi thử nghiệm bên dưới (chia việc con từ việc Camunda, tự hoàn thành user task, khối việc quy trình ở Việc cá nhân, danh sách n.1 / n.2, ô chỉ số, lọc Loại / Phạm vi).
+- Việc của tôi tổng hợp **công việc từ Kế hoạch** (nhiệm vụ đơn vị, việc cá nhân, công việc con giao cho tôi — có Thêm công việc con, Cập nhật tiến độ; bấm mở chi tiết 3 tab Thông tin chung · Công việc con · Lịch sử cập nhật) và **việc được giao từ quy trình** (không có 2 nút trên; mở màn Xử lý; tên công việc link tới màn nghiệp vụ, vd phiếu bất thường). Cột + lọc **Phân loại**; bỏ link dự án. Menu chỉ còn Việc của tôi (Việc cá nhân gộp vào).
+- Màn Xử lý việc quy trình: menu bên trái sáng mục nghiệp vụ tương ứng (Bất thường sản xuất, Thay đổi kỹ thuật, Nghiệm thu…) (`js/sx.js`).
+- Công việc con: người thực hiện cùng đơn vị với người thực hiện việc cha; PM dự án, lãnh đạo cấp cao xem được. Giữ bỏ nhãn trạng thái ở cây Kế hoạch. `e2e/sx-cong-viec-con.spec.mjs` viết lại (3 ca xanh).
+
 ## 2026-11-26 · Việc của tôi: không phân loại, công việc con là dòng n.1 / n.2, ô chỉ số, tìm kiếm nâng cao, phân trang
 - Mọi việc được giao cho tôi (việc quy trình, việc giao trực tiếp) về một danh sách, **bỏ cột / lọc Loại và Phạm vi** (`js/sx-flow.js`).
 - **Công việc con** hiện ngay dưới đầu việc được chia: việc cha STT 2 → **2.1, 2.2…** (người thực hiện, tiến độ, hạn); không lặp lại ở cấp việc cha. Lịch sử xử lý ghi mã việc (`tok`) để việc đã xử lý vẫn kèm công việc con.

@@ -18,9 +18,6 @@
     { id: 'sxk2', name: 'Vũ Thị Hương', short: 'Hương', role: 'Chuyên viên Quản lý sản xuất', unit: 'Phòng Quản lý sản xuất — Khối 2', urd: 'R-SX-PM', actor: '—', sx: true },
     { id: 'sxnm', name: 'Hoàng Văn Lực', short: 'Lực', role: 'Cán bộ điều hành sản xuất (nhà máy)', unit: 'Nhà máy đối tác', urd: 'R-SX-NM', actor: '—', sx: true },
     { id: 'sxgdtt', name: 'Bùi Thanh Sơn', short: 'Sơn', role: 'Giám đốc Trung tâm Nghiên cứu thiết kế', unit: 'Trung tâm Nghiên cứu thiết kế — Khối 1', urd: 'R-SX-GDTT', actor: '—', sx: true },
-    /* Góp ý 26/11: kỹ sư cùng đơn vị với PM sản phẩm (sxrd) — người nhận công việc con chia từ việc của sxrd (chỉ chia cho người cùng đơn vị). */
-    { id: 'sxrdck', name: 'Ngô Đức Anh', short: 'Anh', role: 'Kỹ sư thiết kế cơ khí', unit: 'Trung tâm Nghiên cứu thiết kế — Khối 1', urd: 'R-SX-RD', actor: '—', sx: true },
-    { id: 'sxrddk', name: 'Trịnh Thu Trang', short: 'Trang', role: 'Kỹ sư đo kiểm, thử nghiệm', unit: 'Trung tâm Nghiên cứu thiết kế — Khối 1', urd: 'R-SX-RD', actor: '—', sx: true },
     /* Dashboard theo nhóm vai (nhánh hoaidt10, 25/11): Tổng Giám đốc — nhóm 1, xem toàn bộ VHT. */
     { id: 'sxceo', name: 'Lương Đình Bảo', short: 'Bảo', role: 'Tổng Giám đốc', unit: 'Ban Tổng Giám đốc', urd: 'R-SX-TGD', actor: '—', sx: true },
     { id: 'sxtgd', name: 'Đỗ Văn Khang', short: 'Khang', role: 'Phó Tổng Giám đốc', unit: 'Ban Tổng Giám đốc', urd: 'R-SX-TGD', actor: '—', sx: true },
@@ -35,7 +32,7 @@
     /* T74 #94 / #96 (Q1): Việc của tôi thành mục con (giữ số việc) của nhóm Quản lý nhiệm vụ, cùng Nhiệm vụ đơn vị và Việc cá nhân — như KHCN. */
     { label: 'Quản lý nhiệm vụ', icon: 'menu_square', open: true, children: [
       { label: 'Nhiệm vụ đơn vị', path: 'sx/cong-viec/don-vi', scr: 'SX-16' },
-      /* Gộp 26/11 (hoaidt10): Việc cá nhân và Việc của tôi là một — chỉ còn mục Việc của tôi (việc quy trình + công việc con + việc cá nhân); số = việc chưa xử lý. */
+      /* Góp ý 26/11 (hoaidt10): Việc cá nhân gộp vào Việc của tôi — tổng hợp việc từ Kế hoạch và việc được giao từ quy trình; số = việc chưa xử lý. */
       { label: 'Việc của tôi', path: 'sx/viec-cua-toi', scr: 'SX-15', badge: () => (window.SxFlow ? window.SxFlow.openTotal(window.Flow.state.persona) : 0) }] },
     /* COP2 B1 (CDS-BT-03COP tr. 84–85): Nhiệm vụ → Phương án sản xuất kinh doanh (hoàn thiện đầu vào, phê duyệt) → Dự án — sx-pasxkd.js. */
     { label: 'Phương án sản xuất kinh doanh', icon: 'menu_square', path: 'sx/pasxkd', scr: 'SX-22', badge: () => (window.SxPa ? window.SxPa.myCount() : 0) },
@@ -618,20 +615,17 @@
   /* ---------- T71 S9: Công việc (SX-16) — việc cá nhân (CN) và nhiệm vụ đơn vị (DV) ----------
      Dòng: mã, loại, tên, dự án, hạng mục kế hoạch (khoá bước của tab Kế hoạch & mốc), công việc cha, người thực hiện / đầu mối, người giao, bắt đầu, hạn,
      ưu tiên, nhắc trước (ngày), % (việc có việc con thì % tính từ việc con), ngày hoàn thành, nguồn (KH = từ kế hoạch, TAY = nhập tay, XLS = nhập Excel),
-     nhật ký cập nhật tiến độ [thời gian, người, %, ghi chú]. Hư cấu.
-     Góp ý 26/11 (hoaidt10): bỏ công việc con của nhiệm vụ đơn vị (parent luôn null). Công việc con chỉ còn là việc cá nhân chia từ một việc ở Việc của tôi
-     (user task Camunda): ut = { c: mã hồ sơ, t: mã việc, flow, step, due: hạn xử lý của việc cha }, nguồn UT. */
+     nhật ký cập nhật tiến độ [thời gian, người, %, ghi chú]. Hư cấu; NV-SX-2026-001 phân rã 3 việc con khớp Điều kiện 4M của DA-SX-2026-002 (thiếu Jig / Stencil). */
   D.sxWork = [
     { code: 'NV-SX-2026-001', kind: 'DV', title: 'Bảo đảm máy móc, công cụ dụng cụ, môi trường sản xuất', project: 'DA-SX-2026-002', plan: 'B7', parent: null, owner: 'sxpm', assigner: 'sxpm',
-      start: '2026-06-15', due: '2026-11-20', prio: 'CAO', remind: 3, pct: 60, src: 'KH', created: '2026-06-12', desc: 'Giao khi kick-off dự án, theo bước 7 của kế hoạch gốc.',
-      log: [['2026-11-02 10:30', 'sxpm', 60, 'Xong kiểm tra ESD; còn kiểm định phương tiện đo, Jig đo khối quang học']] },
-    { code: 'CV-SX-2026-001', kind: 'CN', title: 'Kiểm định phương tiện đo, máy đo quang học', project: 'DA-SX-2026-002', plan: null, parent: null, owner: 'sxsub', assigner: 'sxpm',
+      start: '2026-06-15', due: '2026-11-20', prio: 'CAO', remind: 3, pct: 0, src: 'KH', created: '2026-06-12', desc: 'Giao khi kick-off dự án, theo bước 7 của kế hoạch gốc.', log: [] },
+    { code: 'CV-SX-2026-001', kind: 'CN', title: 'Kiểm định phương tiện đo, máy đo quang học', project: 'DA-SX-2026-002', plan: null, parent: 'NV-SX-2026-001', owner: 'sxsub', assigner: 'sxpm',
       start: '2026-09-01', due: '2026-11-18', prio: 'CAO', remind: 2, pct: 50, src: 'TAY', created: '2026-08-28', desc: 'Kiểm định 6 phương tiện đo, máy đo trục quang trước khi tích hợp.',
       log: [['2026-10-05 16:20', 'sxsub', 20, 'Đã gửi 2 máy đi kiểm định'], ['2026-11-02 10:05', 'sxsub', 50, 'Hoàn thành 3/6 phương tiện']] },
-    { code: 'CV-SX-2026-002', kind: 'CN', title: 'Chế tạo Jig, Stencil theo danh mục chuyển giao', project: 'DA-SX-2026-002', plan: null, parent: null, owner: 'sxsub', assigner: 'sxpm',
+    { code: 'CV-SX-2026-002', kind: 'CN', title: 'Chế tạo Jig, Stencil theo danh mục chuyển giao', project: 'DA-SX-2026-002', plan: null, parent: 'NV-SX-2026-001', owner: 'sxsub', assigner: 'sxpm',
       start: '2026-08-15', due: '2026-11-10', prio: 'CAO', remind: 2, pct: 40, src: 'TAY', created: '2026-08-12', desc: 'Jig đo khối quang học và Stencil bo mạch xử lý ảnh theo hồ sơ chuyển giao.',
       log: [['2026-09-20 09:40', 'sxsub', 40, 'Xong Stencil; Jig chờ bản vẽ gá đỡ rev B']] },
-    { code: 'CV-SX-2026-003', kind: 'CN', title: 'Kiểm tra điều kiện ESD, nhiệt độ, độ ẩm khu tích hợp', project: 'DA-SX-2026-002', plan: null, parent: null, owner: 'sxpm', assigner: 'sxpm',
+    { code: 'CV-SX-2026-003', kind: 'CN', title: 'Kiểm tra điều kiện ESD, nhiệt độ, độ ẩm khu tích hợp', project: 'DA-SX-2026-002', plan: null, parent: 'NV-SX-2026-001', owner: 'sxpm', assigner: 'sxpm',
       start: '2026-09-01', due: '2026-10-30', prio: 'TB', remind: 2, pct: 100, doneAt: '2026-10-28', src: 'TAY', created: '2026-08-28', desc: '',
       log: [['2026-10-28 15:00', 'sxpm', 100, 'Đạt, có biên bản kiểm tra']] },
     { code: 'NV-SX-2026-002', kind: 'DV', title: 'Bảo đảm nhân lực, đào tạo chuyển giao công nghệ', project: 'DA-SX-2026-002', plan: 'B6', parent: null, owner: 'sxpm', assigner: 'sxpm',
@@ -658,19 +652,7 @@
     { code: 'NV-SX-2026-008', kind: 'DV', title: 'Lập phương án sản xuất kinh doanh trạm 5G Macro gNB-M3 năm 2027', project: 'DA-SX-2026-004', plan: null, parent: null, owner: 'sxk2', assigner: 'sxld',
       start: '2026-10-15', due: '2026-10-31', prio: 'TB', remind: 3, pct: 100, doneAt: '2026-10-28', src: 'TAY', created: '2026-10-15', desc: '', log: [['2026-10-28 16:30', 'sxk2', 100, 'Phương án đã được phê duyệt, lập dự án DA-SX-2026-004']] });
   D.sxPrio = { CAO: ['Cao', 'error'], TB: ['Trung bình', 'warning'], THAP: ['Thấp', 'default'] };
-  /* Góp ý 26/11: công việc con chia từ việc "Triển khai theo loại" (bước 5 luồng SX-BT) của phiếu BT-2026-002 — việc của PM sản phẩm R&D (sxrd), hồ sơ mẫu HSBT-BT-2026-002-01 / s3.
-     Người thực hiện cùng đơn vị với sxrd (Trung tâm Nghiên cứu thiết kế — Khối 1). */
-  const UT_BT2 = { c: 'HSBT-BT-2026-002-01', t: 's3', flow: 'SX-BT', step: 5, due: '2026-11-03' };
-  D.sxWork.push(
-    { code: 'CV-SX-2026-006', kind: 'CN', title: 'Phân tích nguyên nhân lệch trục, đề xuất dung sai mới cho gá đỡ', project: 'DA-SX-2026-002', plan: null, parent: null, ut: UT_BT2, owner: 'sxrd', assigner: 'sxrd',
-      start: '2026-10-29', due: '2026-10-31', prio: 'CAO', remind: 1, pct: 100, doneAt: '2026-10-31', src: 'UT', created: '2026-10-29', desc: 'Đo lại 4 khối, so dung sai bản vẽ rev A.',
-      log: [['2026-10-31 16:40', 'sxrd', 100, 'Đề xuất dung sai ±0,02 mm, sửa bản vẽ rev B']] },
-    { code: 'CV-SX-2026-007', kind: 'CN', title: 'Gia công 4 gá đỡ mẫu theo bản vẽ rev B', project: 'DA-SX-2026-002', plan: null, parent: null, ut: UT_BT2, owner: 'sxrdck', assigner: 'sxrd',
-      start: '2026-10-31', due: '2026-11-02', prio: 'CAO', remind: 1, pct: 60, src: 'UT', created: '2026-10-29', desc: '',
-      log: [['2026-11-12 09:15', 'sxrdck', 60, 'Xong 2/4 gá đỡ, chờ phôi nhôm đợt 2']] },
-    { code: 'CV-SX-2026-008', kind: 'CN', title: 'Thử rung lại khối quang học lắp gá đỡ mẫu', project: 'DA-SX-2026-002', plan: null, parent: null, ut: UT_BT2, owner: 'sxrddk', assigner: 'sxrd',
-      start: '2026-11-02', due: '2026-11-03', prio: 'TB', remind: 1, pct: 0, src: 'UT', created: '2026-10-29', desc: 'Thử rung theo chỉ tiêu, đo lệch trục quang trước / sau.', log: [] });
-  D.sxWorkSrc = { KH: 'Từ kế hoạch', TAY: 'Nhập tay', XLS: 'Nhập Excel', UT: 'Chia từ việc của tôi' };
+  D.sxWorkSrc = { KH: 'Từ kế hoạch', TAY: 'Nhập tay', XLS: 'Nhập Excel' };
 
   /* ---------- T71 S11: Bài học kinh nghiệm (SX-20) ----------
      Trạng thái DRAFT (nháp — người lập, PM, QA thấy) / PUB (đã ban hành — mọi người trong phân hệ thấy). Nguồn: phiếu bất thường đã đóng (tự tạo nháp) hoặc nhập tay. Hư cấu. */
