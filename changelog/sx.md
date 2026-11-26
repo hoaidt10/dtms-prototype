@@ -3,6 +3,10 @@
 > Mỗi PR một mục, mới nhất trên cùng: `## YYYY-MM-DD — <việc> (#PR)` + 2–5 gạch đầu dòng (màn, thay đổi, nguồn, điểm treo mới).
 > Lịch sử trước T77: [lich-su-chung.md](lich-su-chung.md).
 
+## 2026-11-27 · Nhiệm vụ đơn vị: bỏ Công việc cha ở Xem chi tiết
+- Chi tiết nhiệm vụ đơn vị không còn trường Công việc cha (công việc từ kế hoạch vẫn có, tên kèm mã) (`js/sx-cong-viec.js`).
+- Rà soát Cập nhật tiến độ của nhiệm vụ đơn vị: chỉ có ở nhiệm vụ **chưa gắn dự án, chưa hoàn thành** (NV-SX-2026-005, 006), cho người đầu mối / người giao / quản trị; nhiệm vụ đã gắn dự án lấy % theo tiến độ dự án nên không có nút. Thêm ca e2e.
+
 ## 2026-11-26 · Mục 5, 6, 1: Thêm mới trong / ngoài dự án; tooltip điều hướng
 - Mục 5–6 (BA chốt 26/11): Hồ sơ chuyển giao **bỏ Thêm mới** (`js/sx-chuyen-giao.js`); form Thêm mới / Sửa **nhiệm vụ đơn vị bỏ Công việc cha** (công việc con vẫn khoá việc cha khi mở từ Thêm công việc con) (`js/sx-cong-viec.js`); menu **Nghiệm thu sản phẩm** có **Đề nghị nghiệm thu** — chọn dự án rồi mở cùng hộp thoại với tab Nghiệm thu sản phẩm của dự án (`js/sx-nghiem-thu.js`). Đề xuất mua sắm ngoài menu vẫn lập từ Nhu cầu vật tư (cùng màn với tab dự án); Quản lý quy trình để như hiện tại.
 - Mục 1: tooltip ở mọi chỗ điều hướng (`js/sx-chung.js` `tipOf`): link / nút icon có `data-go` chưa có title được gắn tooltip theo màn đích (Xem chi tiết dự án, nhiệm vụ, công việc, phiếu bất thường, yêu cầu thay đổi, đề nghị nghiệm thu, đề xuất mua sắm, Mở màn hình xử lý…); ô tên kèm mã dùng cùng bộ tooltip. Kiểm tra mọi màn / tab: không còn link điều hướng thiếu tooltip.

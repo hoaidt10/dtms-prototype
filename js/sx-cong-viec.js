@@ -454,7 +454,7 @@
         ${k.kv('Loại', esc(KIND[x.kind]))}${k.kv('Trạng thái', badge(...st))}${k.kv('Hoàn thành', `${x.pct}%${x.byProject ? ' (theo tiến độ dự án)' : x.kids.length ? ' (theo công việc con)' : ''}`)}
         ${k.kv('Dự án sản xuất', x.project ? `<a class="link" data-go="sx/du-an/${encodeURIComponent(x.project)}">${esc(x.project)}</a>` : null)}${k.kv('Hạng mục kế hoạch', x.plan ? esc(planName(x)) : null, 'span2')}
         ${dv && window.SxPa ? k.kv('Phương án sản xuất kinh doanh', ((pa) => (pa ? `<a class="link" data-go="sx/pasxkd/${encodeURIComponent(pa.code)}">${esc(pa.no)} — ${esc(pa.title)}</a>` : null))(window.SxPa.all().find((y) => y.nv === x.code)), 'span3') : ''}
-        ${k.kv('Công việc cha', anc.length ? anc.map((a) => `<a class="link" data-go="${href(a)}">${esc(a.code)}</a>`).join(' › ') : null, 'span3')}
+        ${dv ? '' /* Góp ý 26/11: nhiệm vụ đơn vị không có Công việc cha */ : k.kv('Công việc cha', anc.length ? anc.map((a) => NC(a.title, a.code, { go: href(a), tip: 'Xem chi tiết công việc cha' })).join('') : null, 'span3')}
         ${k.kv(dv ? 'Người đầu mối' : 'Người thực hiện', esc(pName(x.owner)))}${k.kv('Đơn vị thực hiện', esc(unitOf(x.owner)))}${k.kv('Người giao', esc(pName(x.assigner)))}
         ${k.kv('Ngày bắt đầu', esc(dmy(x.start)))}${k.kv('Hạn hoàn thành', esc(dmy(x.due)))}${k.kv('Ngày hoàn thành', x.doneAt ? esc(dmy(x.doneAt)) : null)}
         ${k.kv('Mức ưu tiên', badge(...D.sxPrio[x.prio || 'TB']))}${k.kv('Nhắc trước hạn', `${x.remind == null ? 2 : x.remind} ngày`)}${dv ? k.kv('Nguồn', esc(D.sxWorkSrc[x.src] || '')) : ''}

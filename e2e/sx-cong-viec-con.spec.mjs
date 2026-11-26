@@ -204,3 +204,13 @@ test('Mục 5–6 và 1: Thêm mới đồng bộ trong / ngoài dự án; Hồ 
   await expect(page.locator('main a[data-go^="sx/bat-thuong/"]').first()).toHaveAttribute('title', 'Xem chi tiết phiếu bất thường');
   expect(page.errors).toEqual([]);
 });
+
+test('Nhiệm vụ đơn vị: chi tiết không có Công việc cha; Cập nhật tiến độ chỉ ở nhiệm vụ chưa gắn dự án, chưa xong', async ({ page }) => {
+  await fresh(page, '#/sx/cong-viec/don-vi');
+  for (const [code, upd] of [['NV-SX-2026-001', 0], ['NV-SX-2026-003', 0], ['NV-SX-2026-005', 1], ['NV-SX-2026-006', 1], ['NV-SX-2026-007', 0], ['NV-SX-2026-008', 0]]) {
+    await as(page, 'sxld', '#/sx/cong-viec/' + code);
+    await expect(page.locator('[data-sxcv-detail]')).not.toContainText('Công việc cha');
+    await expect(page.locator('[data-sxcv-upd]'), code).toHaveCount(upd);
+  }
+  expect(page.errors).toEqual([]);
+});
