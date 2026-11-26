@@ -60,14 +60,12 @@ test('Chia công việc con (người cùng đơn vị); còn việc con thì kh
   await expect(page.locator('.toast').last()).toContainText('Còn 3 / 4 công việc con chưa hoàn thành');
   await expect(page.locator('.vmodal')).toHaveCount(0);
   // Người theo dõi: PM dự án và lãnh đạo cấp cao (Tổng Giám đốc) thấy công việc con; người ngoài (Sub PM) không thấy.
-  const watch = async (who) => { await as(page, who, '#/sx/viec-cua-toi'); await page.locator('[data-vsel="sxv-scope"]').click(); await page.locator('.vsel-panel [data-opt="theodoi"]').click(); };
   for (const who of ['sxpm', 'sxceo']) {
-    await watch(who);
-    await expect(page.locator('[data-sx-tasks] tbody tr', { hasText: 'CV-SX-2026-008' })).toContainText('Triển khai theo loại');
+    await as(page, who, '#/sx/cong-viec/CV-SX-2026-008');
+    await expect(page.locator('[data-sxcv-detail]')).toContainText('Triển khai theo loại');
   }
-  await watch('sxsub');
-  await expect(page.locator('[data-sx-tasks] tbody tr', { hasText: 'CV-SX-2026-008' })).toHaveCount(0);
-  await page.locator('[data-vsel="sxv-scope"]').click(); await page.locator('.vsel-panel [data-opt="mine"]').click();
+  await as(page, 'sxsub', '#/sx/cong-viec/CV-SX-2026-008');
+  await expect(page.locator('[data-sxcv-detail]')).toHaveCount(0);
   // Hoàn thành mọi công việc con → việc cha tự hoàn thành (Kết quả triển khai bắt buộc điền tổng hợp công việc con), chuyển bước 6.
   await finish(page, 'sxrdck', 'CV-SX-2026-007');
   await finish(page, 'sxrddk', 'CV-SX-2026-008');
@@ -85,29 +83,42 @@ test('Chia công việc con (người cùng đơn vị); còn việc con thì kh
   expect(await page.locator('main').innerText()).not.toMatch(BA);
 });
 
-test('Việc của tôi = Việc cá nhân: một danh sách (quy trình, công việc con, việc cá nhân), lọc Loại / Phạm vi, cập nhật tiến độ, menu', async ({ page }) => {
+test('Việc của tôi: mọi việc được giao, không phân loại; công việc con là dòng n.1, n.2…; ô chỉ số, tìm kiếm nâng cao, phân trang, cập nhật tiến độ, menu', async ({ page }) => {
   await fresh(page, '#/sx/viec-cua-toi');
   await as(page, 'sxrd', '#/sx/viec-cua-toi');
   // Menu Quản lý nhiệm vụ: Việc của tôi (có số), không còn Việc cá nhân.
   await expect(page.locator('.sb-nav .nav.active').first()).toContainText('Việc của tôi');
   await expect(page.locator('.sb-nav', { hasText: 'Việc cá nhân' })).toHaveCount(0);
   const list = page.locator('[data-sx-tasks] tbody');
-  await expect(taskRow(page)).toContainText('Quy trình');
-  await expect(list.locator('tr', { hasText: 'CV-SX-2026-005' })).toContainText('Việc cá nhân'); // việc cá nhân của sxrd
-  await expect(list.locator('tr', { hasText: 'CV-SX-2026-006' })).toContainText('Công việc con');
-  // Phạm vi Việc tôi giao: công việc con sxrd chia cho người khác; không có việc quy trình, việc của chính mình.
-  await page.locator('[data-vsel="sxv-scope"]').click(); await page.locator('.vsel-panel [data-opt="giao"]').click();
-  await expect(list.locator('tr', { hasText: 'CV-SX-2026-007' })).toHaveCount(1);
-  await expect(list.locator('tr', { hasText: 'CV-SX-2026-005' })).toHaveCount(0);
-  await expect(list.locator('tr', { hasText: 'Quy trình' })).toHaveCount(0);
-  await page.locator('[data-vsel="sxv-scope"]').click(); await page.locator('.vsel-panel [data-opt="mine"]').click();
-  // Lọc Loại: chỉ việc cá nhân; chỉ việc quy trình; bỏ lọc.
-  await page.locator('[data-vsel="sxv-type"]').click(); await page.locator('.vsel-panel [data-opt="CN"]').click();
+  // Không còn cột / lọc Loại, Phạm vi.
+  await expect(page.locator('[data-sx-tasks] thead')).not.toContainText('Loại');
+  await expect(page.locator('[data-vsel="sxv-type"], [data-vsel="sxv-scope"]')).toHaveCount(0);
+  // Việc cha (quy trình) STT n, công việc con n.1 – n.3 ngay dưới, có người thực hiện; không lặp lại công việc con ở cấp việc cha.
+  const no = (await taskRow(page).locator('td.ord').innerText()).trim();
+  for (const [j, code, who] of [[1, 'CV-SX-2026-006', 'Phạm Thu Hằng'], [2, 'CV-SX-2026-007', 'Ngô Đức Anh'], [3, 'CV-SX-2026-008', 'Trịnh Thu Trang']]) {
+    const kid = list.locator('tr.sxv-sub', { hasText: code });
+    await expect(kid.locator('td.ord')).toHaveText(`${no}.${j}`);
+    await expect(kid).toContainText(`Người thực hiện: ${who}`);
+  }
+  await expect(list.locator('tr', { hasText: 'CV-SX-2026-006' })).toHaveCount(1);
+  // Việc giao trực tiếp cho tôi (CV-SX-2026-005) là một việc cha bình thường.
+  await expect(list.locator('tr:not(.sxv-sub)', { hasText: 'CV-SX-2026-005' })).toHaveCount(1);
+  // Ô chỉ số: Quá hạn lọc nhanh, bấm lại bỏ lọc.
+  const total = await list.locator('tr:not(.sxv-sub)').count();
+  await page.locator('[data-sxv-tile="over"]').click();
+  const overN = Number((await page.locator('[data-sxv-tile="over"] .n').innerText()).trim());
+  await expect(list.locator('tr:not(.sxv-sub)')).toHaveCount(overN);
+  await page.locator('[data-sxv-tile="over"]').click();
+  await expect(list.locator('tr:not(.sxv-sub)')).toHaveCount(total);
+  // Tìm kiếm nâng cao theo tên công việc; phân trang.
+  await expect(page.locator('[data-pager="sxv"]')).toBeVisible();
+  await page.locator('[data-tl="sxv:adv"]').click();
+  await page.locator('[data-tf="sxv:title"]').fill('Rà soát bản vẽ gá đỡ');
+  await page.locator('[data-tadv="sxv"] button[type="submit"]').click();
   await expect(list.locator('tr')).toHaveCount(1);
-  await page.locator('[data-vsel="sxv-type"]').click(); await page.locator('.vsel-panel [data-opt="QT"]').click();
-  await expect(list.locator('tr', { hasText: 'CV-SX-' })).toHaveCount(0);
-  await page.locator('[data-vsel-clear="sxv-type"]').click();
-  await expect(list.locator('tr', { hasText: 'CV-SX-2026-005' })).toHaveCount(1);
+  await expect(list.locator('tr')).toContainText('CV-SX-2026-005');
+  await page.locator('[data-tl="sxv:reset"]').click();
+  await page.locator('[data-tl="sxv:adv"]').click();
   // Cập nhật tiến độ ngay trong danh sách (người thực hiện).
   await as(page, 'sxrdck', '#/sx/viec-cua-toi');
   const r7 = page.locator('[data-sx-tasks] tbody tr', { hasText: 'CV-SX-2026-007' });

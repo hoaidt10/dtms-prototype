@@ -108,7 +108,7 @@
     Object.assign(c.vars, v);
     if (c.drafts) delete c.drafts[tokId];
     if (sign) c.vars.kySo = (c.vars.kySo || []).concat([Object.assign({ step: st[0] }, sign)]);
-    c.hist.push(Object.assign({ step: st[0], who: pid(), act: ch ? ch[0] : o.label || 'Hoàn thành', note: f && f.note ? f.note(c.vars) : '', since: t.since, at: nowStamp(), values: v }, sign ? { sign } : {}));
+    c.hist.push(Object.assign({ step: st[0], who: pid(), act: ch ? ch[0] : o.label || 'Hoàn thành', note: f && f.note ? f.note(c.vars) : '', since: t.since, at: nowStamp(), values: v, tok: tokId }, sign ? { sign } : {})); // tok: nối công việc con với việc đã xử lý
     run(o.action, c, ch, { step: st[0], values: v });
     const to = ch ? ch[1] : o.next, rest = c.tokens.filter((x) => x.id !== tokId);
     const join = to !== 'end' && !Array.isArray(to) && (stepOf(c.flow, to)[3] || {}).join;
@@ -190,7 +190,7 @@
   /* Góp ý 25/11 (Việc của tôi): gộp 2 tab thành 1 danh sách — việc Chưa xử lý lên trước (hạn gần nhất trước), sau đó việc đã xử lý (mới nhất trước);
      bỏ cột Mã dự án (hiện Tên dự án, link xem chi tiết dự án), bỏ Ngày nhận việc, bỏ đếm bước n/N; cột Bước cần xử lý đổi thành Nội dung cần thực hiện (bấm mở màn Xử lý);
      Ngày xử lý kèm giờ; thêm Kết quả xử lý (Đồng ý / Bị từ chối), cột Thao tác (icon mở màn Xử lý / Xem), bộ lọc Chu kỳ. */
-  const M = { kw: '', per: null, type: null, scope: 'mine' };
+  const M = { tile: null }; // ô chỉ số đang lọc của Việc của tôi
   const FLOW_STAGE = { 'SX-KH': 'G1', 'SX-MS': 'G2', 'SX-BG': 'G2', 'SX-BGNM': 'G2', 'SX-BT': 'G3', 'SX-TD': 'G3', 'SX-NT': 'G3' };
   const projCode = (c) => (P().byCode(c.obj) ? c.obj : (objRec(c) || {}).project || null);
   /* Trạng thái chi tiết theo việc cụ thể của bước (thay cho "Chưa xử lý" chung chung). GIẢ LẬP: suy từ động từ đầu tên bước — thật: cấu hình nhãn trạng thái của bước trong BPMN. */
@@ -225,44 +225,44 @@
       .map((r) => Object.assign(r, { st: r.tok.ready ? ['Chờ hoàn tất', 'warning'] : [stName(r.step), r.over ? 'error' : 'info'], key: r.due, delay: delayTxt(r.due, nowStamp()) }))
       .sort((a, b) => (a.due < b.due ? -1 : a.due > b.due ? 1 : 0));
   const taskTitle = (r) => { const p = objRec(r.c) || {}, pj = r.proj && P().byCode(r.proj); return `${FL(r.c.flow).name}${r.proj && r.proj !== r.c.obj ? `: ${p.name || p.title || r.c.obj}` : pj ? '' : `: ${p.name || p.title || r.c.obj}`}`; };
-  /* ---------- Gộp 26/11 (hoaidt10): Việc của tôi = Việc cá nhân ----------
-     Một danh sách cho mọi việc của người dùng: việc theo quy trình (user task Camunda), công việc con (chia từ việc quy trình), việc cá nhân khác.
-     Menu chỉ còn mục Việc của tôi (#/sx/viec-cua-toi); #/sx/cong-viec/ca-nhan chuyển về đây. Lọc: Loại, Phạm vi (của tôi / tôi giao / tôi theo dõi), Chu kỳ, từ khoá.
-     Phạm vi khác "của tôi" chỉ có việc cá nhân (người giao theo dõi công việc con đã chia; PM dự án, lãnh đạo cấp cao theo dõi công việc con). */
+  /* ---------- Việc của tôi (góp ý 26/11, hoaidt10) ----------
+     Mọi việc được giao cho tôi đều về Việc của tôi, không phân loại: việc theo quy trình (user task Camunda) và việc được giao trực tiếp (việc cá nhân, công việc con người khác chia cho tôi).
+     Công việc con là các dòng con của đầu việc được chia: việc cha STT 2 → 2.1, 2.2… (người thực hiện, tiến độ, hạn của từng việc con) — người được giao theo dõi người thực hiện ngay tại đây.
+     Khuôn danh sách chung (listPage): ô chỉ số tổng hợp (bấm để lọc nhanh), tìm kiếm / tìm kiếm nâng cao, phân trang theo việc cha, Xuất Excel. Menu chỉ còn mục Việc của tôi;
+     #/sx/cong-viec/ca-nhan chuyển về đây. */
   const HOME = 'sx/viec-cua-toi';
-  const TYPE = [['QT', 'Việc theo quy trình'], ['CON', 'Công việc con'], ['CN', 'Việc cá nhân']];
-  const SCOPE = [['mine', 'Việc của tôi'], ['giao', 'Việc tôi giao'], ['theodoi', 'Việc tôi theo dõi']];
-  const typeTag = { QT: ['Quy trình', 'info'], CON: ['Công việc con', 'warning'], CN: ['Việc cá nhân', 'default'] };
-  /* Dòng việc cá nhân (sx-cong-viec.js): trạng thái theo % và hạn, nội dung = việc cha (công việc con) hoặc mô tả. */
-  function cvRows(id) {
-    const CV = window.SxCv;
-    if (!CV) return [];
-    return CV.myRows(id, M.scope).map((x) => {
-      const st = CV.stOf(x), end = x.done ? x.doneAt || x.due : nowStamp();
-      return { cv: x, type: x.ut ? 'CON' : 'CN', todo: !x.done, st, proj: x.project, title: x.title, step: x.ut ? `Thuộc: ${CV.utText(x)}` : x.desc || '',
-        stage: window.SxDuAn.stageName(x.plan || (x.ut ? FLOW_STAGE[x.ut.flow] : '')), due: x.due, over: st[0] === 'Quá hạn', doneAt: x.done && !x.cancel ? x.doneAt || '' : '',
-        key: x.done ? String(x.doneAt || x.due).slice(0, 10) : x.due, res: null, go: `sx/cong-viec/${encodeURIComponent(x.code)}`, delay: x.cancel ? '' : delayTxt(x.due, end) };
-    });
+  const LID = 'sxv';
+  /* Dòng việc giao trực tiếp (sx-cong-viec.js): trạng thái theo % và hạn; công việc con người khác chia cho tôi ghi việc cha ở Nội dung. */
+  function cvRow(x, child) {
+    const CV = window.SxCv, st = CV.stOf(x), end = x.done ? x.doneAt || x.due : nowStamp();
+    return { cv: x, code: x.code, todo: !x.done, st, proj: x.project, title: x.title,
+      step: child ? `Người thực hiện: ${pName(x.owner)}` : x.ut ? `Công việc con của: ${CV.utText(x)}` : x.desc || '',
+      stage: window.SxDuAn.stageName(x.plan || (x.ut ? FLOW_STAGE[x.ut.flow] : '')), due: x.due, over: st[0] === 'Quá hạn', doneAt: x.done && !x.cancel ? x.doneAt || '' : '',
+      key: x.done ? String(x.doneAt || x.due).slice(0, 10) : x.due, res: null, go: `sx/cong-viec/${encodeURIComponent(x.code)}`, delay: x.cancel ? '' : delayTxt(x.due, end) };
   }
+  /* Công việc con của một việc quy trình (kể cả đã huỷ), theo mã. */
+  const kidsOf = (code, tokId) => (window.SxCv ? window.SxCv.all().filter((x) => x.ut && x.ut.c === code && x.ut.t === tokId) : []).sort((a, b) => (a.code < b.code ? -1 : 1));
   function rows(id) {
-    const n = window.UI.norm, mine = M.scope === 'mine';
-    const todo = mine ? todoRows(id).map((r) => Object.assign(r, { type: 'QT', title: taskTitle(r) })) : [];
-    const done = !mine ? [] : S.cases.flatMap((c) => c.hist.map((h, i) => ({ h, i })).filter(({ h }) => h.step != null && h.who && !h.sys && (h.who === id || isAdmin(id)))
-      .map(({ h, i }) => Object.assign(base(c, h.step, h.since || h.at), { type: 'QT', todo: false, st: ['Đã xử lý', 'success'], doneAt: h.at, key: String(h.at).slice(0, 10), res: resultOf(c, h), go: `sx/viec/${encodeURIComponent(c.code)}/xem/${i}` }))
-      .map((r) => Object.assign(r, { title: taskTitle(r), delay: delayTxt(r.due, r.doneAt) })));
-    const cv = cvRows(id);
-    /* Việc chưa xong lên trước (hạn gần nhất trước), việc đã xong sau (mới nhất trước). */
+    const CV = window.SxCv, used = new Set();
+    const attach = (r, c, tokId) => { r.kids = tokId ? kidsOf(c.code, tokId).map((x) => { used.add(x.code); return cvRow(x, true); }) : []; return r; };
+    const todo = todoRows(id).map((r) => attach(Object.assign(r, { code: `${r.c.code}/${r.tok.id}`, title: taskTitle(r) }), r.c, r.tok.id));
+    const done = S.cases.flatMap((c) => c.hist.map((h, i) => ({ h, i })).filter(({ h }) => h.step != null && h.who && !h.sys && (h.who === id || isAdmin(id)))
+      .map(({ h, i }) => Object.assign(base(c, h.step, h.since || h.at), { code: `${c.code}/h${i}`, todo: false, st: ['Đã xử lý', 'success'], doneAt: h.at, key: String(h.at).slice(0, 10), res: resultOf(c, h), go: `sx/viec/${encodeURIComponent(c.code)}/xem/${i}` }))
+      .map((r) => attach(Object.assign(r, { title: taskTitle(r), delay: delayTxt(r.due, r.doneAt) }), c, c.hist[Number(r.code.split('/h')[1])].tok)));
+    /* Việc giao trực tiếp cho tôi; công việc con đã nằm dưới việc cha của tôi thì không lặp lại. */
+    const cv = CV ? CV.myRows(id, 'mine').filter((x) => !used.has(x.code)).map((x) => Object.assign(cvRow(x, false), { kids: [] })) : [];
     const open = todo.concat(cv.filter((r) => r.todo)).sort((a, b) => (a.due < b.due ? -1 : a.due > b.due ? 1 : 0));
     const closed = done.concat(cv.filter((r) => !r.todo)).sort((a, b) => (String(a.doneAt || a.key) < String(b.doneAt || b.key) ? 1 : -1));
-    const [from, to] = M.per ? perRange(M.per) : ['', '9999'];
-    return open.concat(closed).filter((r) => {
-      if (M.type && r.type !== M.type) return false;
-      const pj = r.proj && P().byCode(r.proj), o = r.c ? objRec(r.c) || {} : {};
-      return r.key >= from && r.key <= to && (!M.kw || n(`${r.cv ? r.cv.code : o.code || ''} ${r.proj || ''} ${(pj || {}).name || ''} ${r.title} ${r.step}`).includes(n(M.kw)));
-    });
+    return open.concat(closed);
   }
-  /* Số việc chưa xử lý của người dùng: việc quy trình đang chờ + việc cá nhân chưa xong mình thực hiện (số đỏ của menu Việc của tôi). */
+  /* Số việc chưa xử lý của người dùng (số đỏ của menu Việc của tôi). */
   const openTotal = (id) => pending(id) + (window.SxCv ? window.SxCv.openMine(id) : 0);
+  /* Ô chỉ số (lọc nhanh). Sắp đến hạn: chưa xong, còn ≤ 2 ngày. */
+  const soonOf = (r) => r.todo && !r.over && Math.round((Date.parse(r.due + 'T00:00:00') - Date.parse(D.sxToday + 'T00:00:00')) / DAY_MS) <= 2;
+  const TILES = [['all', 'Tổng số', 'Mọi việc được giao cho tôi'], ['open', 'Chưa xử lý', 'Chưa xong, gồm cả quá hạn'], ['done', 'Đã xử lý', 'Đã hoàn thành'],
+    ['over', 'Quá hạn', 'Chưa xong, đã qua hạn xử lý', 'bad'], ['soon', 'Sắp đến hạn', 'Còn ≤ 2 ngày tới hạn xử lý', 'warn']];
+  const tileOk = (t, r) => ({ all: true, open: r.todo, done: !r.todo, over: r.todo && r.over, soon: soonOf(r) })[t || 'all'];
+  const ST_GROUP = [['open', 'Chưa xử lý'], ['over', 'Quá hạn'], ['done', 'Đã xử lý']];
   const OPEN = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
   const iconBtn = (ic, label, attrs) => `<button type="button" class="vbtn icon ghost" title="${label}" aria-label="${label}" ${attrs}>${ic}</button>`;
   function actsOf(r) {
@@ -275,63 +275,88 @@
     return iconBtn(OPEN, 'Xem chi tiết công việc', `data-go="${r.go}"`) + (CV.canUpdate(x) ? iconBtn(I('reload'), 'Cập nhật tiến độ', `data-sxcv-upd="${esc(x.code)}"`) : '')
       + (CV.canEdit(x) ? iconBtn(I('edit'), 'Sửa', `data-go="${r.go}/edit"`) : '') + (CV.canDel(x) ? iconBtn(I('del'), 'Xoá', `data-sxcv-del="${esc(x.code)}"`) : '');
   }
-  function exportCsv(list) {
+  /* Ô của một dòng (việc cha hoặc công việc con). */
+  function cells(r, k, child) {
+    const pj = r.proj && P().byCode(r.proj);
+    const sub = r.cv ? (r.cv.cancel ? '' : `<div class="faint" style="margin-top:4px;font-size:12px">Hoàn thành ${r.cv.pct}%</div>`) : subsLine(r.sp);
+    const tip = r.cv ? 'Xem chi tiết công việc' : r.todo ? 'Mở màn hình xử lý' : 'Xem việc đã xử lý';
+    return `<td class="c"><div class="acts">${actsOf(r)}</div></td><td class="c">${badge(...r.st)}${sub}</td>
+      <td>${pj ? `<a class="link" data-go="sx/du-an/${encodeURIComponent(pj.code)}" title="Xem chi tiết dự án">${esc(pj.name)}</a>` : k.dash}</td>
+      <td${child ? ' style="padding-left:28px"' : ''}>${k.clamp(r.title)}${r.cv ? `<div class="faint">${esc(r.cv.code)}</div>` : ''}</td>
+      <td>${r.step ? (child ? k.clamp(r.step) : `<a class="link" data-go="${r.go}" title="${tip}">${k.clamp(r.step)}</a>`) : k.dash}</td><td>${r.stage ? k.clamp(r.stage) : k.dash}</td>
+      <td class="num${r.over ? ' due-over' : ''}">${esc(dmy(r.due))}</td><td class="num">${r.doneAt ? esc(dmy(r.doneAt)) : k.dash}</td>
+      <td class="c">${r.res ? badge(...r.res) : k.dash}</td><td class="r num ${r.delay ? 't-err' : ''}">${r.delay ? esc(r.delay) : k.dash}</td>`;
+  }
+  /* Dòng con: listPage chỉ dựng một <tr> cho mỗi việc cha — đóng dòng cha rồi mở các dòng con; STT con "#.j" được đánh lại thành "<STT cha>.j" sau khi dựng trang. */
+  const kidRows = (r, k) => r.kids.map((x, j) => `</tr><tr class="click sxv-sub ${x.todo ? 'sxv-todo' : 'sxv-done'}" data-go="${x.go}" data-code="${esc(x.code)}"><td class="ord">#.${j + 1}</td>${cells(x, k, true)}`).join('');
+  const kwText = (r) => `${r.cv ? r.cv.code : ''} ${r.title} ${r.step} ${((r.proj && P().byCode(r.proj)) || {}).name || ''} ${r.kids.map((x) => x.title).join(' ')}`;
+  function match(r, f, k) {
+    const [from, to] = f.per ? perRange(f.per) : ['', '9999'];
+    const grp = r.todo ? (r.over ? 'over' : 'open') : 'done';
+    return k.has(f.title, `${r.title} ${r.step}`) && (!f.proj || r.proj === f.proj) && k.inSet(f.st, grp) && (!f.stage || r.stage === f.stage)
+      && (!f.dueFrom || r.due >= f.dueFrom) && (!f.dueTo || r.due <= f.dueTo) && r.key >= from && r.key <= to;
+  }
+  const isoOfDmy = (s) => { const m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(String(s || '').trim()); return m ? `${m[3]}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}` : s || ''; };
+  function exportCsv() {
+    const k = K(), L = k.LST[LID], n = window.UI.norm;
+    const l = rows(pid()).filter((r) => tileOk(M.tile, r) && (!L ? true : !L.adv ? !L.kw || n(kwText(r)).includes(n(L.kw)) : match(r, L.f, k)));
     const q = (v) => `"${String(v == null ? '' : v).replace(/"/g, '""')}"`;
-    const head = ['STT', 'Loại', 'Trạng thái', 'Dự án', 'Tên công việc', 'Nội dung cần thực hiện', 'Giai đoạn', 'Hạn xử lý', 'Ngày xử lý', 'Hoàn thành (%)', 'Kết quả xử lý', 'Độ trễ'];
-    const lines = [['DANH SÁCH VIỆC CỦA TÔI'], [], head].concat(list.map((r, i) => [i + 1, typeTag[r.type][0], r.st[0], ((r.proj && P().byCode(r.proj)) || {}).name || '', r.title, r.step, r.stage,
-      dmy(r.due), r.doneAt ? dmy(r.doneAt) : '', r.cv ? r.cv.pct : r.sp ? r.sp.pct : '', r.res ? r.res[0] : '', r.delay]));
+    const line = (no, r) => [no, r.st[0], ((r.proj && P().byCode(r.proj)) || {}).name || '', r.title, r.step, r.stage, dmy(r.due), r.doneAt ? dmy(r.doneAt) : '', r.cv ? r.cv.pct : r.sp ? r.sp.pct : '', r.res ? r.res[0] : '', r.delay];
+    const body = l.flatMap((r, i) => [line(i + 1, r)].concat(r.kids.map((x, j) => line(`${i + 1}.${j + 1}`, x))));
+    const lines = [['DANH SÁCH VIỆC CỦA TÔI'], [], ['STT', 'Trạng thái', 'Dự án', 'Tên công việc', 'Nội dung cần thực hiện', 'Giai đoạn', 'Hạn xử lý', 'Ngày xử lý', 'Hoàn thành (%)', 'Kết quả xử lý', 'Độ trễ']].concat(body);
     const a = document.createElement('a');
-    a.href = URL.createObjectURL(new Blob(['﻿' + lines.map((l) => l.map(q).join(',')).join('\n')], { type: 'text/csv;charset=utf-8;' }));
+    a.href = URL.createObjectURL(new Blob(['﻿' + lines.map((x) => x.map(q).join(',')).join('\n')], { type: 'text/csv;charset=utf-8;' }));
     a.download = 'Danh sach viec cua toi.csv';
     a.click();
     toast('<b>Thành công</b><br>Xuất file thành công');
   }
   function tasks() {
-    // Theo: fe/repo-khcn-dtms-fe/src/app/features/my-tasks/my-tasks.component.html (như SCR-01 Việc của tôi của ĐTMS; đối tượng cha = dự án sản xuất)
-    const k = K(), id = pid(), list = rows(id), cnt = openTotal(id);
+    // Theo: fe/repo-khcn-dtms-fe/src/app/features/my-tasks/my-tasks.component.html (như SCR-01 Việc của tôi của ĐTMS); khuôn danh sách task-management (ô chỉ số, tìm kiếm nâng cao, phân trang)
+    const k = K(), id = pid(), all = rows(id), cnt = openTotal(id), cur = M.tile || 'all';
     const info = {
-      scr: 'SX-15', name: 'Việc của tôi (Quản lý sản xuất)', uc: 'CDS-BT-03COP COP2; SX-KS-K1 §3.1–3.3; SX-ULNL Quản lý công việc (Quản lý việc cá nhân)',
+      scr: 'SX-15', name: 'Việc của tôi (Quản lý sản xuất)', uc: 'CDS-BT-03COP COP2; SX-KS-K1 §3.1–3.3; SX-ULNL Quản lý công việc',
       notes: [
-        '<b>Gộp 26/11 (hoaidt10):</b> Việc của tôi và Việc cá nhân là <b>một</b> — menu Quản lý nhiệm vụ chỉ còn <b>Việc của tôi</b> (cùng Nhiệm vụ đơn vị). Một danh sách gồm: <b>việc theo quy trình</b> (user task Camunda), <b>công việc con</b> (chia từ việc quy trình) và <b>việc cá nhân</b> khác; cột <b>Loại</b> và bộ lọc Loại phân biệt. Bộ lọc <b>Phạm vi</b>: Việc của tôi (tôi thực hiện), Việc tôi giao (công việc con tôi chia cho người khác), Việc tôi theo dõi (PM dự án, lãnh đạo cấp cao theo dõi công việc con). Xuất Excel theo bộ lọc (BE xuất .xlsx; prototype tải .csv).',
-        '<b>Thao tác</b> (cột đầu): việc quy trình — mở màn Xử lý / Xem, <b>+ Chia công việc con</b>; việc cá nhân — xem chi tiết, <b>Cập nhật tiến độ</b>, Sửa, Xoá (người giao). Việc chưa xong lên trước (hạn gần nhất trước), việc đã xong sau (mới nhất trước).',
-        '<b>Trạng thái</b>: việc quy trình theo việc cụ thể của bước (Đang soạn hồ sơ, Chờ phê duyệt…; đỏ khi quá hạn; dưới có tiến độ công việc con) — GIẢ LẬP suy từ tên bước, thật: nhãn trạng thái cấu hình theo bước BPMN; việc cá nhân: Chưa thực hiện / Đang thực hiện (kèm %) / Quá hạn / Hoàn thành / Đã huỷ.',
-        '<b>Giai đoạn</b>: giai đoạn QT.VHT.TTSX.4A.1.1 của quy trình / hạng mục kế hoạch. <b>Độ trễ</b>: tính từ cuối ngày Hạn xử lý tới lúc xử lý (chưa xong: tới hiện tại), dưới 1 ngày ghi số giờ — GIẢ LẬP P-269. <b>Kết quả xử lý</b> (việc quy trình): Đồng ý / Bị từ chối.',
+        '<b>Góp ý 26/11 (hoaidt10):</b> mọi việc được giao cho tôi đều về <b>Việc của tôi</b>, không chia loại — việc theo quy trình (user task Camunda) và việc được giao trực tiếp (kể cả công việc con người khác chia cho tôi). Menu Quản lý nhiệm vụ chỉ còn Việc của tôi và Nhiệm vụ đơn vị; Việc cá nhân gộp vào đây.',
+        '<b>Công việc con</b> là các dòng con của đầu việc được chia: việc cha STT 2 → <b>2.1, 2.2…</b> (người thực hiện, tiến độ, hạn). Người được giao chia việc bằng icon <b>+</b> (cho người cùng đơn vị, hạn không sau hạn xử lý); còn công việc con chưa xong thì không gửi được việc (trừ trả lại / từ chối — công việc con chưa xong chuyển Đã huỷ). <b>Công việc con cuối cùng xong → hệ thống tự hoàn thành việc cha và chuyển bước</b> (Q-SX-01): bước nhiều kết quả áp kết quả chọn khi chia việc; trường bắt buộc còn trống điền tổng hợp công việc con / ngày hoàn thành. Không chia ở bước ký số; bộ chặn nghiệp vụ còn chặn → Chờ hoàn tất. PM dự án, lãnh đạo cấp cao theo dõi ở tiến trình hồ sơ.',
+        '<b>Ô chỉ số</b> (bấm để lọc nhanh, bấm lại để bỏ): Tổng số, Chưa xử lý, Đã xử lý, Quá hạn, Sắp đến hạn (còn ≤ 2 ngày). <b>Tìm kiếm nâng cao</b>: tên / nội dung công việc, dự án, trạng thái, giai đoạn, hạn xử lý từ – đến, chu kỳ (việc chưa xử lý xét hạn, việc đã xử lý xét ngày xử lý). Phân trang theo việc cha (công việc con đi kèm việc cha). Xuất Excel theo bộ lọc (BE .xlsx; prototype .csv).',
+        '<b>Thao tác</b> (cột đầu): việc quy trình — mở màn Xử lý / Xem, + Chia công việc con; việc giao trực tiếp — xem chi tiết, Cập nhật tiến độ, Sửa, Xoá (người giao). <b>Trạng thái</b> việc quy trình theo việc cụ thể của bước (GIẢ LẬP suy từ tên bước — thật: nhãn cấu hình theo bước BPMN). <b>Độ trễ</b>: từ cuối ngày hạn tới lúc xử lý (chưa xong: tới hiện tại) — GIẢ LẬP P-269.',
         'Việc quy trình sinh từ luồng nháp D.sxFlows (GIẢ LẬP P-238); người xử lý theo vai của bước (GIẢ LẬP P-244). Hạn xử lý = ngày nhận việc + định mức ngày của bước (ngày lịch, GIẢ LẬP).',
-        '<b>Chia công việc con</b>: người được giao việc quy trình chia thành nhiều công việc con cho người cùng đơn vị, hạn không sau hạn xử lý; còn công việc con chưa xong thì không gửi được (trừ trả lại / từ chối — công việc con chưa xong chuyển Đã huỷ). <b>Công việc con cuối cùng xong → hệ thống tự hoàn thành việc và chuyển bước</b> (Q-SX-01, chốt 26/11): bước nhiều kết quả áp kết quả chọn khi chia việc (chỉ nút đồng ý / đạt); trường bắt buộc còn trống điền tổng hợp công việc con (chữ) hoặc ngày hoàn thành (ngày). Không chia ở bước ký số; bộ chặn nghiệp vụ còn chặn → <b>Chờ hoàn tất</b>.',
       ],
-      q: ['P-238', 'P-244', 'P-269'], src: 'my-tasks/my-tasks.component · /my-tasks; task-management (việc cá nhân)',
+      q: ['P-238', 'P-244', 'P-269'], src: 'my-tasks/my-tasks.component · /my-tasks; task-management.component (ô chỉ số, tìm kiếm nâng cao, phân trang)',
     };
-    const cols = [['Thao tác', 130, 'c'], ['Trạng thái', 180, 'c'], ['Loại', 130, 'c'], ['Dự án', 200], ['Tên công việc', 240], ['Nội dung cần thực hiện', 260], ['Giai đoạn', 150],
-      ['Hạn xử lý', 110], ['Ngày xử lý', 150], ['Kết quả xử lý', 130, 'c'], ['Độ trễ', 90, 'r']];
-    const body = list.map((r, i) => {
-      const pj = r.proj && P().byCode(r.proj);
-      const projTd = pj ? `<a class="link" data-go="sx/du-an/${encodeURIComponent(pj.code)}" title="Xem chi tiết dự án">${esc(pj.name)}</a>` : k.dash;
-      const sub = r.cv ? (r.cv.cancel ? '' : `<div class="faint" style="margin-top:4px;font-size:12px">Hoàn thành ${r.cv.pct}%</div>`) : subsLine(r.sp);
-      const tip = r.cv ? 'Xem chi tiết công việc' : r.todo ? 'Mở màn hình xử lý' : 'Xem việc đã xử lý';
-      return `<tr class="click ${r.todo ? 'sxv-todo' : 'sxv-done'}" data-go="${r.go}"${r.cv ? ` data-code="${esc(r.cv.code)}"` : ''}><td class="ord">${i + 1}</td>
-        <td class="c"><div class="acts">${actsOf(r)}</div></td><td class="c">${badge(...r.st)}${sub}</td><td class="c">${badge(...typeTag[r.type])}</td><td>${projTd}</td>
-        <td>${k.clamp(r.title)}${r.cv ? `<div class="faint">${esc(r.cv.code)}</div>` : ''}</td><td>${r.step ? `<a class="link" data-go="${r.go}" title="${tip}">${k.clamp(r.step)}</a>` : k.dash}</td><td>${r.stage ? k.clamp(r.stage) : k.dash}</td>
-        <td class="num${r.over ? ' due-over' : ''}">${esc(dmy(r.due))}</td><td class="num">${r.doneAt ? esc(dmy(r.doneAt)) : k.dash}</td>
-        <td class="c">${r.res ? badge(...r.res) : k.dash}</td><td class="r num ${r.delay ? 't-err' : ''}">${r.delay ? esc(r.delay) : k.dash}</td></tr>`;
-    }).join('');
-    const sel = (id2, value, opts, onChange, o) => window.UI.vSelect(Object.assign({ id: id2, value, searchable: false, options: opts.map(([v, label]) => ({ value: v, label })), onChange }, o || {}));
-    const perSel = sel('sxv-per', M.per, PER, (v) => { M.per = v || null; rerender(); }, { clear: true, placeholder: 'Tất cả' });
-    const typeSel = sel('sxv-type', M.type, TYPE, (v) => { M.type = v || null; rerender(); }, { clear: true, placeholder: 'Tất cả' });
-    const scopeSel = sel('sxv-scope', M.scope, SCOPE, (v) => { M.scope = v || 'mine'; rerender(); });
-    const fld = (label, w, ctl) => `<div class="vfield" style="width:${w}px"><div class="lr"><label>${label}</label></div>${ctl}</div>`;
-    return `<div class="pg" data-sx-tasks>
-      ${head({ title: 'Việc của tôi', lg: true, info, right: `<button type="button" class="vbtn secondary" data-sxv-export>${window.UI.icon('excel')} Xuất Excel</button>` })}
-      ${window.SxCv ? window.SxCv.remindBar() : ''}
-      <div class="vcard pad24">
-        <div class="pg-head"><h2 class="blk-t sm">Danh sách việc của tôi${cnt ? ` <span class="tag red">${cnt} chưa xử lý</span>` : ''}</h2><div class="r sxv-flt">
-          ${fld('Phạm vi', 180, scopeSel)}${fld('Loại', 190, typeSel)}${fld('Chu kỳ', 150, perSel)}
-          <label class="vsearch" style="width:300px">${window.UI.icon('search')}<input id="sxv-kw" maxlength="255" placeholder="Tìm kiếm theo tên dự án, công việc, nội dung..." value="${esc(M.kw)}"></label></div></div>
-        <div class="vtable-vp"><table class="vtable"><thead><tr><th class="ord">STT</th>${cols.map(([h, w, a]) => `<th class="${a || ''}" style="width:${w}px;min-width:${w}px">${h}</th>`).join('')}</tr></thead>
-          <tbody>${body || `<tr><td class="vtable-empty" colspan="${cols.length + 1}"><img src="assets/empty-table.svg" alt="">${!M.kw && !M.per && !M.type ? 'Bạn không có công việc nào.' : 'Không có dữ liệu.'}</td></tr>`}</tbody></table></div>
-      </div></div>`;
+    const tiles = `<div class="rp-tiles tq-metrics" data-sxv-tiles style="grid-template-columns:repeat(5,minmax(0,1fr));margin-bottom:16px">${TILES.map(([t, l, d, c]) => `<button type="button" class="ov-tile rp-tile tq-m ${cur === t ? 'on' : ''}" data-sxv-tile="${t}" aria-pressed="${cur === t}">
+      <span class="ov-tx"><span class="t">${esc(l)}</span><span class="d">${esc(d)}</span></span><span class="ov-n"><span class="n num ${c || ''}">${all.filter((r) => tileOk(t, r)).length}</span></span></button>`).join('')}</div>`;
+    const projects = [...new Set(all.map((r) => r.proj).filter(Boolean))].map((c) => ({ value: c, label: ((P().byCode(c)) || {}).name || c }));
+    const stages = [...new Set(all.map((r) => r.stage).filter(Boolean))].sort().map((s) => ({ value: s, label: s }));
+    const html = k.listPage({
+      id: LID, title: 'Việc của tôi', ph: 'Tìm kiếm theo tên dự án, công việc, nội dung...', info,
+      right: `<button type="button" class="vbtn secondary" data-sxv-export>${window.UI.icon('excel')} Xuất Excel</button>`,
+      top: `${window.SxCv ? window.SxCv.remindBar() : ''}<div data-sx-tasks-top>${tiles}</div>`,
+      rows: () => all.filter((r) => tileOk(M.tile, r)), kwText,
+      empty: () => ({ title: '', proj: null, st: [], stage: null, dueFrom: '', dueTo: '', per: null }),
+      match: (r, f) => match(Object.assign({}, r), Object.assign({}, f, { dueFrom: isoOfDmy(f.dueFrom), dueTo: isoOfDmy(f.dueTo) }), k),
+      adv: (txt, sel, range) => `${txt('title', 'Tên, nội dung công việc')}${sel('proj', 'Dự án', { options: projects })}
+        ${sel('st', 'Trạng thái', { multi: true, searchable: false, options: ST_GROUP.map(([value, label]) => ({ value, label })) })}
+        ${sel('stage', 'Giai đoạn', { searchable: false, options: stages })}${range('dueFrom', 'dueTo', 'Hạn xử lý')}
+        ${sel('per', 'Chu kỳ', { searchable: false, options: PER.map(([value, label]) => ({ value, label })) })}`,
+      cols: [['Thao tác', 130, 'c'], ['Trạng thái', 180, 'c'], ['Dự án', 200], ['Tên công việc', 260], ['Nội dung cần thực hiện', 260], ['Giai đoạn', 150],
+        ['Hạn xử lý', 110], ['Ngày xử lý', 150], ['Kết quả xử lý', 130, 'c'], ['Độ trễ', 90, 'r']],
+      href: (r) => r.go,
+      cell: (r) => cells(r, k, false) + kidRows(r, k),
+    });
+    /* Đánh lại STT dòng con theo STT việc cha. Dòng việc cha: thêm lớp sxv-todo / sxv-done như dòng con (listPage chỉ gắn lớp click). */
+    let no = '';
+    const byCode = new Map(all.map((r) => [esc(String(r.code)), r]));
+    const out = html.replace(/<td class="ord">(#\.(\d+)|\d+)<\/td>/g, (m, a, j) => (j ? `<td class="ord">${no}.${j}</td>` : ((no = a), m)))
+      .replace(/<tr class="click" data-go="([^"]*)" data-code="([^"]*)">/g, (m, go, code) => { const r = byCode.get(code); return r ? m.replace('class="click"', `class="click ${r.todo ? 'sxv-todo' : 'sxv-done'}"`) : m; });
+    return `<div data-sx-tasks data-open="${cnt}">${out}</div>`;
   }
-  document.addEventListener('click', (e) => { if (e.target.closest && e.target.closest('[data-sxv-export]')) exportCsv(rows(pid())); });
-  document.addEventListener('keydown', (e) => { if (e.key === 'Enter' && e.target.id === 'sxv-kw') { M.kw = e.target.value.trim(); rerender(); } });
+  document.addEventListener('click', (e) => {
+    const t = e.target.closest && e.target.closest('[data-sxv-tile],[data-sxv-export]');
+    if (!t) return;
+    if (t.dataset.sxvTile) { const v = t.dataset.sxvTile; M.tile = M.tile === v || v === 'all' ? null : v; const L = K().LST[LID]; if (L) L.page = 1; rerender(); return; }
+    exportCsv();
+  });
 
   /* ---------- SX-05 Xử lý việc: Chi tiết dự án + thanh trạng thái, nút theo cấu hình bước ---------- */
   function task(code, tokId, viewIdx) {

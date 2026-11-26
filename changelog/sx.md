@@ -3,6 +3,12 @@
 > Mỗi PR một mục, mới nhất trên cùng: `## YYYY-MM-DD — <việc> (#PR)` + 2–5 gạch đầu dòng (màn, thay đổi, nguồn, điểm treo mới).
 > Lịch sử trước T77: [lich-su-chung.md](lich-su-chung.md).
 
+## 2026-11-26 · Việc của tôi: không phân loại, công việc con là dòng n.1 / n.2, ô chỉ số, tìm kiếm nâng cao, phân trang
+- Mọi việc được giao cho tôi (việc quy trình, việc giao trực tiếp) về một danh sách, **bỏ cột / lọc Loại và Phạm vi** (`js/sx-flow.js`).
+- **Công việc con** hiện ngay dưới đầu việc được chia: việc cha STT 2 → **2.1, 2.2…** (người thực hiện, tiến độ, hạn); không lặp lại ở cấp việc cha. Lịch sử xử lý ghi mã việc (`tok`) để việc đã xử lý vẫn kèm công việc con.
+- Dùng khuôn danh sách chung: **ô chỉ số** (Tổng số, Chưa xử lý, Đã xử lý, Quá hạn, Sắp đến hạn — bấm lọc nhanh), **tìm kiếm nâng cao** (tên / nội dung, dự án, trạng thái, giai đoạn, hạn xử lý từ – đến, chu kỳ), **phân trang** theo việc cha, Xuất Excel (STT n / n.j).
+- PM dự án, lãnh đạo cấp cao theo dõi công việc con ở tiến trình hồ sơ và chi tiết công việc con. `e2e/sx-cong-viec-con.spec.mjs` cập nhật (5 ca xanh).
+
 ## 2026-11-26 · Gộp Việc cá nhân vào Việc của tôi (một màn, một danh sách)
 - Menu Quản lý nhiệm vụ: **Việc của tôi** (số = việc quy trình chờ xử lý + việc cá nhân chưa xong của tôi) thay cho Việc cá nhân; `#/sx/cong-viec/ca-nhan` chuyển về `#/sx/viec-cua-toi` (`js/sx-data.js`, `js/sx.js`, `js/sx-cong-viec.js`).
 - Màn Việc của tôi (`js/sx-flow.js`): một danh sách gồm việc theo quy trình (Camunda), công việc con, việc cá nhân — cột **Loại**; lọc **Phạm vi** (Việc của tôi / Việc tôi giao / Việc tôi theo dõi — PM dự án, lãnh đạo cấp cao theo dõi công việc con), **Loại**, Chu kỳ, từ khoá; **Xuất Excel**. Cột Thao tác đầu bảng: mở Xử lý / Xem, + Chia công việc con, Cập nhật tiến độ, Sửa, Xoá.
