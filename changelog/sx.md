@@ -3,6 +3,12 @@
 > Mỗi PR một mục, mới nhất trên cùng: `## YYYY-MM-DD — <việc> (#PR)` + 2–5 gạch đầu dòng (màn, thay đổi, nguồn, điểm treo mới).
 > Lịch sử trước T77: [lich-su-chung.md](lich-su-chung.md).
 
+## 2026-11-26 · Gộp Việc cá nhân vào Việc của tôi (một màn, một danh sách)
+- Menu Quản lý nhiệm vụ: **Việc của tôi** (số = việc quy trình chờ xử lý + việc cá nhân chưa xong của tôi) thay cho Việc cá nhân; `#/sx/cong-viec/ca-nhan` chuyển về `#/sx/viec-cua-toi` (`js/sx-data.js`, `js/sx.js`, `js/sx-cong-viec.js`).
+- Màn Việc của tôi (`js/sx-flow.js`): một danh sách gồm việc theo quy trình (Camunda), công việc con, việc cá nhân — cột **Loại**; lọc **Phạm vi** (Việc của tôi / Việc tôi giao / Việc tôi theo dõi — PM dự án, lãnh đạo cấp cao theo dõi công việc con), **Loại**, Chu kỳ, từ khoá; **Xuất Excel**. Cột Thao tác đầu bảng: mở Xử lý / Xem, + Chia công việc con, Cập nhật tiến độ, Sửa, Xoá.
+- Bỏ khối "Việc theo quy trình chờ xử lý" vừa thêm ở Việc cá nhân; màn Xử lý, chi tiết công việc quay về Việc của tôi.
+- `e2e/sx-cong-viec-con.spec.mjs` cập nhật (5 ca xanh).
+
 ## 2026-11-26 · Việc cá nhân: khối Việc theo quy trình chờ xử lý (nơi chia công việc con)
 - Menu không còn Việc của tôi (bỏ 18/11) → màn **Việc cá nhân** có khối *Việc theo quy trình chờ xử lý* ở đầu: việc Camunda của người dùng, cột Thao tác đầu bảng (mở màn Xử lý, **+** Chia công việc con), tiến độ công việc con dưới trạng thái (`js/sx-flow.js` flowCard, `js/sx-cong-viec.js`).
 - Màn Xử lý: nút quay lại và xử lý xong về Việc cá nhân; sidebar sáng Việc cá nhân khi ở màn Xử lý / Việc của tôi (mở từ chuông) (`js/sx.js`).

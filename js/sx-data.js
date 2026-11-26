@@ -35,7 +35,8 @@
     /* T74 #94 / #96 (Q1): Việc của tôi thành mục con (giữ số việc) của nhóm Quản lý nhiệm vụ, cùng Nhiệm vụ đơn vị và Việc cá nhân — như KHCN. */
     { label: 'Quản lý nhiệm vụ', icon: 'menu_square', open: true, children: [
       { label: 'Nhiệm vụ đơn vị', path: 'sx/cong-viec/don-vi', scr: 'SX-16' },
-      { label: 'Việc cá nhân', path: 'sx/cong-viec/ca-nhan', scr: 'SX-16', badge: () => (window.SxCv ? window.SxCv.openCount('CN') : 0) }] },
+      /* Gộp 26/11 (hoaidt10): Việc cá nhân và Việc của tôi là một — chỉ còn mục Việc của tôi (việc quy trình + công việc con + việc cá nhân); số = việc chưa xử lý. */
+      { label: 'Việc của tôi', path: 'sx/viec-cua-toi', scr: 'SX-15', badge: () => (window.SxFlow ? window.SxFlow.openTotal(window.Flow.state.persona) : 0) }] },
     /* COP2 B1 (CDS-BT-03COP tr. 84–85): Nhiệm vụ → Phương án sản xuất kinh doanh (hoàn thiện đầu vào, phê duyệt) → Dự án — sx-pasxkd.js. */
     { label: 'Phương án sản xuất kinh doanh', icon: 'menu_square', path: 'sx/pasxkd', scr: 'SX-22', badge: () => (window.SxPa ? window.SxPa.myCount() : 0) },
     { label: 'Dự án sản xuất', icon: 'view_list', path: 'sx/du-an', scr: 'SX-02', notes: soon('S1', 'SX-02…04') },

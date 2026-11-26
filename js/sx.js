@@ -14,8 +14,8 @@
 
   /* Mục đang chọn trên sidebar: route con (vd sx/du-an/<mã>) sáng mục cha gần nhất có trong menu. */
   function activePath(r) {
-    /* Màn xử lý việc (#/sx/viec/…), Việc của tôi (mở từ chuông): menu không còn Việc của tôi (18/11) → sáng mục Việc cá nhân (góp ý 26/11). */
-    if (r.startsWith('sx/viec/') || r === 'sx/viec-cua-toi') return 'sx/cong-viec/ca-nhan';
+    /* Màn xử lý việc (#/sx/viec/…) thuộc mục Việc của tôi (gộp 26/11: Việc của tôi = Việc cá nhân). */
+    if (r.startsWith('sx/viec/')) return 'sx/viec-cua-toi';
     /* T71 S9: chi tiết / thêm mới công việc sáng mục Việc cá nhân hoặc Nhiệm vụ đơn vị theo loại. */
     if (r.startsWith('sx/cong-viec/') && window.SxCv) { const a = window.SxCv.activePath(r); if (a) return a; }
     const parts = r.split('/');

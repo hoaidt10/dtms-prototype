@@ -8,7 +8,7 @@ test.describe.configure({ timeout: 120000 });
 const BA = /SCR-|SX-\d\d\b|UC-|task 0|Prototype|minh hoạ|GIẢ LẬP/;
 const as = async (page, pid, hash) => { await page.evaluate(([p, h]) => { Flow.setPersona(p); location.hash = h; App.render(); }, [pid, hash]); };
 const CASE = 'HSBT-BT-2026-002-01';
-const taskRow = (page) => page.locator('[data-sx-tasks] tbody tr.sxv-todo', { hasText: 'Triển khai theo loại' });
+const taskRow = (page) => page.locator('[data-sx-tasks] tbody tr.sxv-todo:has([data-sx-split])', { hasText: 'Triển khai theo loại' });
 /* Người thực hiện cập nhật 100% công việc con ở chi tiết việc cá nhân. */
 async function finish(page, pid, code) {
   await as(page, pid, '#/sx/cong-viec/' + code);
@@ -60,12 +60,14 @@ test('Chia công việc con (người cùng đơn vị); còn việc con thì kh
   await expect(page.locator('.toast').last()).toContainText('Còn 3 / 4 công việc con chưa hoàn thành');
   await expect(page.locator('.vmodal')).toHaveCount(0);
   // Người theo dõi: PM dự án và lãnh đạo cấp cao (Tổng Giám đốc) thấy công việc con; người ngoài (Sub PM) không thấy.
+  const watch = async (who) => { await as(page, who, '#/sx/viec-cua-toi'); await page.locator('[data-vsel="sxv-scope"]').click(); await page.locator('.vsel-panel [data-opt="theodoi"]').click(); };
   for (const who of ['sxpm', 'sxceo']) {
-    await as(page, who, '#/sx/cong-viec/ca-nhan');
-    await expect(page.locator('.vtable tbody tr', { hasText: 'CV-SX-2026-008' })).toContainText('Triển khai theo loại');
+    await watch(who);
+    await expect(page.locator('[data-sx-tasks] tbody tr', { hasText: 'CV-SX-2026-008' })).toContainText('Triển khai theo loại');
   }
-  await as(page, 'sxsub', '#/sx/cong-viec/ca-nhan');
-  await expect(page.locator('.vtable tbody tr', { hasText: 'CV-SX-2026-008' })).toHaveCount(0);
+  await watch('sxsub');
+  await expect(page.locator('[data-sx-tasks] tbody tr', { hasText: 'CV-SX-2026-008' })).toHaveCount(0);
+  await page.locator('[data-vsel="sxv-scope"]').click(); await page.locator('.vsel-panel [data-opt="mine"]').click();
   // Hoàn thành mọi công việc con → việc cha tự hoàn thành (Kết quả triển khai bắt buộc điền tổng hợp công việc con), chuyển bước 6.
   await finish(page, 'sxrdck', 'CV-SX-2026-007');
   await finish(page, 'sxrddk', 'CV-SX-2026-008');
@@ -83,26 +85,41 @@ test('Chia công việc con (người cùng đơn vị); còn việc con thì kh
   expect(await page.locator('main').innerText()).not.toMatch(BA);
 });
 
-test('Việc cá nhân: khối Việc theo quy trình chờ xử lý — mở màn Xử lý, Chia công việc con; menu sáng Việc cá nhân', async ({ page }) => {
-  await fresh(page, '#/sx/cong-viec/ca-nhan');
-  await as(page, 'sxrd', '#/sx/cong-viec/ca-nhan');
-  const card = page.locator('[data-sx-flowcard]');
-  await expect(card).toContainText('Việc theo quy trình chờ xử lý');
-  const r = card.locator('tbody tr', { hasText: 'Triển khai theo loại' });
-  await expect(r).toContainText('Công việc con 1/3 · 53%');
-  await r.locator('[data-sx-split]').click();
-  await expect(page.locator('[data-sxcv-split]')).toContainText('Công việc con đã chia (3)');
-  await page.locator('.vmodal [data-close]').first().click();
-  // Công việc con đã chia hiện trong danh sách việc cá nhân bên dưới (người giao = sxrd).
-  await expect(page.locator('.vtable tbody tr', { hasText: 'CV-SX-2026-007' })).toContainText('Triển khai theo loại');
-  await r.locator('a.link', { hasText: 'Triển khai theo loại' }).click();
-  await expect(page.locator('[data-sx-subs]')).toBeVisible();
-  await expect(page.locator('.sb-nav .nav.active').first()).toContainText('Việc cá nhân');
-  await page.locator('.pg-head [data-back], .pg [data-go="sx/cong-viec/ca-nhan"]').first().click();
-  await expect(page).toHaveURL(/#\/sx\/cong-viec\/ca-nhan$/);
-  // Nhiệm vụ đơn vị không có khối này.
-  await as(page, 'sxpm', '#/sx/cong-viec/don-vi');
-  await expect(page.locator('[data-sx-flowcard]')).toHaveCount(0);
+test('Việc của tôi = Việc cá nhân: một danh sách (quy trình, công việc con, việc cá nhân), lọc Loại / Phạm vi, cập nhật tiến độ, menu', async ({ page }) => {
+  await fresh(page, '#/sx/viec-cua-toi');
+  await as(page, 'sxrd', '#/sx/viec-cua-toi');
+  // Menu Quản lý nhiệm vụ: Việc của tôi (có số), không còn Việc cá nhân.
+  await expect(page.locator('.sb-nav .nav.active').first()).toContainText('Việc của tôi');
+  await expect(page.locator('.sb-nav', { hasText: 'Việc cá nhân' })).toHaveCount(0);
+  const list = page.locator('[data-sx-tasks] tbody');
+  await expect(taskRow(page)).toContainText('Quy trình');
+  await expect(list.locator('tr', { hasText: 'CV-SX-2026-005' })).toContainText('Việc cá nhân'); // việc cá nhân của sxrd
+  await expect(list.locator('tr', { hasText: 'CV-SX-2026-006' })).toContainText('Công việc con');
+  // Phạm vi Việc tôi giao: công việc con sxrd chia cho người khác; không có việc quy trình, việc của chính mình.
+  await page.locator('[data-vsel="sxv-scope"]').click(); await page.locator('.vsel-panel [data-opt="giao"]').click();
+  await expect(list.locator('tr', { hasText: 'CV-SX-2026-007' })).toHaveCount(1);
+  await expect(list.locator('tr', { hasText: 'CV-SX-2026-005' })).toHaveCount(0);
+  await expect(list.locator('tr', { hasText: 'Quy trình' })).toHaveCount(0);
+  await page.locator('[data-vsel="sxv-scope"]').click(); await page.locator('.vsel-panel [data-opt="mine"]').click();
+  // Lọc Loại: chỉ việc cá nhân; chỉ việc quy trình; bỏ lọc.
+  await page.locator('[data-vsel="sxv-type"]').click(); await page.locator('.vsel-panel [data-opt="CN"]').click();
+  await expect(list.locator('tr')).toHaveCount(1);
+  await page.locator('[data-vsel="sxv-type"]').click(); await page.locator('.vsel-panel [data-opt="QT"]').click();
+  await expect(list.locator('tr', { hasText: 'CV-SX-' })).toHaveCount(0);
+  await page.locator('[data-vsel-clear="sxv-type"]').click();
+  await expect(list.locator('tr', { hasText: 'CV-SX-2026-005' })).toHaveCount(1);
+  // Cập nhật tiến độ ngay trong danh sách (người thực hiện).
+  await as(page, 'sxrdck', '#/sx/viec-cua-toi');
+  const r7 = page.locator('[data-sx-tasks] tbody tr', { hasText: 'CV-SX-2026-007' });
+  await expect(r7).toContainText('Hoàn thành 60%');
+  await r7.locator('[data-sxcv-upd]').click();
+  await expect(page).toHaveURL(/#\/sx\/viec-cua-toi$/); // không mở chi tiết
+  await page.locator('#cvu-pct').fill('80');
+  await page.locator('#cvu-ok').click();
+  await expect(r7).toContainText('Hoàn thành 80%');
+  // Link cũ Việc cá nhân chuyển về Việc của tôi.
+  await as(page, 'sxrdck', '#/sx/cong-viec/ca-nhan');
+  await expect(page.locator('[data-sx-tasks]')).toBeVisible();
   expect(page.errors).toEqual([]);
   expect(await page.locator('main').innerText()).not.toMatch(BA);
 });
@@ -111,7 +128,7 @@ test('Bước nhiều kết quả: chọn kết quả khi chia việc → xong h
   await fresh(page, '#/sx/viec-cua-toi');
   // Kỹ sư QA: việc Kiểm tra kết quả (Đạt / Không đạt) của BT-2026-003.
   await as(page, 'sxqa', '#/sx/viec-cua-toi');
-  const row = page.locator('[data-sx-tasks] tbody tr.sxv-todo', { hasText: 'Kiểm tra kết quả' }).first();
+  const row = page.locator('[data-sx-tasks] tbody tr.sxv-todo:has([data-sx-split])', { hasText: 'Kiểm tra kết quả' }).first();
   await row.locator('[data-sx-split]').click();
   expect(await page.locator('[data-sub-res] option').allTextContents()).toEqual(['Đạt (OK)']); // không có nút Không đạt
   const today = await page.evaluate(() => D.sxToday);
@@ -131,7 +148,7 @@ test('Trả lại / từ chối việc còn công việc con: xác nhận, công
   await fresh(page, '#/sx/viec-cua-toi');
   // Việc Tiếp nhận của PM (BT-2026-004, có nút Trả lại người lập) — chia 1 công việc con.
   await as(page, 'sxpm', '#/sx/viec-cua-toi');
-  const row = page.locator('[data-sx-tasks] tbody tr.sxv-todo', { hasText: 'Tiếp nhận' }).first();
+  const row = page.locator('[data-sx-tasks] tbody tr.sxv-todo:has([data-sx-split])', { hasText: 'Tiếp nhận' }).first();
   await row.locator('[data-sx-split]').click();
   const today = await page.evaluate(() => D.sxToday);
   await page.locator('[data-sub-row="0"] [data-f="title"]').fill('Xác minh CO lô 2 với nhà cung cấp');
@@ -143,7 +160,7 @@ test('Trả lại / từ chối việc còn công việc con: xác nhận, công
   await page.locator('#cf-ok').click();
   await page.locator('.vmodal [data-ef="blLyDoTra"]').fill('Bổ sung CO lô 2.');
   await page.locator('.vmodal #ok').click();
-  await expect(page).toHaveURL(/#\/sx\/cong-viec\/ca-nhan$/); // xử lý xong về Việc cá nhân
+  await expect(page).toHaveURL(/#\/sx\/viec-cua-toi$/); // xử lý xong về Việc của tôi
   const st = await page.evaluate(() => SxCv.all().filter((x) => x.src === 'UT' && x.title.startsWith('Xác minh CO')).map((x) => SxCv.stOf(x)[0]));
   expect(st).toEqual(['Đã huỷ']);
   expect(page.errors).toEqual([]);

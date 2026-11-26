@@ -35,6 +35,8 @@
   const unitOf = (id) => { const p = D.personas.find((x) => x.id === id); return p ? p.unit : ''; };
   const KIND = { CN: 'Việc cá nhân', DV: 'Nhiệm vụ đơn vị' };
   const LIST = { CN: 'ca-nhan', DV: 'don-vi' };
+  /* Gộp 26/11 (hoaidt10): Việc cá nhân và Việc của tôi là một — danh sách việc cá nhân nằm ở Việc của tôi (#/sx/viec-cua-toi, sx-flow.js); #/sx/cong-viec/ca-nhan chuyển về đó. */
+  const listHref = (kind) => (kind === 'DV' ? 'sx/cong-viec/don-vi' : 'sx/viec-cua-toi');
 
   /* Góp ý 26/11 (hoaidt10): bỏ công việc con nhiều cấp (parent) của nhiệm vụ đơn vị — % mỗi việc do người thực hiện tự cập nhật.
      Công việc con chỉ còn là việc cá nhân chia từ việc ở Việc của tôi (ut, xem "Công việc con của việc Camunda" bên dưới). Việc con bị huỷ (cancel) tính là đã đóng. */
@@ -168,7 +170,7 @@
     const curTbl = cur.length ? `<h4 class="ginfo-sub">Công việc con đã chia (${cur.length})</h4>${k.table([['Mã công việc', 150], ['Tên công việc', 280], ['Người thực hiện', 180], ['Hạn hoàn thành', 130], ['Hoàn thành', 100, 'r'], ['Trạng thái', 140, 'c']], cur,
       (x) => `<td>${esc(x.code)}</td><td>${k.clamp(x.title)}</td><td>${k.clamp(pName(x.owner))}</td><td class="num">${esc(dmy(x.due))}</td><td class="r num">${x.pct}%</td><td class="c">${badge(...stOf(x))}</td>`)}` : '';
     const m = vModal({ title: 'Chia công việc con', size: 'xl', body: `<div class="stack" data-sxcv-split>
-        <p class="cap">${esc(info.title)} · Hạn xử lý ${esc(dmy(info.due))}. Khi mọi công việc con hoàn thành, hệ thống tự hoàn thành việc này${info.choices ? ' với kết quả chọn dưới đây' : ` (${esc(info.label)})`} và chuyển bước tiếp theo. Công việc con giao cho người cùng đơn vị, hiện ở Việc cá nhân của người thực hiện.</p>
+        <p class="cap">${esc(info.title)} · Hạn xử lý ${esc(dmy(info.due))}. Khi mọi công việc con hoàn thành, hệ thống tự hoàn thành việc này${info.choices ? ' với kết quả chọn dưới đây' : ` (${esc(info.label)})`} và chuyển bước tiếp theo. Công việc con giao cho người cùng đơn vị, hiện ở Việc của tôi của người thực hiện.</p>
         ${res}${curTbl}<h4 class="ginfo-sub">Thêm công việc con</h4>
         <div class="vtable-vp"><table class="vtable"><thead><tr><th class="ord">STT</th>${th('Tên công việc <span class="req">*</span>', 260)}${th('Người thực hiện <span class="req">*</span>', 220)}${th('Hạn hoàn thành <span class="req">*</span>', 150)}${th('Mô tả', 200)}<th class="c" style="width:60px"></th></tr></thead>
           <tbody data-sub-body>${rows.map(row).join('')}</tbody></table></div>
@@ -223,7 +225,7 @@
     const txt = [over ? `${over} công việc quá hạn` : '', near ? `${near} công việc sắp đến hạn` : ''].filter(Boolean).join(', ');
     const kind = l.every((x) => x.kind === 'DV') ? 'DV' : 'CN';
     return `<div class="hd-alerts" data-sxcv-remind><div class="hd-alert ${over ? 'error' : 'warning'}">${icon('info')}<span>Bạn có ${txt}: ${esc(l.slice(0, 3).map((x) => x.title).join('; '))}${l.length > 3 ? '…' : ''}.
-      <a class="link" data-go="sx/cong-viec/${LIST[kind]}" data-sxcv-tile="${kind}|mine">Xem công việc</a></span></div></div>`;
+      <a class="link" data-go="${listHref(kind)}"${kind === 'DV' ? ' data-sxcv-tile="DV|mine"' : ''}>Xem công việc</a></span></div></div>`;
   }
 
   /* ---------- SX-16 Danh sách ---------- */
@@ -285,7 +287,7 @@
     return k.listPage({
       /* Góp ý 26/11: Việc cá nhân có khối Việc theo quy trình chờ xử lý (việc Camunda, nút Chia công việc con) ở đầu màn — sx-flow.js flowCard. */
       id: ID(kind), title: dv ? 'Danh sách nhiệm vụ đơn vị' : 'Danh sách việc cá nhân', ph: 'Tìm kiếm theo mã, tên công việc, dự án', info, right,
-      top: (!dv && window.SxFlow ? window.SxFlow.flowCard() : '') + `<div data-sxcv-list="${kind}">${tiles}</div>`,
+      top: `<div data-sxcv-list="${kind}">${tiles}</div>`,
       rows: () => rowsOf(kind), kwText,
       empty: () => ({ code: '', title: '', project: null, owner: null, st: [], prio: null, src: null }),
       match: (x, f) => match(x, f, k),
@@ -395,7 +397,7 @@
   function form(code) {
     // Theo: fe/repo-khcn-bpmn-fe/src/app/features/task-management/components/task-create/task-create.component.html (mode create / edit)
     const k = K(), v = F.v, err = F.err, x = code ? byCode(code) : null, kind = x ? x.kind : F.kind, dv = kind === 'DV';
-    const back = x ? href(x) : v.project && F.lock.plan ? `sx/du-an/${encodeURIComponent(v.project)}/ke-hoach` : `sx/cong-viec/${LIST[kind]}`;
+    const back = x ? href(x) : v.project && F.lock.plan ? `sx/du-an/${encodeURIComponent(v.project)}/ke-hoach` : listHref(kind);
     const title = `${x ? 'Chỉnh sửa' : 'Thêm mới'} ${dv ? 'nhiệm vụ đơn vị' : 'việc cá nhân'}`;
     if (x && !canEdit(x)) return `<div class="pg">${head({ title, back, lg: true })}${k.emptyCard('Thông tin chung', 'Công việc đã hoàn thành hoặc bạn không phải người giao việc.')}</div>`;
     if (!x && !canCreate(kind)) return `<div class="pg">${head({ title, back, lg: true })}${k.emptyCard('Thông tin chung', 'Bạn không có quyền giao nhiệm vụ đơn vị.')}</div>`;
@@ -468,8 +470,8 @@
   const tabKey = (code) => 'cv:' + code;
   function detail(code) {
     const k = K(), x = byCode(code);
-    if (!x || !canSee(x)) return `<div class="pg">${head({ title: 'Xem chi tiết công việc', back: 'sx/cong-viec/ca-nhan', lg: true })}${k.emptyCard('Thông tin chung', 'Không tìm thấy công việc hoặc bạn không có quyền xem.')}</div>`;
-    const dv = x.kind === 'DV', st = stOf(x), back = `sx/cong-viec/${LIST[x.kind]}`;
+    if (!x || !canSee(x)) return `<div class="pg">${head({ title: 'Xem chi tiết công việc', back: listHref('CN'), lg: true })}${k.emptyCard('Thông tin chung', 'Không tìm thấy công việc hoặc bạn không có quyền xem.')}</div>`;
+    const dv = x.kind === 'DV', st = stOf(x), back = listHref(x.kind);
     const info = {
       scr: 'SX-16', name: 'Chi tiết công việc', uc: 'SX-ULNL Quản lý công việc (Xem chi tiết; Phân rã nhiều cấp, Cập nhật tiến độ, Nhắc hạn của QL dự án)',
       notes: ['Khuôn task-create (mode detail) + app-tabs. Góp ý 26/11: bỏ tab Công việc con và nút Thêm công việc con (công việc con chỉ chia từ việc ở Việc của tôi).',
@@ -541,8 +543,15 @@
     toast('<b>Thành công</b><br>Xoá công việc thành công');
     rerender();
   }, true);
+  /* Cập nhật tiến độ: nút nằm trong dòng có data-go (Việc của tôi) — bắt ở pha capture để không mở chi tiết. */
   document.addEventListener('click', (e) => {
-    const t = e.target.closest && e.target.closest('[data-sxcv-tile],[data-sxcv-import],[data-sxcv-export],[data-sxcv-upd],[data-sxcv-plan]');
+    const u = e.target.closest && e.target.closest('[data-sxcv-upd]');
+    if (!u) return;
+    e.stopPropagation(); e.preventDefault();
+    updDlg(u.dataset.sxcvUpd);
+  }, true);
+  document.addEventListener('click', (e) => {
+    const t = e.target.closest && e.target.closest('[data-sxcv-tile],[data-sxcv-import],[data-sxcv-export],[data-sxcv-plan]');
     if (!t) return;
     if (t.dataset.sxcvTile) {
       const [kind, tile] = t.dataset.sxcvTile.split('|');
@@ -559,7 +568,6 @@
     }
     if (t.dataset.sxcvImport) { importDlg(t.dataset.sxcvImport); return; }
     if (t.dataset.sxcvExport) { exportList(t.dataset.sxcvExport); return; }
-    if (t.dataset.sxcvUpd) updDlg(t.dataset.sxcvUpd);
   });
   document.addEventListener('submit', (e) => {
     const f = e.target.closest && e.target.closest('[data-sxcv-form]');
@@ -570,7 +578,7 @@
   /* Router con: parts sau 'cong-viec'. */
   function route(parts) {
     const [a, b] = parts;
-    if (a === 'ca-nhan') return list('CN');
+    if (a === 'ca-nhan') return window.SxFlow.route(['viec-cua-toi']); // gộp 26/11: Việc cá nhân = Việc của tôi
     if (a === 'don-vi') return list('DV');
     if (a === 'create') return form(null);
     if (a && b === 'edit') return form(decodeURIComponent(a));
@@ -587,15 +595,21 @@
   /* Mục sidebar đang chọn cho route chi tiết / thêm mới: theo loại công việc. */
   function activePath(r) {
     const parts = r.split('/').slice(2);
-    if (parts[0] === 'ca-nhan' || parts[0] === 'don-vi') return null;
-    if (parts[0] === 'create') return `sx/cong-viec/${LIST[parts[1] === 'DV' ? 'DV' : 'CN']}`;
+    if (parts[0] === 'ca-nhan') return 'sx/viec-cua-toi';
+    if (parts[0] === 'don-vi') return null;
+    if (parts[0] === 'create') return listHref(parts[1] === 'DV' ? 'DV' : 'CN');
     const x = parts[0] && byCode(decodeURIComponent(parts[0]));
-    return `sx/cong-viec/${LIST[x ? x.kind : 'CN']}`;
+    return listHref(x ? x.kind : 'CN');
   }
   function reset() { U = blank(); persist(); Object.keys(TILE).forEach((k) => delete TILE[k]); }
 
-  /* Số việc chưa hoàn thành người đang đăng nhập xem được (số đỏ ở menu Việc cá nhân). */
+  /* Số việc chưa hoàn thành người đang đăng nhập xem được. */
   const openCount = (kind) => base(kind).filter((x) => !x.done).length;
+  /* Gộp 26/11: việc cá nhân trong màn Việc của tôi. Phạm vi: mine = tôi thực hiện; giao = tôi giao cho người khác (công việc con tôi chia);
+     theodoi = công việc con tôi theo dõi (PM dự án, lãnh đạo cấp cao — không phải người thực hiện / người giao). */
+  const myRows = (id, scope) => all().filter((x) => x.kind === 'CN' && (scope === 'giao' ? x.assigner === id && x.owner !== id
+    : scope === 'theodoi' ? !!x.ut && x.owner !== id && x.assigner !== id && canSee(x) : x.owner === id));
+  const openMine = (id) => myRows(id || pid(), 'mine').filter((x) => !x.done).length;
   /* PASXKD được lập dự án → gắn dự án vào nhiệm vụ (sx-du-an.js save). */
   function linkProject(code, project) {
     const own = U.created.find((y) => y.code === code);
@@ -603,5 +617,5 @@
     persist();
   }
   window.SxCv = { linkProject, openCount, route, enter, reset, all, byCode, activePath, planProgress, planCell, fromPlan, remindCount, remindBar, reminders, stOf,
-    subsOf, subsProgress, cancelSubs, splitDlg };
+    subsOf, subsProgress, cancelSubs, splitDlg, myRows, openMine, utText, canUpdate, canEdit, canDel };
 })();
