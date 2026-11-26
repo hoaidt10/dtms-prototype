@@ -3,6 +3,10 @@
 > Mỗi PR một mục, mới nhất trên cùng: `## YYYY-MM-DD — <việc> (#PR)` + 2–5 gạch đầu dòng (màn, thay đổi, nguồn, điểm treo mới).
 > Lịch sử trước T77: [lich-su-chung.md](lich-su-chung.md).
 
+## 2026-11-27 · Sửa lỗi dòng công việc con mở nhầm việc khác (trùng mã dữ liệu cũ)
+- Nguyên nhân: dữ liệu mẫu đổi ngày 26/11 (việc theo bước kế hoạch thành CV-SX-2026-006…009); việc con người dùng tạo trước đó trong trình duyệt được cấp CV-SX-2026-006 → trùng mã việc mẫu "Bảo đảm máy móc…" (3 công việc con), bấm dòng 2.1 mở nhầm việc mẫu.
+- Kho công việc có phiên bản dữ liệu (`VER = 3`, `js/sx-cong-viec.js`): dữ liệu cũ khác phiên bản được làm mới một lần; bản ghi người dùng trùng mã dữ liệu mẫu bị bỏ qua; mã mới cấp tiếp sau mã lớn nhất (CV-SX-2026-010…). e2e thêm ca trùng mã (11 ca xanh).
+
 ## 2026-11-27 · Việc của tôi: Hạng mục kế hoạch đầy đủ; công việc con 1 cấp cả với dữ liệu cũ
 - Cột Hạng mục kế hoạch: công việc con kế thừa dự án / hạng mục của việc cha (form Thêm công việc con khoá sẵn); việc quy trình theo luồng / bước (Phê duyệt kế hoạch → bước 1–3, mua sắm → Đề xuất mua sắm, chuyển giao → bước 5, bất thường / thay đổi kỹ thuật → bước 9, nghiệm thu → bước 12–14); tên hạng mục tra trên toàn bộ cây kế hoạch; dữ liệu mẫu CV-SX-2026-004 / 005 / 008 / 009 gắn hạng mục (`js/sx-cong-viec.js`, `js/sx-flow.js`, `js/sx-data.js`).
 - Dữ liệu cũ nhiều cấp (công việc con có việc con, tạo trước quy tắc 1 cấp) gom về việc gốc — hiện ở dòng n.j dưới việc gốc, không bị ẩn; chi tiết công việc con không có tab Công việc con.

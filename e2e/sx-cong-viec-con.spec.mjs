@@ -262,7 +262,7 @@ test('Góp ý 27/11: Hạng mục kế hoạch đầy đủ (công việc con th
   await expect(rowCode(page, 'HSBT-BT-2026-004-01').locator('td').nth(iPlan)).toContainText('9. Theo dõi sản lượng');
   await expect(rowCode(page, 'CV-SX-2026-001').locator('td').nth(iPar).locator('a')).toHaveCount(0);
   await page.evaluate(() => { const U = JSON.parse(localStorage.getItem('sx-proto-cv') || '{"created":[],"edit":{},"del":[],"log":{},"seq":{}}');
-    U.created.push({ code: 'CV-SX-2026-090', kind: 'CN', title: 'Việc cháu (dữ liệu cũ)', project: 'DA-SX-2026-002', plan: null, parent: 'CV-SX-2026-003', owner: 'sxpm', assigner: 'sxpm', start: '2026-11-10', due: '2026-11-25', prio: 'TB', remind: 2, pct: 0, src: 'TAY', created: '2026-11-10', log: [] });
+    U.ver = 3; U.created.push({ code: 'CV-SX-2026-090', kind: 'CN', title: 'Việc cháu (dữ liệu cũ)', project: 'DA-SX-2026-002', plan: null, parent: 'CV-SX-2026-003', owner: 'sxpm', assigner: 'sxpm', start: '2026-11-10', due: '2026-11-25', prio: 'TB', remind: 2, pct: 0, src: 'TAY', created: '2026-11-10', log: [] });
     localStorage.setItem('sx-proto-cv', JSON.stringify(U)); });
   await page.reload();
   await as(page, 'sxpm', '#/sx/viec-cua-toi');
@@ -270,5 +270,22 @@ test('Góp ý 27/11: Hạng mục kế hoạch đầy đủ (công việc con th
   await expect(rowCode(page, 'CV-SX-2026-090').locator('td.ord')).toHaveText(`${no}.4`);
   await as(page, 'sxpm', '#/sx/cong-viec/CV-SX-2026-003');
   expect(await page.locator('.tab').allInnerTexts()).toEqual(['Thông tin chung', 'Lịch sử cập nhật']);
+  expect(page.errors).toEqual([]);
+});
+
+test('Góp ý 27/11: dữ liệu cũ trùng mã việc mẫu được làm mới — dòng n.j mở đúng công việc con của dòng n', async ({ page }) => {
+  await fresh(page, '#/sx/viec-cua-toi');
+  // Dữ liệu cũ (chưa có phiên bản): việc con tạo trước đây mang mã CV-SX-2026-006, trùng việc mẫu có 3 công việc con.
+  await page.evaluate(() => localStorage.setItem('sx-proto-cv', JSON.stringify({ created: [{ code: 'CV-SX-2026-006', kind: 'CN', title: 'Việc con cũ trùng mã', project: 'DA-SX-2026-001', plan: null, parent: 'CV-SX-2026-004', owner: 'sxpm', assigner: 'sxpm', start: '2026-11-16', due: '2026-11-17', prio: 'TB', remind: 2, pct: 0, src: 'TAY', created: '2026-11-16', log: [] }], edit: {}, del: [], log: {}, seq: {} })));
+  await page.reload();
+  await as(page, 'sxpm', '#/sx/viec-cua-toi');
+  await expect(page.locator('.vtable tbody tr', { hasText: 'Việc con cũ trùng mã' })).toHaveCount(0);
+  const rows = await page.locator('.vtable tbody tr').evaluateAll((l) => l.map((r) => [r.querySelector('td.ord').textContent.trim(), r.dataset.code]));
+  const par = {};
+  for (const [no, code] of rows) {
+    if (!no.includes('.')) { par[no] = code; continue; }
+    const x = await page.evaluate((c) => { const y = SxCv.byCode(c); return [y.code, y.parent]; }, code);
+    expect(x, no).toEqual([code, par[no.split('.')[0]]]);
+  }
   expect(page.errors).toEqual([]);
 });

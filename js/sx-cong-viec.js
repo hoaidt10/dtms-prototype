@@ -24,15 +24,21 @@
 
   /* ---------- Kho công việc ---------- */
   const KEY = 'sx-proto-cv';
-  const blank = () => ({ created: [], edit: {}, del: [], log: {}, seq: { CN: 0, DV: 0 } });
+  /* VER: phiên bản dữ liệu công việc. Góp ý 27/11: dữ liệu mẫu đổi (việc theo bước kế hoạch thành CV-SX-2026-006…009, nhiệm vụ đơn vị NV-SX-2026-001…003 theo dự án) —
+     dữ liệu cũ trong trình duyệt có thể trùng mã (vd việc con tạo trước đó được cấp CV-SX-2026-006, nay trùng việc mẫu có 3 công việc con → bấm dòng 2.1 mở nhầm việc mẫu)
+     và còn công việc con nhiều cấp. Khác phiên bản → làm mới kho công việc (một lần mỗi trình duyệt). */
+  const VER = 3;
+  const blank = () => ({ ver: VER, created: [], edit: {}, del: [], log: {}, seq: { CN: 0, DV: 0 } });
   let U = blank();
-  try { U = Object.assign(U, JSON.parse(localStorage.getItem(KEY) || '{}')); } catch (e) { /* bỏ qua */ }
+  try { const s = JSON.parse(localStorage.getItem(KEY) || 'null'); if (s && s.ver === VER) U = Object.assign(U, s); else if (s) localStorage.setItem(KEY, JSON.stringify(U)); } catch (e) { /* bỏ qua */ }
+  /* Chặn trùng mã: bản ghi người dùng tạo trùng mã dữ liệu mẫu thì bỏ qua (không để một mã trỏ tới hai công việc). */
+  const SEED = new Set(D.sxWork.map((x) => x.code));
   /* Bộ đệm cây công việc trong một lượt xử lý (một lần render / một thao tác): cây được đọc rất nhiều lần (mỗi hạng mục kế hoạch, mỗi ô chỉ số), nhiệm vụ đơn vị
      còn tính tiến độ dự án — không đệm thì Tổng quan mất hàng chục giây. Ghi dữ liệu (persist) hoặc sang lượt sau thì xoá đệm. */
   const CACHE = { full: null, base: null, timer: null };
   const dropCache = () => { CACHE.full = null; CACHE.base = null; };
   const persist = () => { dropCache(); try { localStorage.setItem(KEY, JSON.stringify(U)); } catch (e) { /* bỏ qua */ } };
-  const raw = () => U.created.concat(D.sxWork).filter((x) => !U.del.includes(x.code))
+  const raw = () => U.created.filter((x) => !SEED.has(x.code)).concat(D.sxWork).filter((x) => !U.del.includes(x.code))
     .map((x) => Object.assign({}, x, U.edit[x.code] || {}, { log: (x.log || []).concat(U.log[x.code] || []) }));
   const pid = () => Flow.state.persona;
   const me = () => D.personas.find((x) => x.id === pid()) || {};
