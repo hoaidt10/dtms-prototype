@@ -30,7 +30,15 @@
   const VER = 3;
   const blank = () => ({ ver: VER, created: [], edit: {}, del: [], log: {}, seq: { CN: 0, DV: 0 } });
   let U = blank();
-  try { const s = JSON.parse(localStorage.getItem(KEY) || 'null'); if (s && s.ver === VER) U = Object.assign(U, s); else if (s) localStorage.setItem(KEY, JSON.stringify(U)); } catch (e) { /* bỏ qua */ }
+  try {
+    const s = JSON.parse(localStorage.getItem(KEY) || 'null');
+    if (s && s.ver === VER) U = Object.assign(U, s);
+    else if (s) {
+      localStorage.setItem(KEY, JSON.stringify(U));
+      /* Báo cho người dùng biết dữ liệu cũ đã được làm mới (một lần). */
+      setTimeout(() => toast(`<b>Đã làm mới dữ liệu công việc</b><br>Dữ liệu công việc cũ trên trình duyệt (phiên bản ${s.ver || 1}) không còn khớp nghiệp vụ mới, đã nạp lại dữ liệu mẫu phiên bản ${VER}.`), 1200);
+    }
+  } catch (e) { /* bỏ qua */ }
   /* Chặn trùng mã: bản ghi người dùng tạo trùng mã dữ liệu mẫu thì bỏ qua (không để một mã trỏ tới hai công việc). */
   const SEED = new Set(D.sxWork.map((x) => x.code));
   /* Bộ đệm cây công việc trong một lượt xử lý (một lần render / một thao tác): cây được đọc rất nhiều lần (mỗi hạng mục kế hoạch, mỗi ô chỉ số), nhiệm vụ đơn vị
