@@ -83,6 +83,30 @@ test('Chia công việc con (người cùng đơn vị); còn việc con thì kh
   expect(await page.locator('main').innerText()).not.toMatch(BA);
 });
 
+test('Việc cá nhân: khối Việc theo quy trình chờ xử lý — mở màn Xử lý, Chia công việc con; menu sáng Việc cá nhân', async ({ page }) => {
+  await fresh(page, '#/sx/cong-viec/ca-nhan');
+  await as(page, 'sxrd', '#/sx/cong-viec/ca-nhan');
+  const card = page.locator('[data-sx-flowcard]');
+  await expect(card).toContainText('Việc theo quy trình chờ xử lý');
+  const r = card.locator('tbody tr', { hasText: 'Triển khai theo loại' });
+  await expect(r).toContainText('Công việc con 1/3 · 53%');
+  await r.locator('[data-sx-split]').click();
+  await expect(page.locator('[data-sxcv-split]')).toContainText('Công việc con đã chia (3)');
+  await page.locator('.vmodal [data-close]').first().click();
+  // Công việc con đã chia hiện trong danh sách việc cá nhân bên dưới (người giao = sxrd).
+  await expect(page.locator('.vtable tbody tr', { hasText: 'CV-SX-2026-007' })).toContainText('Triển khai theo loại');
+  await r.locator('a.link', { hasText: 'Triển khai theo loại' }).click();
+  await expect(page.locator('[data-sx-subs]')).toBeVisible();
+  await expect(page.locator('.sb-nav .nav.active').first()).toContainText('Việc cá nhân');
+  await page.locator('.pg-head [data-back], .pg [data-go="sx/cong-viec/ca-nhan"]').first().click();
+  await expect(page).toHaveURL(/#\/sx\/cong-viec\/ca-nhan$/);
+  // Nhiệm vụ đơn vị không có khối này.
+  await as(page, 'sxpm', '#/sx/cong-viec/don-vi');
+  await expect(page.locator('[data-sx-flowcard]')).toHaveCount(0);
+  expect(page.errors).toEqual([]);
+  expect(await page.locator('main').innerText()).not.toMatch(BA);
+});
+
 test('Bước nhiều kết quả: chọn kết quả khi chia việc → xong hết công việc con thì tự áp kết quả đó', async ({ page }) => {
   await fresh(page, '#/sx/viec-cua-toi');
   // Kỹ sư QA: việc Kiểm tra kết quả (Đạt / Không đạt) của BT-2026-003.
@@ -119,7 +143,7 @@ test('Trả lại / từ chối việc còn công việc con: xác nhận, công
   await page.locator('#cf-ok').click();
   await page.locator('.vmodal [data-ef="blLyDoTra"]').fill('Bổ sung CO lô 2.');
   await page.locator('.vmodal #ok').click();
-  await expect(page).toHaveURL(/#\/sx\/viec-cua-toi$/);
+  await expect(page).toHaveURL(/#\/sx\/cong-viec\/ca-nhan$/); // xử lý xong về Việc cá nhân
   const st = await page.evaluate(() => SxCv.all().filter((x) => x.src === 'UT' && x.title.startsWith('Xác minh CO')).map((x) => SxCv.stOf(x)[0]));
   expect(st).toEqual(['Đã huỷ']);
   expect(page.errors).toEqual([]);

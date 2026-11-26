@@ -266,7 +266,8 @@
       scr: 'SX-16', name: dv ? 'Danh sách nhiệm vụ đơn vị' : 'Danh sách việc cá nhân', uc: 'SX-ULNL nhóm Quản lý công việc (Quản lý việc cá nhân, Quản lý nhiệm vụ đơn vị); SX-KS-K1 §3.1 bước 3 (kick-off giao nhiệm vụ PM / Sub PM)',
       notes: [
         dv ? '<b>Nhiệm vụ đơn vị</b>: việc giao cho một đơn vị (người đầu mối), thường gắn dự án và hạng mục kế hoạch. Kick-off (bước 5 luồng Phê duyệt kế hoạch) tự giao nhiệm vụ cho bước 4–8 của kế hoạch gốc; PM giao thêm bằng nút <b>Giao việc</b> ở tab Kế hoạch & mốc của dự án. Phạm vi xem: người thực hiện, người giao, cùng đơn vị với người đầu mối, PM dự án, Lãnh đạo Khối.'
-          : '<b>Việc cá nhân</b>: việc của một người, gồm <b>công việc con</b> được chia từ một việc ở Việc của tôi (cột Công việc cha = bước quy trình của việc đó). Người thực hiện và người giao thấy; công việc con thì PM dự án, Lãnh đạo Khối cũng theo dõi được.',
+          : '<b>Góp ý 26/11:</b> khối <b>Việc theo quy trình chờ xử lý</b> ở đầu màn = việc được giao từ quy trình BPMN (user task Camunda; menu không còn Việc của tôi): bấm dòng để mở màn Xử lý, icon <b>+</b> để Chia công việc con. Xử lý xong quay về màn này.',
+        ...(dv ? [] : ['<b>Việc cá nhân</b>: việc của một người, gồm <b>công việc con</b> được chia từ một việc ở Việc của tôi (cột Công việc cha = bước quy trình của việc đó). Người thực hiện và người giao thấy; công việc con thì PM dự án, lãnh đạo cấp cao (Ban Giám đốc Khối, Ban Tổng Giám đốc) cũng theo dõi được.']),
         ...(dv ? ['<b>T74 (comment #94 / #96):</b> mục con của nhóm <b>Quản lý nhiệm vụ</b>; cột như Quản lý nhiệm vụ KHCN — Nhiệm vụ (mã, tên), Chủ nhiệm · Đơn vị (người đầu mối, đơn vị), <b>Giai đoạn</b> (giai đoạn QT.VHT.TTSX.4A.1.1 của hạng mục kế hoạch gắn nhiệm vụ), Tiến độ (thanh %), Ngày nhận nhiệm vụ (ngày giao), Hạn xử lý, <b>Độ trễ (ngày)</b> = ngày hoàn thành (chưa xong: hôm nay) trừ hạn, không trễ để trống (GIẢ LẬP P-269).'] : []),
         '<b>Góp ý 26/11:</b> bỏ công việc con của nhiệm vụ đơn vị (nút Thêm công việc con, tab Công việc con, trường Công việc cha) — % nhiệm vụ do người đầu mối cập nhật. Công việc con chỉ còn ở <b>Việc của tôi › Chia công việc con</b> (việc Camunda): khi mọi công việc con hoàn thành thì việc cha hoàn thành. % hạng mục kế hoạch (trừ bước 9 đọc nhật ký sản lượng) lấy từ công việc gắn hạng mục.',
         'Ô chỉ số = lọc nhanh (bấm lại ô đang chọn hoặc Tổng số để bỏ lọc). Quá hạn: chưa xong, đã qua hạn. Sắp đến hạn: còn trong số ngày <b>Nhắc trước hạn</b> của việc (mặc định 2) — cũng hiện ở chuông và Việc của tôi của người thực hiện.',
@@ -282,7 +283,9 @@
       + (dv && canCreate(kind) ? `<button class="vbtn primary" data-go="sx/cong-viec/create/${kind}">${icon('add')} Thêm mới</button>` : '');
     const people = D.personas.filter((x) => x.sx).map((x) => ({ value: x.id, label: x.name }));
     return k.listPage({
-      id: ID(kind), title: dv ? 'Danh sách nhiệm vụ đơn vị' : 'Danh sách việc cá nhân', ph: 'Tìm kiếm theo mã, tên công việc, dự án', info, right, top: `<div data-sxcv-list="${kind}">${tiles}</div>`,
+      /* Góp ý 26/11: Việc cá nhân có khối Việc theo quy trình chờ xử lý (việc Camunda, nút Chia công việc con) ở đầu màn — sx-flow.js flowCard. */
+      id: ID(kind), title: dv ? 'Danh sách nhiệm vụ đơn vị' : 'Danh sách việc cá nhân', ph: 'Tìm kiếm theo mã, tên công việc, dự án', info, right,
+      top: (!dv && window.SxFlow ? window.SxFlow.flowCard() : '') + `<div data-sxcv-list="${kind}">${tiles}</div>`,
       rows: () => rowsOf(kind), kwText,
       empty: () => ({ code: '', title: '', project: null, owner: null, st: [], prio: null, src: null }),
       match: (x, f) => match(x, f, k),

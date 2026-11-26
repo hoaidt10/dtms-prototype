@@ -218,13 +218,16 @@
     if (k === 'QUY') { const q = Math.floor(t.getMonth() / 3) * 3; return [iso(new Date(t.getFullYear(), q, 1)), iso(new Date(t.getFullYear(), q + 3, 0))]; }
     return [`${t.getFullYear()}-01-01`, `${t.getFullYear()}-12-31`];
   }
-  function rows(id) {
-    const n = window.UI.norm;
-    const base = (c, step, since) => ({ c, step: stepOf(c.flow, step)[1], proj: projCode(c), stage: window.SxDuAn.stageName(FLOW_STAGE[c.flow]), due: addDays(since, (stepOf(c.flow, step)[3] || {}).nlv || 2) });
-    const todo = tokensFor(id).map(({ c, t }) => Object.assign(base(c, t.step, t.since), { todo: true, tok: t, sp: subs(c.code, t.id), over: late(c, t), go: `sx/viec/${encodeURIComponent(c.code)}/${t.id}`, doneAt: '', res: null }))
+  const base = (c, step, since) => ({ c, step: stepOf(c.flow, step)[1], proj: projCode(c), stage: window.SxDuAn.stageName(FLOW_STAGE[c.flow]), due: addDays(since, (stepOf(c.flow, step)[3] || {}).nlv || 2) });
+  /* Việc chưa xử lý của người dùng (user task Camunda đang mở), hạn gần nhất trước. */
+  const todoRows = (id) => tokensFor(id).map(({ c, t }) => Object.assign(base(c, t.step, t.since), { todo: true, tok: t, sp: subs(c.code, t.id), over: late(c, t), go: `sx/viec/${encodeURIComponent(c.code)}/${t.id}`, doneAt: '', res: null }))
       /* Góp ý 26/11: việc đã xong mọi công việc con nhưng chưa tự hoàn thành được → Chờ hoàn tất. */
       .map((r) => Object.assign(r, { st: r.tok.ready ? ['Chờ hoàn tất', 'warning'] : [stName(r.step), r.over ? 'error' : 'info'], key: r.due, delay: delayTxt(r.due, nowStamp()) }))
       .sort((a, b) => (a.due < b.due ? -1 : a.due > b.due ? 1 : 0));
+  const taskTitle = (r) => { const p = objRec(r.c) || {}, pj = r.proj && P().byCode(r.proj); return `${FL(r.c.flow).name}${r.proj && r.proj !== r.c.obj ? `: ${p.name || p.title || r.c.obj}` : pj ? '' : `: ${p.name || p.title || r.c.obj}`}`; };
+  function rows(id) {
+    const n = window.UI.norm;
+    const todo = todoRows(id);
     const done = S.cases.flatMap((c) => c.hist.map((h, i) => ({ h, i })).filter(({ h }) => h.step != null && h.who && !h.sys && (h.who === id || isAdmin(id)))
       .map(({ h, i }) => Object.assign(base(c, h.step, h.since || h.at), { todo: false, st: ['Đã xử lý', 'success'], doneAt: h.at, key: String(h.at).slice(0, 10), res: resultOf(c, h), go: `sx/viec/${encodeURIComponent(c.code)}/xem/${i}` }))
       .map((r) => Object.assign(r, { delay: delayTxt(r.due, r.doneAt) })))
@@ -234,6 +237,28 @@
       const p = objRec(r.c) || {}, pj = r.proj && P().byCode(r.proj);
       return r.key >= from && r.key <= to && (!M.kw || n(`${p.code} ${r.proj || ''} ${(pj || {}).name || ''} ${p.name || p.title || ''} ${r.step}`).includes(n(M.kw)));
     });
+  }
+  /* Góp ý 26/11 (hoaidt10): menu không còn Việc của tôi (bỏ từ 18/11) → việc theo quy trình đang chờ xử lý hiện ở đầu màn Việc cá nhân, có nút mở màn Xử lý
+     và nút Chia công việc con; công việc con đã chia nằm trong danh sách việc cá nhân bên dưới. Màn Xử lý quay lại / xử lý xong về Việc cá nhân (HOME). */
+  const HOME = 'sx/cong-viec/ca-nhan';
+  function flowCard() {
+    const k = K(), l = todoRows(pid());
+    /* Thao tác đứng đầu (như bảng việc cá nhân bên dưới) để nút Chia công việc con luôn thấy, không phải cuộn ngang. */
+    const cols = [['Thao tác', 100, 'c'], ['Trạng thái', 180, 'c'], ['Dự án', 200], ['Tên công việc', 240], ['Nội dung cần thực hiện', 280], ['Hạn xử lý', 110]];
+    const body = l.map((r, i) => {
+      const pj = r.proj && P().byCode(r.proj);
+      const split = canSplit(r.tok, r.c) ? `<button type="button" class="vbtn icon ghost" data-sx-split="${esc(r.c.code)}|${esc(r.tok.id)}" title="Chia công việc con" aria-label="Chia công việc con">${window.UI.icon('add')}</button>` : '';
+      return `<tr class="click sxv-todo" data-go="${r.go}"><td class="ord">${i + 1}</td>
+        <td class="c"><div class="acts"><button type="button" class="vbtn icon ghost" data-go="${r.go}" title="Mở màn hình xử lý" aria-label="Mở màn hình xử lý">${OPEN}</button>${split}</div></td>
+        <td class="c">${badge(...r.st)}${subsLine(r.sp)}</td>
+        <td>${pj ? `<a class="link" data-go="sx/du-an/${encodeURIComponent(pj.code)}" title="Xem chi tiết dự án">${esc(pj.name)}</a>` : k.dash}</td><td>${k.clamp(taskTitle(r))}</td>
+        <td><a class="link" data-go="${r.go}" title="Mở màn hình xử lý">${esc(r.step)}</a></td><td class="num${r.over ? ' due-over' : ''}">${esc(dmy(r.due))}</td></tr>`;
+    }).join('');
+    return `<div class="vcard pad24" data-sx-flowcard style="margin-bottom:16px">
+      <div class="pg-head"><h2 class="blk-t sm">Việc theo quy trình chờ xử lý${l.length ? ` <span class="tag red">${l.length}</span>` : ''}</h2></div>
+      <p class="cap" style="margin:0 0 12px">Việc được giao từ quy trình. Bấm <b>+</b> để chia việc thành các công việc con cho người cùng đơn vị; khi mọi công việc con hoàn thành, việc tự hoàn thành và chuyển bước tiếp theo.</p>
+      <div class="vtable-vp"><table class="vtable"><thead><tr><th class="ord">STT</th>${cols.map(([h, w, a]) => `<th class="${a || ''}" style="width:${w}px;min-width:${w}px">${h}</th>`).join('')}</tr></thead>
+        <tbody>${body || `<tr><td class="vtable-empty" colspan="${cols.length + 1}"><img src="assets/empty-table.svg" alt="">Bạn không có việc theo quy trình nào chờ xử lý.</td></tr>`}</tbody></table></div></div>`;
   }
   const OPEN = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
   function tasks() {
@@ -284,13 +309,13 @@
   function task(code, tokId, viewIdx) {
     const c = caseOf(code);
     const p = c && objRec(c), O = c && objOf(c);
-    const none = (msg) => `<div class="pg">${head({ title: 'Xử lý công việc', back: 'sx/viec-cua-toi', lg: true })}${K().emptyCard('Thông tin chung', msg)}</div>`;
+    const none = (msg) => `<div class="pg">${head({ title: 'Xử lý công việc', back: HOME, lg: true })}${K().emptyCard('Thông tin chung', msg)}</div>`;
     if (!c || !p) return none('Không tìm thấy công việc.');
     if (viewIdx != null) {
       const h = c.hist[Number(viewIdx)];
       if (!h || h.step == null) return none('Không tìm thấy công việc.');
       const bar = window.Screens.statusBar({ mode: 'view', step: `Bước ${h.step} · ${stepOf(c.flow, h.step)[1]}`, date: dmy(h.at) });
-      return O.detail(p.code, { title: O.viewTitle, back: 'sx/viec-cua-toi', bar, task: true });
+      return O.detail(p.code, { title: O.viewTitle, back: HOME, bar, task: true });
     }
     const t = c.tokens.find((x) => x.id === tokId);
     if (!t) return none('Công việc đã được xử lý hoặc không còn tồn tại.');
@@ -301,7 +326,7 @@
         : `<button type="button" class="vbtn primary" data-sx-do="-1">${esc(o.label || 'Hoàn thành')}</button>`);
     const bar = window.Screens.statusBar({ mode: 'process', step: `Bước ${st[0]} · ${st[1]}`, date: dmy(dueOf(c, t)), overdue: late(c, t), acts, who: t.who !== pid() ? pName(t.who) : '' })
       + subsCard(c, t);
-    return `<div data-sx-task="${esc(c.code)}" data-sx-tok="${esc(t.id)}">${O.detail(p.code, { title: 'Xử lý công việc', back: 'sx/viec-cua-toi', bar, task: true, tok: t })}</div>`;
+    return `<div data-sx-task="${esc(c.code)}" data-sx-tok="${esc(t.id)}">${O.detail(p.code, { title: 'Xử lý công việc', back: HOME, bar, task: true, tok: t })}</div>`;
   }
   /* Thẻ Công việc con dưới thanh trạng thái màn Xử lý: tiến độ chung + từng công việc con (người thực hiện, hạn, %, trạng thái). */
   function subsCard(c, t) {
@@ -373,7 +398,7 @@
     }
     complete(code, tokId, ch ? ci : -1, values, sign);
     toast('<b>Thành công</b><br>Xử lý công việc thành công!');
-    location.hash = '#/sx/viec-cua-toi';
+    location.hash = '#/' + HOME;
     rerender();
   }
   document.addEventListener('click', (e) => {
@@ -469,5 +494,5 @@
   }
   function reset() { S = seed(); persist(); }
 
-  window.SxFlow = { route, enter: enterRoute, GUARD, progress, start, complete, cases, caseOf, running, pending, overdue, delayTxt, tokensFor, planTab, canStartKh, reset, ACT, subsDone, unready, splitOpen, setAuto };
+  window.SxFlow = { route, enter: enterRoute, GUARD, progress, start, complete, cases, caseOf, running, pending, overdue, delayTxt, tokensFor, planTab, canStartKh, reset, ACT, subsDone, unready, splitOpen, setAuto, flowCard };
 })();

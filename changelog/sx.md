@@ -3,6 +3,11 @@
 > Mỗi PR một mục, mới nhất trên cùng: `## YYYY-MM-DD — <việc> (#PR)` + 2–5 gạch đầu dòng (màn, thay đổi, nguồn, điểm treo mới).
 > Lịch sử trước T77: [lich-su-chung.md](lich-su-chung.md).
 
+## 2026-11-26 · Việc cá nhân: khối Việc theo quy trình chờ xử lý (nơi chia công việc con)
+- Menu không còn Việc của tôi (bỏ 18/11) → màn **Việc cá nhân** có khối *Việc theo quy trình chờ xử lý* ở đầu: việc Camunda của người dùng, cột Thao tác đầu bảng (mở màn Xử lý, **+** Chia công việc con), tiến độ công việc con dưới trạng thái (`js/sx-flow.js` flowCard, `js/sx-cong-viec.js`).
+- Màn Xử lý: nút quay lại và xử lý xong về Việc cá nhân; sidebar sáng Việc cá nhân khi ở màn Xử lý / Việc của tôi (mở từ chuông) (`js/sx.js`).
+- `e2e/sx-cong-viec-con.spec.mjs` thêm ca Việc cá nhân (5 ca xanh).
+
 ## 2026-11-26 · Công việc con: chốt Q-SX-01 — luôn tự hoàn thành việc cha, chia cho người cùng đơn vị, PM + lãnh đạo cấp cao theo dõi
 - Công việc con cuối xong → hệ thống **luôn tự hoàn thành** việc cha và chuyển bước (`js/sx-flow.js`): bước nhiều kết quả áp kết quả người được giao chọn khi chia việc (ô *Kết quả khi hoàn thành hết công việc con*, chỉ nút đồng ý / đạt); trường bắt buộc còn trống điền tổng hợp công việc con (chữ) / ngày hoàn thành (ngày). Không chia việc ở bước ký số; ngoại lệ còn lại: bộ chặn nghiệp vụ của bước → Chờ hoàn tất.
 - Hộp thoại Chia công việc con, form sửa công việc con: người thực hiện chỉ trong **đơn vị của người được giao việc** (`js/sx-cong-viec.js`). Thêm 2 kỹ sư Trung tâm Nghiên cứu thiết kế — Khối 1 (Ngô Đức Anh, Trịnh Thu Trang) làm người thực hiện mẫu (`js/sx-data.js`).
