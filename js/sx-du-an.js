@@ -469,7 +469,8 @@
     };
     const tPlan = () => {
       const cols = [
-        { h: 'Hạng mục / mốc', w: 420, toggler: true, cell: (r) => (r.children ? `<b>${esc(r.name)}</b>` : esc(r.name)) + (r.adjPending ? ` ${badge('Chờ duyệt điều chỉnh', 'warning')}` : '') },
+        /* Góp ý 26/11 (hoaidt10): bỏ nhãn trạng thái (Chờ duyệt điều chỉnh) cạnh tên từng bước — trạng thái điều chỉnh xem ở tab Phê duyệt kế hoạch. */
+        { h: 'Hạng mục / mốc', w: 420, toggler: true, cell: (r) => (r.children ? `<b>${esc(r.name)}</b>` : esc(r.name)) },
         { h: 'Người / đơn vị phụ trách', w: 230, cell: (r) => k.clamp(r.who) },
         { h: 'Bắt đầu kế hoạch', w: 130, cell: (r) => `<span class="num">${esc(dmy(iso(r.s)))}</span>` },
         { h: 'Kết thúc kế hoạch', w: 130, cell: (r) => `<span class="num">${esc(dmy(iso(r.e)))}</span>` },

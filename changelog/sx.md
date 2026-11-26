@@ -3,6 +3,13 @@
 > Mỗi PR một mục, mới nhất trên cùng: `## YYYY-MM-DD — <việc> (#PR)` + 2–5 gạch đầu dòng (màn, thay đổi, nguồn, điểm treo mới).
 > Lịch sử trước T77: [lich-su-chung.md](lich-su-chung.md).
 
+## 2026-11-26 · Công việc con chia từ Việc của tôi; bỏ công việc con của nhiệm vụ đơn vị; bỏ nhãn trạng thái ở cây Kế hoạch
+- Chi tiết dự án › tab Kế hoạch (`js/sx-du-an.js`): bỏ nhãn trạng thái cạnh tên từng bước (Chờ duyệt điều chỉnh); cột Trạng thái giữ nguyên.
+- Nhiệm vụ đơn vị (`js/sx-cong-viec.js`): bỏ nút Thêm công việc con, tab Công việc con, trường Công việc cha, % tính từ việc con — % do người đầu mối cập nhật; dữ liệu mẫu bỏ liên kết cha–con của NV-SX-2026-001 (`js/sx-data.js`).
+- **Chia công việc con** (`js/sx-flow.js`, `js/sx-cong-viec.js`): việc ở Việc của tôi (user task Camunda) có icon / nút Chia công việc con → nhiều việc cá nhân giao cho mình hoặc người khác, hạn ≤ hạn xử lý. % việc cha = trung bình công việc con, hiện ở Việc của tôi, thẻ Công việc con của màn Xử lý, bảng tiến trình hồ sơ; PM dự án, Lãnh đạo Khối xem được công việc con ở Việc cá nhân.
+- Còn công việc con chưa xong thì không gửi được việc (trả lại / từ chối thì công việc con chưa xong chuyển Đã huỷ, có xác nhận). Công việc con cuối xong → tự hoàn thành việc cha khi bước không chọn kết quả, không ký số, đủ trường bắt buộc; còn lại chuyển **Chờ hoàn tất**. Mẫu: 3 công việc con của bước 5 phiếu BT-2026-002. Câu hỏi chờ chốt **Q-SX-01**.
+- Test mới `e2e/sx-cong-viec-con.spec.mjs` (4 ca xanh). Các spec cũ t71-sx-s2 / s6 / s9, t74-comment-qlsx đã đỏ 14 ca trước thay đổi này (lệch giao diện nhánh hoaidt10) — chưa sửa.
+
 ## 2026-11-25 · Phiếu bất thường: trường Quy trình
 - Form Thêm mới / Sửa phiếu bất thường (`js/eforms/sx-bt.js`, BM.QLBT.01): thêm trường **Quy trình** (bắt buộc, có tìm kiếm) đầu nhóm Thông tin bất thường.
 - Danh sách lấy từ menu **Quản lý quy trình** (`QuyTrinh.WORKFLOWS`, quy trình có phiên bản đang hoạt động); lưu vào phiếu (`proc`), hiện ở Thông tin phiếu của màn chi tiết (`js/sx-bat-thuong.js`).
