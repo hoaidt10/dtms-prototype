@@ -253,3 +253,22 @@ test('Góp ý 27/11: không sửa / xoá việc được giao (trừ công việ
   await expect(rowCode(page, 'NV-SX-2026-001').locator('[data-sxcv-upd]')).toHaveCount(0);
   expect(page.errors).toEqual([]);
 });
+
+test('Góp ý 27/11: Hạng mục kế hoạch đầy đủ (công việc con theo việc cha, việc quy trình theo bước); dữ liệu cũ nhiều cấp gom về 1 cấp; dòng con không link việc cha', async ({ page }) => {
+  await fresh(page, '#/sx/viec-cua-toi');
+  await as(page, 'sxpm', '#/sx/viec-cua-toi');
+  const heads = await page.locator('.vtable thead th').allInnerTexts(), iPlan = heads.indexOf('Hạng mục kế hoạch'), iPar = heads.indexOf('Công việc cha');
+  await expect(rowCode(page, 'CV-SX-2026-001').locator('td').nth(iPlan)).toContainText('7. Bảo đảm máy móc');
+  await expect(rowCode(page, 'HSBT-BT-2026-004-01').locator('td').nth(iPlan)).toContainText('9. Theo dõi sản lượng');
+  await expect(rowCode(page, 'CV-SX-2026-001').locator('td').nth(iPar).locator('a')).toHaveCount(0);
+  await page.evaluate(() => { const U = JSON.parse(localStorage.getItem('sx-proto-cv') || '{"created":[],"edit":{},"del":[],"log":{},"seq":{}}');
+    U.created.push({ code: 'CV-SX-2026-090', kind: 'CN', title: 'Việc cháu (dữ liệu cũ)', project: 'DA-SX-2026-002', plan: null, parent: 'CV-SX-2026-003', owner: 'sxpm', assigner: 'sxpm', start: '2026-11-10', due: '2026-11-25', prio: 'TB', remind: 2, pct: 0, src: 'TAY', created: '2026-11-10', log: [] });
+    localStorage.setItem('sx-proto-cv', JSON.stringify(U)); });
+  await page.reload();
+  await as(page, 'sxpm', '#/sx/viec-cua-toi');
+  const no = (await rowCode(page, 'CV-SX-2026-006').locator('td.ord').innerText()).trim();
+  await expect(rowCode(page, 'CV-SX-2026-090').locator('td.ord')).toHaveText(`${no}.4`);
+  await as(page, 'sxpm', '#/sx/cong-viec/CV-SX-2026-003');
+  expect(await page.locator('.tab').allInnerTexts()).toEqual(['Thông tin chung', 'Lịch sử cập nhật']);
+  expect(page.errors).toEqual([]);
+});

@@ -3,6 +3,11 @@
 > Mỗi PR một mục, mới nhất trên cùng: `## YYYY-MM-DD — <việc> (#PR)` + 2–5 gạch đầu dòng (màn, thay đổi, nguồn, điểm treo mới).
 > Lịch sử trước T77: [lich-su-chung.md](lich-su-chung.md).
 
+## 2026-11-27 · Việc của tôi: Hạng mục kế hoạch đầy đủ; công việc con 1 cấp cả với dữ liệu cũ
+- Cột Hạng mục kế hoạch: công việc con kế thừa dự án / hạng mục của việc cha (form Thêm công việc con khoá sẵn); việc quy trình theo luồng / bước (Phê duyệt kế hoạch → bước 1–3, mua sắm → Đề xuất mua sắm, chuyển giao → bước 5, bất thường / thay đổi kỹ thuật → bước 9, nghiệm thu → bước 12–14); tên hạng mục tra trên toàn bộ cây kế hoạch; dữ liệu mẫu CV-SX-2026-004 / 005 / 008 / 009 gắn hạng mục (`js/sx-cong-viec.js`, `js/sx-flow.js`, `js/sx-data.js`).
+- Dữ liệu cũ nhiều cấp (công việc con có việc con, tạo trước quy tắc 1 cấp) gom về việc gốc — hiện ở dòng n.j dưới việc gốc, không bị ẩn; chi tiết công việc con không có tab Công việc con.
+- Dòng công việc con: cột Công việc cha là chữ thường (việc cha ở ngay dòng trên) — tránh bấm nhầm sang việc cha. e2e thêm 1 ca (10 ca xanh).
+
 ## 2026-11-27 · Việc của tôi: quyền sửa / xoá, công việc con 1 cấp, STT n.j, Ngày hoàn thành; Nhiệm vụ đơn vị bỏ Giai đoạn
 - Việc của tôi (`js/sx-cong-viec.js`): không sửa / xoá công việc được giao; chỉ **Sửa / Xoá công việc con do mình chia, chưa cập nhật tiến độ** (màn sửa báo lý do nếu không được sửa). Nhiệm vụ đơn vị giữ quy tắc cũ.
 - **Công việc con chỉ 1 cấp**: công việc con không có Thêm công việc con, chi tiết không có tab Công việc con.

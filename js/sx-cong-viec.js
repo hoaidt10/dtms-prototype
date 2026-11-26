@@ -52,6 +52,9 @@
     if (CACHE[slot]) return CACHE[slot];
     if (!CACHE.timer) CACHE.timer = setTimeout(() => { CACHE.timer = null; dropCache(); }, 0);
     const l = raw(), by = new Map(l.map((x) => [x.code, x]));
+    /* Góp ý 27/11: công việc con chỉ 1 cấp — dữ liệu cũ nhiều cấp (tạo trước quy tắc) gom về việc gốc; công việc con kế thừa dự án, hạng mục kế hoạch của việc cha. */
+    const rootOf = (x) => { let r = x; const seen = new Set(); while (r.parent && by.get(r.parent) && !seen.has(r.code)) { seen.add(r.code); r = by.get(r.parent); } return r; };
+    l.forEach((x) => { if (x.parent && by.get(x.parent)) { const r = rootOf(x); if (r.code !== x.parent) x.parent = r.code; if (!x.plan) { x.plan = r.plan; x.planFromParent = true; } if (!x.project) x.project = r.project; } });
     l.forEach((x) => { x.kids = l.filter((y) => y.parent === x.code); });
     const calc = (x) => {
       if (x.done !== undefined) return x;
@@ -190,7 +193,8 @@
   /* T74 #97: bước 4 là nhóm (2 mục con) nhưng vẫn giao việc được ở cấp bước — hạng mục giao việc = lá (trừ mốc bước 9) + nhóm bước 4. */
   const flat = (rows) => rows.flatMap((r) => [r].concat(r.children ? flat(r.children) : []));
   const assignable = (p) => flat(P().planOf(p)).filter((r) => !/^G\d$/.test(r.key) && !/^B9\./.test(r.key) && (!r.children || r.key === 'B4'));
-  const planName = (x) => { if (!x.plan || !x.project) return ''; const p = P().byCode(x.project); const r = p && assignable(p).find((y) => y.key === x.plan || y.key.endsWith('.' + x.plan)); return r ? r.name : x.plan; };
+  /* Tên hạng mục kế hoạch: tìm trên toàn bộ cây kế hoạch của dự án (nhóm, bước, mục con). */
+  const planName = (x) => { if (!x.plan || !x.project) return ''; const p = P().byCode(x.project); const r = p && flat(P().planOf(p)).find((y) => y.key === x.plan || y.key.endsWith('.' + x.plan)); return r ? r.name : x.plan; };
   const leftCell = (x, k) => { if (x.done) return k.dash; const d = daysLeft(x.due); return `<span class="num ${d < 0 ? 't-err' : ''}"${d >= 0 && soon(x) ? ' style="color:#B54708"' : ''}>${d < 0 ? `Quá ${-d} ngày` : `${d} ngày`}</span>`; };
   const iconBtn = (ic, label, attrs) => `<button type="button" class="vbtn icon ghost" aria-label="${label}" title="${label}" ${attrs}>${icon(ic)}</button>`;
   const ID = (kind) => 'sxcv-' + kind;
@@ -219,12 +223,13 @@
       <td class="r num ${late ? 't-err' : ''}">${late ? late : k.dash}</td>`;
   }
   /* Dòng Việc của tôi: công việc từ kế hoạch (Thêm công việc con, Cập nhật tiến độ, Sửa, Xoá) hoặc việc quy trình (mở màn Xử lý; link tới màn nghiệp vụ). */
-  function myCell(x, k) {
+  /* sub = dòng công việc con nằm dưới việc cha: cột Công việc cha là chữ thường (việc cha ở ngay dòng trên), tránh bấm nhầm sang việc cha. */
+  function myCell(x, k, sub) {
     if (x.kind === 'QT') {
       return `<td class="c"><div class="acts">${iconBtn('check', x.done ? 'Xem việc đã xử lý' : 'Mở màn hình xử lý', `data-go="${x.go}"`)}</div></td>
         <td class="c">${badge(...x.st)}</td><td class="c">${badge(...LOAI.QT)}</td>
         <td><a class="link" data-go="${x.go}" title="${x.done ? 'Xem việc đã xử lý' : 'Mở màn hình xử lý'}">${k.clamp(x.title)}</a><div class="faint">${window.SxFlow.objLink(x.c)}</div></td>
-        <td>${PJ(x.project)}</td><td>${k.dash}</td><td>${k.dash}</td><td>${k.clamp(pName(x.owner))}</td><td>Quy trình</td><td class="num">${esc(dmy(x.start))}</td>
+        <td>${PJ(x.project)}</td><td>${x.plan ? k.clamp(planName(x)) : k.dash}</td><td>${k.dash}</td><td>${k.clamp(pName(x.owner))}</td><td>Quy trình</td><td class="num">${esc(dmy(x.start))}</td>
         <td class="num${x.st[1] === 'error' ? ' due-over' : ''}">${esc(dmy(x.due))}</td><td class="num">${x.done && x.doneAt ? esc(dmy(x.doneAt)) : k.dash}</td><td class="r">${leftCell(x, k)}</td><td class="r">${x.done ? '<span class="num">100%</span>' : k.dash}</td><td class="c">${k.dash}</td>`;
     }
     const acts = (canSplit(x) ? iconBtn('add', 'Thêm công việc con', `data-go="sx/cong-viec/create/CN/cha/${encodeURIComponent(x.code)}"`) : '')
@@ -232,13 +237,13 @@
       + (canEdit(x) ? iconBtn('edit', 'Sửa', `data-go="${href(x)}/edit"`) : '') + (canDel(x) ? iconBtn('del', 'Xoá', `data-sxcv-del="${esc(x.code)}"`) : '');
     return `<td class="c"><div class="acts">${acts}</div></td>
       <td class="c">${badge(...x.st)}</td><td class="c">${badge(...LOAI.KH)}</td><td>${NC(x.title, x.code, { go: href(x), tip: 'Xem chi tiết công việc' })}</td><td>${PJ(x.project)}</td>
-      <td>${x.plan ? k.clamp(planName(x)) : k.dash}</td><td>${x.parent ? NC((byCode(x.parent) || {}).title, x.parent, { go: href({ code: x.parent }), tip: 'Xem chi tiết công việc cha' }) : k.dash}</td>
+      <td>${x.plan ? k.clamp(planName(x)) : k.dash}</td><td>${x.parent ? (sub ? `<span class="faint">${esc((byCode(x.parent) || {}).title || x.parent)}</span>` : NC((byCode(x.parent) || {}).title, x.parent, { go: href({ code: x.parent }), tip: 'Xem chi tiết công việc cha' })) : k.dash}</td>
       <td>${k.clamp(pName(x.owner))}</td><td>${k.clamp(pName(x.assigner))}</td><td class="num">${esc(dmy(x.start))}</td>
       <td class="num${x.st[0] === 'Quá hạn' ? ' due-over' : ''}">${esc(dmy(x.due))}</td><td class="num">${x.done && x.doneAt ? esc(dmy(x.doneAt)) : k.dash}</td><td class="r">${leftCell(x, k)}</td><td class="r num">${x.pct}%</td>
       <td class="c">${badge(...D.sxPrio[x.prio || 'TB'])}</td>`;
   }
   /* Dòng công việc con dưới việc cha: listPage dựng một <tr> mỗi việc cha — đóng dòng cha, mở các dòng con; STT "#.j" đánh lại thành "<STT cha>.j" sau khi dựng trang. */
-  const subRows = (x, k) => (x.subs || []).map((y, j) => `</tr><tr class="click sxcv-sub" data-go="${href(y)}" data-code="${esc(y.code)}"><td class="ord">#.${j + 1}</td>${myCell(y, k)}`).join('');
+  const subRows = (x, k) => (x.subs || []).map((y, j) => `</tr><tr class="click sxcv-sub" data-go="${href(y)}" data-code="${esc(y.code)}"><td class="ord">#.${j + 1}</td>${myCell(y, k, true)}`).join('');
   function list(kind) {
     // Theo: fe/repo-khcn-bpmn-fe/src/app/features/task-management/task-management.component.html (công việc; cột Thao tác Sửa / Xoá như B5); ô chỉ số theo ecat common-catalog/overview như SCR-92
     const k = K(), dv = kind === 'DV', b = base(kind), cur = TILE[kind] || 'all';
@@ -367,11 +372,11 @@
     if (x) { F.code = x.code; F.kind = x.kind; F.v = { title: x.title, project: x.project, plan: x.plan, parent: x.parent, owner: x.owner, start: dmy(x.start), due: dmy(x.due), prio: x.prio || 'TB', remind: String(x.remind == null ? 2 : x.remind), desc: x.desc || '' }; return; }
     F.code = null; F.kind = o.kind === 'DV' ? 'DV' : 'CN';
     const par = o.parent && byCode(o.parent);
-    F.v = { title: '', project: par ? par.project : o.project || null, plan: o.plan || null, parent: par ? par.code : null, owner: F.kind === 'CN' && !canAssign() ? pid() : null,
+    F.v = { title: '', project: par ? par.project : o.project || null, plan: par ? par.plan || null : o.plan || null, parent: par ? par.code : null, owner: F.kind === 'CN' && !canAssign() ? pid() : null,
       start: dmy(D.sxToday), due: '', prio: 'TB', remind: '2', desc: '' };
     if (o.project) F.lock.project = true;
     if (o.plan) F.lock.plan = true;
-    if (par) { F.lock.project = !!par.project; F.lock.parent = true; }
+    if (par) { F.lock.project = !!par.project; F.lock.plan = !!par.plan; F.lock.parent = true; } // công việc con theo dự án, hạng mục của việc cha
   }
   const leafOpts = (code) => { const p = code && P().byCode(code); return p ? assignable(p).map((r) => ({ value: r.key, label: r.name })) : []; };
   function form(code) {

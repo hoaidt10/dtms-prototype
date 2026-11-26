@@ -177,7 +177,10 @@
   /* Việc quy trình của người dùng, cùng dạng dòng với công việc (sx-cong-viec.js): đang chờ xử lý + đã xử lý. stg = nhóm trạng thái cho lọc. */
   function flowItems(id) {
     const nlv = (c, step) => (stepOf(c.flow, step)[3] || {}).nlv || 2;
-    const base = (c, step, since) => ({ kind: 'QT', src: 'QT', c, code: c.code, title: stepOf(c.flow, step)[1], flowName: FL(c.flow).name, project: projCode(c), plan: null, parent: null,
+    /* Hạng mục kế hoạch (QT.VHT.TTSX.4A.1.1) của việc quy trình theo luồng / bước (góp ý 27/11). */
+    const planOfStep = (flow, step) => ({ 'SX-KH': Number(step) <= 2 ? 'B1' : Number(step) <= 4 ? 'B2' : 'B3', 'SX-MS': 'B4.MS', 'SX-BG': 'B5', 'SX-BGNM': 'B5', 'SX-BT': 'B9', 'SX-TD': 'B9',
+      'SX-NT': Number(step) <= 2 ? 'B12' : Number(step) <= 4 ? 'B13' : 'B14' })[flow] || null;
+    const base = (c, step, since) => ({ kind: 'QT', src: 'QT', c, code: c.code, title: stepOf(c.flow, step)[1], flowName: FL(c.flow).name, project: projCode(c), plan: planOfStep(c.flow, step), parent: null,
       owner: id, assigner: null, start: String(since).slice(0, 10), due: addDays(since, nlv(c, step)), remind: 2, prio: null, log: [] });
     const todo = tokensFor(id).map(({ c, t }) => {
       const over = late(c, t);
