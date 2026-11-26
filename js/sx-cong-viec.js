@@ -62,7 +62,7 @@
     if (isAdmin()) return true;
     if (x.owner === id || x.assigner === id) return true;
     /* Công việc con của việc Camunda: người quản lý (PM dự án, Lãnh đạo Khối) theo dõi được tiến độ của người thực hiện. */
-    if (x.ut) return projOk(x) && (pmOf(x) === id || D.roleOf(id) === 'R-SX-LD');
+    if (x.ut) return projOk(x) && (pmOf(x) === id || BOSS.includes(D.roleOf(id)));
     if (x.kind === 'CN') return false;
     return projOk(x) && (unitOf(x.owner) === me().unit || pmOf(x) === id || D.roleOf(id) === 'R-SX-LD');
   }
@@ -128,7 +128,9 @@
      Việc ở Việc của tôi = user task của BPMN trên Camunda (bộ chạy sx-flow.js: hồ sơ c, việc t). Người được giao việc chia việc thành nhiều công việc con
      (việc cá nhân, nguồn UT, ut = liên kết tới việc cha) giao cho mình hoặc người khác; người thực hiện cập nhật tiến độ ở Việc cá nhân.
      % việc cha = trung bình % các công việc con; người giao việc, PM dự án, Lãnh đạo Khối theo dõi ở Việc của tôi, màn Xử lý, tiến trình hồ sơ.
-     Công việc con cuối cùng xong → SxFlow.subsDone: hoàn thành việc Camunda tự động khi được (xem sx-flow.js), nếu không thì chuyển "Chờ hoàn tất". */
+     Công việc con cuối cùng xong → SxFlow.subsDone: tự hoàn thành việc Camunda (Q-SX-01, chốt 26/11 — xem sx-flow.js).
+     Chỉ chia cho người cùng đơn vị với người được giao việc; người theo dõi = người giao, PM dự án, lãnh đạo cấp cao (R-SX-LD Ban Giám đốc Khối, R-SX-TGD Ban Tổng Giám đốc). */
+  const BOSS = ['R-SX-LD', 'R-SX-TGD'];
   const subsOf = (c, t) => all().filter((x) => x.ut && x.ut.c === c && x.ut.t === t && !x.cancel);
   function subsProgress(c, t) {
     const l = subsOf(c, t);
@@ -150,8 +152,12 @@
   /* Hộp thoại Chia công việc con: danh sách công việc con hiện có + thêm nhiều dòng một lần. Hạn không sau hạn xử lý của việc cha (việc cha đã quá hạn thì không chặn). */
   function splitDlg(c, t, info) {
     const k = K(), cur = subsOf(c, t), max = info.due >= D.sxToday ? info.due : '';
-    const ppl = D.personas.filter((p) => p.sx).map((p) => [p.id, `${p.name} — ${p.role}`]);
-    let rows = [{ title: '', owner: pid(), due: max || '', desc: '' }];
+    /* Q-SX-01 chốt 26/11: chỉ chia cho người cùng đơn vị với người được giao việc (kể cả chính họ). Thật: nhân sự cùng đơn vị từ hệ thống Nhân sự. */
+    const who = info.who || pid(), ppl = D.personas.filter((p) => p.sx && p.unit === unitOf(who)).map((p) => [p.id, `${p.name} — ${p.role}`]);
+    let rows = [{ title: '', owner: who, due: max || '', desc: '' }];
+    /* Bước nhiều kết quả: chọn kết quả hệ thống tự áp khi xong hết công việc con (chỉ nút đồng ý / đạt). */
+    const res = info.choices ? `<div class="vfield" style="max-width:420px"><div class="lr"><label>Kết quả khi hoàn thành hết công việc con</label><span class="req">*</span></div>
+        <select class="vctl" data-sub-res>${info.choices.map(([i, l]) => `<option value="${i}" ${i === info.autoCi ? 'selected' : ''}>${esc(l)}</option>`).join('')}</select></div>` : '';
     const row = (r, i) => `<tr data-sub-row="${i}"><td class="ord">${i + 1}</td>
       <td><input class="vctl" data-f="title" maxlength="500" placeholder="Nhập tên công việc con" value="${esc(r.title)}"></td>
       <td><select class="vctl" data-f="owner">${ppl.map(([v, l]) => `<option value="${v}" ${v === r.owner ? 'selected' : ''}>${esc(l)}</option>`).join('')}</select></td>
@@ -162,8 +168,8 @@
     const curTbl = cur.length ? `<h4 class="ginfo-sub">Công việc con đã chia (${cur.length})</h4>${k.table([['Mã công việc', 150], ['Tên công việc', 280], ['Người thực hiện', 180], ['Hạn hoàn thành', 130], ['Hoàn thành', 100, 'r'], ['Trạng thái', 140, 'c']], cur,
       (x) => `<td>${esc(x.code)}</td><td>${k.clamp(x.title)}</td><td>${k.clamp(pName(x.owner))}</td><td class="num">${esc(dmy(x.due))}</td><td class="r num">${x.pct}%</td><td class="c">${badge(...stOf(x))}</td>`)}` : '';
     const m = vModal({ title: 'Chia công việc con', size: 'xl', body: `<div class="stack" data-sxcv-split>
-        <p class="cap">${esc(info.title)} · Hạn xử lý ${esc(dmy(info.due))}. Việc này tự hoàn thành khi mọi công việc con hoàn thành (nếu bước không cần chọn kết quả và đã đủ thông tin bắt buộc); công việc con hiện ở Việc cá nhân của người thực hiện.</p>
-        ${curTbl}<h4 class="ginfo-sub">Thêm công việc con</h4>
+        <p class="cap">${esc(info.title)} · Hạn xử lý ${esc(dmy(info.due))}. Khi mọi công việc con hoàn thành, hệ thống tự hoàn thành việc này${info.choices ? ' với kết quả chọn dưới đây' : ` (${esc(info.label)})`} và chuyển bước tiếp theo. Công việc con giao cho người cùng đơn vị, hiện ở Việc cá nhân của người thực hiện.</p>
+        ${res}${curTbl}<h4 class="ginfo-sub">Thêm công việc con</h4>
         <div class="vtable-vp"><table class="vtable"><thead><tr><th class="ord">STT</th>${th('Tên công việc <span class="req">*</span>', 260)}${th('Người thực hiện <span class="req">*</span>', 220)}${th('Hạn hoàn thành <span class="req">*</span>', 150)}${th('Mô tả', 200)}<th class="c" style="width:60px"></th></tr></thead>
           <tbody data-sub-body>${rows.map(row).join('')}</tbody></table></div>
         <div><button type="button" class="vbtn secondary" data-sub-add>${icon('add')} Thêm dòng</button></div>
@@ -173,7 +179,7 @@
     const read = () => { rows = [...m.el.querySelectorAll('[data-sub-row]')].map((tr) => Object.fromEntries([...tr.querySelectorAll('[data-f]')].map((e) => [e.dataset.f, e.value]))); };
     const draw = () => { q('[data-sub-body]').innerHTML = rows.map(row).join(''); };
     m.el.addEventListener('click', (e) => {
-      if (e.target.closest('[data-sub-add]')) { read(); rows.push({ title: '', owner: pid(), due: max || '', desc: '' }); draw(); return; }
+      if (e.target.closest('[data-sub-add]')) { read(); rows.push({ title: '', owner: who, due: max || '', desc: '' }); draw(); return; }
       const d = e.target.closest('[data-sub-del]');
       if (d) { read(); rows.splice(Number(d.dataset.subDel), 1); draw(); }
     });
@@ -186,9 +192,11 @@
         if (!r.due) return err(i, 'Bạn cần nhập Hạn hoàn thành.');
         if (r.due < D.sxToday) return err(i, 'Hạn hoàn thành không được trước ngày hiện tại.');
         if (max && r.due > max) return err(i, `Hạn hoàn thành không được sau hạn xử lý của việc cha (${dmy(max)}).`);
+        if (!ppl.some((p) => p[0] === r.owner)) return err(i, 'Người thực hiện phải cùng đơn vị với người được giao việc.');
       }
+      if (info.choices && window.SxFlow) window.SxFlow.setAuto(c, t, Number(q('[data-sub-res]').value));
       const proj = info.project || null;
-      const made = rows.map((r) => add({ kind: 'CN', title: r.title.trim(), project: proj, plan: null, ut: { c, t, flow: info.flow, step: info.step, due: info.due }, owner: r.owner, assigner: pid(),
+      const made = rows.map((r) => add({ kind: 'CN', title: r.title.trim(), project: proj, plan: null, ut: { c, t, flow: info.flow, step: info.step, due: info.due }, owner: r.owner, assigner: who,
         start: D.sxToday, due: r.due, prio: 'TB', remind: 1, pct: 0, src: 'UT', desc: r.desc.trim() }));
       if (window.SxFlow) window.SxFlow.unready(c, t);
       m.close();
@@ -398,7 +406,8 @@
       ],
       q: ['P-254'], src: 'task-management/components/task-create · /task-management/create',
     };
-    const ppl = D.personas.filter((p) => p.sx && (dv || canAssign() || p.id === pid())).map((p) => ({ value: p.id, label: dv ? `${p.name} — ${p.unit}` : `${p.name} — ${p.role}` }));
+    /* Công việc con của việc Camunda: người thực hiện chỉ trong đơn vị của người được giao việc (Q-SX-01). */
+    const ppl = D.personas.filter((p) => p.sx && (x && x.ut ? p.unit === unitOf(x.assigner) : dv || canAssign() || p.id === pid())).map((p) => ({ value: p.id, label: dv ? `${p.name} — ${p.unit}` : `${p.name} — ${p.role}` }));
     const sel = (id, key, opts, o) => vSelect(Object.assign({ id, value: v[key], searchable: true, placeholder: 'Chọn ' + ((o && o.ph) || ''), invalid: !!err[key], options: opts, disabled: !!F.lock[key],
       onChange: (val) => { keep(); v[key] = val; delete err[key]; if (key === 'project') v.plan = null; rerender(); } }, o || {}));
     return `<form class="pg" data-sxcv-form="${x ? esc(x.code) : ''}">
@@ -462,7 +471,7 @@
       scr: 'SX-16', name: 'Chi tiết công việc', uc: 'SX-ULNL Quản lý công việc (Xem chi tiết; Phân rã nhiều cấp, Cập nhật tiến độ, Nhắc hạn của QL dự án)',
       notes: ['Khuôn task-create (mode detail) + app-tabs. Góp ý 26/11: bỏ tab Công việc con và nút Thêm công việc con (công việc con chỉ chia từ việc ở Việc của tôi).',
         '<b>Cập nhật tiến độ</b> (hộp thoại): người thực hiện hoặc người giao; 100% = hoàn thành, ghi ngày hoàn thành. Mỗi lần cập nhật một dòng Lịch sử cập nhật.',
-        '<b>Công việc con của việc Camunda</b> (Công việc cha = bước quy trình): công việc con cuối cùng đạt 100% thì việc cha hoàn thành tự động khi bước không cần chọn kết quả và đủ thông tin bắt buộc; còn lại việc cha chuyển Chờ hoàn tất, người được giao bấm nút của bước (GIẢ LẬP Q-SX-01). Việc cha bị trả lại / từ chối thì công việc con chưa xong chuyển Đã huỷ.',
+        '<b>Công việc con của việc Camunda</b> (Công việc cha = bước quy trình): công việc con cuối cùng đạt 100% thì hệ thống tự hoàn thành việc cha và chuyển bước (Q-SX-01, chốt 26/11; ngoại lệ: bộ chặn nghiệp vụ của bước còn chặn → Chờ hoàn tất). Việc cha bị trả lại / từ chối thì công việc con chưa xong chuyển Đã huỷ. Người theo dõi: người giao, PM dự án, lãnh đạo cấp cao (Ban Giám đốc Khối, Ban Tổng Giám đốc).',
         'Việc gắn hạng mục kế hoạch: % của hạng mục ở tab Kế hoạch & mốc là trung bình các công việc cấp 1 của hạng mục.'],
       q: ['P-254'], src: 'task-management/components/task-create (mode detail) · @khcn-core/ui app-tabs, vht-tree-table',
     };
@@ -510,7 +519,7 @@
       /* Công việc con của việc Camunda đạt 100%: báo bộ chạy luồng — mọi công việc con xong thì hoàn thành việc cha (tự động hoặc chuyển Chờ hoàn tất). */
       const r = pct >= 100 && x.ut && window.SxFlow ? window.SxFlow.subsDone(x.ut.c, x.ut.t) : null;
       toast('<b>Thành công</b><br>Cập nhật tiến độ thành công!' + (r === 'auto' ? '<br>Đã hoàn thành mọi công việc con — hệ thống tự hoàn thành việc cha và chuyển bước tiếp theo.'
-        : r === 'ready' ? '<br>Đã hoàn thành mọi công việc con — việc cha chuyển Chờ hoàn tất, người được giao bổ sung thông tin và gửi.' : ''));
+        : r === 'ready' ? '<br>Đã hoàn thành mọi công việc con — việc cha còn vướng điều kiện của bước, chuyển Chờ hoàn tất để người được giao xử lý.' : ''));
       rerender();
     };
   }

@@ -32,13 +32,16 @@ test('Kế hoạch không còn nhãn trạng thái ở từng bước; nhiệm v
   expect(page.errors).toEqual([]);
 });
 
-test('Chia công việc con từ Việc của tôi; còn việc con thì không gửi được; xong hết → Chờ hoàn tất; người quản lý theo dõi', async ({ page }) => {
+test('Chia công việc con (người cùng đơn vị); còn việc con thì không gửi được; xong hết → việc cha tự hoàn thành; PM, lãnh đạo cấp cao theo dõi', async ({ page }) => {
   await fresh(page, '#/sx/viec-cua-toi');
   await as(page, 'sxrd', '#/sx/viec-cua-toi');
   await expect(taskRow(page)).toContainText('Công việc con 1/3 · 53%');
   // Icon Chia công việc con trong dòng không mở màn Xử lý.
   await taskRow(page).locator('[data-sx-split]').click();
   await expect(page.locator('[data-sxcv-split]')).toContainText('Công việc con đã chia (3)');
+  // Chỉ người cùng đơn vị (Trung tâm Nghiên cứu thiết kế — Khối 1); bước một kết quả → không có ô chọn kết quả.
+  expect(await page.locator('[data-sub-row="0"] [data-f="owner"] option').evaluateAll((l) => l.map((o) => o.value).sort())).toEqual(['sxgdtt', 'sxrd', 'sxrdck', 'sxrddk']);
+  await expect(page.locator('[data-sub-res]')).toHaveCount(0);
   await page.locator('[data-sub-add]').click();
   await expect(page.locator('[data-sub-row]')).toHaveCount(2);
   await page.locator('[data-sub-del="1"]').click();
@@ -56,35 +59,47 @@ test('Chia công việc con từ Việc của tôi; còn việc con thì không 
   await page.locator('[data-sx-do]', { hasText: 'Hoàn thành triển khai' }).click();
   await expect(page.locator('.toast').last()).toContainText('Còn 3 / 4 công việc con chưa hoàn thành');
   await expect(page.locator('.vmodal')).toHaveCount(0);
-  // Người quản lý (PM dự án) thấy công việc con ở Việc cá nhân và tiến độ ở tiến trình hồ sơ.
-  await as(page, 'sxpm', '#/sx/cong-viec/ca-nhan');
-  await expect(page.locator('.vtable tbody tr', { hasText: 'CV-SX-2026-008' })).toContainText('Triển khai theo loại');
-  // Hoàn thành mọi công việc con; bước 5 cần Kết quả triển khai (bắt buộc) → Chờ hoàn tất.
-  await finish(page, 'sxsub', 'CV-SX-2026-007');
-  await finish(page, 'sxqa', 'CV-SX-2026-008');
+  // Người theo dõi: PM dự án và lãnh đạo cấp cao (Tổng Giám đốc) thấy công việc con; người ngoài (Sub PM) không thấy.
+  for (const who of ['sxpm', 'sxceo']) {
+    await as(page, who, '#/sx/cong-viec/ca-nhan');
+    await expect(page.locator('.vtable tbody tr', { hasText: 'CV-SX-2026-008' })).toContainText('Triển khai theo loại');
+  }
+  await as(page, 'sxsub', '#/sx/cong-viec/ca-nhan');
+  await expect(page.locator('.vtable tbody tr', { hasText: 'CV-SX-2026-008' })).toHaveCount(0);
+  // Hoàn thành mọi công việc con → việc cha tự hoàn thành (Kết quả triển khai bắt buộc điền tổng hợp công việc con), chuyển bước 6.
+  await finish(page, 'sxrdck', 'CV-SX-2026-007');
+  await finish(page, 'sxrddk', 'CV-SX-2026-008');
   const mine = await page.evaluate(() => SxCv.all().find((x) => x.src === 'UT' && x.owner === 'sxrd' && x.pct === 0).code);
   await finish(page, 'sxrd', mine);
-  await expect(page.locator('.toast').last()).toContainText('việc cha chuyển Chờ hoàn tất');
+  await expect(page.locator('.toast').last()).toContainText('hệ thống tự hoàn thành việc cha');
+  const c = await page.evaluate((code) => { const x = SxFlow.caseOf(code); return { tok: x.tokens.map((t) => [t.step, t.who]), v: x.vars.tkKetQua, h: x.hist.filter((y) => y.step === 5).pop() }; }, CASE);
+  expect(c.tok).toEqual([[6, 'sxqa']]);
+  expect(c.v).toContain('Hoàn thành 4 công việc con: Phân tích nguyên nhân lệch trục');
+  expect(c.h.who).toBe('sxrd');
+  expect(c.h.act).toBe('Hoàn thành triển khai (tự động)');
   await as(page, 'sxrd', '#/sx/viec-cua-toi');
-  await expect(taskRow(page)).toContainText('Chờ hoàn tất');
-  await expect(taskRow(page)).toContainText('Công việc con 4/4 · 100%');
+  await expect(taskRow(page)).toHaveCount(0);
   expect(page.errors).toEqual([]);
   expect(await page.locator('main').innerText()).not.toMatch(BA);
 });
 
-test('Đã nhập đủ thông tin bắt buộc (Lưu nháp) → công việc con cuối xong thì việc cha tự hoàn thành, chuyển bước', async ({ page }) => {
+test('Bước nhiều kết quả: chọn kết quả khi chia việc → xong hết công việc con thì tự áp kết quả đó', async ({ page }) => {
   await fresh(page, '#/sx/viec-cua-toi');
-  await page.evaluate((code) => { const c = SxFlow.caseOf(code); c.drafts = { s3: { tkKetQua: 'Đã thay gá đỡ rev B cho 4 khối quang học.' } }; }, CASE);
-  await finish(page, 'sxsub', 'CV-SX-2026-007');
-  await finish(page, 'sxqa', 'CV-SX-2026-008');
+  // Kỹ sư QA: việc Kiểm tra kết quả (Đạt / Không đạt) của BT-2026-003.
+  await as(page, 'sxqa', '#/sx/viec-cua-toi');
+  const row = page.locator('[data-sx-tasks] tbody tr.sxv-todo', { hasText: 'Kiểm tra kết quả' }).first();
+  await row.locator('[data-sx-split]').click();
+  expect(await page.locator('[data-sub-res] option').allTextContents()).toEqual(['Đạt (OK)']); // không có nút Không đạt
+  const today = await page.evaluate(() => D.sxToday);
+  await page.locator('[data-sub-row="0"] [data-f="title"]').fill('Đo lại 5 mẫu sau khắc phục');
+  await page.locator('[data-sub-row="0"] [data-f="due"]').fill(today);
+  await page.locator('[data-sub-ok]').click();
+  const code = await page.evaluate(() => SxCv.all().find((x) => x.title === 'Đo lại 5 mẫu sau khắc phục').code);
+  await finish(page, 'sxqa', code);
   await expect(page.locator('.toast').last()).toContainText('hệ thống tự hoàn thành việc cha');
-  const c = await page.evaluate((code) => { const x = SxFlow.caseOf(code); return { tok: x.tokens.map((t) => [t.step, t.who]), h: x.hist[x.hist.length - 1] }; }, CASE);
-  expect(c.tok).toEqual([[6, 'sxqa']]);
-  expect(c.h.who).toBe('sxrd');
-  expect(c.h.act).toContain('(tự động)');
-  expect(c.h.note).toContain('Hoàn thành 3 công việc con');
-  await as(page, 'sxrd', '#/sx/viec-cua-toi');
-  await expect(taskRow(page)).toHaveCount(0);
+  const c = await page.evaluate(() => { const x = SxFlow.caseOf('HSBT-BT-2026-003-01'); return { tok: x.tokens.map((t) => t.step), h: x.hist.filter((y) => y.step === 6).pop() }; });
+  expect(c.tok).toEqual([7]);
+  expect(c.h.act).toBe('Đạt (OK) (tự động)');
   expect(page.errors).toEqual([]);
 });
 

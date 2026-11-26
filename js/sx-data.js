@@ -18,6 +18,9 @@
     { id: 'sxk2', name: 'Vũ Thị Hương', short: 'Hương', role: 'Chuyên viên Quản lý sản xuất', unit: 'Phòng Quản lý sản xuất — Khối 2', urd: 'R-SX-PM', actor: '—', sx: true },
     { id: 'sxnm', name: 'Hoàng Văn Lực', short: 'Lực', role: 'Cán bộ điều hành sản xuất (nhà máy)', unit: 'Nhà máy đối tác', urd: 'R-SX-NM', actor: '—', sx: true },
     { id: 'sxgdtt', name: 'Bùi Thanh Sơn', short: 'Sơn', role: 'Giám đốc Trung tâm Nghiên cứu thiết kế', unit: 'Trung tâm Nghiên cứu thiết kế — Khối 1', urd: 'R-SX-GDTT', actor: '—', sx: true },
+    /* Góp ý 26/11: kỹ sư cùng đơn vị với PM sản phẩm (sxrd) — người nhận công việc con chia từ việc của sxrd (chỉ chia cho người cùng đơn vị). */
+    { id: 'sxrdck', name: 'Ngô Đức Anh', short: 'Anh', role: 'Kỹ sư thiết kế cơ khí', unit: 'Trung tâm Nghiên cứu thiết kế — Khối 1', urd: 'R-SX-RD', actor: '—', sx: true },
+    { id: 'sxrddk', name: 'Trịnh Thu Trang', short: 'Trang', role: 'Kỹ sư đo kiểm, thử nghiệm', unit: 'Trung tâm Nghiên cứu thiết kế — Khối 1', urd: 'R-SX-RD', actor: '—', sx: true },
     /* Dashboard theo nhóm vai (nhánh hoaidt10, 25/11): Tổng Giám đốc — nhóm 1, xem toàn bộ VHT. */
     { id: 'sxceo', name: 'Lương Đình Bảo', short: 'Bảo', role: 'Tổng Giám đốc', unit: 'Ban Tổng Giám đốc', urd: 'R-SX-TGD', actor: '—', sx: true },
     { id: 'sxtgd', name: 'Đỗ Văn Khang', short: 'Khang', role: 'Phó Tổng Giám đốc', unit: 'Ban Tổng Giám đốc', urd: 'R-SX-TGD', actor: '—', sx: true },
@@ -654,16 +657,17 @@
     { code: 'NV-SX-2026-008', kind: 'DV', title: 'Lập phương án sản xuất kinh doanh trạm 5G Macro gNB-M3 năm 2027', project: 'DA-SX-2026-004', plan: null, parent: null, owner: 'sxk2', assigner: 'sxld',
       start: '2026-10-15', due: '2026-10-31', prio: 'TB', remind: 3, pct: 100, doneAt: '2026-10-28', src: 'TAY', created: '2026-10-15', desc: '', log: [['2026-10-28 16:30', 'sxk2', 100, 'Phương án đã được phê duyệt, lập dự án DA-SX-2026-004']] });
   D.sxPrio = { CAO: ['Cao', 'error'], TB: ['Trung bình', 'warning'], THAP: ['Thấp', 'default'] };
-  /* Góp ý 26/11: công việc con chia từ việc "Triển khai theo loại" (bước 5 luồng SX-BT) của phiếu BT-2026-002 — việc của PM sản phẩm R&D (sxrd), hồ sơ mẫu HSBT-BT-2026-002-01 / s3. */
+  /* Góp ý 26/11: công việc con chia từ việc "Triển khai theo loại" (bước 5 luồng SX-BT) của phiếu BT-2026-002 — việc của PM sản phẩm R&D (sxrd), hồ sơ mẫu HSBT-BT-2026-002-01 / s3.
+     Người thực hiện cùng đơn vị với sxrd (Trung tâm Nghiên cứu thiết kế — Khối 1). */
   const UT_BT2 = { c: 'HSBT-BT-2026-002-01', t: 's3', flow: 'SX-BT', step: 5, due: '2026-11-03' };
   D.sxWork.push(
     { code: 'CV-SX-2026-006', kind: 'CN', title: 'Phân tích nguyên nhân lệch trục, đề xuất dung sai mới cho gá đỡ', project: 'DA-SX-2026-002', plan: null, parent: null, ut: UT_BT2, owner: 'sxrd', assigner: 'sxrd',
       start: '2026-10-29', due: '2026-10-31', prio: 'CAO', remind: 1, pct: 100, doneAt: '2026-10-31', src: 'UT', created: '2026-10-29', desc: 'Đo lại 4 khối, so dung sai bản vẽ rev A.',
       log: [['2026-10-31 16:40', 'sxrd', 100, 'Đề xuất dung sai ±0,02 mm, sửa bản vẽ rev B']] },
-    { code: 'CV-SX-2026-007', kind: 'CN', title: 'Gia công 4 gá đỡ mẫu theo bản vẽ rev B', project: 'DA-SX-2026-002', plan: null, parent: null, ut: UT_BT2, owner: 'sxsub', assigner: 'sxrd',
+    { code: 'CV-SX-2026-007', kind: 'CN', title: 'Gia công 4 gá đỡ mẫu theo bản vẽ rev B', project: 'DA-SX-2026-002', plan: null, parent: null, ut: UT_BT2, owner: 'sxrdck', assigner: 'sxrd',
       start: '2026-10-31', due: '2026-11-02', prio: 'CAO', remind: 1, pct: 60, src: 'UT', created: '2026-10-29', desc: '',
-      log: [['2026-11-12 09:15', 'sxsub', 60, 'Xong 2/4 gá đỡ, chờ phôi nhôm đợt 2']] },
-    { code: 'CV-SX-2026-008', kind: 'CN', title: 'Thử rung lại khối quang học lắp gá đỡ mẫu', project: 'DA-SX-2026-002', plan: null, parent: null, ut: UT_BT2, owner: 'sxqa', assigner: 'sxrd',
+      log: [['2026-11-12 09:15', 'sxrdck', 60, 'Xong 2/4 gá đỡ, chờ phôi nhôm đợt 2']] },
+    { code: 'CV-SX-2026-008', kind: 'CN', title: 'Thử rung lại khối quang học lắp gá đỡ mẫu', project: 'DA-SX-2026-002', plan: null, parent: null, ut: UT_BT2, owner: 'sxrddk', assigner: 'sxrd',
       start: '2026-11-02', due: '2026-11-03', prio: 'TB', remind: 1, pct: 0, src: 'UT', created: '2026-10-29', desc: 'Thử rung theo chỉ tiêu, đo lệch trục quang trước / sau.', log: [] });
   D.sxWorkSrc = { KH: 'Từ kế hoạch', TAY: 'Nhập tay', XLS: 'Nhập Excel', UT: 'Chia từ việc của tôi' };
 

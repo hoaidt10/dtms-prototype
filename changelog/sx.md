@@ -3,6 +3,12 @@
 > Mỗi PR một mục, mới nhất trên cùng: `## YYYY-MM-DD — <việc> (#PR)` + 2–5 gạch đầu dòng (màn, thay đổi, nguồn, điểm treo mới).
 > Lịch sử trước T77: [lich-su-chung.md](lich-su-chung.md).
 
+## 2026-11-26 · Công việc con: chốt Q-SX-01 — luôn tự hoàn thành việc cha, chia cho người cùng đơn vị, PM + lãnh đạo cấp cao theo dõi
+- Công việc con cuối xong → hệ thống **luôn tự hoàn thành** việc cha và chuyển bước (`js/sx-flow.js`): bước nhiều kết quả áp kết quả người được giao chọn khi chia việc (ô *Kết quả khi hoàn thành hết công việc con*, chỉ nút đồng ý / đạt); trường bắt buộc còn trống điền tổng hợp công việc con (chữ) / ngày hoàn thành (ngày). Không chia việc ở bước ký số; ngoại lệ còn lại: bộ chặn nghiệp vụ của bước → Chờ hoàn tất.
+- Hộp thoại Chia công việc con, form sửa công việc con: người thực hiện chỉ trong **đơn vị của người được giao việc** (`js/sx-cong-viec.js`). Thêm 2 kỹ sư Trung tâm Nghiên cứu thiết kế — Khối 1 (Ngô Đức Anh, Trịnh Thu Trang) làm người thực hiện mẫu (`js/sx-data.js`).
+- Người theo dõi công việc con: người giao, PM dự án, **lãnh đạo cấp cao** (Ban Giám đốc Khối, Ban Tổng Giám đốc).
+- `e2e/sx-cong-viec-con.spec.mjs` cập nhật (4 ca xanh).
+
 ## 2026-11-26 · Công việc con chia từ Việc của tôi; bỏ công việc con của nhiệm vụ đơn vị; bỏ nhãn trạng thái ở cây Kế hoạch
 - Chi tiết dự án › tab Kế hoạch (`js/sx-du-an.js`): bỏ nhãn trạng thái cạnh tên từng bước (Chờ duyệt điều chỉnh); cột Trạng thái giữ nguyên.
 - Nhiệm vụ đơn vị (`js/sx-cong-viec.js`): bỏ nút Thêm công việc con, tab Công việc con, trường Công việc cha, % tính từ việc con — % do người đầu mối cập nhật; dữ liệu mẫu bỏ liên kết cha–con của NV-SX-2026-001 (`js/sx-data.js`).

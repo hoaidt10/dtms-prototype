@@ -127,46 +127,56 @@
 
   /* ---------- Công việc con của việc (góp ý 26/11, hoaidt10) ----------
      Việc ở Việc của tôi = user task Camunda. Người được giao chia việc thành công việc con (SxCv.splitDlg); việc còn công việc con chưa xong thì không gửi được
-     (trừ nút trả lại / từ chối — công việc con chưa xong bị huỷ). Công việc con cuối cùng xong → subsDone:
-     - tự hoàn thành việc (complete task trên Camunda, kết quả = nút duy nhất của bước) khi bước KHÔNG có lựa chọn kết quả (choices), không ký số, không vướng bộ chặn
-       và mọi trường bắt buộc của eForm bước đã có giá trị (từ dữ liệu hồ sơ hoặc Lưu nháp);
-     - còn lại: việc chuyển "Chờ hoàn tất" (cờ ready trên việc), người được giao mở màn Xử lý, bổ sung / chọn kết quả và gửi.
-     GIẢ LẬP Q-SX-01: thật = job worker nghe sự kiện hoàn thành công việc con, gọi Camunda complete task với biến của form. */
+     (trừ nút trả lại / từ chối — công việc con chưa xong bị huỷ). Q-SX-01 chốt 26/11 (hoaidt10): công việc con cuối cùng xong thì việc cha TỰ HOÀN THÀNH (subsDone):
+     - kết quả: bước một nút → nút đó; bước nhiều nút → kết quả người được giao chọn khi chia việc (chỉ nút đồng ý / đạt, mặc định nút đầu — t.autoCi);
+     - biến form: dữ liệu Lưu nháp của việc; trường bắt buộc kiểu chữ còn trống ghi tổng hợp công việc con, kiểu ngày ghi ngày hoàn thành;
+     - lịch sử ghi người được giao, hành động "(tự động)", nội dung "Hoàn thành n công việc con".
+     Không chia được việc ở bước ký số (chữ ký MySign phải do người ký thực hiện). Ngoại lệ duy nhất: bộ chặn nghiệp vụ của bước (vd thiếu hồ sơ bắt buộc) còn chặn
+     → việc chuyển "Chờ hoàn tất" (cờ ready) và người được giao xử lý tay.
+     Thật: job worker nghe sự kiện hoàn thành công việc con, gọi Camunda complete task với biến trên. */
   const subs = (code, tokId) => (window.SxCv ? window.SxCv.subsProgress(code, tokId) : null);
-  /* Trường bắt buộc của eForm bước còn trống (duyệt cây components: group, dynamiclist). */
-  function missingReq(c, t) {
-    const o = stepOf(c.flow, t.step)[3] || {}, f = formOf(c.flow, o.form);
-    if (!f) return [];
-    const ctx = ctxOf(c), vals = Object.assign({}, ctx, (c.drafts || {})[t.id] || {}), miss = [];
-    const empty = (v) => v == null || v === '' || (Array.isArray(v) && !v.length);
-    const walk = (l) => (l || []).forEach((x) => { if (x.components && !x.path) walk(x.components); else if (x.key && x.validate && x.validate.required && empty(vals[x.key])) miss.push(x.label || x.key); });
-    walk(f.schema(ctx, null).components);
-    return miss;
+  const posChoices = (o) => (o.choices || []).map((ch, i) => [i, ch[0], ch[2]]).filter((x) => x[2] !== 'no').map(([i, l]) => [i, l]);
+  /* Biến form khi tự hoàn thành: Lưu nháp + điền trường bắt buộc còn trống (chữ = tổng hợp công việc con, ngày = ngày hoàn thành). */
+  function autoValues(c, t, ch, sum) {
+    const o = stepOf(c.flow, t.step)[3] || {}, f = formOf(c.flow, o.form), vals = Object.assign({}, (c.drafts || {})[t.id] || {});
+    if (!f) return vals;
+    const ctx = Object.assign(ctxOf(c), vals), empty = (v) => v == null || v === '' || (Array.isArray(v) && !v.length);
+    const walk = (l) => (l || []).forEach((x) => {
+      if (x.components && !x.path) { walk(x.components); return; }
+      if (!x.key || !x.validate || !x.validate.required || !empty(ctx[x.key])) return;
+      if (x.type === 'textfield' || x.type === 'textarea') vals[x.key] = sum;
+      else if (x.type === 'datetime') vals[x.key] = dmy(D.sxToday);
+    });
+    walk(f.schema(ctx, ch).components);
+    return vals;
   }
   function subsDone(code, tokId) {
     const c = caseOf(code), t = c && c.tokens.find((x) => x.id === tokId), p = c && subs(code, tokId);
     if (!t || !p || p.open) return null;
     const st = stepOf(c.flow, t.step), o = st[3] || {};
-    if (!o.choices && !o.sign && !guardMsg(c, t) && !missingReq(c, t).length) {
-      const values = Object.assign({}, (c.drafts || {})[t.id] || {}), n = c.hist.length;
-      complete(code, tokId, -1, values);
-      const h = c.hist.slice(n).find((x) => String(x.step) === String(st[0]) && !x.sys);
-      if (h) Object.assign(h, { who: t.who, act: `${o.label || 'Hoàn thành'} (tự động)`, note: `Hoàn thành ${p.n} công việc con` + (h.note ? ` · ${h.note}` : '') });
-      persist();
-      return 'auto';
-    }
-    t.ready = true;
+    if (guardMsg(c, t) || o.sign) { t.ready = true; persist(); return 'ready'; }
+    const pos = posChoices(o), ci = o.choices ? (pos.some((x) => x[0] === t.autoCi) ? t.autoCi : (pos[0] || [-1])[0]) : -1, ch = ci >= 0 ? o.choices[ci] : null;
+    const l = window.SxCv.subsOf(code, tokId).sort((a, b) => (a.code < b.code ? -1 : 1));
+    const sum = `Hoàn thành ${l.length} công việc con: ` + l.map((x) => `${x.title} (${pName(x.owner)}, ${dmy(x.doneAt || D.sxToday)})`).join('; ') + '.';
+    const n = c.hist.length;
+    complete(code, tokId, ci, autoValues(c, t, ch, sum));
+    const h = c.hist.slice(n).find((x) => String(x.step) === String(st[0]) && !x.sys);
+    if (h) Object.assign(h, { who: t.who, act: `${ch ? ch[0] : o.label || 'Hoàn thành'} (tự động)`, note: `Hoàn thành ${p.n} công việc con` });
     persist();
-    return 'ready';
+    return 'auto';
   }
   /* Chia thêm công việc con sau khi đã Chờ hoàn tất → việc quay lại đang xử lý. */
   function unready(code, tokId) { const c = caseOf(code), t = c && c.tokens.find((x) => x.id === tokId); if (t && t.ready) { delete t.ready; persist(); } }
-  const canSplit = (t) => t.who === pid() || isAdmin(pid());
+  /* Kết quả tự áp khi xong hết công việc con (bước có nhiều nút) — chọn ở hộp thoại Chia công việc con. */
+  function setAuto(code, tokId, ci) { const c = caseOf(code), t = c && c.tokens.find((x) => x.id === tokId); if (t) { t.autoCi = ci; persist(); } }
+  /* Người được giao chia việc; không chia ở bước ký số. */
+  const canSplit = (t, c) => (t.who === pid() || isAdmin(pid())) && !(c && (stepOf(c.flow, t.step)[3] || {}).sign);
   function splitOpen(code, tokId) {
     const c = caseOf(code), t = c && c.tokens.find((x) => x.id === tokId);
-    if (!t || !canSplit(t) || !window.SxCv) return;
-    const st = stepOf(c.flow, t.step);
-    window.SxCv.splitDlg(code, tokId, { title: `${FL(c.flow).name} — Bước ${st[0]}. ${st[1]}`, due: dueOf(c, t), flow: c.flow, step: st[0], project: projCode(c) });
+    if (!t || !canSplit(t, c) || !window.SxCv) return;
+    const st = stepOf(c.flow, t.step), o = st[3] || {};
+    window.SxCv.splitDlg(code, tokId, { title: `${FL(c.flow).name} — Bước ${st[0]}. ${st[1]}`, due: dueOf(c, t), flow: c.flow, step: st[0], project: projCode(c),
+      who: t.who, choices: o.choices ? posChoices(o) : null, autoCi: t.autoCi, label: o.label || 'Hoàn thành' });
   }
   /* Dòng tiến độ công việc con (Việc của tôi, tiến trình hồ sơ): "Công việc con 1/3 · 53%". */
   const subsLine = (p) => (p ? `<div class="faint" style="margin-top:4px;font-size:12px">Công việc con ${p.done}/${p.n} · ${p.pct}%</div>` : '');
@@ -237,7 +247,7 @@
         '<b>Giai đoạn</b>: giai đoạn QT.VHT.TTSX.4A.1.1 của quy trình (Lập kế hoạch; Chuẩn bị sản xuất; Tổ chức sản xuất). <b>Độ trễ</b>: tính từ cuối ngày Hạn xử lý tới lúc xử lý (việc chưa xong: tới hiện tại), dưới 1 ngày ghi số giờ — GIẢ LẬP P-269.',
         'Việc sinh từ luồng nháp D.sxFlows (GIẢ LẬP P-238); người xử lý theo vai của bước (GIẢ LẬP P-244). Hạn xử lý = ngày nhận việc + định mức ngày của bước (ngày lịch, GIẢ LẬP); quá hạn tô đỏ.',
         '<b>Chia công việc con (góp ý 26/11)</b>: việc chưa xử lý có icon <b>Chia công việc con</b> (cũng có ở thanh trạng thái màn Xử lý) — người được giao chia việc (user task Camunda) thành nhiều công việc con, giao cho mình hoặc người khác, hạn không sau hạn xử lý. Công việc con là việc cá nhân của người thực hiện, cập nhật tiến độ ở Việc cá nhân. Dưới trạng thái hiện <b>Công việc con đã xong / tổng · % trung bình</b>; người quản lý (PM dự án, Lãnh đạo Khối) xem ở tiến trình hồ sơ và Việc cá nhân.',
-        'Còn công việc con chưa xong thì không gửi được việc (trừ trả lại / từ chối — công việc con chưa xong chuyển Đã huỷ). Công việc con cuối cùng xong: bước không cần chọn kết quả, không ký số, đủ trường bắt buộc → hệ thống tự hoàn thành việc và chuyển bước; còn lại việc chuyển <b>Chờ hoàn tất</b> để người được giao bổ sung và gửi (GIẢ LẬP Q-SX-01).',
+        'Còn công việc con chưa xong thì không gửi được việc (trừ trả lại / từ chối — công việc con chưa xong chuyển Đã huỷ). <b>Công việc con cuối cùng xong → hệ thống tự hoàn thành việc và chuyển bước</b> (Q-SX-01, chốt 26/11): bước nhiều kết quả áp kết quả người được giao chọn khi chia việc (chỉ nút đồng ý / đạt); trường bắt buộc còn trống điền tổng hợp công việc con (chữ) hoặc ngày hoàn thành (ngày). Không chia được việc ở bước ký số. Ngoại lệ: bộ chặn nghiệp vụ của bước còn chặn (vd thiếu hồ sơ bắt buộc) → <b>Chờ hoàn tất</b>, người được giao xử lý tay.',
       ],
       q: ['P-238', 'P-244', 'P-269'], src: 'my-tasks/my-tasks.component · /my-tasks',
     };
@@ -249,7 +259,7 @@
       const title = `${FL(r.c.flow).name}${r.proj && r.proj !== r.c.obj ? `: ${p.name || p.title || r.c.obj}` : pj ? '' : `: ${p.name || p.title || r.c.obj}`}`;
       const projTd = pj ? `<a class="link" data-go="sx/du-an/${encodeURIComponent(pj.code)}" title="Xem chi tiết dự án">${esc(pj.name)}</a>` : k.dash;
       const tip = r.todo ? 'Mở màn hình xử lý' : 'Xem việc đã xử lý';
-      const split = r.todo && canSplit(r.tok) ? `<button type="button" class="vbtn icon ghost" data-sx-split="${esc(r.c.code)}|${esc(r.tok.id)}" title="Chia công việc con" aria-label="Chia công việc con">${window.UI.icon('add')}</button>` : '';
+      const split = r.todo && canSplit(r.tok, r.c) ? `<button type="button" class="vbtn icon ghost" data-sx-split="${esc(r.c.code)}|${esc(r.tok.id)}" title="Chia công việc con" aria-label="Chia công việc con">${window.UI.icon('add')}</button>` : '';
       return `<tr class="click ${r.todo ? 'sxv-todo' : 'sxv-done'}" data-go="${r.go}"><td class="ord">${i + 1}</td><td class="c">${badge(...r.st)}${subsLine(r.sp)}</td><td>${projTd}</td>
         <td>${k.clamp(title)}</td><td><a class="link" data-go="${r.go}" title="${tip}">${esc(r.step)}</a></td><td>${k.clamp(r.stage)}</td>
         <td class="num${r.over ? ' due-over' : ''}">${esc(dmy(r.due))}</td><td class="num">${r.doneAt ? esc(dmy(r.doneAt)) : k.dash}</td>
@@ -286,7 +296,7 @@
     if (!t) return none('Công việc đã được xử lý hoặc không còn tồn tại.');
     if (!mine(t, pid())) return none('Bạn không có quyền xử lý công việc này.');
     const st = stepOf(c.flow, t.step), o = st[3] || {};
-    const acts = (canSplit(t) ? `<button type="button" class="vbtn secondary" data-sx-split="${esc(c.code)}|${esc(t.id)}">${window.UI.icon('add')} Chia công việc con</button>` : '')
+    const acts = (canSplit(t, c) ? `<button type="button" class="vbtn secondary" data-sx-split="${esc(c.code)}|${esc(t.id)}">${window.UI.icon('add')} Chia công việc con</button>` : '')
       + (o.choices ? o.choices.map((ch, i) => `<button type="button" class="vbtn ${ch[2] === 'no' ? 'secondary' : 'primary'}" data-sx-do="${i}">${esc(ch[0])}</button>`).join('')
         : `<button type="button" class="vbtn primary" data-sx-do="-1">${esc(o.label || 'Hoàn thành')}</button>`);
     const bar = window.Screens.statusBar({ mode: 'process', step: `Bước ${st[0]} · ${st[1]}`, date: dmy(dueOf(c, t)), overdue: late(c, t), acts, who: t.who !== pid() ? pName(t.who) : '' })
@@ -298,8 +308,9 @@
     const p = subs(c.code, t.id);
     if (!p) return '';
     const k = K(), l = window.SxCv.subsOf(c.code, t.id), CV = window.SxCv;
-    const msg = t.ready ? 'Đã hoàn thành mọi công việc con — bổ sung thông tin (nếu cần) và gửi để chuyển bước tiếp theo.'
-      : `Còn ${p.open} công việc con chưa hoàn thành; việc này tự hoàn thành khi mọi công việc con hoàn thành (nếu bước không cần chọn kết quả và đủ thông tin bắt buộc).`;
+    const o = stepOf(c.flow, t.step)[3] || {}, res = o.choices ? (o.choices[t.autoCi] || o.choices.find((x) => x[2] !== 'no') || [''])[0] : o.label || 'Hoàn thành';
+    const msg = t.ready ? `Đã hoàn thành mọi công việc con nhưng việc chưa tự hoàn thành được: ${guardMsg(c, t) || 'bước cần xử lý tay'}. Bổ sung rồi gửi để chuyển bước tiếp theo.`
+      : `Còn ${p.open} công việc con chưa hoàn thành; khi mọi công việc con hoàn thành, hệ thống tự hoàn thành việc này với kết quả "${res}" và chuyển bước tiếp theo.`;
     return `<section class="vcard pad24" data-sx-subs style="margin-top:16px"><div class="vcard-h"><h3>Công việc con (${p.done}/${p.n} hoàn thành)</h3>
         <div style="display:flex;align-items:center;gap:8px;min-width:240px"><div class="hd-bar" style="flex:1" role="img" aria-label="Tiến độ ${p.pct}%"><span style="width:${p.pct}%"></span></div><span class="num">${p.pct}%</span></div></div>
       <p class="cap">${esc(msg)}</p>
@@ -458,5 +469,5 @@
   }
   function reset() { S = seed(); persist(); }
 
-  window.SxFlow = { route, enter: enterRoute, GUARD, progress, start, complete, cases, caseOf, running, pending, overdue, delayTxt, tokensFor, planTab, canStartKh, reset, ACT, subsDone, unready, splitOpen };
+  window.SxFlow = { route, enter: enterRoute, GUARD, progress, start, complete, cases, caseOf, running, pending, overdue, delayTxt, tokensFor, planTab, canStartKh, reset, ACT, subsDone, unready, splitOpen, setAuto };
 })();
