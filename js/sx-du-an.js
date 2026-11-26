@@ -490,9 +490,9 @@
     onToggle: (key) => { if (open.has(key)) open.delete(key); else open.add(key); rerender(); } })}</section>`;
     };
     /* T74 #97: tab Tài liệu chia theo danh mục loại tài liệu; loại chưa có tài liệu hiện "Chưa có tài liệu"; cột File đính kèm tải xuống. */
+    /* Góp ý 26/11 mục 4: bỏ Chọn mẫu tài liệu; thêm Thêm danh mục tài liệu; một bảng theo danh mục — dòng danh mục có (+) thêm tên tài liệu, dòng tài liệu có Tải file lên. */
     const tDocs = () => `<section class="vcard pad24" data-sx-docs><div class="vcard-h"><h3>Danh mục tài liệu</h3><div class="row">
-        <button type="button" class="vbtn secondary" data-sx-tpl="${esc(p.code)}">Chọn mẫu tài liệu</button>
-        <label class="vbtn secondary">${icon('upload')} Tải file lên<input type="file" hidden data-sx-up="${esc(p.code)}"></label></div></div>
+        ${canDoc(p) ? `<button type="button" class="vbtn secondary" data-sx-doccat="${esc(p.code)}">${icon('add')} Thêm danh mục tài liệu</button>` : ''}</div></div>
       ${docGroups(p, k)}</section>`;
     const tHist = () => k.card('Lịch sử', k.table([['Thời gian', 160], ['Người thực hiện', 220], ['Hành động', 240], ['Nội dung', 420]], p.hist.slice().sort((a, b) => (a[0] < b[0] ? 1 : -1)),
       (h) => `<td class="num">${esc(dmy(h[0]))}</td><td>${k.clamp(pName(h[1]))}</td><td>${k.clamp(h[2])}</td><td>${h[3] ? k.clamp(h[3]) : k.dash}</td>`));
@@ -502,7 +502,7 @@
       ${head({ title: o.title || 'Xem chi tiết dự án sản xuất', back: o.back || 'sx/du-an', lg: true, info: o.info || info, right })}
       ${o.bar || ''}
       ${alerts}
-      ${k.tabs('sx:' + p.code, [['info', 'Thông tin chung'], ['plan', 'Kế hoạch'], ['kh', 'Phê duyệt kế hoạch'], ['ns', 'Nhân sự'], ['cg', 'Hồ sơ chuyển giao'], ['m4', 'Điều kiện sản xuất'], ['ms', 'Mua sắm & hợp đồng'], ['btp', 'Bán thành phẩm & tiến độ'], ['bt', 'Bất thường & thay đổi'], ['nt', 'Chất lượng & nghiệm thu'], ['vmms', 'Dữ liệu VMMS'], ['docs', 'Tài liệu'], ['hist', 'Lịch sử']],
+      ${k.tabs('sx:' + p.code, [['info', 'Thông tin chung'], ['plan', 'Kế hoạch'], ['kh', 'Phê duyệt kế hoạch'], ['ns', 'Nhân sự'], ['cg', 'Hồ sơ chuyển giao'], ['m4', 'Điều kiện sản xuất'], ['ms', 'Mua sắm & hợp đồng'], ['btp', 'Tiến độ và chất lượng (Từ VMMS)'], ['bt', 'Bất thường & thay đổi'], ['nt', 'Nghiệm thu sản phẩm'], ['vmms', 'Dữ liệu VMMS'], ['docs', 'Tài liệu'], ['hist', 'Lịch sử']],
     { info: tInfo, kh: tKh, plan: tPlan, ns: () => window.SxKh.tabStaff(p), cg: () => window.SxCg.projectCg(p), m4: () => window.SxCg.projectM4(p), ms: () => window.SxMs.projectTab(p), btp: () => window.SxBtp.projectTab(p), bt: () => window.SxBt.projectTab(p), nt: () => window.SxNt.projectTab(p), vmms: () => window.SxVmms.projectTab(p), docs: tDocs, hist: tHist })}</div>`;
   }
   const T = { open: {} };
@@ -539,15 +539,34 @@
     const x = l[0], more = l.length > 1 ? ` <a class="link" data-go="sx/cong-viec/don-vi">+${l.length - 1} nhiệm vụ khác</a>` : '';
     return k.kv('Nhiệm vụ đơn vị', x ? `${NC(x.title, x.code, { go: `sx/cong-viec/${encodeURIComponent(x.code)}`, tip: 'Xem chi tiết nhiệm vụ' })}${more}` : null, 'span3'); // góp ý 26/11 mục 3: mã kèm tên
   }
+  /* Tab Tài liệu: một bảng — dòng danh mục (loại tài liệu chung + danh mục riêng của dự án, U.docCats) và các dòng tài liệu.
+     Tài liệu: [tên, loại, phiên bản, người tải lên, ngày, nguồn, tệp]; tài liệu chỉ có tên (thêm bằng + ở dòng danh mục) chưa có tệp; Tải file lên ở từng dòng gắn tệp / lên phiên bản
+     (tài liệu mẫu ghi đè ở U.docOver). */
+  const canDoc = (p) => p.status !== 'DONE' && (isAdmin() || p.pm === Flow.state.persona);
+  const docCats = (code) => (U.docCats || {})[code] || [];
+  const docOf = (p, i) => Object.assign([], p.docs[i], ((U.docOver || {})[p.code] || {})[i] || {});
+  const fileOf = (d) => d[6] || (d[3] ? d[0] : '');
   function docGroups(p, k) {
-    const by = {};
-    p.docs.forEach((d) => { (by[d[1]] || (by[d[1]] = [])).push(d); });
-    const kinds = Object.keys(D.sxDocKind).filter((x) => by[x]).concat(Object.keys(by).filter((x) => !D.sxDocKind[x]));
-    const empty = Object.keys(D.sxDocKind).filter((x) => !by[x]);
-    const row = (d) => `<td>${k.clamp(d[0])}${d[5] === 'SIGN' ? ' ' + badge('Đã ký số', 'success') : ''}</td><td>${esc(d[2])}</td><td>${k.clamp(pName(d[3]))}</td><td class="num">${esc(dmy(d[4]))}</td>
-      <td><a class="link" title="Tải xuống">${icon('download')} ${esc(d[0])}</a></td>`;
-    return kinds.map((x) => `<h4 class="ginfo-sub">${esc(D.sxDocKind[x] || x)} <span class="faint">(${by[x].length})</span></h4>${k.table([['Tên tài liệu', 380], ['Phiên bản', 100], ['Người tải lên', 200], ['Ngày tải lên', 130], ['File đính kèm', 300]], by[x].slice().reverse(), row)}`).join('')
-      + (empty.length ? `<h4 class="ginfo-sub">Loại tài liệu chưa có</h4>${k.table([['Loại tài liệu', 420], ['Tình trạng', 200]], empty, (x) => `<td>${k.clamp(D.sxDocKind[x])}</td><td class="faint">Chưa có tài liệu</td>`)}` : '');
+    const cats = Object.entries(D.sxDocKind).concat(docCats(p.code).map((c) => [c.key, c.name]));
+    const docs = p.docs.map((d0, i) => ({ i, d: docOf(p, i) }));
+    const known = new Set(cats.map((c) => c[0]));
+    docs.forEach((x) => { if (!known.has(x.d[1])) { known.add(x.d[1]); cats.push([x.d[1], x.d[1] === 'KHAC' ? 'Tài liệu khác' : x.d[1]]); } });
+    const can = canDoc(p), rows = [];
+    cats.forEach(([key, name]) => {
+      const l = docs.filter((x) => x.d[1] === key).reverse();
+      rows.push({ cat: true, key, name, n: l.length });
+      l.forEach((x) => rows.push(x));
+    });
+    return k.table([['Danh mục / tài liệu', 420], ['Phiên bản', 100], ['Người tải lên', 200], ['Ngày tải lên', 130], ['File đính kèm', 300], ['Thao tác', 150, 'c']], rows, (r) => {
+      if (r.cat) {
+        return `<td><b>${esc(r.name)}</b> <span class="faint">(${r.n})</span></td><td colspan="4">${r.n ? '' : '<span class="faint">Chưa có tài liệu</span>'}</td>
+          <td class="c">${can ? `<button type="button" class="vbtn icon ghost" title="Thêm tài liệu vào danh mục" aria-label="Thêm tài liệu vào danh mục" data-sx-docadd="${esc(p.code)}|${esc(r.key)}">${icon('add')}</button>` : ''}</td>`;
+      }
+      const d = r.d, f = fileOf(d);
+      return `<td style="padding-left:28px">${k.clamp(d[0])}${d[5] === 'SIGN' ? ' ' + badge('Đã ký số', 'success') : ''}</td><td>${d[2] ? esc(d[2]) : k.dash}</td><td>${d[3] ? k.clamp(pName(d[3])) : k.dash}</td><td class="num">${d[4] ? esc(dmy(d[4])) : k.dash}</td>
+        <td>${f ? `<a class="link" title="Tải xuống">${icon('download')} ${esc(f)}</a>` : '<span class="faint">Chưa có tệp</span>'}</td>
+        <td class="c">${can ? `<label class="vbtn sm secondary" title="Tải file lên cho tài liệu này">${icon('upload')} Tải file lên<input type="file" hidden data-sx-docup="${esc(p.code)}|${r.i}"></label>` : ''}</td>`;
+    });
   }
 
   /* Chọn mẫu tài liệu: biểu mẫu đang hoạt động, có tệp mẫu, của danh mục Biểu mẫu tài liệu sản xuất (T71 S11 — trước đây cố định BM-QLHDSX-01 / 04). */
@@ -602,6 +621,38 @@
   document.addEventListener('click', (e) => {
     const t = e.target.closest && e.target.closest('[data-sx-tpl]');
     if (t) tplDlg(t.dataset.sxTpl);
+  });
+  /* Tab Tài liệu: Thêm danh mục tài liệu, (+) thêm tên tài liệu vào danh mục, Tải file lên ở từng dòng. */
+  const askName = (title, label, ph) => new Promise((resolve) => {
+    const m = vModal({ title, size: 'md', body: `<div class="vfield"><div class="lr"><label>${esc(label)}</label><span class="req">*</span></div><input class="vctl" id="sx-ask" maxlength="255" placeholder="${esc(ph)}"><p class="msg t-err" id="sx-ask-err"></p></div>`,
+      actions: '<button type="button" class="vbtn secondary" data-close>Hủy</button><button type="button" class="vbtn primary" id="sx-ask-ok">Lưu</button>' });
+    m.el.querySelector('#sx-ask-ok').onclick = () => { const v = m.el.querySelector('#sx-ask').value.trim(); if (!v) { m.el.querySelector('#sx-ask-err').textContent = `Bạn cần nhập ${label}.`; return; } m.close(); resolve(v); };
+  });
+  document.addEventListener('click', async (e) => {
+    const c = e.target.closest && e.target.closest('[data-sx-doccat],[data-sx-docadd]');
+    if (!c) return;
+    if (c.dataset.sxDoccat) {
+      const code = c.dataset.sxDoccat, name = await askName('Thêm danh mục tài liệu', 'Tên danh mục tài liệu', 'Nhập tên danh mục, vd Hồ sơ thử nghiệm thực tế');
+      const l = (U.docCats = U.docCats || {})[code] = docCats(code);
+      l.push({ key: `DM-${l.length + 1}`, name }); addHist(code, 'Thêm danh mục tài liệu', name); persist();
+      toast('<b>Thành công</b><br>Thêm danh mục tài liệu thành công!'); rerender(); return;
+    }
+    const [code, key] = c.dataset.sxDocadd.split('|'), name = await askName('Thêm tài liệu', 'Tên tài liệu', 'Nhập tên tài liệu');
+    (U.docs[code] = U.docs[code] || []).push([name, key, '', null, null, 'NAME', '']);
+    addHist(code, 'Thêm tài liệu vào danh mục', name); persist();
+    toast('<b>Thành công</b><br>Thêm tài liệu thành công!'); rerender();
+  });
+  document.addEventListener('change', (e) => {
+    const t = e.target.closest && e.target.closest('[data-sx-docup]');
+    if (!t || !t.files || !t.files[0]) return;
+    const [code, si] = t.dataset.sxDocup.split('|'), i = Number(si), p = byCode(code), d = docOf(p, i), f = t.files[0].name;
+    const ver = d[2] ? `v${(Number(String(d[2]).replace(/[^\d.]/g, '')) + 1 || 2).toFixed(1)}` : 'v1.0';
+    const upd = { 2: ver, 3: Flow.state.persona, 4: D.sxToday, 6: f };
+    const base = p.docs.length - (U.docs[code] || []).length;
+    if (i >= base) Object.assign(U.docs[code][i - base], upd);
+    else { const o = (U.docOver = U.docOver || {})[code] = (U.docOver[code] || {}); o[i] = Object.assign({}, o[i], upd); }
+    addHist(code, 'Tải lên tài liệu', `${d[0]}: ${f} (${ver})`); persist();
+    toast('<b>Thành công</b><br>Tải lên thành công!'); rerender();
   });
   document.addEventListener('change', (e) => {
     const u = e.target.closest && e.target.closest('[data-sx-up]');

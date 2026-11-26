@@ -57,38 +57,46 @@
   /* Ai cập nhật: Giám đốc dự án; Sub PM với bán thành phẩm Khối 1; Nhà máy với dự án giao cho nhà máy mình (lô, mốc). */
   const canUpdate = (p, it) => RUN.includes(p.status) && (isAdmin() || p.pm === pid() || (pid() === 'sxsub' && /^BTP/.test(it.key) && p.khoi === 'K1') || (pid() === 'sxnm' && p.factory === 'NM-HP'));
 
-  /* ---------- Tab Bán thành phẩm & tiến độ ---------- */
+  /* ---------- Tab Tiến độ và chất lượng (Từ VMMS) — góp ý 26/11 mục 4 ----------
+     Một bảng theo hạng mục: tiến độ (mục tiêu, thực hiện, % so kế hoạch) + chất lượng (số lỗi, tỷ lệ đạt theo trạm đo VMMS / nhật ký; kết quả IPQC).
+     Bỏ Nhật ký sản lượng, Trạm đo, Định mức vật tư (Trạm đo, Định mức chuyển sang tab Dữ liệu VMMS). Số liệu đồng bộ từ VMMS — không có nút Cập nhật / Thêm mới
+     (mục 5: dữ liệu đồng bộ về không thêm mới ở dự án); IPQC vẫn thêm được (kiểm soát chất lượng công đoạn của QA). */
   const KIND = { VHT_TU_SX: 'Theo dõi theo từng bán thành phẩm (đơn vị: bộ)', VMC_TONG_THAU: 'Theo dõi theo mốc tổng của gói tổng thầu (% hoàn thành)', GIA_CONG: 'Theo dõi theo lô gia công' };
+  const ipqcOf = (p, key) => (window.SxNt ? window.SxNt.ipqcAll() : []).filter((x) => x.project === p.code && x.item === key).sort((a, b) => (a.at < b.at ? 1 : -1));
+  /* Số lỗi / tỷ lệ đạt: trạm đo VMMS của hạng mục (lũy kế), không có trạm thì cộng nhật ký sản lượng. Mốc % (không có mục tiêu số lượng) không tính. */
+  function quality(p, it) {
+    if (it.target == null) return null;
+    const st = stations(p).find((s) => s.item === it.key);
+    const ok = st ? st.ok : it.r.done, ng = st ? st.ng : logsOf(p.code).filter((x) => x.item === it.key).reduce((a, x) => a + (x.ng || 0), 0);
+    return { ng, rate: ok + ng ? ok / (ok + ng) * 100 : null };
+  }
   function projectTab(p) {
     const k = K(), list = items(p), risk = list.filter((x) => x.st[0] === 'Có nguy cơ chậm');
-    const unit = (it) => (it.target == null ? '%' : p.unitName);
-    /* Hạng mục chậm đã có cảnh báo đầu trang (Chi tiết dự án); trong tab chỉ thêm cảnh báo nguy cơ chậm. */
-    const alerts = [
-      risk.length ? `<div class="hd-alert warning">${icon('info')}<span>${risk.length} hạng mục có nguy cơ chậm: ${esc(risk.map((x) => x.name).join('; '))}</span></div>` : ''].join('');
-    const note = RUN.includes(p.status) ? '' : `<p class="cap">${p.status === 'DONE' ? 'Dự án đã hoàn thành.' : 'Dự án chưa bắt đầu sản xuất: cập nhật sản lượng mở khi dự án chuyển Đang sản xuất (đủ điều kiện sản xuất).'}</p>`;
-    const tbl = k.table([['Hạng mục', 200], ['Phụ trách', 160], ['Kế hoạch', 120], ['Mục tiêu', 90, 'r'], ['Thực hiện', 90, 'r'], ['Hoàn thành', 90, 'r'], ['Kế hoạch đến hôm nay', 110, 'r'], ['Trạng thái', 140, 'c'], ['', 100, 'c']], list,
-      (it) => `<td>${k.clamp(it.name)}</td><td>${k.clamp(it.who)}</td><td class="num">${esc(dmy(iso(it.s)))} –<br>${esc(dmy(iso(it.e)))}</td>
-        <td class="r num">${it.target == null ? '100%' : num(it.target)}</td><td class="r num">${it.target == null ? it.r.done + '%' : num(it.r.done)}</td><td class="r num">${it.r.pct}%</td>
-        <td class="r num">${it.exp}%</td><td class="c">${badge(...it.st)}</td>
-        <td class="c">${canUpdate(p, it) && it.r.pct < 100 ? `<button type="button" class="vbtn sm secondary" data-btp-up="${esc(p.code)}|${esc(it.key)}">Cập nhật</button>` : ''}</td>`);
-    const logs = logsOf(p.code).slice().sort((a, b) => (a.date < b.date ? 1 : -1)), name = (ck) => (list.find((x) => x.key === ck) || {}).name || ck;
-    const logTbl = k.table([['Ngày', 120], ['Hạng mục', 260], ['Số đạt / % hoàn thành', 160, 'r'], ['Số lỗi', 90, 'r'], ['Nguồn', 150], ['Người cập nhật', 180], ['Ghi chú, sự cố', 300]], logs,
-      (x) => { const t = targetOf(p, x.item); return `<td class="num">${esc(dmy(x.date))}</td><td>${k.clamp(name(x.item))}</td><td class="r num">${t == null ? x.qty + '%' : num(x.qty)}</td><td class="r num">${t == null ? '-' : num(x.ng)}</td>
-        <td>${x.src === 'TRAM' ? 'Trạm đo VMMS' : 'Nhập tay'}</td><td>${k.clamp(pName(x.by))}</td><td>${x.note ? k.clamp(x.note) : k.dash}</td>`; });
-    const st = stations(p);
-    const stTbl = st.length ? k.table([['Trạm đo', 380], ['Hạng mục', 220], ['Số đạt (lũy kế)', 140, 'r'], ['Số lỗi', 100, 'r'], ['Tỷ lệ đạt', 110, 'r'], ['Đồng bộ lúc', 150]], st,
-      (s) => `<td>${NC(s.name, s.code)}</td><td>${k.clamp(name(s.item))}</td><td class="r num">${num(s.ok)}</td><td class="r num">${num(s.ng)}</td><td class="r num">${(s.ok / Math.max(1, s.ok + s.ng) * 100).toFixed(1).replace('.', ',')}%</td><td class="num">${esc(dmy(s.at))}</td>`)
-      : '<p class="faint">Dự án không có trạm đo đồng bộ từ VMMS.</p>';
-    const bom = (D.sxMbom[p.product] || []);
-    const bomTbl = k.table([['Vật tư', 380], ['ĐVT', 70], ['Định mức / bộ', 120, 'r'], ['Leadtime (tuần)', 120, 'r']], bom,
-      (r) => `<td>${NC(r.name, r.code)}</td><td>${esc(r.unit)}</td><td class="r num">${num(r.per)}</td><td class="r num">${r.lt}</td>`);
-    return `<div data-sx-btp>
-      <section class="vcard pad24"><div class="vcard-h"><h3>Tiến độ sản xuất</h3><span class="cap">${esc(KIND[p.model] || '')}</span></div>
-        ${alerts ? `<div class="hd-alerts">${alerts}</div>` : ''}${note}${tbl}</section>
-      ${k.card('Nhật ký sản lượng', logTbl)}
-      <section class="vcard pad24" data-btp-vmms><div class="vcard-h"><h3>Trạm đo (VMMS)</h3><span class="cap">Chỉ xem — đồng bộ từ VMMS</span></div>${stTbl}</section>
-      <section class="vcard pad24"><div class="vcard-h"><h3>Định mức vật tư (VMMS)</h3><span class="cap">Chỉ xem — đồng bộ từ VMMS</span></div>${bomTbl}</section></div>`;
+    const alerts = risk.length ? `<div class="hd-alerts"><div class="hd-alert warning">${icon('info')}<span>${risk.length} hạng mục có nguy cơ chậm: ${esc(risk.map((x) => x.name).join('; '))}</span></div></div>` : '';
+    const canQa = RUN.includes(p.status) && (isAdmin() || D.roleOf(pid()) === 'R-SX-QA');
+    const tbl = k.table([['Hạng mục', 220], ['Phụ trách', 160], ['Kế hoạch', 120], ['Mục tiêu', 90, 'r'], ['Thực hiện', 90, 'r'], ['Hoàn thành', 100, 'r'], ['Kế hoạch đến hôm nay', 110, 'r'],
+      ['Số lỗi', 80, 'r'], ['Tỷ lệ đạt', 90, 'r'], ['IPQC', 150], ['Trạng thái', 140, 'c']], list,
+    (it) => {
+      const q = quality(p, it), ip = ipqcOf(p, it.key), last = ip[0];
+      const ipc = ip.length ? `<a class="link" data-btp-ipqc="${esc(p.code)}|${esc(it.key)}" title="Xem kết quả IPQC của hạng mục">${last.kq === 'DAT' ? 'Đạt' : 'Không đạt'} ${num(last.ok)}/${num(last.n)}</a><div class="faint">${ip.length} lần · ${esc(dmy(last.at))}</div>` : k.dash;
+      return `<td>${k.clamp(it.name)}</td><td>${k.clamp(it.who)}</td><td class="num">${esc(dmy(iso(it.s)))} –<br>${esc(dmy(iso(it.e)))}</td>
+        <td class="r num">${it.target == null ? '100%' : num(it.target)}</td><td class="r num">${it.target == null ? it.r.done + '%' : num(it.r.done)}</td><td class="r num">${it.r.pct}%</td><td class="r num">${it.exp}%</td>
+        <td class="r num${q && q.ng ? ' t-err' : ''}">${q ? num(q.ng) : k.dash}</td><td class="r num">${q && q.rate != null ? q.rate.toFixed(1).replace('.', ',') + '%' : k.dash}</td><td>${ipc}</td><td class="c">${badge(...it.st)}</td>`;
+    });
+    const note = RUN.includes(p.status) ? '' : `<p class="cap">${p.status === 'DONE' ? 'Dự án đã hoàn thành.' : 'Dự án chưa bắt đầu sản xuất: số liệu đồng bộ khi dự án chuyển Đang sản xuất.'}</p>`;
+    return `<div data-sx-btp><section class="vcard pad24"><div class="vcard-h"><h3>Tiến độ và chất lượng</h3><div class="row"><span class="cap">${esc(KIND[p.model] || '')} · đồng bộ từ VMMS</span>
+        ${canQa ? `<button type="button" class="vbtn secondary" data-sxnt-ipqc-new="${esc(p.code)}">${icon('add')} Thêm kết quả IPQC</button>` : ''}</div></div>
+      ${alerts}${note}${tbl}</section></div>`;
   }
+  /* Kết quả IPQC của một hạng mục (bấm ô IPQC). */
+  function ipqcDlg(code, key) {
+    const k = K(), p = P().byCode(code), it = items(p).find((x) => x.key === key) || {};
+    window.UI.vModal({ title: `Kết quả IPQC — ${it.name || key}`, size: 'xl', body: k.table([['Lần kiểm tra', 160], ['Công đoạn', 200], ['Số kiểm', 90, 'r'], ['Số đạt', 90, 'r'], ['Kết quả', 110, 'c'], ['Nội dung', 280], ['Phiếu bất thường', 140], ['Người kiểm', 160], ['Ngày', 110]], ipqcOf(p, key),
+      (x) => `<td>${esc(x.code)}</td><td>${k.clamp(x.stage)}</td><td class="r num">${num(x.n)}</td><td class="r num">${num(x.ok)}</td><td class="c">${x.kq === 'DAT' ? badge('Đạt', 'success') : badge('Không đạt', 'error')}</td>
+        <td>${x.note ? k.clamp(x.note) : k.dash}</td><td>${x.issue ? `<a class="link" data-go="sx/bat-thuong/${encodeURIComponent(x.issue)}" data-close title="Xem chi tiết phiếu bất thường">${esc(x.issue)}</a>` : k.dash}</td><td>${k.clamp(pName(x.who))}</td><td class="num">${esc(dmy(x.at))}</td>`),
+    actions: '<button type="button" class="vbtn secondary" data-close>Đóng</button>' });
+  }
+  document.addEventListener('click', (e) => { const b = e.target.closest && e.target.closest('[data-btp-ipqc]'); if (b) { const [c, key] = b.dataset.btpIpqc.split('|'); ipqcDlg(c, key); } });
 
   /* ---------- SX-11 Cập nhật sản lượng ---------- */
   async function updateDlg(code, ck) {

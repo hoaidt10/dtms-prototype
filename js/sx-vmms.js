@@ -84,7 +84,9 @@
 
   /* ---------- Tab ---------- */
   const V = { part: {}, kind: {}, ver: {}, open: {} };
-  const PARTS = [['bom', 'Cấu trúc sản phẩm'], ['ecn', 'Lịch sử thay đổi'], ['tb', 'Thiết bị'], ['nc', 'Nhân công'], ['lsx', 'Lệnh sản xuất']];
+  /* Góp ý 26/11 mục 4: thêm Đơn vị sản xuất, Trạm đo, Định mức vật tư (chuyển từ tab Bán thành phẩm), IQC (chuyển từ tab Chất lượng & nghiệm thu). */
+  const PARTS = [['bom', 'Cấu trúc sản phẩm'], ['dm', 'Định mức vật tư'], ['ecn', 'Lịch sử thay đổi'], ['dv', 'Đơn vị sản xuất'], ['tram', 'Trạm đo'], ['tb', 'Thiết bị'], ['nc', 'Nhân công'], ['lsx', 'Lệnh sản xuất'], ['iqc', 'Kiểm tra vật tư đầu vào (IQC)']];
+  const matName = (c) => (Object.values(D.sxMbom || {}).flat().find((m) => m.code === c) || {}).name || '';
   function projectTab(p) {
     // Theo: task-create (mode detail) + app-tabs; bảng cây vht-tree-table (như Kế hoạch & mốc); tab pill như action-matrix (mt-tabs)
     const k = K(), part = V.part[p.code] || 'bom';
@@ -95,8 +97,8 @@
       const kind = V.kind[p.code] || 'EBOM', vs = versionsOf(p), ver = V.ver[p.code] && vs.some((v) => v[0] === V.ver[p.code]) ? V.ver[p.code] : p.version, vr = vs.find((v) => v[0] === ver) || vs[vs.length - 1];
       const rows = bomRows(p, kind, ver), open = V.open[p.code] || (V.open[p.code] = new Set(rows.map((r) => r.key)));
       const cols = [
-        { h: kind === 'EBOM' ? 'Cụm / linh kiện' : 'Công đoạn / vật tư', w: 360, toggler: true, cell: (r) => (r.children ? `<b>${esc(r.name)}</b>` : `${esc(r.name)}${r.changed ? ` ${badge('Thay đổi theo ' + vr[2], 'warning')}` : ''}`) },
-        { h: 'Mã', w: 170, cell: (r) => esc(r.code) }, { h: 'ĐVT', w: 70, cell: (r) => esc(r.unit || '') },
+        { h: kind === 'EBOM' ? 'Cụm / linh kiện' : 'Công đoạn / vật tư', w: 460, toggler: true, cell: (r) => `${r.children ? `<b>${esc(r.name)}</b>` : `${esc(r.name)}${r.changed ? ` ${badge('Thay đổi theo ' + vr[2], 'warning')}` : ''}`}${r.code ? `<div class="faint">${esc(r.code)}</div>` : ''}` },
+        { h: 'ĐVT', w: 70, cell: (r) => esc(r.unit || '') },
         { h: 'Định mức / bộ', w: 120, align: 'r', cell: (r) => (r.per != null ? `<span class="num">${num(r.per)}</span>` : k.dash) },
       ].concat(kind === 'MBOM' ? [{ h: 'Hao hụt (%)', w: 110, align: 'r', cell: (r) => (r.loss != null ? `<span class="num">${r.loss}</span>` : k.dash) },
         { h: 'Nhu cầu dự án', w: 140, align: 'r', cell: (r) => (r.children ? k.dash : `<span class="num">${num(Math.ceil(r.per * p.qty * (1 + (r.loss || 0) / 100)))}</span>`) }] : []);
@@ -113,6 +115,23 @@
         const txt = log ? log[3] : Object.entries(v[3]).map(([n, o]) => `Thay ${o[0]} bằng ${n}`).join('; ');
         return `<td>${esc(v[0])}${v[0] === p.version ? ` ${badge('Đang dùng', 'info')}` : ''}</td><td class="num">${esc(dmy(v[1]))}</td><td>${v[2] ? esc(v[2]) : k.dash}</td><td>${txt ? k.clamp(txt) : 'Phiên bản phát hành ban đầu'}</td>`;
       });
+    } else if (part === 'dm') {
+      body = k.table([['Vật tư', 380], ['ĐVT', 70], ['Định mức / bộ', 120, 'r'], ['Nhu cầu dự án', 140, 'r'], ['Leadtime (tuần)', 120, 'r'], ['Export License', 120, 'c']], D.sxMbom[p.product] || [],
+        (r) => `<td>${NC(r.name, r.code)}</td><td>${esc(r.unit)}</td><td class="r num">${num(r.per)}</td><td class="r num">${num(r.per * p.qty)}</td><td class="r num">${r.lt}</td><td class="c">${r.el ? 'Cần' : 'Không'}</td>`);
+    } else if (part === 'dv') {
+      const u = fac ? window.Catalog.rows('sx-don-vi').find((r) => r.code === fac) : null;
+      body = u ? `<div class="ginfo c3">${k.kv('Đơn vị sản xuất', NC(u.name, u.code), 'span2')}${k.kv('Loại đơn vị', esc(u.kind === 'NOI_BO' ? 'Nội bộ Tập đoàn' : 'Đối tác ngoài'))}
+          ${k.kv('Năng lực, phạm vi', u.description ? esc(u.description) : null, 'span2')}${k.kv('Số thiết bị / tổ nhân công', `${(EQUIP[fac] || []).length} thiết bị · ${(LABOR[fac] || []).length} tổ`)}</div>`
+        : '<p class="faint">Dự án chưa chọn đơn vị sản xuất.</p>';
+    } else if (part === 'tram') {
+      const st = D.sxStations[p.code] || [], its = window.SxBtp ? window.SxBtp.items(p) : [], itName = (key) => (its.find((x) => x.key === key) || {}).name || key;
+      body = st.length ? k.table([['Trạm đo', 380], ['Hạng mục', 220], ['Số đạt (lũy kế)', 140, 'r'], ['Số lỗi', 100, 'r'], ['Tỷ lệ đạt', 110, 'r'], ['Đồng bộ lúc', 150]], st,
+        (s) => `<td>${NC(s.name, s.code)}</td><td>${k.clamp(itName(s.item))}</td><td class="r num">${num(s.ok)}</td><td class="r num">${num(s.ng)}</td><td class="r num">${(s.ok / Math.max(1, s.ok + s.ng) * 100).toFixed(1).replace('.', ',')}%</td><td class="num">${esc(dmy(s.at))}</td>`)
+        : '<p class="faint">Dự án không có trạm đo đồng bộ từ VMMS.</p>';
+    } else if (part === 'iqc') {
+      const iqc = (D.sxIqc || {})[p.code] || [];
+      body = iqc.length ? k.table([['Lô IQC', 140], ['Vật tư', 320], ['Số lượng', 120, 'r'], ['Kết quả', 280], ['Ngày', 120]], iqc,
+        (r) => `<td>${esc(r[0])}</td><td>${NC(matName(r[1]), r[1])}</td><td class="r num">${num(r[2])}</td><td>${k.clamp(r[3])}</td><td class="num">${esc(dmy(r[4]))}</td>`) : '<p class="faint">Chưa có kết quả IQC đồng bộ từ VMMS.</p>';
     } else if (part === 'tb') {
       body = fac ? k.table([['Thiết bị', 380], ['Loại', 160], ['Trạm / dây chuyền', 200], ['Trạng thái', 150, 'c'], ['Hạn kiểm định', 130]], EQUIP[fac] || [],
         (r) => `<td>${NC(r[1], r[0])}</td><td>${esc(r[2])}</td><td>${k.clamp(r[3])}</td><td class="c">${badge(r[4], EQ_V[r[4]] || 'default')}</td><td class="num${r[5] < D.sxToday ? ' due-over' : ''}">${esc(dmy(r[5]))}</td>`)

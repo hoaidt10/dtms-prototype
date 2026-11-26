@@ -3,6 +3,13 @@
 > Mỗi PR một mục, mới nhất trên cùng: `## YYYY-MM-DD — <việc> (#PR)` + 2–5 gạch đầu dòng (màn, thay đổi, nguồn, điểm treo mới).
 > Lịch sử trước T77: [lich-su-chung.md](lich-su-chung.md).
 
+## 2026-11-26 · Mục 4: Chi tiết dự án — mỗi tab một bảng, không rối mắt
+- **Tiến độ và chất lượng (Từ VMMS)** (đổi tên Bán thành phẩm & tiến độ, `js/sx-btp.js`): một bảng theo hạng mục — tiến độ + Số lỗi, Tỷ lệ đạt (trạm đo VMMS / nhật ký), IPQC (bấm xem chi tiết; QA Thêm kết quả IPQC). Bỏ Nhật ký sản lượng, Trạm đo, Định mức vật tư; bỏ nút Cập nhật (số liệu đồng bộ — mục 5).
+- **Bất thường & thay đổi**: bỏ Nhật ký quản lý dự án (`js/sx-thay-doi.js`).
+- **Nghiệm thu sản phẩm** (đổi tên Chất lượng & nghiệm thu, `js/sx-nghiem-thu.js`): một bảng gồm Thử nghiệm thực tế, OQC (xem / thêm nội dung / xác nhận trong hộp thoại, thao tác ở dòng), từng đề nghị nghiệm thu theo lô (biên bản, chứng chỉ, phiếu nhập kho), nội dung nghiệm thu nhập tay. IPQC chuyển sang Tiến độ và chất lượng, IQC sang Dữ liệu VMMS.
+- **Dữ liệu VMMS** (`js/sx-vmms.js`): thêm Định mức vật tư, Đơn vị sản xuất, Trạm đo, IQC.
+- **Tài liệu** (`js/sx-du-an.js`): bỏ Chọn mẫu tài liệu và nút Tải file lên chung; thêm **Thêm danh mục tài liệu** (danh mục riêng của dự án); một bảng theo danh mục — dòng danh mục có **(+)** thêm tên tài liệu, mỗi dòng tài liệu có **Tải file lên** (gắn tệp / lên phiên bản). Sửa test t74 #97 theo bố cục mới.
+
 ## 2026-11-26 · Mục 3: không hiện cột mã riêng — mã kèm tên, rà soát mọi màn của phân hệ
 - Hàm dùng chung `SxChung.nameCode` / `projCell` (`js/sx-chung.js`): ô tên (link có tooltip "Xem chi tiết …" nếu mở được) + mã dòng nhỏ bên dưới; cột Dự án hiện tên dự án kèm mã.
 - Bỏ cột Mã riêng, gộp vào tên ở mọi bảng: Việc của tôi, Nhiệm vụ đơn vị, công việc con, Dự án, Phương án SXKD, Hồ sơ chuyển giao / sản phẩm / danh mục hồ sơ, Nhu cầu vật tư, Đề xuất mua sắm, hợp đồng, phiếu nhập kho, Bất thường, Thay đổi kỹ thuật, Nghiệm thu (đề nghị, IPQC, đánh giá, nghiệm thu thủ công), Bán thành phẩm (trạm đo, định mức), Dữ liệu VMMS (thiết bị, lệnh sản xuất), Bài học, Báo cáo / Tổng quan (popup dự án, vật tư leadtime, sự kiện).

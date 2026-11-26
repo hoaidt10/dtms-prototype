@@ -156,13 +156,10 @@
   function projectPart(p) {
     const k = K(), l = all().filter((x) => x.project === p.code).map((x) => Object.assign(x, { st: stOf(x) }));
     const can = canCreate() && p.status !== 'PLANNING' && p.status !== 'DONE';
-    const log = logOf(p.code).slice().sort((a, b) => (a[0] < b[0] ? 1 : -1));
+    /* Góp ý 26/11 mục 4: bỏ card Nhật ký quản lý dự án ở tab Bất thường & thay đổi (mã ECO / ECN đã có trong bảng; lịch sử thay đổi xem ở Dữ liệu VMMS). */
     return `<section class="vcard pad24" data-sx-td><div class="vcard-h"><h3>Thay đổi kỹ thuật</h3><span class="cap">Đồng bộ từ phân hệ KHCN</span></div>
       ${k.table([['Yêu cầu thay đổi kỹ thuật (ECR)', 420], ['Cấp phê duyệt', 90, 'c'], ['ECO', 130], ['ECN', 130], ['Trạng thái', 170, 'c']], l,
-    (x) => `<td>${NC(x.title, x.code, { go: href(x), tip: 'Xem chi tiết yêu cầu thay đổi kỹ thuật' })}</td><td class="c">${x.level ? esc(x.level) : k.dash}</td><td>${x.eco ? esc(x.eco) : k.dash}</td><td>${x.ecn ? esc(x.ecn) : k.dash}</td><td class="c">${badge(...x.st)}</td>`)}</section>
-      <section class="vcard pad24" data-sx-log><div class="vcard-h"><h3>Nhật ký quản lý dự án</h3><span class="cap">Theo SXL.10 — mã ECO / ECN, ngày ban hành, phiên bản tài liệu</span></div>
-      ${k.table([['Ngày', 120], ['Loại', 80, 'c'], ['Nội dung', 480], ['Phiên bản tài liệu', 160], ['ECR', 130]], log,
-    (r) => `<td class="num">${esc(dmy(r[0]))}</td><td class="c">${esc(r[1])}</td><td>${NC(r[3], r[2])}</td><td>${r[4] ? esc(r[4]) : k.dash}</td><td><a class="link" data-go="${href({ code: r[5] })}" title="Xem chi tiết yêu cầu thay đổi kỹ thuật">${esc(r[5])}</a></td>`)}</section>`;
+    (x) => `<td>${NC(x.title, x.code, { go: href(x), tip: 'Xem chi tiết yêu cầu thay đổi kỹ thuật' })}</td><td class="c">${x.level ? esc(x.level) : k.dash}</td><td>${x.eco ? esc(x.eco) : k.dash}</td><td>${x.ecn ? esc(x.ecn) : k.dash}</td><td class="c">${badge(...x.st)}</td>`)}</section>`;
   }
   /* Nút mở ECR trên phiếu bất thường Loại 2 chưa đóng, chưa có ECR. */
   const ecrOf = (issue) => all().find((x) => x.issue === issue) || null;

@@ -349,19 +349,54 @@
     P().log(p.code, edit ? 'Sửa thông tin nghiệm thu' : 'Thêm thông tin nghiệm thu', d.content);
     toast('<b>Thành công</b><br>' + (edit ? 'Cập nhật thành công!' : 'Thêm mới thành công!')); rerender();
   }
+  /* ---------- Tab Nghiệm thu sản phẩm (góp ý 26/11 mục 4: Chất lượng & nghiệm thu → Nghiệm thu sản phẩm, một bảng duy nhất) ----------
+     Dòng: Thử nghiệm thực tế (dự án có thử nghiệm) · Đánh giá chất lượng xuất xưởng (OQC, xem / thêm nội dung trong hộp thoại) · từng đề nghị nghiệm thu theo lô
+     (biên bản, chứng chỉ, phiếu nhập kho) · nội dung nghiệm thu nhập tay. IPQC chuyển sang tab Tiến độ và chất lượng; IQC sang tab Dữ liệu VMMS. */
   function projectTab(p) {
-    const k = K(), l = all().filter((x) => x.project === p.code).map((x) => Object.assign(x, { st: stOf(x) }));
-    const iqc = D.sxIqc[p.code] || [];
-    return `<div data-sx-nt>${ipqcCard(p)}${trialCard(p)}${oqcCard(p)}
-      <section class="vcard pad24"><div class="vcard-h"><h3>Nghiệm thu</h3>${canRequest(p) ? `<button type="button" class="vbtn secondary" data-sxnt-new="${esc(p.code)}">${icon('add')} Đề nghị nghiệm thu</button>` : ''}</div>
-        ${k.table([['Đề nghị nghiệm thu (hạng mục / lô)', 320], ['Số lượng', 100, 'r'], ['Dải sê-ri', 220], ['Chứng chỉ', 130], ['Phiếu nhập kho', 140], ['Trạng thái', 150, 'c']], l,
-    (x) => `<td>${NC(x.itemText, x.code, { go: href(x), tip: 'Xem chi tiết đề nghị nghiệm thu' })}</td><td class="r num">${num(x.qty)}</td><td class="num">${esc(x.serials)}</td>
-      <td>${x.cert ? esc(x.cert) : k.dash}</td><td>${x.pnk ? esc(x.pnk) : k.dash}</td><td class="c">${badge(...x.st)}</td>`)}
-        ${ntManualCard(p)}</section>
-      <section class="vcard pad24"><div class="vcard-h"><h3>Kiểm tra vật tư đầu vào (IQC)</h3><span class="cap">Chỉ xem — đồng bộ từ VMMS</span></div>
-        ${iqc.length ? k.table([['Lô IQC', 140], ['Vật tư', 300], ['Số lượng', 120, 'r'], ['Kết quả', 260], ['Ngày', 120]], iqc,
-    (r) => `<td>${esc(r[0])}</td><td>${NC(matName(r[1]), r[1])}</td><td class="r num">${num(r[2])}</td><td>${k.clamp(r[3])}</td><td class="num">${esc(dmy(r[4]))}</td>`) : '<p class="faint">Chưa có kết quả IQC đồng bộ từ VMMS.</p>'}</section></div>`;
+    const k = K(), lots = all().filter((x) => x.project === p.code).map((x) => Object.assign(x, { st: stOf(x) })), rows = [];
+    if (p.trial) rows.push({ t: 'TN' });
+    if (['IN_PRODUCTION', 'ACCEPTANCE', 'DONE'].includes(p.status) || oqcAll(p).length) rows.push({ t: 'OQC' });
+    lots.forEach((x) => rows.push({ t: 'LOT', x }));
+    ntManual(p).forEach((x) => rows.push({ t: 'NTM', x }));
+    const ib = (ic, label, attrs) => `<button type="button" class="vbtn icon ghost" title="${label}" aria-label="${label}" ${attrs}>${icon(ic)}</button>`;
+    const docs = (l) => (l.filter((x) => x[1]).length ? l.filter((x) => x[1]).map(([lb, v]) => `<div><span class="faint">${lb}:</span> ${esc(v)}</div>`).join('') : k.dash);
+    const cells = (r) => {
+      if (r.t === 'TN') {
+        const t = trialOf(p), st = t.kq === 'DAT' ? ['Đạt', 'success'] : t.kq === 'NOK' ? ['Không đạt', 'error'] : t.duyet ? ['Đã duyệt kịch bản', 'info'] : ['Chưa lập', 'default'];
+        return `<td><b>Thử nghiệm thực tế</b>${t.place ? `<div class="faint">${esc(t.place)}</div>` : ''}</td><td>Đơn vị sử dụng (NCPT chủ trì)</td><td>${k.dash}</td>
+          <td class="num">${t.from ? esc(`${dmy(t.from)} – ${dmy(t.to || '')}`) : k.dash}</td><td>${docs([['Kịch bản', t.kb], ['Kế hoạch', t.kh], ['Kết quả', t.kqFile]])}${t.issue ? `<div><a class="link" data-go="sx/bat-thuong/${encodeURIComponent(t.issue)}" title="Xem chi tiết phiếu bất thường">${esc(t.issue)}</a></div>` : ''}</td>
+          <td class="c">${badge(...st)}</td><td class="c"><div class="acts">${canTrial(p) ? ib('edit', 'Cập nhật thử nghiệm', `data-sxnt-trial-up="${esc(p.code)}"`) : ''}</div></td>`;
+      }
+      if (r.t === 'OQC') {
+        const l = oqcAll(p), bad = l.filter((x) => x.kq === 'NOK').length, done = oqcDone(p), can = canQa(p) && !done;
+        const st = done ? ['Đã hoàn thành', 'success'] : bad ? ['Có nội dung không đạt', 'error'] : l.length ? ['Đang đánh giá', 'info'] : ['Chưa đánh giá', 'default'];
+        return `<td><a class="link" data-sxnt-oqc-view="${esc(p.code)}" title="Xem nội dung đánh giá OQC"><b>Đánh giá chất lượng xuất xưởng (OQC)</b></a></td><td>Nội bộ (Đảm bảo chất lượng)</td><td>${l.length ? `${l.length - bad}/${l.length} nội dung đạt` : k.dash}</td>
+          <td class="num">${done ? esc(dmy(done.at)) : k.dash}</td><td>${k.dash}</td><td class="c">${badge(...st)}</td>
+          <td class="c"><div class="acts">${ib('search', 'Xem nội dung đánh giá OQC', `data-sxnt-oqc-view="${esc(p.code)}"`)}${can ? ib('add', 'Thêm nội dung đánh giá', `data-sxnt-oqc-add="${esc(p.code)}"`) : ''}
+            ${can && l.length && !bad ? ib('check', 'Xác nhận hoàn thành OQC', `data-sxnt-oqc-done="${esc(p.code)}"`) : ''}${can && bad ? ib('info', 'Tạo phiếu bất thường', `data-sxnt-oqc-bt="${esc(p.code)}"`) : ''}</div></td>`;
+      }
+      if (r.t === 'LOT') {
+        const x = r.x, step = stepOf(x);
+        return `<td>${NC(x.itemText, x.code, { go: href(x), tip: 'Xem chi tiết đề nghị nghiệm thu' })}</td><td>Tổng công ty</td><td><span class="num">${num(x.qty)} ${esc(x.unitName)}</span><div class="faint">${esc(x.serials)}</div></td>
+          <td class="num">${esc(dmy(x.stocked || x.created))}</td><td>${docs([['Biên bản', x.bb], ['Chứng chỉ', x.cert], ['Phiếu nhập kho', x.pnk]])}</td>
+          <td class="c">${badge(...x.st)}${step ? `<div class="faint" style="font-size:12px">${esc(step)}</div>` : ''}</td><td class="c"><div class="acts">${ib('search', 'Xem chi tiết đề nghị nghiệm thu', `data-go="${href(x)}"`)}</div></td>`;
+      }
+      const x = r.x, cn = canNtm(p);
+      return `<td>${NC(x.content, x.code)}${x.note ? `<div class="faint">${esc(x.note)}</div>` : ''}</td><td>${esc(NT_LEVEL[x.level] || '')}</td><td><span class="num">Tiến độ ${x.pct || 0}%</span></td>
+        <td class="num">${x.date ? esc(dmy(x.date)) : k.dash}</td><td>${docs([['Biên bản', x.file]])}</td><td class="c">${badge(...(NT_ST[x.st] || NT_ST.CHUA))}</td>
+        <td class="c"><div class="acts">${cn ? ib('edit', 'Sửa', `data-sxnt-ntm-edit="${esc(x.code)}"`) + ib('del', 'Xoá', `data-sxnt-ntm-del="${esc(x.code)}"`) : ''}</div></td>`;
+    };
+    const btns = (canRequest(p) ? `<button type="button" class="vbtn secondary" data-sxnt-new="${esc(p.code)}">${icon('add')} Đề nghị nghiệm thu</button>` : '')
+      + (canNtm(p) ? `<button type="button" class="vbtn secondary" data-sxnt-ntm-add="${esc(p.code)}">${icon('add')} Thêm thông tin nghiệm thu</button>` : '');
+    return `<div data-sx-nt><section class="vcard pad24"><div class="vcard-h"><h3>Nghiệm thu sản phẩm</h3><div class="row">${btns}</div></div>
+      ${k.table([['Nội dung nghiệm thu', 360], ['Cấp nghiệm thu', 200], ['Số lượng / kết quả', 200], ['Ngày', 150], ['Hồ sơ', 260], ['Tình trạng', 170, 'c'], ['Thao tác', 130, 'c']], rows, cells)}</section></div>`;
   }
+  /* Nội dung đánh giá OQC (bấm dòng OQC): bảng đánh giá trong hộp thoại; thao tác trong hộp thoại đóng hộp thoại rồi xử lý như ở màn. */
+  function oqcView(code) {
+    const p = P().byCode(code), m = window.UI.vModal({ title: 'Đánh giá chất lượng xuất xưởng (OQC)', size: 'xl', body: oqcCard(p), actions: '<button type="button" class="vbtn secondary" data-close>Đóng</button>' });
+    m.el.addEventListener('click', (e) => { if (e.target.closest('[data-sxnt-oqc-add],[data-sxnt-oqc-done],[data-sxnt-oqc-del],[data-sxnt-oqc-bt]')) m.close(); });
+  }
+  document.addEventListener('click', (e) => { const v = e.target.closest && e.target.closest('[data-sxnt-oqc-view]'); if (v) oqcView(v.dataset.sxntOqcView); });
 
   document.addEventListener('click', (e) => {
     const t = e.target;

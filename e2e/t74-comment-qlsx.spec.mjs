@@ -209,8 +209,9 @@ test('#97: Nhân sự (thêm, không xoá người đang phụ trách); Hồ sơ
   expect(await page.evaluate(() => SxCg.gate(SxDuAn.byCode('DA-SX-2026-002')).all)).toBe(all0);
   // Tài liệu theo loại.
   await tab(page, 'docs');
-  await expect(page.locator('[data-sx-docs] h4').first()).toBeVisible();
-  await expect(page.locator('[data-sx-docs]')).toContainText('Loại tài liệu chưa có');
+  // Góp ý 26/11 mục 4 (hoaidt10): Tài liệu là một bảng theo danh mục (dòng danh mục + dòng tài liệu), danh mục trống ghi "Chưa có tài liệu".
+  await expect(page.locator('[data-sx-docs] table')).toHaveCount(1);
+  await expect(page.locator('[data-sx-docs]')).toContainText('Chưa có tài liệu');
   expect(await page.locator('main').innerText()).not.toMatch(BA);
   expect(page.errors).toEqual([]);
 });

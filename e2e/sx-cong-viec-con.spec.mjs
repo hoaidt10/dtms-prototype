@@ -128,3 +128,51 @@ test('Mục 3: không còn cột mã riêng — mã kèm dưới tên (link có 
   await expect(rowCode(page, 'BT-2026-002')).toContainText('Sản xuất tổ hợp quan sát quang điện tử QĐ-12');
   expect(page.errors).toEqual([]);
 });
+
+test('Mục 4: chi tiết dự án — Tiến độ và chất lượng (Từ VMMS), Bất thường & thay đổi, Nghiệm thu sản phẩm (một bảng), Dữ liệu VMMS, Tài liệu', async ({ page }) => {
+  await fresh(page, '#/sx/du-an');
+  await as(page, 'qt', '#/sx/du-an/DA-SX-2026-003');
+  const tabs = await page.locator('[data-ttab]').allInnerTexts();
+  expect(tabs).toContain('Tiến độ và chất lượng (Từ VMMS)');
+  expect(tabs).toContain('Nghiệm thu sản phẩm');
+  // Tiến độ và chất lượng: một bảng, có Số lỗi / Tỷ lệ đạt / IPQC; không còn Nhật ký sản lượng, Trạm đo, Định mức, nút Cập nhật.
+  await page.locator('[data-ttab="btp"]').click();
+  const btp = page.locator('[data-sx-btp]');
+  await expect(btp.locator('table')).toHaveCount(1);
+  await expect(btp.locator('thead')).toContainText('Tỷ lệ đạt');
+  await expect(btp).not.toContainText('Nhật ký sản lượng');
+  await expect(btp.locator('[data-btp-up]')).toHaveCount(0);
+  // Bất thường & thay đổi: không còn Nhật ký quản lý dự án.
+  await page.locator('[data-ttab="bt"]').click();
+  await expect(page.locator('main')).not.toContainText('Nhật ký quản lý dự án');
+  // Nghiệm thu sản phẩm: một bảng gồm OQC và các lô.
+  await page.locator('[data-ttab="nt"]').click();
+  const nt = page.locator('[data-sx-nt]');
+  await expect(nt.locator('table')).toHaveCount(1);
+  await expect(nt).toContainText('Đánh giá chất lượng xuất xưởng (OQC)');
+  await expect(nt).toContainText('NT-2026-001');
+  await nt.locator('[data-sxnt-oqc-view]').first().click();
+  await expect(page.locator('.vmodal')).toContainText('Nội dung đánh giá');
+  await page.locator('.vmodal [data-close]').last().click();
+  // Dữ liệu VMMS: thêm Đơn vị sản xuất, Trạm đo, Định mức vật tư, IQC.
+  await page.locator('[data-ttab="vmms"]').click();
+  for (const part of ['dv', 'tram', 'dm', 'iqc']) await expect(page.locator(`[data-vmms-part$="|${part}"]`)).toHaveCount(1);
+  await page.locator('[data-vmms-part$="|dv"]').click();
+  await expect(page.locator('[data-vmms-body="dv"]')).toContainText('Đơn vị sản xuất');
+  // Tài liệu: không còn Chọn mẫu tài liệu; Thêm danh mục tài liệu; (+) thêm tên tài liệu; Tải file lên ở từng dòng.
+  await as(page, 'sxpm', '#/sx/du-an/DA-SX-2026-002');
+  await page.locator('[data-ttab="docs"]').click();
+  await expect(page.locator('[data-sx-tpl]')).toHaveCount(0);
+  await page.locator('[data-sx-doccat]').click();
+  await page.locator('#sx-ask').fill('Hồ sơ thử nghiệm');
+  await page.locator('#sx-ask-ok').click();
+  await page.locator('[data-sx-docadd$="|DM-1"]').click();
+  await page.locator('#sx-ask').fill('Biên bản thử rung');
+  await page.locator('#sx-ask-ok').click();
+  const r = page.locator('[data-sx-docs] tr', { hasText: 'Biên bản thử rung' });
+  await expect(r).toContainText('Chưa có tệp');
+  await r.locator('input[data-sx-docup]').setInputFiles({ name: 'BB-thu-rung.pdf', mimeType: 'application/pdf', buffer: Buffer.from('x') });
+  await expect(page.locator('[data-sx-docs] tr', { hasText: 'Biên bản thử rung' })).toContainText('BB-thu-rung.pdf');
+  await expect(page.locator('[data-sx-docs] tr', { hasText: 'Biên bản thử rung' })).toContainText('v1.0');
+  expect(page.errors).toEqual([]);
+});
