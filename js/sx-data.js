@@ -612,29 +612,37 @@
     'DA-SX-2026-003': [['IQC-2026-0455', 'SOC-MT7981', 105000, 'Đạt', '2026-05-20'], ['IQC-2026-0456', 'DDR4-512M', 98000, 'Đạt', '2026-05-20'], ['IQC-2026-0470', 'ADAPTER-12V', 120000, 'Đạt có điều kiện — 0,3% lỗi vỏ', '2026-05-28']],
   };
 
-  /* ---------- T71 S9: Công việc (SX-16) — việc cá nhân (CN) và nhiệm vụ đơn vị (DV) ----------
+  /* ---------- T71 S9: Công việc (SX-16) — công việc (CN, Việc của tôi) và nhiệm vụ đơn vị (DV) ----------
      Dòng: mã, loại, tên, dự án, hạng mục kế hoạch (khoá bước của tab Kế hoạch & mốc), công việc cha, người thực hiện / đầu mối, người giao, bắt đầu, hạn,
      ưu tiên, nhắc trước (ngày), % (việc có việc con thì % tính từ việc con), ngày hoàn thành, nguồn (KH = từ kế hoạch, TAY = nhập tay, XLS = nhập Excel),
-     nhật ký cập nhật tiến độ [thời gian, người, %, ghi chú]. Hư cấu; NV-SX-2026-001 phân rã 3 việc con khớp Điều kiện 4M của DA-SX-2026-002 (thiếu Jig / Stencil). */
+     nhật ký cập nhật tiến độ [thời gian, người, %, ghi chú]. Hư cấu.
+     Góp ý 26/11 (hoaidt10): việc giao theo bước kế hoạch là CÔNG VIỆC (CN, Việc của tôi — công việc từ kế hoạch), không phải nhiệm vụ đơn vị; CV-SX-2026-006 phân rã 3 công việc con
+     khớp Điều kiện 4M của DA-SX-2026-002 (thiếu Jig / Stencil). Nhiệm vụ đơn vị = nhiệm vụ sản xuất của đơn vị, theo dõi tiến độ dự án thuộc nhiệm vụ (NV-SX-2026-001…003, 008). */
   D.sxWork = [
-    { code: 'NV-SX-2026-001', kind: 'DV', title: 'Bảo đảm máy móc, công cụ dụng cụ, môi trường sản xuất', project: 'DA-SX-2026-002', plan: 'B7', parent: null, owner: 'sxpm', assigner: 'sxpm',
+    { code: 'NV-SX-2026-001', kind: 'DV', title: 'Nhiệm vụ sản xuất tổ hợp quan sát quang điện tử QĐ-12', project: 'DA-SX-2026-002', plan: null, parent: null, owner: 'sxpm', assigner: 'sxld',
+      start: '2026-06-01', due: '2027-03-31', prio: 'CAO', remind: 3, pct: 0, src: 'TAY', created: '2026-05-20', desc: 'Nhiệm vụ sản xuất năm 2026 — Khối 1; tiến độ theo dự án DA-SX-2026-002.', log: [] },
+    { code: 'NV-SX-2026-002', kind: 'DV', title: 'Nhiệm vụ sản xuất loạt đài thu phát vô tuyến chiến thuật VT-25 — đợt 1', project: 'DA-SX-2026-001', plan: null, parent: null, owner: 'sxpm', assigner: 'sxld',
+      start: '2026-03-02', due: '2026-12-15', prio: 'CAO', remind: 3, pct: 0, src: 'TAY', created: '2026-02-20', desc: 'Nhiệm vụ sản xuất năm 2026 — Khối 1; tiến độ theo dự án DA-SX-2026-001.', log: [] },
+    { code: 'NV-SX-2026-003', kind: 'DV', title: 'Nhiệm vụ sản xuất bộ phát Wi-Fi Mesh WM-6 cho thị trường Lào', project: 'DA-SX-2026-003', plan: null, parent: null, owner: 'sxk2', assigner: 'sxld',
+      start: '2026-04-15', due: '2026-11-30', prio: 'TB', remind: 3, pct: 0, src: 'TAY', created: '2026-04-01', desc: 'Nhiệm vụ sản xuất năm 2026 — Khối 2; tiến độ theo dự án DA-SX-2026-003.', log: [] },
+    { code: 'CV-SX-2026-006', kind: 'CN', title: 'Bảo đảm máy móc, công cụ dụng cụ, môi trường sản xuất', project: 'DA-SX-2026-002', plan: 'B7', parent: null, owner: 'sxpm', assigner: 'sxpm',
       start: '2026-06-15', due: '2026-11-20', prio: 'CAO', remind: 3, pct: 0, src: 'KH', created: '2026-06-12', desc: 'Giao khi kick-off dự án, theo bước 7 của kế hoạch gốc.', log: [] },
-    { code: 'CV-SX-2026-001', kind: 'CN', title: 'Kiểm định phương tiện đo, máy đo quang học', project: 'DA-SX-2026-002', plan: null, parent: 'NV-SX-2026-001', owner: 'sxsub', assigner: 'sxpm',
+    { code: 'CV-SX-2026-001', kind: 'CN', title: 'Kiểm định phương tiện đo, máy đo quang học', project: 'DA-SX-2026-002', plan: null, parent: 'CV-SX-2026-006', owner: 'sxsub', assigner: 'sxpm',
       start: '2026-09-01', due: '2026-11-18', prio: 'CAO', remind: 2, pct: 50, src: 'TAY', created: '2026-08-28', desc: 'Kiểm định 6 phương tiện đo, máy đo trục quang trước khi tích hợp.',
       log: [['2026-10-05 16:20', 'sxsub', 20, 'Đã gửi 2 máy đi kiểm định'], ['2026-11-02 10:05', 'sxsub', 50, 'Hoàn thành 3/6 phương tiện']] },
-    { code: 'CV-SX-2026-002', kind: 'CN', title: 'Chế tạo Jig, Stencil theo danh mục chuyển giao', project: 'DA-SX-2026-002', plan: null, parent: 'NV-SX-2026-001', owner: 'sxsub', assigner: 'sxpm',
+    { code: 'CV-SX-2026-002', kind: 'CN', title: 'Chế tạo Jig, Stencil theo danh mục chuyển giao', project: 'DA-SX-2026-002', plan: null, parent: 'CV-SX-2026-006', owner: 'sxsub', assigner: 'sxpm',
       start: '2026-08-15', due: '2026-11-10', prio: 'CAO', remind: 2, pct: 40, src: 'TAY', created: '2026-08-12', desc: 'Jig đo khối quang học và Stencil bo mạch xử lý ảnh theo hồ sơ chuyển giao.',
       log: [['2026-09-20 09:40', 'sxsub', 40, 'Xong Stencil; Jig chờ bản vẽ gá đỡ rev B']] },
-    { code: 'CV-SX-2026-003', kind: 'CN', title: 'Kiểm tra điều kiện ESD, nhiệt độ, độ ẩm khu tích hợp', project: 'DA-SX-2026-002', plan: null, parent: 'NV-SX-2026-001', owner: 'sxpm', assigner: 'sxpm',
+    { code: 'CV-SX-2026-003', kind: 'CN', title: 'Kiểm tra điều kiện ESD, nhiệt độ, độ ẩm khu tích hợp', project: 'DA-SX-2026-002', plan: null, parent: 'CV-SX-2026-006', owner: 'sxpm', assigner: 'sxpm',
       start: '2026-09-01', due: '2026-10-30', prio: 'TB', remind: 2, pct: 100, doneAt: '2026-10-28', src: 'TAY', created: '2026-08-28', desc: '',
       log: [['2026-10-28 15:00', 'sxpm', 100, 'Đạt, có biên bản kiểm tra']] },
-    { code: 'NV-SX-2026-002', kind: 'DV', title: 'Bảo đảm nhân lực, đào tạo chuyển giao công nghệ', project: 'DA-SX-2026-002', plan: 'B6', parent: null, owner: 'sxpm', assigner: 'sxpm',
+    { code: 'CV-SX-2026-007', kind: 'CN', title: 'Bảo đảm nhân lực, đào tạo chuyển giao công nghệ', project: 'DA-SX-2026-002', plan: 'B6', parent: null, owner: 'sxpm', assigner: 'sxpm',
       start: '2026-06-15', due: '2026-09-30', prio: 'TB', remind: 3, pct: 100, doneAt: '2026-09-26', src: 'KH', created: '2026-06-12', desc: 'Giao khi kick-off dự án, theo bước 6 của kế hoạch gốc.',
       log: [['2026-09-26 11:00', 'sxpm', 100, 'Hoàn thành đào tạo 14 công nhân tích hợp, đo kiểm']] },
-    { code: 'NV-SX-2026-003', kind: 'DV', title: 'Theo dõi VMC hoàn thành đo kiểm tại nhà máy', project: 'DA-SX-2026-001', plan: null, parent: null, owner: 'sxpm', assigner: 'sxld',
+    { code: 'CV-SX-2026-008', kind: 'CN', title: 'Theo dõi VMC hoàn thành đo kiểm tại nhà máy', project: 'DA-SX-2026-001', plan: null, parent: null, owner: 'sxpm', assigner: 'sxld',
       start: '2026-11-01', due: '2026-12-10', prio: 'TB', remind: 3, pct: 20, src: 'TAY', created: '2026-10-30', desc: 'Báo cáo tuần kết quả đo kiểm 40 bộ VT-25 tại VMC.',
       log: [['2026-11-09 17:00', 'sxpm', 20, 'VMC đo kiểm xong 8/40 bộ']] },
-    { code: 'NV-SX-2026-004', kind: 'DV', title: 'Đối chiếu số sê-ri lô 6 trước nhập kho', project: 'DA-SX-2026-003', plan: null, parent: null, owner: 'sxk2', assigner: 'sxk2',
+    { code: 'CV-SX-2026-009', kind: 'CN', title: 'Đối chiếu số sê-ri lô 6 trước nhập kho', project: 'DA-SX-2026-003', plan: null, parent: null, owner: 'sxk2', assigner: 'sxk2',
       start: '2026-11-10', due: '2026-11-19', prio: 'CAO', remind: 3, pct: 30, src: 'TAY', created: '2026-11-09', desc: '', log: [['2026-11-13 09:30', 'sxk2', 30, 'Đã đối chiếu 6.000/20.000 sê-ri']] },
     { code: 'CV-SX-2026-004', kind: 'CN', title: 'Chuẩn bị báo cáo tiến độ tuần 47 gửi Ban Giám đốc Khối', project: 'DA-SX-2026-001', plan: null, parent: null, owner: 'sxpm', assigner: 'sxpm',
       start: '2026-11-16', due: '2026-11-17', prio: 'TB', remind: 1, pct: 0, src: 'TAY', created: '2026-11-14', desc: '', log: [] },
