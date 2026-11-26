@@ -3,6 +3,12 @@
 > Mỗi PR một mục, mới nhất trên cùng: `## YYYY-MM-DD — <việc> (#PR)` + 2–5 gạch đầu dòng (màn, thay đổi, nguồn, điểm treo mới).
 > Lịch sử trước T77: [lich-su-chung.md](lich-su-chung.md).
 
+## 2026-11-27 · Việc của tôi: quyền sửa / xoá, công việc con 1 cấp, STT n.j, Ngày hoàn thành; Nhiệm vụ đơn vị bỏ Giai đoạn
+- Việc của tôi (`js/sx-cong-viec.js`): không sửa / xoá công việc được giao; chỉ **Sửa / Xoá công việc con do mình chia, chưa cập nhật tiến độ** (màn sửa báo lý do nếu không được sửa). Nhiệm vụ đơn vị giữ quy tắc cũ.
+- **Công việc con chỉ 1 cấp**: công việc con không có Thêm công việc con, chi tiết không có tab Công việc con.
+- Danh sách: công việc con nằm ngay dưới việc cha, **STT 2.1, 2.2…** (lọc / tìm kiếm giữ việc cha khi việc cha hoặc công việc con khớp; phân trang theo việc cha; Xuất Excel kèm công việc con, STT n.j); thêm cột **Ngày hoàn thành**.
+- Nhiệm vụ đơn vị: bỏ cột Giai đoạn; cột Thao tác thêm icon **Cập nhật tiến độ** (nhiệm vụ chưa gắn dự án, chưa xong). e2e thêm 1 ca (9 ca xanh).
+
 ## 2026-11-27 · Nhiệm vụ đơn vị: bỏ Công việc cha ở Xem chi tiết
 - Chi tiết nhiệm vụ đơn vị không còn trường Công việc cha (công việc từ kế hoạch vẫn có, tên kèm mã) (`js/sx-cong-viec.js`).
 - Rà soát Cập nhật tiến độ của nhiệm vụ đơn vị: chỉ có ở nhiệm vụ **chưa gắn dự án, chưa hoàn thành** (NV-SX-2026-005, 006), cho người đầu mối / người giao / quản trị; nhiệm vụ đã gắn dự án lấy % theo tiến độ dự án nên không có nút. Thêm ca e2e.

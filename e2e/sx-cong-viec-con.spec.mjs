@@ -214,3 +214,42 @@ test('Nhiệm vụ đơn vị: chi tiết không có Công việc cha; Cập nh�
   }
   expect(page.errors).toEqual([]);
 });
+
+test('Góp ý 27/11: không sửa / xoá việc được giao (trừ công việc con tự chia, chưa cập nhật); công việc con 1 cấp; STT n.j; Ngày hoàn thành; nhiệm vụ đơn vị bỏ Giai đoạn, có Cập nhật tiến độ', async ({ page }) => {
+  await fresh(page, '#/sx/viec-cua-toi');
+  await as(page, 'sxpm', '#/sx/viec-cua-toi');
+  await expect(page.locator('.vtable thead')).toContainText('Ngày hoàn thành');
+  // Việc được giao (từ kế hoạch): không Sửa / Xoá.
+  const parent = rowCode(page, 'CV-SX-2026-006');
+  await expect(parent.locator('[title="Sửa"], [title="Xoá"]')).toHaveCount(0);
+  // Công việc con nằm dưới việc cha, STT n.1 – n.3.
+  const no = (await parent.locator('td.ord').innerText()).trim();
+  await expect(rowCode(page, 'CV-SX-2026-001').locator('td.ord')).toHaveText(`${no}.1`);
+  await expect(rowCode(page, 'CV-SX-2026-003').locator('td.ord')).toHaveText(`${no}.3`);
+  await expect(rowCode(page, 'CV-SX-2026-003')).toContainText('28/10/2026'); // ngày hoàn thành
+  // Công việc con đã cập nhật tiến độ: không Sửa / Xoá; không chia tiếp.
+  await expect(rowCode(page, 'CV-SX-2026-002').locator('[title="Sửa"], [title="Xoá"], [title="Thêm công việc con"]')).toHaveCount(0);
+  // Công việc con mới tự chia, chưa cập nhật: Sửa / Xoá được.
+  await as(page, 'sxpm', '#/sx/cong-viec/create/CN/cha/CV-SX-2026-006');
+  await page.locator('[data-vsel="cvf-owner"]').click(); await page.locator('.vsel-panel [data-opt="sxsub"]').click();
+  await page.locator('#cvf-title').fill('Kiểm tra lại đồng hồ đo lực xiết');
+  await page.locator('#cvf-due').fill('19/11/2026');
+  await page.locator('button[type="submit"]').click();
+  const code = await page.evaluate(() => SxCv.all().find((x) => x.title === 'Kiểm tra lại đồng hồ đo lực xiết').code);
+  expect(await page.locator('.tab').allInnerTexts()).toEqual(['Thông tin chung', 'Lịch sử cập nhật']); // chi tiết công việc con: không tab Công việc con
+  await expect(page.locator('[data-go^="sx/cong-viec/create/CN/cha/"]')).toHaveCount(0);
+  await as(page, 'sxpm', '#/sx/viec-cua-toi');
+  await expect(rowCode(page, code).locator('[title="Sửa"]')).toHaveCount(1);
+  await expect(rowCode(page, code).locator('[title="Xoá"]')).toHaveCount(1);
+  // Người được giao (sxsub) không sửa / xoá được công việc con được giao cho mình.
+  await as(page, 'sxsub', '#/sx/viec-cua-toi');
+  await expect(rowCode(page, code).locator('[title="Sửa"], [title="Xoá"]')).toHaveCount(0);
+  await as(page, 'sxsub', `#/sx/cong-viec/${code}/edit`);
+  await expect(page.locator('main')).toContainText('Không sửa được công việc được giao');
+  // Nhiệm vụ đơn vị: bỏ cột Giai đoạn, icon Cập nhật tiến độ ở Thao tác.
+  await as(page, 'sxpm', '#/sx/cong-viec/don-vi');
+  await expect(page.locator('.vtable thead')).not.toContainText('Giai đoạn');
+  await expect(rowCode(page, 'NV-SX-2026-005').locator('[data-sxcv-upd]')).toHaveCount(1);
+  await expect(rowCode(page, 'NV-SX-2026-001').locator('[data-sxcv-upd]')).toHaveCount(0);
+  expect(page.errors).toEqual([]);
+});

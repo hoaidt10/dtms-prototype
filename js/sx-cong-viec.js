@@ -97,10 +97,13 @@
   const LEADS = ['R-SX-PM', 'R-SX-SUBPM', 'R-SX-LD'];
   const canAssign = () => isAdmin() || LEADS.includes(D.roleOf(pid()));
   const canCreate = (kind) => (kind === 'CN' ? !!D.roleOf(pid()) || isAdmin() : isAdmin() || ['R-SX-PM', 'R-SX-LD'].includes(D.roleOf(pid())));
-  const canEdit = (x) => !x.done && (isAdmin() || x.assigner === pid());
+  /* Góp ý 27/11: công việc (Việc của tôi) — người dùng không tự sửa / xoá công việc được giao; chỉ sửa / xoá công việc con do mình chia, chưa cập nhật tiến độ.
+     Nhiệm vụ đơn vị giữ quy tắc cũ (người giao / quản trị). */
+  const ownSub = (x) => x.kind === 'CN' && !!x.parent && x.assigner === pid() && !x.done && !x.log.length && !x.pct;
+  const canEdit = (x) => (x.kind === 'DV' ? !x.done && (isAdmin() || x.assigner === pid()) : ownSub(x));
   const canUpdate = (x) => !x.done && !x.kids.length && !x.byProject && (isAdmin() || x.owner === pid() || x.assigner === pid());
   /* Xoá: việc chưa bắt đầu cập nhật, không có việc con, không sinh từ kế hoạch; người giao hoặc quản trị. */
-  const canDel = (x) => !x.log.length && x.pct === 0 && !x.kids.length && x.src !== 'KH' && (isAdmin() || x.assigner === pid());
+  const canDel = (x) => (x.kind === 'DV' ? !x.log.length && x.pct === 0 && !x.kids.length && x.src !== 'KH' && (isAdmin() || x.assigner === pid()) : ownSub(x));
 
   /* ---------- Liên kết kế hoạch (cho sx-du-an.js) ---------- */
   /* Công việc cấp 1 gắn hạng mục kế hoạch: % = trung bình, ngày thực tế = ngày hoàn thành muộn nhất khi tất cả xong. null = hạng mục chưa có công việc. */
@@ -172,8 +175,18 @@
   /* Góp ý 26/11 (hoaidt10): Việc của tôi (CN) = công việc tôi thực hiện / tôi giao + việc quy trình của tôi (SxFlow.flowItems, kind QT). Nhiệm vụ đơn vị theo phạm vi xem. */
   const base = (kind) => (kind === 'DV' ? all().filter((x) => x.kind === 'DV' && canSee(x))
     : all().filter((x) => x.kind === 'CN' && (isAdmin() || x.owner === pid() || x.assigner === pid())).concat(window.SxFlow ? window.SxFlow.flowItems(pid()) : []));
-  const rowsOf = (kind) => base(kind).filter((x) => tileOk(TILE[kind], x)).map((x) => Object.assign(x, { st: x.kind === 'QT' ? x.st : stOf(x) }))
-    .sort((a, b) => (a.done !== b.done ? (a.done ? 1 : -1) : a.due < b.due ? -1 : a.due > b.due ? 1 : a.code < b.code ? -1 : 1));
+  /* Góp ý 27/11: Việc của tôi — công việc con nằm ngay dưới việc cha (STT 2 → 2.1, 2.2); công việc con của việc cha không có trong danh sách (người khác chia cho tôi) là dòng riêng.
+     Lọc nhanh / tìm kiếm giữ việc cha nếu chính nó hoặc một công việc con khớp; phân trang theo việc cha. */
+  const stamp = (x) => Object.assign(x, { st: x.kind === 'QT' ? x.st : stOf(x) });
+  const byDue = (a, b) => (a.done !== b.done ? (a.done ? 1 : -1) : a.due < b.due ? -1 : a.due > b.due ? 1 : a.code < b.code ? -1 : 1);
+  function rowsOf(kind) {
+    const l = base(kind).map(stamp);
+    if (kind === 'DV') return l.filter((x) => tileOk(TILE[kind], x)).sort(byDue);
+    const inList = new Set(l.map((x) => x.code));
+    const top = l.filter((x) => !(x.parent && inList.has(x.parent)));
+    top.forEach((x) => { x.subs = l.filter((y) => y.parent === x.code).sort((a, b) => (a.code < b.code ? -1 : 1)); });
+    return top.filter((x) => tileOk(TILE[kind], x) || x.subs.some((y) => tileOk(TILE[kind], y))).sort(byDue);
+  }
   /* T74 #97: bước 4 là nhóm (2 mục con) nhưng vẫn giao việc được ở cấp bước — hạng mục giao việc = lá (trừ mốc bước 9) + nhóm bước 4. */
   const flat = (rows) => rows.flatMap((r) => [r].concat(r.children ? flat(r.children) : []));
   const assignable = (p) => flat(P().planOf(p)).filter((r) => !/^G\d$/.test(r.key) && !/^B9\./.test(r.key) && (!r.children || r.key === 'B4'));
@@ -183,21 +196,24 @@
   const ID = (kind) => 'sxcv-' + kind;
   function filtered(kind) {
     const k = K(), L = k.LST[ID(kind)], n = window.UI.norm;
-    return rowsOf(kind).filter((x) => (!L ? true : !L.adv ? !L.kw || n(kwText(x)).includes(n(L.kw)) : match(x, L.f, k)));
+    return rowsOf(kind).filter((x) => (!L ? true : !L.adv ? !L.kw || n(kwAll(x)).includes(n(L.kw)) : matchAll(x, L.f, k)));
   }
   /* Phân loại của dòng Việc của tôi. */
   const LOAI = { KH: ['Công việc từ kế hoạch', 'warning'], QT: ['Công việc từ quy trình', 'info'] };
   const loaiOf = (x) => (x.kind === 'QT' ? 'QT' : 'KH');
   const kwText = (x) => `${x.code} ${x.title} ${x.flowName || ''} ${x.project || ''} ${pName(x.owner)}`;
+  const kwAll = (x) => [x].concat(x.subs || []).map(kwText).join(' ');
+  const matchAll = (x, f, k) => [x].concat(x.subs || []).some((y) => match(y, f, k));
   const match = (x, f, k) => k.has(f.code, x.code) && k.has(f.title, `${x.title} ${x.flowName || ''}`) && (!f.project || x.project === f.project) && (!f.owner || x.owner === f.owner)
     && k.inSet(f.st, x.stg || x.st[0]) && (!f.prio || x.prio === f.prio) && (!f.src || x.src === f.src) && (!f.loai || loaiOf(x) === f.loai);
   /* T74 #94 / #96: dòng Nhiệm vụ đơn vị. Độ trễ (ngày) = ngày hoàn thành (chưa xong: hôm nay) trừ hạn, không trễ để trống (P-269). */
   const lateDays = (x) => { const end = x.done ? (x.doneAt || x.due) : D.sxToday; const d = Math.round((ms(String(end).slice(0, 10)) - ms(x.due)) / DAY); return d > 0 ? d : 0; };
   function dvCell(x, k) {
-    const st = window.SxDuAn.stageName(x.plan), late = lateDays(x), pj = x.project && P().byCode(x.project);
-    return `<td class="c"><div class="acts">${canEdit(x) ? iconBtn('edit', 'Sửa', `data-go="${href(x)}/edit"`) : ''}${canDel(x) ? `<span class="sep"></span>${iconBtn('del', 'Xoá', `data-sxcv-del="${esc(x.code)}"`)}` : ''}</div></td>
+    const late = lateDays(x), pj = x.project && P().byCode(x.project);
+    /* Góp ý 27/11: thêm icon Cập nhật tiến độ (nhiệm vụ chưa gắn dự án, chưa xong); bỏ cột Giai đoạn. */
+    return `<td class="c"><div class="acts">${canUpdate(x) ? iconBtn('reload', 'Cập nhật tiến độ', `data-sxcv-upd="${esc(x.code)}"`) : ''}${canEdit(x) ? iconBtn('edit', 'Sửa', `data-go="${href(x)}/edit"`) : ''}${canDel(x) ? iconBtn('del', 'Xoá', `data-sxcv-del="${esc(x.code)}"`) : ''}</div></td>
       <td class="c">${badge(...x.st)}</td><td>${NC(x.title, x.code, { go: href(x), tip: 'Xem chi tiết nhiệm vụ' })}${pj ? `<div class="faint">Dự án ${esc(pj.name)} (${esc(pj.code)}) · ${esc(D.sxStatus[pj.status] || '')}</div>` : ''}</td>
-      <td>${k.clamp(pName(x.owner))}<div class="faint">${k.clamp(unitOf(x.owner))}</div></td><td>${st ? k.clamp(st) : k.dash}</td>
+      <td>${k.clamp(pName(x.owner))}<div class="faint">${k.clamp(unitOf(x.owner))}</div></td>
       <td><div style="display:flex;align-items:center;gap:8px"><div class="hd-bar" style="flex:1" role="img" aria-label="Tiến độ ${x.pct}%"><span style="width:${x.pct}%"></span></div><span class="num">${x.pct}%</span></div>${x.byProject ? '<div class="faint">Theo tiến độ dự án</div>' : ''}</td>
       <td class="num">${esc(dmy(x.created || x.start))}</td><td class="num${x.st[0] === 'Quá hạn' ? ' due-over' : ''}">${esc(dmy(x.due))}</td>
       <td class="r num ${late ? 't-err' : ''}">${late ? late : k.dash}</td>`;
@@ -209,7 +225,7 @@
         <td class="c">${badge(...x.st)}</td><td class="c">${badge(...LOAI.QT)}</td>
         <td><a class="link" data-go="${x.go}" title="${x.done ? 'Xem việc đã xử lý' : 'Mở màn hình xử lý'}">${k.clamp(x.title)}</a><div class="faint">${window.SxFlow.objLink(x.c)}</div></td>
         <td>${PJ(x.project)}</td><td>${k.dash}</td><td>${k.dash}</td><td>${k.clamp(pName(x.owner))}</td><td>Quy trình</td><td class="num">${esc(dmy(x.start))}</td>
-        <td class="num${x.st[1] === 'error' ? ' due-over' : ''}">${esc(dmy(x.due))}</td><td class="r">${leftCell(x, k)}</td><td class="r">${x.done ? '<span class="num">100%</span>' : k.dash}</td><td class="c">${k.dash}</td>`;
+        <td class="num${x.st[1] === 'error' ? ' due-over' : ''}">${esc(dmy(x.due))}</td><td class="num">${x.done && x.doneAt ? esc(dmy(x.doneAt)) : k.dash}</td><td class="r">${leftCell(x, k)}</td><td class="r">${x.done ? '<span class="num">100%</span>' : k.dash}</td><td class="c">${k.dash}</td>`;
     }
     const acts = (canSplit(x) ? iconBtn('add', 'Thêm công việc con', `data-go="sx/cong-viec/create/CN/cha/${encodeURIComponent(x.code)}"`) : '')
       + (canUpdate(x) ? iconBtn('reload', 'Cập nhật tiến độ', `data-sxcv-upd="${esc(x.code)}"`) : '')
@@ -218,9 +234,11 @@
       <td class="c">${badge(...x.st)}</td><td class="c">${badge(...LOAI.KH)}</td><td>${NC(x.title, x.code, { go: href(x), tip: 'Xem chi tiết công việc' })}</td><td>${PJ(x.project)}</td>
       <td>${x.plan ? k.clamp(planName(x)) : k.dash}</td><td>${x.parent ? NC((byCode(x.parent) || {}).title, x.parent, { go: href({ code: x.parent }), tip: 'Xem chi tiết công việc cha' }) : k.dash}</td>
       <td>${k.clamp(pName(x.owner))}</td><td>${k.clamp(pName(x.assigner))}</td><td class="num">${esc(dmy(x.start))}</td>
-      <td class="num${x.st[0] === 'Quá hạn' ? ' due-over' : ''}">${esc(dmy(x.due))}</td><td class="r">${leftCell(x, k)}</td><td class="r num">${x.pct}%</td>
+      <td class="num${x.st[0] === 'Quá hạn' ? ' due-over' : ''}">${esc(dmy(x.due))}</td><td class="num">${x.done && x.doneAt ? esc(dmy(x.doneAt)) : k.dash}</td><td class="r">${leftCell(x, k)}</td><td class="r num">${x.pct}%</td>
       <td class="c">${badge(...D.sxPrio[x.prio || 'TB'])}</td>`;
   }
+  /* Dòng công việc con dưới việc cha: listPage dựng một <tr> mỗi việc cha — đóng dòng cha, mở các dòng con; STT "#.j" đánh lại thành "<STT cha>.j" sau khi dựng trang. */
+  const subRows = (x, k) => (x.subs || []).map((y, j) => `</tr><tr class="click sxcv-sub" data-go="${href(y)}" data-code="${esc(y.code)}"><td class="ord">#.${j + 1}</td>${myCell(y, k)}`).join('');
   function list(kind) {
     // Theo: fe/repo-khcn-bpmn-fe/src/app/features/task-management/task-management.component.html (công việc; cột Thao tác Sửa / Xoá như B5); ô chỉ số theo ecat common-catalog/overview như SCR-92
     const k = K(), dv = kind === 'DV', b = base(kind), cur = TILE[kind] || 'all';
@@ -245,12 +263,12 @@
     const right = (dv ? `<button type="button" class="vbtn secondary" data-sxcv-import="${kind}">${icon('upload')} Nhập Excel</button>` : '') + `<button type="button" class="vbtn secondary" data-sxcv-export="${kind}">${icon('excel')} Xuất Excel</button>`
       + (dv && canCreate(kind) ? `<button class="vbtn primary" data-go="sx/cong-viec/create/${kind}">${icon('add')} Thêm mới</button>` : '');
     const people = D.personas.filter((x) => x.sx).map((x) => ({ value: x.id, label: x.name }));
-    return k.listPage({
+    const html = k.listPage({
       id: ID(kind), title: dv ? 'Danh sách nhiệm vụ đơn vị' : 'Việc của tôi', ph: 'Tìm kiếm theo mã, tên công việc, dự án', info, right,
       top: `${dv ? '' : remindBar()}<div data-sxcv-list="${kind}"${dv ? '' : ' data-sx-tasks'}>${tiles}</div>`,
-      rows: () => rowsOf(kind), kwText,
+      rows: () => rowsOf(kind), kwText: dv ? kwText : kwAll,
       empty: () => ({ code: '', title: '', project: null, owner: null, st: [], prio: null, src: null, loai: null }),
-      match: (x, f) => match(x, f, k),
+      match: (x, f) => (dv ? match(x, f, k) : matchAll(x, f, k)),
       adv: (txt, sel) => `${txt('code', 'Mã công việc')}${txt('title', 'Tên công việc')}
         ${dv ? '' : sel('loai', 'Phân loại', { searchable: false, options: Object.entries(LOAI).map(([value, v]) => ({ value, label: v[0] })) })}
         ${sel('project', 'Dự án', { options: P().visible().map((p) => ({ value: p.code, label: `${p.code} — ${p.name}` })) })}
@@ -259,21 +277,25 @@
         ${sel('prio', 'Mức ưu tiên', { searchable: false, options: Object.entries(D.sxPrio).map(([value, v]) => ({ value, label: v[0] })) })}
         ${dv ? sel('src', 'Nguồn', { searchable: false, options: Object.entries(D.sxWorkSrc).map(([value, label]) => ({ value, label })) }) : ''}`,
       /* T74 #94 / #96: Nhiệm vụ đơn vị theo bộ cột của KHCN. Việc của tôi giữ bộ cột Việc cá nhân cũ + Phân loại. */
-      cols: dv ? [['Thao tác', 100, 'c'], ['Trạng thái', 150, 'c'], ['Nhiệm vụ', 340], ['Chủ nhiệm · Đơn vị', 240], ['Giai đoạn', 220], ['Tiến độ', 170], ['Ngày nhận nhiệm vụ', 150], ['Hạn xử lý', 120], ['Độ trễ (ngày)', 120, 'r']]
+      cols: dv ? [['Thao tác', 130, 'c'], ['Trạng thái', 150, 'c'], ['Nhiệm vụ', 380], ['Chủ nhiệm · Đơn vị', 260], ['Tiến độ', 190], ['Ngày nhận nhiệm vụ', 150], ['Hạn xử lý', 120], ['Độ trễ (ngày)', 120, 'r']]
         : [['Thao tác', 150, 'c'], ['Trạng thái', 160, 'c'], ['Phân loại', 180, 'c'], ['Công việc', 340], ['Dự án', 240], ['Hạng mục kế hoạch', 220], ['Công việc cha', 240],
-          ['Người thực hiện', 200], ['Người giao', 170], ['Ngày bắt đầu', 120], ['Hạn hoàn thành', 130], ['Còn lại', 110, 'r'], ['Hoàn thành', 110, 'r'], ['Mức ưu tiên', 120, 'c']],
+          ['Người thực hiện', 200], ['Người giao', 170], ['Ngày bắt đầu', 120], ['Hạn hoàn thành', 130], ['Ngày hoàn thành', 130], ['Còn lại', 110, 'r'], ['Hoàn thành', 110, 'r'], ['Mức ưu tiên', 120, 'c']],
       href: (x) => x.go || href(x),
-      cell: (x) => (dv ? dvCell(x, k) : myCell(x, k)),
+      cell: (x) => (dv ? dvCell(x, k) : myCell(x, k) + subRows(x, k)),
     });
+    if (dv) return html;
+    let no = '';
+    return html.replace(/<td class="ord">(#\.(\d+)|\d+)<\/td>/g, (m, a, j) => (j ? `<td class="ord">${no}.${j}</td>` : ((no = a), m)));
   }
 
   /* ---------- Xuất Excel (.csv trong prototype) ---------- */
   function exportList(kind) {
-    const dv = kind === 'DV', l = filtered(kind);
+    /* Việc của tôi: xuất kèm công việc con ngay sau việc cha, STT n.j. */
+    const dv = kind === 'DV', l = filtered(kind).flatMap((x, i) => [Object.assign(x, { no: i + 1 })].concat(dv ? [] : (x.subs || []).map((y, j) => Object.assign(y, { st: y.st || stOf(y), no: `${i + 1}.${j + 1}` }))));
     const q = (v) => `"${String(v == null ? '' : v).replace(/"/g, '""')}"`;
     const headRow = ['STT', 'Mã công việc', 'Tên công việc', 'Trạng thái', 'Dự án', 'Hạng mục kế hoạch', 'Công việc cha', dv ? 'Đơn vị thực hiện' : 'Người thực hiện', dv ? 'Người đầu mối' : 'Người giao',
       'Ngày bắt đầu', 'Hạn hoàn thành', 'Hoàn thành (%)', 'Mức ưu tiên'].concat(dv ? ['Nguồn'] : ['Phân loại']);
-    const lines = [[dv ? 'DANH SÁCH NHIỆM VỤ ĐƠN VỊ' : 'DANH SÁCH VIỆC CỦA TÔI'], [], headRow].concat(l.map((x, i) => [i + 1, x.code, x.kind === 'QT' ? `${x.title} (${x.flowName})` : x.title, x.st[0], x.project || '', planName(x), x.parent || '',
+    const lines = [[dv ? 'DANH SÁCH NHIỆM VỤ ĐƠN VỊ' : 'DANH SÁCH VIỆC CỦA TÔI'], [], headRow].concat(l.map((x) => [x.no, x.code, x.kind === 'QT' ? `${x.title} (${x.flowName})` : x.title, x.st[0], x.project || '', planName(x), x.parent || '',
       dv ? unitOf(x.owner) : pName(x.owner), x.kind === 'QT' ? 'Quy trình' : pName(dv ? x.owner : x.assigner), dmy(x.start), dmy(x.due), x.kind === 'QT' ? (x.done ? 100 : '') : x.pct,
       x.prio ? D.sxPrio[x.prio][0] : x.kind === 'QT' ? '' : D.sxPrio.TB[0]].concat(dv ? [D.sxWorkSrc[x.src] || ''] : [LOAI[loaiOf(x)][0]])));
     const a = document.createElement('a');
@@ -357,7 +379,7 @@
     const k = K(), v = F.v, err = F.err, x = code ? byCode(code) : null, kind = x ? x.kind : F.kind, dv = kind === 'DV';
     const back = x ? href(x) : v.parent ? href({ code: v.parent }) : v.project && F.lock.plan ? `sx/du-an/${encodeURIComponent(v.project)}/ke-hoach` : listHref(kind);
     const title = `${x ? 'Chỉnh sửa' : 'Thêm mới'} ${dv ? 'nhiệm vụ đơn vị' : F.v.parent || (x && x.parent) ? 'công việc con' : 'công việc'}`;
-    if (x && !canEdit(x)) return `<div class="pg">${head({ title, back, lg: true })}${k.emptyCard('Thông tin chung', 'Công việc đã hoàn thành hoặc bạn không phải người giao việc.')}</div>`;
+    if (x && !canEdit(x)) return `<div class="pg">${head({ title, back, lg: true })}${k.emptyCard('Thông tin chung', kind === 'DV' ? 'Nhiệm vụ đã hoàn thành hoặc bạn không phải người giao.' : 'Không sửa được công việc được giao. Chỉ sửa được công việc con do bạn chia, chưa cập nhật tiến độ.')}</div>`;
     if (!x && !canCreate(kind)) return `<div class="pg">${head({ title, back, lg: true })}${k.emptyCard('Thông tin chung', 'Bạn không có quyền giao nhiệm vụ đơn vị.')}</div>`;
     const info = {
       scr: 'SX-16', name: title, uc: 'SX-ULNL Quản lý công việc (Thêm mới, Chỉnh sửa; Giao việc, Phân rã nhiều cấp của QL dự án)',
@@ -474,7 +496,7 @@
       (h) => `<td class="num">${esc(dmy(h[0]))}</td><td>${k.clamp(pName(h[1]))}</td><td class="r num">${h[2]}%</td><td>${h[3] ? k.clamp(h[3]) : k.dash}</td>`));
     return `<div class="pg" data-sxcv-detail="${esc(x.code)}">
       ${head({ title: 'Xem chi tiết công việc', back, lg: true, info, right })}${alert}
-      ${k.tabs(tabKey(x.code), (dv ? [['info', 'Thông tin chung']] : [['info', 'Thông tin chung'], ['kids', `Công việc con (${x.kids.length})`]]).concat([['log', 'Lịch sử cập nhật']]), { info: tInfo, kids: tKids, log: tLog })}</div>`;
+      ${k.tabs(tabKey(x.code), (dv || x.parent ? [['info', 'Thông tin chung']] : [['info', 'Thông tin chung'], ['kids', `Công việc con (${x.kids.length})`]]).concat([['log', 'Lịch sử cập nhật']]), { info: tInfo, kids: tKids, log: tLog })}</div>`;
   }
   const T = { open: {} };
 
@@ -581,7 +603,8 @@
   const myRows = (id) => all().filter((x) => x.kind === 'CN' && x.owner === id);
   const openMine = (id) => myRows(id || pid()).filter((x) => !x.done).length;
   /* Chia công việc con: việc từ Kế hoạch chưa xong, người thực hiện / đầu mối hoặc người giao. */
-  const canSplit = (x) => x.kind === 'CN' && !x.done && (isAdmin() || x.owner === pid() || x.assigner === pid());
+  /* Công việc con chỉ 1 cấp: công việc con không chia tiếp (góp ý 27/11). */
+  const canSplit = (x) => x.kind === 'CN' && !x.parent && !x.done && (isAdmin() || x.owner === pid() || x.assigner === pid());
   /* PASXKD được lập dự án → gắn dự án vào nhiệm vụ (sx-du-an.js save). */
   function linkProject(code, project) {
     const own = U.created.find((y) => y.code === code);
