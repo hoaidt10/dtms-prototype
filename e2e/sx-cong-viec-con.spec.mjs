@@ -297,7 +297,7 @@ test('Góp ý 27/11: Điều kiện SX có Thêm mới; Đề xuất mua sắm c
   // Điều kiện sản xuất: Thêm mới (cả khi đang sản xuất), mỗi dòng thêm có Sửa / Xoá.
   await as(page, 'qt', '#/sx/du-an/DA-SX-2026-001');
   await page.locator('[data-ttab="m4"]').click();
-  await expect(page.locator('[data-m4-add]')).toContainText('Thêm mới');
+  await expect(page.locator('[data-m4-add]')).toContainText('Thêm điều kiện');
   // Đề xuất mua sắm: danh sách đề xuất của Sản xuất, Thêm mới mở cùng màn với tab dự án.
   await as(page, 'qt', '#/sx/mua-sam');
   await expect(page.locator('a[data-go="sx/mua-sam/create"], button[data-go="sx/mua-sam/create"]')).toHaveCount(1);

@@ -321,7 +321,7 @@
         ${edit ? `<td class="c"><span class="row" style="gap:4px;justify-content:center">${i.auto ? '' : `<button type="button" class="vbtn sm secondary" data-m4="${esc(p.code)}|${esc(i.ik)}">Cập nhật</button>${ib('edit', 'Sửa điều kiện', `data-m4-edit="${esc(p.code)}|${esc(i.ik)}"`)}${i.own ? ib('del', 'Xoá điều kiện', `data-m4-del="${esc(p.code)}|${esc(i.ik)}"`) : ''}`}</span></td>` : ''}`)}`).join('');
     const sum = x.ok === x.all ? `<div class="hd-alert info">${icon('check')}<span>Đủ điều kiện sản xuất: ${x.all} / ${x.all} tiêu chí đạt.</span></div>`
       : `<div class="hd-alert warning">${icon('info')}<span>Chưa đủ điều kiện sản xuất: ${x.ok} / ${x.all} tiêu chí đạt. Còn: ${esc(x.miss.map((i) => i.iname).join('; '))}.</span></div>`;
-    return `<section class="vcard pad24" data-sx-m4><div class="vcard-h"><h3>Điều kiện sản xuất</h3><div class="row"><span class="cap">Checklist theo BM.QLHDSX.02 (nhân lực, máy móc, vật tư, phương pháp)</span>${edit ? `<button type="button" class="vbtn secondary" data-m4-add="${esc(p.code)}">${icon('add')} Thêm mới</button>` : ''}</div></div><div class="hd-alerts">${sum}</div>${body}</section>`;
+    return `<section class="vcard pad24" data-sx-m4><div class="vcard-h"><h3>Điều kiện sản xuất</h3><div class="row"><span class="cap">Checklist theo BM.QLHDSX.02 (nhân lực, máy móc, vật tư, phương pháp)</span>${edit ? `<button type="button" class="vbtn secondary" data-m4-add="${esc(p.code)}">${icon('add')} Thêm điều kiện</button>` : ''}</div></div><div class="hd-alerts">${sum}</div>${body}</section>`;
   }
   async function m4Dlg(code, ik) {
     const { rad, ta, txt, req, opts, file } = window.EForms.b;
