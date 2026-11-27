@@ -3,6 +3,11 @@
 > Mỗi PR một mục, mới nhất trên cùng: `## YYYY-MM-DD — <việc> (#PR)` + 2–5 gạch đầu dòng (màn, thay đổi, nguồn, điểm treo mới).
 > Lịch sử trước T77: [lich-su-chung.md](lich-su-chung.md).
 
+## 2026-11-27 · Điều kiện sản xuất: Xoá mọi điều kiện; nút Cập nhật tiến độ
+- Tab **Điều kiện sản xuất** của dự án (`js/sx-chuyen-giao.js`): nút **Xoá** ở mọi dòng — cả tiêu chí mặc định theo QT (trước chỉ dòng người dùng thêm), có hộp thoại xác nhận, ghi lịch sử dự án; tiêu chí hệ thống tự đánh giá (phát hành gói chuyển giao, bàn giao tài liệu) không sửa / xoá. Tiêu chí mặc định xoá theo từng dự án (`U.m4h`).
+- Nút **Cập nhật** đổi thành **Cập nhật tiến độ**.
+- Test: t74-comment-qlsx ca #97 cập nhật (tiêu chí mặc định xoá được); các spec có Điều kiện sản xuất không ca đỏ thêm.
+
 ## 2026-11-27 · PASXKD: tải kèm tài liệu cho từng mục đầu vào
 - Tab **Hoàn thiện đầu vào** (`js/sx-pasxkd.js`): cả 4 bảng B1.1 đầu vào, B1.2 cấu hình / lô, B1.3 hạng mục / gói, B1.4 khoản chi phí thêm cột **Tài liệu** — **Tải lên** (nhiều tệp) và Xoá từng tệp (có xác nhận); ghi vào Lịch sử của phương án.
 - Quyền: người lập khi phương án Đang chuẩn bị / Trả lại; ở B1.1 người được giao dòng đó cũng tải được. Chờ phê duyệt / Đã phê duyệt chỉ xem. Lưu tên tệp, ngày, người tải (GIẢ LẬP — thật: lưu Quản lý tài liệu).

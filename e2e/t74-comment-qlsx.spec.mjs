@@ -203,10 +203,18 @@ test('#97: Nhân sự (thêm, không xoá người đang phụ trách); Hồ sơ
   expect(await page.evaluate(() => SxCg.gate(SxDuAn.byCode('DA-SX-2026-002')).all)).toBe(all0 + 1);
   const own = page.locator('[data-sx-m4] tbody tr', { hasText: 'Chứng chỉ an toàn bức xạ' });
   await expect(own.locator('[data-m4-del]')).toHaveCount(1);
-  await expect(page.locator('[data-sx-m4] tbody tr', { hasText: 'Nhân sự phục vụ sản xuất' }).locator('[data-m4-del]')).toHaveCount(0); // tiêu chí QT không xoá
+  // Góp ý 27/11: tiêu chí mặc định cũng xoá được (có xác nhận); nút Cập nhật đổi thành Cập nhật tiến độ.
+  const base = page.locator('[data-sx-m4] tbody tr', { hasText: 'Nhân sự phục vụ sản xuất' });
+  await expect(base.locator('[data-m4-del]')).toHaveCount(1);
+  await expect(base.locator('[data-m4]')).toHaveText('Cập nhật tiến độ');
   await own.locator('[data-m4-del]').click();
+  await page.locator('#cf-ok').click();
   await expect(own).toHaveCount(0);
   expect(await page.evaluate(() => SxCg.gate(SxDuAn.byCode('DA-SX-2026-002')).all)).toBe(all0);
+  await base.locator('[data-m4-del]').click();
+  await page.locator('#cf-ok').click();
+  await expect(base).toHaveCount(0);
+  expect(await page.evaluate(() => SxCg.gate(SxDuAn.byCode('DA-SX-2026-002')).all)).toBe(all0 - 1);
   // Tài liệu theo loại.
   await tab(page, 'docs');
   // Góp ý 26/11 mục 4 (hoaidt10): Tài liệu là một bảng theo danh mục (dòng danh mục + dòng tài liệu), danh mục trống ghi "Chưa có tài liệu".

@@ -23,7 +23,8 @@
   /* ---------- Lưu thay đổi ---------- */
   const KEY = 'sx-proto-cg';
   /* m4x: điều kiện sản xuất người dùng thêm { [dự án]: [{ ik, iname, gk }] }; m4n: tên tiêu chí mặc định đã sửa { [dự án]: { [ik]: tên } } (T74 #97). */
-  const blank = () => ({ pkgs: [], files: {}, need: {}, rel: {}, m4: {}, m4x: {}, m4n: {}, started: {} });
+  /* m4h: tiêu chí mặc định đã xoá khỏi dự án { [dự án]: [ik] } (góp ý 27/11 — Xoá được cả tiêu chí mặc định, trừ tiêu chí hệ thống tự đánh giá). */
+  const blank = () => ({ pkgs: [], files: {}, need: {}, rel: {}, m4: {}, m4x: {}, m4n: {}, m4h: {}, started: {} });
   let U = blank();
   try { U = Object.assign(U, JSON.parse(localStorage.getItem(KEY) || '{}')); } catch (e) { /* bỏ qua */ }
   const persist = () => { try { localStorage.setItem(KEY, JSON.stringify(U)); } catch (e) { /* bỏ qua */ } };
@@ -286,9 +287,9 @@
   /* 4M: dự án đã sản xuất trước khi có hệ thống coi như đạt (dữ liệu chuyển đổi); tiêu chí auto đọc từ Kho Release. */
   const LATER = ['IN_PRODUCTION', 'ACCEPTANCE', 'DONE'];
   function m4Of(p) {
-    const saved = Object.assign({}, D.sxM4Seed[p.code], U.m4[p.code]), ren = (U.m4n || {})[p.code] || {}, add = ((U.m4x || {})[p.code] || []);
-    /* T74 #97: tiêu chí mặc định (13 tiêu chí QT, D-125) sửa được tên, không xoá; dòng người dùng thêm (own) sửa / xoá được; dòng tự động chỉ đọc. */
-    return D.sxM4.map(([gk, gn, items]) => [gk, gn, items.map(([ik, iname0, auto, fk]) => [ik, ren[ik] || iname0, auto, fk, false]).concat(add.filter((a) => a.gk === gk).map((a) => [a.ik, a.iname, null, null, true])).map(([ik, iname, auto, fk, own]) => {
+    const saved = Object.assign({}, D.sxM4Seed[p.code], U.m4[p.code]), ren = (U.m4n || {})[p.code] || {}, add = ((U.m4x || {})[p.code] || []), hid = new Set(((U.m4h || {})[p.code]) || []);
+    /* T74 #97: tiêu chí mặc định (13 tiêu chí QT, D-125) sửa được tên; dòng người dùng thêm (own) sửa / xoá được; dòng tự động chỉ đọc. Góp ý 27/11: tiêu chí mặc định cũng xoá được (U.m4h). */
+    return D.sxM4.map(([gk, gn, items]) => [gk, gn, items.filter(([ik]) => !hid.has(ik)).map(([ik, iname0, auto, fk]) => [ik, ren[ik] || iname0, auto, fk, false]).concat(add.filter((a) => a.gk === gk).map((a) => [a.ik, a.iname, null, null, true])).map(([ik, iname, auto, fk, own]) => {
       const r0 = m4One(p, saved, ik, iname, auto, fk);
       return Object.assign(r0, { own, base: !own && !auto });
     })]);
@@ -318,7 +319,7 @@
     const body = m4Of(p).map(([gk, gn, items]) => `<h4 class="ginfo-sub">${esc(gn)}</h4>${k.table([['Tiêu chí', 330], ['Kết quả', 110, 'c'], ['Ghi chú', 240], ['Người xác nhận', 160], ['Thời gian', 140]].concat(edit ? [['', 200, 'c']] : []), items,
       (i) => `<td>${k.clamp(i.iname)}</td><td class="c">${i.ok ? badge('Đạt', 'success') : badge('Chưa đạt', 'error')}</td><td>${i.note ? k.clamp(i.note) : k.dash}</td>
         <td>${i.auto ? 'Hệ thống' : i.who ? k.clamp(pName(i.who)) : k.dash}</td><td class="num">${i.at ? esc(dmy(i.at)) : k.dash}</td>
-        ${edit ? `<td class="c"><span class="row" style="gap:4px;justify-content:center">${i.auto ? '' : `<button type="button" class="vbtn sm secondary" data-m4="${esc(p.code)}|${esc(i.ik)}">Cập nhật</button>${ib('edit', 'Sửa điều kiện', `data-m4-edit="${esc(p.code)}|${esc(i.ik)}"`)}${i.own ? ib('del', 'Xoá điều kiện', `data-m4-del="${esc(p.code)}|${esc(i.ik)}"`) : ''}`}</span></td>` : ''}`)}`).join('');
+        ${edit ? `<td class="c"><span class="row" style="gap:4px;justify-content:center">${i.auto ? '' : `<button type="button" class="vbtn sm secondary" data-m4="${esc(p.code)}|${esc(i.ik)}" title="Cập nhật kết quả kiểm tra điều kiện">Cập nhật tiến độ</button>${ib('edit', 'Sửa điều kiện', `data-m4-edit="${esc(p.code)}|${esc(i.ik)}"`)}${ib('del', 'Xoá điều kiện', `data-m4-del="${esc(p.code)}|${esc(i.ik)}"`)}`}</span></td>` : ''}`)}`).join('');
     const sum = x.ok === x.all ? `<div class="hd-alert info">${icon('check')}<span>Đủ điều kiện sản xuất: ${x.all} / ${x.all} tiêu chí đạt.</span></div>`
       : `<div class="hd-alert warning">${icon('info')}<span>Chưa đủ điều kiện sản xuất: ${x.ok} / ${x.all} tiêu chí đạt. Còn: ${esc(x.miss.map((i) => i.iname).join('; '))}.</span></div>`;
     return `<section class="vcard pad24" data-sx-m4><div class="vcard-h"><h3>Điều kiện sản xuất</h3><div class="row"><span class="cap">Checklist theo BM.QLHDSX.02 (nhân lực, máy móc, vật tư, phương pháp)</span>${edit ? `<button type="button" class="vbtn secondary" data-m4-add="${esc(p.code)}">${icon('add')} Thêm điều kiện</button>` : ''}</div></div><div class="hd-alerts">${sum}</div>${body}</section>`;
@@ -356,9 +357,13 @@
     window.SxDuAn.log(code, it ? 'Sửa điều kiện sản xuất' : 'Thêm điều kiện sản xuất', name);
     toast(`<b>Thành công</b><br>${it ? 'Cập nhật' : 'Thêm mới'} thành công!`); rerender();
   }
-  function m4Del(code, ik) {
-    const a = (U.m4x[code] || []).find((x) => x.ik === ik); if (!a) return;
-    U.m4x[code] = U.m4x[code].filter((x) => x.ik !== ik);
+  /* Góp ý 27/11: Xoá mọi điều kiện (dòng người dùng thêm và tiêu chí mặc định), trừ tiêu chí hệ thống tự đánh giá; có hộp thoại xác nhận. */
+  async function m4Del(code, ik) {
+    const p = window.SxDuAn.byCode(code); if (!p || !canM4(p)) return;
+    const a = m4Of(p).flatMap((g) => g[2]).find((x) => x.ik === ik); if (!a || a.auto) return;
+    if (!(await window.Catalog.confirm({ sev: 'danger', title: 'Bạn chắc chắn muốn xoá không?', desc: `Xoá điều kiện sản xuất: ${a.iname}?`, hl: a.iname, cancel: 'Hủy', ok: 'Xoá' }))) return;
+    if (a.own) U.m4x[code] = U.m4x[code].filter((x) => x.ik !== ik);
+    else { U.m4h = U.m4h || {}; U.m4h[code] = (U.m4h[code] || []).concat(ik); }
     if (U.m4[code]) delete U.m4[code][ik];
     persist(); window.SxDuAn.log(code, 'Xoá điều kiện sản xuất', a.iname);
     toast('<b>Thành công</b><br>Xoá thành công!'); rerender();
