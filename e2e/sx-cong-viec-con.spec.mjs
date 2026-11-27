@@ -383,3 +383,22 @@ test('Góp ý 27/11: Hoàn thiện đầu vào — tải kèm / xoá tài liệu
   await expect(page.locator('[data-sxpa-fup], [data-sxpa-frm]')).toHaveCount(0);
   expect(page.errors).toEqual([]);
 });
+
+test('Góp ý 27/11: Điều kiện sản xuất — MD1, MD2 (Tài liệu, phương pháp công nghệ) người dùng tự Cập nhật tiến độ, Sửa, Xoá như các điều kiện khác', async ({ page }) => {
+  await fresh(page, '#/sx/du-an');
+  await as(page, 'qt', '#/sx/du-an/DA-SX-2026-004');
+  await page.locator('[data-ttab="m4"]').click();
+  for (const ik of ['MD1', 'MD2']) {
+    await expect(page.locator(`[data-m4="DA-SX-2026-004|${ik}"]`)).toHaveText('Cập nhật tiến độ');
+    await expect(page.locator(`[data-m4-edit="DA-SX-2026-004|${ik}"], [data-m4-del="DA-SX-2026-004|${ik}"]`)).toHaveCount(2);
+  }
+  const row = page.locator('[data-sx-m4] tbody tr', { has: page.locator('[data-m4="DA-SX-2026-004|MD2"]') });
+  await expect(row).toContainText('Chưa đạt');
+  await expect(row).not.toContainText('Hệ thống');
+  await page.locator('[data-m4="DA-SX-2026-004|MD2"]').click();
+  await page.locator(`.vmodal [data-ef-radio="kq"][data-v='"DAT"']`).click();
+  await page.locator('.vmodal #ok').click();
+  await expect(row).toContainText('Đạt');
+  await expect(row).not.toContainText('Chưa đạt');
+  expect(page.errors).toEqual([]);
+});

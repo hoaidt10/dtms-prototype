@@ -3,6 +3,11 @@
 > Mỗi PR một mục, mới nhất trên cùng: `## YYYY-MM-DD — <việc> (#PR)` + 2–5 gạch đầu dòng (màn, thay đổi, nguồn, điểm treo mới).
 > Lịch sử trước T77: [lich-su-chung.md](lich-su-chung.md).
 
+## 2026-11-27 · Điều kiện sản xuất: Tài liệu, phương pháp công nghệ do người dùng tự cập nhật
+- Nhóm **Tài liệu, phương pháp công nghệ (Method)**: MD1 (phiên bản sản phẩm có trong Kho sản phẩm sẵn sàng sản xuất) và MD2 (tài liệu sản xuất bàn giao cho đơn vị sản xuất) không còn do hệ thống tự đánh giá theo gói chuyển giao / luồng SX-BGNM — có **Cập nhật tiến độ**, Sửa, Xoá như các điều kiện khác (`js/sx-chuyen-giao.js`, `js/sx-data.js`).
+- Mọi tiêu chí: kết quả người dùng đã xác nhận được ưu tiên; dự án đã qua sản xuất mà chưa có xác nhận thì hiện "Đạt trước khi đưa vào hệ thống" (trước đây ghi đè cả kết quả đã cập nhật). Luồng bàn giao tài liệu SX-BGNM vẫn chạy, bước cuối không còn tự cập nhật 4M. DA-SX-2026-002 thêm xác nhận MD1 vào dữ liệu mẫu (giữ 12/13).
+- Test: sx-cong-viec-con thêm 1 ca; các spec có Điều kiện sản xuất không ca đỏ thêm (ca t71-sx-qt "… 4M tự đạt" đỏ từ trước, nay khác thiết kế).
+
 ## 2026-11-27 · Điều kiện sản xuất: Xoá mọi điều kiện; nút Cập nhật tiến độ
 - Tab **Điều kiện sản xuất** của dự án (`js/sx-chuyen-giao.js`): nút **Xoá** ở mọi dòng — cả tiêu chí mặc định theo QT (trước chỉ dòng người dùng thêm), có hộp thoại xác nhận, ghi lịch sử dự án; tiêu chí hệ thống tự đánh giá (phát hành gói chuyển giao, bàn giao tài liệu) không sửa / xoá. Tiêu chí mặc định xoá theo từng dự án (`U.m4h`).
 - Nút **Cập nhật** đổi thành **Cập nhật tiến độ**.

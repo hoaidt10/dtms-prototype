@@ -82,7 +82,7 @@
     'nm.send': (c) => window.SxDuAn.log(c.obj, 'Gửi checklist bàn giao tài liệu cho đơn vị sản xuất', `Lần ${c.vars.ckLan || 1}: ${(c.vars.ckTaiLieu || []).filter((x) => x.giao !== 'N').length} tài liệu`),
     'nm.done': (c) => {
       window.SxDuAn.addDoc(c.obj, [c.vars.ckFile || 'Checklist bàn giao tài liệu.xlsx', 'BGNM', `Lần ${c.vars.ckLan || 1}`, pid(), D.sxToday]);
-      window.SxDuAn.log(c.obj, 'Hoàn thành bàn giao tài liệu cho đơn vị sản xuất', 'Lưu tài liệu lên VMMS; điều kiện 4M: tài liệu sản xuất đã bàn giao');
+      window.SxDuAn.log(c.obj, 'Hoàn thành bàn giao tài liệu cho đơn vị sản xuất', 'Lưu tài liệu lên VMMS'); // góp ý 27/11: điều kiện 4M MD2 do người dùng tự cập nhật
     },
     'bg.start': () => {},
     'bg.submit': (c) => { U.need[c.obj] = []; persist(); },
@@ -284,30 +284,22 @@
     return `<div data-sx-cg>${k.card('Gói chuyển giao từ nghiên cứu', `<div class="ginfo c3">${k.kv('Mã gói', `<a class="link" data-go="${href(x)}">${esc(x.code)}</a>`)}${k.kv('Trạng thái', badge(...stOf(x)))}${k.kv('Hồ sơ bắt buộc', `${du} / ${tong}`)}</div>`)}
       ${k.card('Danh mục tài liệu nhận từ COP1', docTable(x, false, href(x)), 'Đồng bộ từ Quản lý hồ sơ KHCN; bấm mã hồ sơ để xem chi tiết ở Chuyển giao từ nghiên cứu')}</div>`;
   }
-  /* 4M: dự án đã sản xuất trước khi có hệ thống coi như đạt (dữ liệu chuyển đổi); tiêu chí auto đọc từ Kho Release. */
+  /* 4M: dự án đã sản xuất trước khi có hệ thống coi như đạt (dữ liệu chuyển đổi). Góp ý 27/11: không còn tiêu chí tự đánh giá — mọi tiêu chí người dùng tự cập nhật. */
   const LATER = ['IN_PRODUCTION', 'ACCEPTANCE', 'DONE'];
   function m4Of(p) {
     const saved = Object.assign({}, D.sxM4Seed[p.code], U.m4[p.code]), ren = (U.m4n || {})[p.code] || {}, add = ((U.m4x || {})[p.code] || []), hid = new Set(((U.m4h || {})[p.code]) || []);
-    /* T74 #97: tiêu chí mặc định (13 tiêu chí QT, D-125) sửa được tên; dòng người dùng thêm (own) sửa / xoá được; dòng tự động chỉ đọc. Góp ý 27/11: tiêu chí mặc định cũng xoá được (U.m4h). */
+    /* T74 #97: tiêu chí mặc định (13 tiêu chí QT, D-125) sửa được tên; dòng người dùng thêm (own) sửa / xoá được. Góp ý 27/11: tiêu chí mặc định cũng xoá được (U.m4h); không còn dòng tự động. */
     return D.sxM4.map(([gk, gn, items]) => [gk, gn, items.filter(([ik]) => !hid.has(ik)).map(([ik, iname0, auto, fk]) => [ik, ren[ik] || iname0, auto, fk, false]).concat(add.filter((a) => a.gk === gk).map((a) => [a.ik, a.iname, null, null, true])).map(([ik, iname, auto, fk, own]) => {
       const r0 = m4One(p, saved, ik, iname, auto, fk);
       return Object.assign(r0, { own, base: !own && !auto });
     })]);
   }
+  /* Góp ý 27/11: mọi tiêu chí (kể cả MD1 Kho sản phẩm sẵn sàng sản xuất, MD2 Tài liệu bàn giao — trước đây hệ thống tự đánh giá theo gói chuyển giao / luồng SX-BGNM)
+     do người dùng tự Cập nhật tiến độ như các điều kiện khác. Kết quả đã xác nhận được ưu tiên; dự án đã qua sản xuất mà chưa có xác nhận thì coi như Đạt trước khi đưa vào hệ thống. */
   function m4One(p, saved, ik, iname, auto, fk) {
-    {
-      if (auto === 'release') { const r = relOf(p.product); return { ik, iname, auto: true, ok: !!r, note: r ? `Phát hành ${r.date ? dmy(r.date) : ''}${r.pkg ? ` theo gói ${r.pkg}` : ''}` : 'Chưa có gói chuyển giao đã duyệt', who: null, at: r && r.date }; }
-      /* (b) Q4: bàn giao tài liệu cho đơn vị sản xuất (SX-BGNM) xong thì đạt; dữ liệu trước khi có hệ thống giữ kết quả đã xác nhận. */
-      if (auto === 'handover') {
-        const c = F().cases(p.code, 'SX-BGNM').filter((x) => x.status === 'done').pop();
-        if (c) return { ik, iname, auto: true, ok: true, note: `Bàn giao lần ${c.vars.ckLan || 1}, hồ sơ ${c.code}`, who: null, at: c.ended };
-        if (LATER.includes(p.status) || (saved[ik] && saved[ik].ok)) return { ik, iname, auto: true, ok: true, note: 'Đạt trước khi đưa vào hệ thống', who: null, at: (saved[ik] || {}).at || p.start };
-        const run = F().running(p.code, 'SX-BGNM');
-        return { ik, iname, auto: true, ok: false, note: run ? 'Đang bàn giao tài liệu' : 'Chưa bàn giao tài liệu cho đơn vị sản xuất', who: null, at: null };
-      }
-      if (LATER.includes(p.status)) return { ik, iname, ok: true, note: 'Đạt trước khi đưa vào hệ thống', who: p.pm, at: p.start };
-      return Object.assign({ ik, iname, fk, ok: false, note: '', who: null, at: null }, saved[ik] || {});
-    }
+    if (saved[ik]) return Object.assign({ ik, iname, fk, ok: false, note: '', who: null, at: null }, saved[ik]);
+    if (LATER.includes(p.status)) return { ik, iname, fk, ok: true, note: 'Đạt trước khi đưa vào hệ thống', who: p.pm, at: p.start };
+    return { ik, iname, fk, ok: false, note: '', who: null, at: null };
   }
   const gate = (p) => { const it = m4Of(p).flatMap((g) => g[2]); return { ok: it.filter((x) => x.ok).length, all: it.length, miss: it.filter((x) => !x.ok) }; };
   const gateBadge = (p) => { const x = gate(p); return x.ok === x.all ? badge('Sẵn sàng sản xuất', 'success') : badge(`Chưa đủ điều kiện (${x.ok}/${x.all})`, 'warning'); };

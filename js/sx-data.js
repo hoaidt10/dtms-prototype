@@ -337,14 +337,14 @@
       [4, 'Lập biên bản thống nhất thành phần đủ điều kiện sản xuất', 'R-SX-PM', { next: 5, nlv: 2, join: true, label: 'Hoàn thành', form: 'bb', action: 'bg.minutes', sign: 'Biên bản thống nhất số {{bbSo}}' }],
       [5, 'Ghi vào danh sách sản phẩm sẵn sàng sản xuất, cấp mã phiên bản', 'svc', { next: 'end', label: 'Hệ thống ghi Kho sản phẩm sẵn sàng sản xuất', action: 'bg.release' }]] },
     /* (b) Q4: bàn giao tài liệu sản xuất cho đơn vị sản xuất (QT-TTSX-4A11 §5.4 bước 5, BM.QLHDSX.03) — sau cổng chuyển giao R&D → QLSX. Đối tượng cha = dự án.
-       QT §5.5 bước 5: BGĐ Khối A (phê duyệt), QLSX R, NCPT S. Đơn vị sản xuất tiếp nhận (R-SX-NM). Xong thì tiêu chí 4M MD2 tự đạt. */
+       QT §5.5 bước 5: BGĐ Khối A (phê duyệt), QLSX R, NCPT S. Đơn vị sản xuất tiếp nhận (R-SX-NM). (Góp ý 27/11: tiêu chí 4M MD2 không còn tự đạt — người dùng tự cập nhật.) */
     'SX-BGNM': { name: 'Bàn giao tài liệu sản xuất cho đơn vị sản xuất', short: 'HSBGNM', obj: 'project', tab: 'cg', src: 'QT-TTSX-4A11 §5.4 bước 5, §5.5; BM-QLHDSX-XLS (BM.QLHDSX.03 ❓)',
       onStart: 'nm.start', endText: 'Kết thúc — tài liệu sản xuất đã bàn giao, lưu trên VMMS', steps: [
       [1, 'Lập checklist bàn giao tài liệu cho đơn vị sản xuất (BM.QLHDSX.03)', 'R-SX-PM', { next: 2, nlv: 3, label: 'Gửi đơn vị sản xuất', form: 'ck', guard: 'nm.factory', action: 'nm.send' }],
       [2, 'Đơn vị sản xuất tiếp nhận, rà soát tài liệu', 'R-SX-NM', { nlv: 2, form: 'tn', choices: [['Xác nhận tiếp nhận', 3], ['Yêu cầu bổ sung', 1, 'no']] }],
       [3, 'Kiểm tra quy trình công nghệ do đơn vị sản xuất thực hiện', 'R-SX-PM', { nlv: 5, form: 'kt', choices: [['Đạt', 4], ['Yêu cầu điều chỉnh', 2, 'no']] }],
       [4, 'Ban Giám đốc Khối phê duyệt bàn giao tài liệu sản xuất', 'R-SX-LD', { nlv: 2, form: 'yk', choices: [['Phê duyệt', 5], ['Trả lại', 3, 'no']] }],
-      [5, 'Lưu tài liệu đã bàn giao lên VMMS, cập nhật điều kiện 4M', 'svc', { next: 'end', label: 'Hệ thống lưu tài liệu lên VMMS, cập nhật điều kiện 4M', action: 'nm.done' }]] },
+      [5, 'Lưu tài liệu đã bàn giao lên VMMS', 'svc', { next: 'end', label: 'Hệ thống lưu tài liệu lên VMMS', action: 'nm.done' }]] },
     /* T71 S6: đối tượng cha = phiếu bất thường (sx-bat-thuong.js). Bước 1 = lập phiếu (người báo cáo, R-SX-REP), xong ngay khi Thêm mới; bước 5 giao theo loại (R-SX-XL: đơn vị xử lý của danh mục). */
     'SX-BT': { name: 'Xử lý bất thường trong sản xuất', short: 'HSBT', obj: 'issue', tab: 'xl', src: 'SX-KS-K1 §3.2 (QT.VHT.TTSX.4A.1.2), Bảng 6, Bảng 7',
       onStart: 'bt.start', endText: 'Kết thúc — phiếu bất thường đã đóng', steps: [
@@ -403,10 +403,10 @@
       ['MC6', 'Nhà xưởng, vị trí công nghệ sản xuất, đo kiểm, thử nghiệm theo yêu cầu hồ sơ công nghệ']]],
     ['MATERIAL', 'Vật tư, kinh phí (Material)', [['MT1', 'Tờ trình kinh phí sản xuất được Tổng Giám đốc phê duyệt'], ['MT2', 'Vật tư, linh kiện đợt 1 về kho, đạt kiểm tra đầu vào (IQC)'],
       ['MT3', 'Điều kiện lưu trữ vật tư hàng hóa sau kiểm tra đầu vào đúng quy định, an toàn, sắp xếp phù hợp']]],
-    ['METHOD', 'Tài liệu, phương pháp công nghệ (Method)', [['MD1', 'Phiên bản sản phẩm có trong Kho sản phẩm sẵn sàng sản xuất (gói chuyển giao đã duyệt)', 'release'], ['MD2', 'Tài liệu sản xuất, quy trình công nghệ bàn giao cho đơn vị sản xuất (BM.QLHDSX.03)', 'handover']]],
+    ['METHOD', 'Tài liệu, phương pháp công nghệ (Method)', [['MD1', 'Phiên bản sản phẩm có trong Kho sản phẩm sẵn sàng sản xuất (gói chuyển giao đã duyệt)'], ['MD2', 'Tài liệu sản xuất, quy trình công nghệ bàn giao cho đơn vị sản xuất (BM.QLHDSX.03)']]], // góp ý 27/11: MD1, MD2 người dùng tự cập nhật như các tiêu chí khác
   ];
   /* Kết quả 4M đã xác nhận của DA-SX-2026-002: còn thiếu Jig / Stencil (sản phẩm QĐ-12 đã chuyển giao 28/05/2026, trước khi lập dự án). */
-  D.sxM4Seed = { 'DA-SX-2026-002': Object.fromEntries(['MAN1', 'MAN2', 'MC1', 'MC3', 'MC4', 'MC5', 'MC6', 'MT1', 'MT2', 'MT3', 'MD2'].map((k) => [k, { ok: true, note: '', who: 'sxpm', at: '2026-10-28 10:00' }])
+  D.sxM4Seed = { 'DA-SX-2026-002': Object.fromEntries(['MAN1', 'MAN2', 'MC1', 'MC3', 'MC4', 'MC5', 'MC6', 'MT1', 'MT2', 'MT3', 'MD1', 'MD2'].map((k) => [k, { ok: true, note: '', who: 'sxpm', at: '2026-10-28 10:00' }])
     .concat([['MC2', { ok: false, note: 'Stencil khối nguồn đang gia công, dự kiến 25/11/2026', who: 'sxpm', at: '2026-10-28 10:00' }]])) };
   /* Hồ sơ mẫu: DA-SX-2026-004 đã trình kế hoạch, đang chờ Ban Giám đốc Khối phê duyệt (bước 4). Ba dự án còn lại đã phê duyệt trước khi có hệ thống (chỉ có Lịch sử). */
   D.sxCases = [
