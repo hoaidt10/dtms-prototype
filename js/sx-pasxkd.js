@@ -242,6 +242,10 @@
     const s = r.sec[code], name = SEC.find((y) => y[0] === code)[1];
     return `<div class="vcard-h"><h3>${esc(name)}</h3><div class="row">${badge(s.ok ? 'Đủ' : `Còn ${s.miss.length} điểm thiếu`, s.ok ? 'success' : 'warning')}${extra || ''}</div></div>`;
   }
+  /* Góp ý 27/11: tải kèm tài liệu cho từng mục đầu vào (B1.1–B1.4). i.files = [[tên tệp, ngày, người tải]]. Tải / xoá: người sửa được dòng đó (người lập khi Đang chuẩn bị / Trả lại; người được giao ở B1.1). Thật: lưu Quản lý tài liệu, ở đây chỉ ghi tên tệp (GIẢ LẬP). */
+  const filesCell = (x, sec, i, can) => { const f = i.files || [], key = `${esc(x.code)}|${sec}|${esc(i.id)}`;
+    return `<div data-sxpa-files="${key}">${f.map((d, n) => `<div style="display:flex;align-items:center;gap:4px;margin-bottom:2px"><span class="link clamp" title="${esc(d[0])} — tải lên ${esc(dmy(d[1]))}, ${esc(pName(d[2]))}">${esc(d[0])}</span>${can ? `<button type="button" class="vbtn icon ghost sm" aria-label="Xoá tài liệu" title="Xoá tài liệu" data-sxpa-frm="${key}|${n}">${icon('del')}</button>` : ''}</div>`).join('')}`
+      + (can ? `<label class="vbtn sm secondary" title="Tải kèm tài liệu cho mục đầu vào này">${icon('upload')} Tải lên<input type="file" multiple hidden data-sxpa-fup="${key}"></label>` : f.length ? '' : K().dash) + '</div>'; };
   function inputs(x, r) {
     const k = K(), d = r.d, ed = editable(x), c = esc(x.code);
     const tiles = SEC.map(([code, name]) => { const s = r.sec[code]; return `<div class="sxpa-tile ${s.ok ? 'ok' : ''}"><div class="t">${esc(name)}</div><div class="v">${s.pct}%</div>
@@ -252,28 +256,28 @@
     const top = `<section class="vcard pad24" data-sxpa-sum><div class="vcard-h"><h3>Mức độ đủ căn cứ</h3><span class="cap">${r.okN}/4 nội dung đủ căn cứ</span></div>
       <div class="sxpa-tiles">${tiles}</div><div class="hd-alerts">${gate}</div></section>`;
     const lateIds = new Set(r.sec.B11.late.map((i) => i.id));
-    const t11 = k.table([['Hạng mục đầu vào', 280], ['Người / đơn vị cung cấp', 190], ['Nguồn, căn cứ', 220], ['Hạn trả kết quả', 120], ['Trạng thái', 140, 'c'], ['Ghi chú', 240], ['', 90, 'c']], d.items,
+    const t11 = k.table([['Hạng mục đầu vào', 280], ['Người / đơn vị cung cấp', 190], ['Nguồn, căn cứ', 220], ['Hạn trả kết quả', 120], ['Trạng thái', 140, 'c'], ['Ghi chú', 220], ['Tài liệu', 220], ['', 90, 'c']], d.items,
       (i) => `<td>${k.clamp(i.name)}</td><td>${k.clamp(whoTxt(i))}</td><td>${k.clamp(i.src)}</td><td class="num ${lateIds.has(i.id) ? 't-err' : ''}">${esc(dmy(i.due))}${lateIds.has(i.id) ? '<br><small>Quá hạn</small>' : ''}</td>
-        <td class="c">${badge(...ST_IN[i.st])}</td><td>${i.note ? k.clamp(i.note) : k.dash}</td><td class="c">${canUpdItem(x, i) ? btn(`data-sxpa-item="${c}|${i.id}"`, 'Cập nhật') : ''}${ed ? ' ' + btn(`data-sxpa-rm="${c}|items|${i.id}"`, 'Xoá') : ''}</td>`);
+        <td class="c">${badge(...ST_IN[i.st])}</td><td>${i.note ? k.clamp(i.note) : k.dash}</td><td>${filesCell(x, 'items', i, ed || canUpdItem(x, i))}</td><td class="c">${canUpdItem(x, i) ? btn(`data-sxpa-item="${c}|${i.id}"`, 'Cập nhật') : ''}${ed ? ' ' + btn(`data-sxpa-rm="${c}|items|${i.id}"`, 'Xoá') : ''}</td>`);
     const s11 = `<section class="vcard pad24" data-sxpa="B11">${secHead('B11', r, ed ? btn(`data-sxpa-item="${c}|"`, `${icon('add')} Giao đầu vào`) : '')}
       <p class="cap">Giao việc làm rõ đầu ra, rà đầu vào kỹ thuật, nguồn lực, nguồn và căn cứ áp dụng; việc còn thiếu giữ "Đang chuẩn bị", không làm mất nhiệm vụ khỏi theo dõi.</p>${t11}</section>`;
     const docCell = (i, key) => (String(i[key] || '').trim() ? esc(i[key]) : '<span class="t-err">Thiếu</span>');
-    const t12 = k.table([['Cấu hình', 200], ['Lô sản xuất', 160], ['BOM', 80], ['Hồ sơ kỹ thuật', 110], ['Định mức', 90], ['Chỉ tiêu được duyệt', 150], ['Phạm vi áp dụng', 170], ['Kết quả tiếp nhận', 150, 'c'], ['', 90, 'c']], d.cfgs,
+    const t12 = k.table([['Cấu hình', 200], ['Lô sản xuất', 160], ['BOM', 80], ['Hồ sơ kỹ thuật', 110], ['Định mức', 90], ['Chỉ tiêu được duyệt', 150], ['Phạm vi áp dụng', 170], ['Kết quả tiếp nhận', 150, 'c'], ['Tài liệu', 220], ['', 90, 'c']], d.cfgs,
       (i) => `<td>${k.clamp(i.cfg)}${verMismatch(i) ? `<br>${badge('Lệch phiên bản', 'warning')}` : ''}</td><td>${k.clamp(i.lot)}</td><td>${docCell(i, 'bom')}</td><td>${docCell(i, 'hskt')}</td><td>${docCell(i, 'dm')}</td><td>${docCell(i, 'ct')}</td>
-        <td>${k.clamp(i.scope)}</td><td class="c">${badge(...ST_CFG[i.kq])}${i.note ? `<br><small class="faint">${esc(i.note)}</small>` : ''}</td><td class="c">${ed ? btn(`data-sxpa-cfg="${c}|${i.id}"`, 'Tiếp nhận') + ' ' + btn(`data-sxpa-rm="${c}|cfgs|${i.id}"`, 'Xoá') : ''}</td>`);
+        <td>${k.clamp(i.scope)}</td><td class="c">${badge(...ST_CFG[i.kq])}${i.note ? `<br><small class="faint">${esc(i.note)}</small>` : ''}</td><td>${filesCell(x, 'cfgs', i, ed)}</td><td class="c">${ed ? btn(`data-sxpa-cfg="${c}|${i.id}"`, 'Tiếp nhận') + ' ' + btn(`data-sxpa-rm="${c}|cfgs|${i.id}"`, 'Xoá') : ''}</td>`);
     const s12 = `<section class="vcard pad24" data-sxpa="B12">${secHead('B12', r, ed ? btn(`data-sxpa-cfg="${c}|"`, `${icon('add')} Thêm cấu hình / lô`) : '')}
       <p class="cap">Gắn hồ sơ với cấu hình, lô, phiên bản; chỉ "Tiếp nhận đủ" khi đủ BOM, hồ sơ kỹ thuật, định mức, chỉ tiêu và cùng phiên bản — không dùng một mốc "đã bàn giao" chung.</p>${t12}</section>`;
-    const t13 = k.table([['Hạng mục / gói', 280], ['Bên thực hiện', 140], ['Đầu mối', 190], ['Điều kiện kiểm tra, bàn giao', 280], ['Trạng thái', 120, 'c'], ['', 90, 'c']], d.scope,
+    const t13 = k.table([['Hạng mục / gói', 280], ['Bên thực hiện', 140], ['Đầu mối', 190], ['Điều kiện kiểm tra, bàn giao', 280], ['Trạng thái', 120, 'c'], ['Tài liệu', 220], ['', 90, 'c']], d.scope,
       (i) => `<td>${k.clamp(i.name)}${i.note ? `<br><small class="faint">${esc(i.note)}</small>` : ''}</td><td>${i.side ? esc(SIDE[i.side]) : '<span class="t-err">Chưa xác định</span>'}</td><td>${whoTxt(i) ? k.clamp(whoTxt(i)) : '<span class="t-err">Chưa có</span>'}</td>
-        <td>${i.check ? k.clamp(i.check) : '<span class="t-err">Chưa có</span>'}</td><td class="c">${badge(...ST_SC[i.st])}</td><td class="c">${ed ? btn(`data-sxpa-scope="${c}|${i.id}"`, 'Cập nhật') + ' ' + btn(`data-sxpa-rm="${c}|scope|${i.id}"`, 'Xoá') : ''}</td>`);
+        <td>${i.check ? k.clamp(i.check) : '<span class="t-err">Chưa có</span>'}</td><td class="c">${badge(...ST_SC[i.st])}</td><td>${filesCell(x, 'scope', i, ed)}</td><td class="c">${ed ? btn(`data-sxpa-scope="${c}|${i.id}"`, 'Cập nhật') + ' ' + btn(`data-sxpa-rm="${c}|scope|${i.id}"`, 'Xoá') : ''}</td>`);
     const s13 = `<section class="vcard pad24" data-sxpa="B13">${secHead('B13', r, ed ? btn(`data-sxpa-scope="${c}|"`, `${icon('add')} Thêm hạng mục`) : '')}
       <p class="cap">Phân biệt phần VHT thực hiện, giao VMC hoặc thuê ngoài; mỗi gói có đầu mối và điều kiện kiểm tra, bàn giao. Gói chưa chốt chưa được chuẩn bị chính thức.</p>${t13}</section>`;
-    const t14 = k.table([['Khoản chi phí', 240], ['Giá trị (triệu đồng)', 140, 'r'], ['Căn cứ giá', 220], ['Nguồn kinh phí', 150], ['Cập nhật', 100], ['Hiệu lực đến', 110], ['Leadtime (tuần)', 110, 'r'], ['Đánh giá', 220], ['', 90, 'c']], d.cost,
+    const t14 = k.table([['Khoản chi phí', 240], ['Giá trị (triệu đồng)', 140, 'r'], ['Căn cứ giá', 220], ['Nguồn kinh phí', 150], ['Cập nhật', 100], ['Hiệu lực đến', 110], ['Leadtime (tuần)', 110, 'r'], ['Đánh giá', 220], ['Tài liệu', 220], ['', 90, 'c']], d.cost,
       (i) => { const is = costIssues(i); return `<td>${k.clamp(i.name)}</td><td class="r num">${num(i.amount)}</td><td>${i.basis ? k.clamp(i.basis) : '<span class="t-err">Chưa có căn cứ</span>'}</td><td>${i.src ? k.clamp(i.src) : k.dash}</td>
         <td class="num">${i.at ? esc(dmy(i.at)) : k.dash}</td><td class="num ${expired(i) ? 't-err' : ''}">${i.valid && i.valid < '2099' ? esc(dmy(i.valid)) : k.dash}</td>
         <td class="r num">${i.lt || k.dash}${i.lt >= LT_LONG ? `<br>${badge(i.early ? 'Đã đưa vào KH sớm' : 'Leadtime dài', i.early ? 'info' : 'warning')}` : ''}</td>
-        <td>${is.length ? `<span class="t-err">${esc(is.join('; '))}</span>` : badge('Đủ căn cứ', 'success')}</td><td class="c">${ed ? btn(`data-sxpa-cost="${c}|${i.id}"`, 'Cập nhật') + ' ' + btn(`data-sxpa-rm="${c}|cost|${i.id}"`, 'Xoá') : ''}</td>`; },
-      `<tfoot><tr class="sum"><td></td><td><b>Tổng cộng</b></td><td class="r num"><b>${num(r.total)}</b></td><td colspan="7">${r.budget ? `Giá trị dự toán ${num(r.budget)} triệu · chênh lệch <b class="${r.diff > 0 ? 't-err' : ''}">${r.diff > 0 ? '+' : ''}${num(r.diff)}</b> triệu` : ''}</td></tr></tfoot>`);
+        <td>${is.length ? `<span class="t-err">${esc(is.join('; '))}</span>` : badge('Đủ căn cứ', 'success')}</td><td>${filesCell(x, 'cost', i, ed)}</td><td class="c">${ed ? btn(`data-sxpa-cost="${c}|${i.id}"`, 'Cập nhật') + ' ' + btn(`data-sxpa-rm="${c}|cost|${i.id}"`, 'Xoá') : ''}</td>`; },
+      `<tfoot><tr class="sum"><td></td><td><b>Tổng cộng</b></td><td class="r num"><b>${num(r.total)}</b></td><td colspan="8">${r.budget ? `Giá trị dự toán ${num(r.budget)} triệu · chênh lệch <b class="${r.diff > 0 ? 't-err' : ''}">${r.diff > 0 ? '+' : ''}${num(r.diff)}</b> triệu` : ''}</td></tr></tfoot>`);
     const s14 = `<section class="vcard pad24" data-sxpa="B14">${secHead('B14', r, ed ? btn(`data-sxpa-cost="${c}|"`, `${icon('add')} Thêm khoản chi phí`) : '')}
       <p class="cap">Mỗi khoản có căn cứ giá, nguồn, ngày cập nhật và còn hiệu lực; vật tư leadtime ≥ ${LT_LONG} tuần đưa vào kế hoạch từ đầu; chênh lệch với giá trị dự toán nêu để cấp có thẩm quyền quyết định.</p>${t14}</section>`;
     return `<div data-sxpa-inputs>${top}${s11}${s12}${s13}${s14}</div>`;
@@ -404,6 +408,31 @@
     const [kind, val] = [['item', ds.sxpaItem], ['cfg', ds.sxpaCfg], ['scope', ds.sxpaScope], ['cost', ds.sxpaCost]].find(([, v]) => v != null);
     const [code, id] = val.split('|');
     ({ item: itemDlg, cfg: cfgDlg, scope: scopeDlg, cost: costDlg })[kind](code, id || null);
+  });
+
+  /* Góp ý 27/11: tải kèm / xoá tài liệu của từng mục đầu vào. */
+  const fileRow = (key) => { const [code, kind, id] = key.split('|'), x = byCode(code), it = x && (b1Of(x)[kind] || []).find((y) => y.id === id);
+    return it && (editable(x) || (kind === 'items' && canUpdItem(x, it))) ? { x, kind, it } : null; };
+  const FILE_SEC = { items: 'B1.1', cfgs: 'B1.2', scope: 'B1.3', cost: 'B1.4' };
+  document.addEventListener('change', (e) => {
+    const inp = e.target.closest && e.target.closest('[data-sxpa-fup]');
+    if (!inp || !inp.files || !inp.files.length) return;
+    const o = fileRow(inp.dataset.sxpaFup); if (!o) return;
+    const names = [...inp.files].map((f) => f.name);
+    o.it.files = (o.it.files || []).concat(names.map((n) => [n, today(), pid()]));
+    addHist(o.x.code, `Tải tài liệu đầu vào (${FILE_SEC[o.kind]})`, `${o.it.name || o.it.cfg}: ${names.join(', ')}`); persist();
+    toast(`<b>Thành công</b><br>Đã tải lên ${names.length} tài liệu.`); rerender();
+  });
+  document.addEventListener('click', async (e) => {
+    const b = e.target.closest && e.target.closest('[data-sxpa-frm]');
+    if (!b) return;
+    e.stopPropagation(); e.preventDefault();
+    const parts = b.dataset.sxpaFrm.split('|'), n = Number(parts.pop()), o = fileRow(parts.join('|')); if (!o || !(o.it.files || [])[n]) return;
+    const name = o.it.files[n][0];
+    if (!(await window.Catalog.confirm({ sev: 'danger', title: 'Bạn chắc chắn muốn xoá không?', desc: `Xoá tài liệu: ${name}?`, hl: name, cancel: 'Hủy', ok: 'Xoá' }))) return;
+    o.it.files.splice(n, 1);
+    addHist(o.x.code, `Xoá tài liệu đầu vào (${FILE_SEC[o.kind]})`, `${o.it.name || o.it.cfg}: ${name}`); persist();
+    toast('<b>Thành công</b><br>Xoá tài liệu thành công!'); rerender();
   });
 
   /* Xoá phương án / dòng đầu vào, cấu hình, hạng mục, chi phí (góp ý 27/11). */

@@ -3,6 +3,11 @@
 > Mỗi PR một mục, mới nhất trên cùng: `## YYYY-MM-DD — <việc> (#PR)` + 2–5 gạch đầu dòng (màn, thay đổi, nguồn, điểm treo mới).
 > Lịch sử trước T77: [lich-su-chung.md](lich-su-chung.md).
 
+## 2026-11-27 · PASXKD: tải kèm tài liệu cho từng mục đầu vào
+- Tab **Hoàn thiện đầu vào** (`js/sx-pasxkd.js`): cả 4 bảng B1.1 đầu vào, B1.2 cấu hình / lô, B1.3 hạng mục / gói, B1.4 khoản chi phí thêm cột **Tài liệu** — **Tải lên** (nhiều tệp) và Xoá từng tệp (có xác nhận); ghi vào Lịch sử của phương án.
+- Quyền: người lập khi phương án Đang chuẩn bị / Trả lại; ở B1.1 người được giao dòng đó cũng tải được. Chờ phê duyệt / Đã phê duyệt chỉ xem. Lưu tên tệp, ngày, người tải (GIẢ LẬP — thật: lưu Quản lý tài liệu).
+- Test: sx-cong-viec-con thêm 1 ca; các spec có PASXKD (sx-cong-viec-con, t71-sx-qt, t71-sx-s12, ui-rules) không ca đỏ thêm.
+
 ## 2026-11-27 · PASXKD không cần nhiệm vụ; bỏ Lập dự án ở Chi tiết PASXKD; Quản lý quy trình chỉ quy trình Sản xuất
 - **Phương án SXKD** (`js/sx-pasxkd.js`): Nhiệm vụ được giao không bắt buộc — lập và duyệt được khi chưa có nhiệm vụ / dự án (bỏ chặn "không có nhiệm vụ đơn vị"); dòng đầu vào nhiệm vụ không làm thiếu căn cứ.
 - **Chi tiết PASXKD**: bỏ nút Lập dự án sản xuất — lập dự án ở menu Dự án sản xuất › Thêm mới (chọn PASXKD đã phê duyệt).

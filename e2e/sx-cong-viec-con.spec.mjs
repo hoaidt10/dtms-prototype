@@ -354,3 +354,32 @@ test('Góp ý 27/11: PASXKD lập không cần nhiệm vụ; Chi tiết PASXKD k
   await expect(page.locator('main')).toContainText('DTMS_MS01');
   expect(page.errors).toEqual([]);
 });
+
+test('Góp ý 27/11: Hoàn thiện đầu vào — tải kèm / xoá tài liệu cho từng mục đầu vào (B1.1–B1.4); phương án đã duyệt chỉ xem', async ({ page }) => {
+  await fresh(page, '#/sx/pasxkd');
+  await as(page, 'sxpm', '#/sx/pasxkd/PAKD-2026-409');
+  await page.locator('[data-ttab="dv"]').click();
+  for (const s of ['B11', 'B12', 'B13', 'B14']) await expect(page.locator(`[data-sxpa="${s}"] thead`)).toContainText('Tài liệu');
+  const up = page.locator('[data-sxpa="B11"] [data-sxpa-fup]').first();
+  const key = await up.getAttribute('data-sxpa-fup');
+  await up.setInputFiles([{ name: 'Van-ban-giao-nhiem-vu.pdf', mimeType: 'application/pdf', buffer: Buffer.from('x') }, { name: 'Bien-ban-hop.docx', mimeType: 'application/octet-stream', buffer: Buffer.from('y') }]);
+  const cell = page.locator(`[data-sxpa-files="${key}"]`);
+  await expect(cell).toContainText('Van-ban-giao-nhiem-vu.pdf');
+  await expect(cell).toContainText('Bien-ban-hop.docx');
+  await page.locator('[data-sxpa="B14"] [data-sxpa-fup]').first().setInputFiles({ name: 'Bao-gia-NCC.pdf', mimeType: 'application/pdf', buffer: Buffer.from('z') });
+  await expect(page.locator('[data-sxpa="B14"]')).toContainText('Bao-gia-NCC.pdf');
+  await cell.locator('[data-sxpa-frm$="|0"]').click();
+  await page.locator('#cf-ok').click();
+  await expect(cell).not.toContainText('Van-ban-giao-nhiem-vu.pdf');
+  await expect(cell).toContainText('Bien-ban-hop.docx');
+  // Giữ sau khi tải lại trang.
+  await page.reload();
+  await as(page, 'sxpm', '#/sx/pasxkd/PAKD-2026-409');
+  await page.locator('[data-ttab="dv"]').click();
+  await expect(page.locator(`[data-sxpa-files="${key}"]`)).toContainText('Bien-ban-hop.docx');
+  // Phương án đã phê duyệt: không tải lên / xoá.
+  await as(page, 'sxpm', '#/sx/pasxkd/PAKD-2026-214');
+  await page.locator('[data-ttab="dv"]').click();
+  await expect(page.locator('[data-sxpa-fup], [data-sxpa-frm]')).toHaveCount(0);
+  expect(page.errors).toEqual([]);
+});
