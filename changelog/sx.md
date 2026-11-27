@@ -3,6 +3,12 @@
 > Mỗi PR một mục, mới nhất trên cùng: `## YYYY-MM-DD — <việc> (#PR)` + 2–5 gạch đầu dòng (màn, thay đổi, nguồn, điểm treo mới).
 > Lịch sử trước T77: [lich-su-chung.md](lich-su-chung.md).
 
+## 2026-11-27 · Đề xuất mua sắm: phải được duyệt thì mới tạo ĐXMS trên ĐTMS
+- Góp ý mới (thay "Lưu gọi API ngay" ở mục dưới): màn Lập đề xuất mua sắm có **Lưu nháp** / **Gửi phê duyệt**; Gửi phê duyệt khởi tạo hồ sơ SX-MS (Lãnh đạo Khối Duyệt / Từ chối). **Chưa duyệt thì chưa tạo ĐXMS, chưa có mã**; được duyệt thì hệ thống gọi API-01 tạo ĐXMS trên ĐTMS và đề xuất nhận mã ĐXMS (vẫn một mã, một tên) (`js/sx-mua-sam.js`).
+- Hai cột: **Trạng thái phê duyệt** = duyệt nội bộ (Nháp, Chờ phê duyệt, Bị từ chối, Đã phê duyệt); **Trạng thái gửi ĐTMS** = Chưa gửi / Đã gửi (dòng phụ "Trên ĐTMS: <trạng thái ĐXMS>") / Gửi lỗi (Gửi lại, không phải duyệt lại). Sửa: Nháp, Bị từ chối; Xoá: Nháp chưa gửi phê duyệt; đã duyệt thì không sửa / xoá ở Sản xuất.
+- Đề xuất chưa có mã dùng khoá nội bộ (DX0001…) cho đường dẫn và hồ sơ phê duyệt, không hiện trên màn. `js/sx-flow.js`: màn Xử lý công việc mở đối tượng theo khoá của hồ sơ (`c.obj`); Việc của tôi hiện tên đề xuất thay khoá (nhãn `SxMs.label`). Đề xuất mẫu gửi lỗi đã có người duyệt (`js/sx-data.js`).
+- Test: t71-sx-s4 Cảnh C (chưa duyệt chưa tạo, từ chối → sửa gửi lại, duyệt → tạo ĐXMS, gửi lại, xoá nháp), t71-sx-s10 Lập đề xuất từ nhu cầu (Đang đề xuất → duyệt → Đã đề xuất) viết lại.
+
 ## 2026-11-27 · Đề xuất mua sắm: Lưu gọi API tạo ĐXMS trên ĐTMS (một mã, một tên); tách Trạng thái gửi ĐTMS / Trạng thái phê duyệt
 - **Bỏ bước duyệt nội bộ Sản xuất** (luồng SX-MS không còn được khởi tạo) và mã ĐXSX riêng: màn **Lập đề xuất mua sắm** (`js/sx-mua-sam.js`) theo khuôn màn Lập ĐXMS của ĐTMS (Mã ĐXMS hệ thống tự sinh, Tên đề xuất mua sắm, Đơn vị đề xuất, Mức ưu tiên, Đợt, Thời gian thực hiện, Giá trị dự kiến, Người tạo) + Dự án sản xuất và bảng vật tư; nút **Lưu** = gọi API-01 tạo ĐXMS trên ĐTMS (GIẢ LẬP `Flow.createDxms`), phê duyệt theo quy trình ĐTMS.
 - Danh sách và tab Mua sắm & hợp đồng của dự án: một mã (mã ĐXMS) dưới tên; hai cột **Trạng thái gửi ĐTMS** (Đã gửi / Gửi lỗi + nút **Gửi lại**) và **Trạng thái phê duyệt** (trạng thái ĐXMS trên ĐTMS: Chưa khởi tạo, Đang phê duyệt, Đã phê duyệt…); lọc theo cả hai. **Sửa / Xoá** theo quy tắc ĐTMS: gửi lỗi hoặc ĐXMS còn Chưa khởi tạo — Sửa gọi API cập nhật ĐXMS, Xoá xoá mềm ĐXMS (mã không dùng lại).

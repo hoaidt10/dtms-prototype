@@ -1,6 +1,6 @@
 // @ts-check
 // T71 S4 (D-121 Q6): SX-10 đề xuất mua sắm từ sản xuất — MBOM dự toán, tồn kho; tab Mua sắm & hợp đồng đọc ngược ĐTMS (API-02/03/04).
-// Góp ý 27/11: Lưu gọi API-01 tạo ĐXMS trên ĐTMS ngay (bỏ duyệt SX-MS); một mã (mã ĐXMS), một tên; cột Trạng thái gửi ĐTMS và Trạng thái phê duyệt.
+// Góp ý 27/11: một mã (mã ĐXMS), một tên; phải được Lãnh đạo Khối duyệt (SX-MS) thì mới gọi API-01 tạo ĐXMS trên ĐTMS; cột Trạng thái phê duyệt và Trạng thái gửi ĐTMS.
 import { test, expect } from '@playwright/test';
 import { fresh } from './helpers.mjs';
 
@@ -51,7 +51,7 @@ test('Sản phẩm chưa qua cổng chuyển giao thì chưa lập được đ�
   expect(page.errors).toEqual([]);
 });
 
-test('Cảnh C: lập đề xuất đợt 2 từ dự án, tra tồn kho, Lưu → tạo ĐXMS trên ĐTMS (nguồn Sản xuất); sửa, xoá khi ĐXMS Chưa khởi tạo; gửi lại đề xuất gửi lỗi', async ({ page }) => {
+test('Cảnh C: lập đề xuất đợt 2, Gửi phê duyệt — chưa duyệt thì chưa tạo ĐXMS; Lãnh đạo Khối duyệt → tạo ĐXMS trên ĐTMS (một mã); từ chối thì sửa gửi lại; gửi lại đề xuất gửi lỗi; xoá nháp', async ({ page }) => {
   await fresh(page, '#/sx/du-an');
   await as(page, 'sxpm', '#/sx/du-an/DA-SX-2026-001');
   await page.locator('[data-ttab="ms"]').click();
@@ -59,7 +59,6 @@ test('Cảnh C: lập đề xuất đợt 2 từ dự án, tra tồn kho, Lưu �
   await expect(page.locator('.pg-title')).toContainText('Lập đề xuất mua sắm');
   await expect(page.locator('[data-sxm-form]')).toContainText('Mã ĐXMS');
   await expect(page.locator('[data-sxm-form]')).toContainText('Tên đề xuất mua sắm');
-  await expect(page.locator('[data-sxm-save], [data-sxm-submit]')).toHaveCount(0); // không còn Lưu nháp / Gửi phê duyệt nội bộ
   await expect(page.locator('[data-sxm-lines] tbody tr')).toHaveCount(6);
   await pick(page, 'sxm-dot', '2');
   await expect(page.locator('#sxm-title')).toHaveValue('Mua sắm vật tư sản xuất VT-25 — đợt 2');
@@ -75,41 +74,75 @@ test('Cảnh C: lập đề xuất đợt 2 từ dự án, tra tồn kho, Lưu �
   await page.locator('[data-sxm-qty="MECH-VT25"]').fill('20');
   await page.locator('[data-sxm-qty="MECH-VT25"]').press('Tab');
   await expect(page.locator('[data-sxm-total]')).toHaveText('196.000.000');
+  const n0 = await page.evaluate(() => Flow.dxmsAll().length);
   await page.locator('[data-sxm-form] button[type="submit"]').click();
-  // Lưu = gọi API tạo ĐXMS trên ĐTMS ngay; về danh sách.
+  await page.locator('.vmodal [data-sxm-send-ok]').click();
   await expect(page).toHaveURL(/#\/sx\/mua-sam$/);
-  const dx = await page.evaluate(() => SxMs.all().find((x) => x.title === 'Mua sắm vật tư sản xuất VT-25 — đợt 2').code);
-  expect(dx).toMatch(/^ĐXMS-2026-\d{4}$/);
-  expect(await page.evaluate((c) => { const x = Flow.findDxms(c); return [x.src, x.sxProject, x.unit, x.est]; }, dx)).toEqual(['SX', 'DA-SX-2026-001', 'Trung tâm Sản xuất', 0.196]);
-  const r = page.locator('.vtable tbody tr', { hasText: dx });
-  await expect(r).toContainText('Đã gửi');
-  await expect(r).toContainText('Chưa khởi tạo');
+  // Chưa duyệt → chưa tạo ĐXMS, chưa có mã.
+  const r = page.locator('.vtable tbody tr', { hasText: 'Mua sắm vật tư sản xuất VT-25 — đợt 2' });
+  await expect(r).toContainText('Chờ phê duyệt');
+  await expect(r).toContainText('Chưa gửi');
+  await expect(r).toContainText('Chưa có mã ĐXMS');
+  await expect(r.locator('[data-sxm-del], [data-go$="/edit"]')).toHaveCount(0);
+  expect(await page.evaluate(() => Flow.dxmsAll().length)).toBe(n0);
   expect(await page.locator('main').innerText()).not.toMatch(BA);
-  // Sửa (ĐXMS còn Chưa khởi tạo) → cập nhật ĐXMS trên ĐTMS.
+  const ref = await page.evaluate(() => SxMs.all().find((x) => x.title === 'Mua sắm vật tư sản xuất VT-25 — đợt 2').ref);
+  const task = async () => { const c = await page.evaluate((o) => SxFlow.cases(o, 'SX-MS').slice(-1)[0], ref); return `#/sx/viec/${encodeURIComponent(c.code)}/${c.tokens[0].id}`; };
+  // Lãnh đạo Khối từ chối (lý do bắt buộc) → vẫn chưa tạo ĐXMS; người lập sửa, gửi lại.
+  await as(page, 'sxld', await task());
+  await expect(page.locator('[data-sxm-detail]')).toContainText('MECH-VT25');
+  await page.locator('[data-sx-do="1"]').click();
+  await page.locator('.vmodal [data-ef="ykNoiDung"]').fill('Bổ sung pin vào đề xuất.');
+  await page.locator('.vmodal #ok').click();
+  await as(page, 'sxpm', '#/sx/mua-sam');
+  await expect(r).toContainText('Bị từ chối');
+  await expect(r).toContainText('Chưa gửi');
+  expect(await page.evaluate(() => Flow.dxmsAll().length)).toBe(n0);
   await r.locator('[data-go$="/edit"]').click();
-  await expect(page.locator('[data-sxm-form] input[disabled]').first()).toHaveValue(dx);
-  await page.locator('#sxm-title').fill('Mua sắm vỏ cơ khí VT-25 đợt 2');
+  await expect(page.locator('.hd-alert.error')).toContainText('Bổ sung pin vào đề xuất');
+  await page.locator('[data-sxm-on="BAT-LI-12V"]').check();
   await page.locator('[data-sxm-form] button[type="submit"]').click();
-  await expect(page).toHaveURL(/#\/sx\/mua-sam$/);
-  expect(await page.evaluate((c) => Flow.findDxms(c).title, dx)).toBe('Mua sắm vỏ cơ khí VT-25 đợt 2');
-  // Bên ĐTMS: Chi tiết ĐXMS ghi nguồn Phân hệ Quản lý sản xuất, không còn mã đề xuất riêng.
+  await page.locator('.vmodal [data-sxm-send-ok]').click();
+  await expect(r).toContainText('Chờ phê duyệt');
+  // Duyệt → hệ thống gọi API-01 tạo ĐXMS (nguồn Sản xuất); đề xuất nhận mã ĐXMS.
+  await as(page, 'sxld', await task());
+  await page.locator('[data-sx-do="0"]').click();
+  await page.locator('.vmodal #ok').click();
+  await as(page, 'sxpm', '#/sx/mua-sam');
+  const dx = await page.evaluate((o) => SxMs.byCode(o).code, ref);
+  expect(dx).toMatch(/^ĐXMS-2026-\d{4}$/);
+  expect(await page.evaluate(() => Flow.dxmsAll().length)).toBe(n0 + 1);
+  expect(await page.evaluate((c) => { const x = Flow.findDxms(c); return [x.src, x.sxProject, x.unit]; }, dx)).toEqual(['SX', 'DA-SX-2026-001', 'Trung tâm Sản xuất']);
+  await expect(r).toContainText(dx);
+  await expect(r).toContainText('Đã phê duyệt');
+  await expect(r).toContainText('Đã gửi');
+  await expect(r).toContainText('Trên ĐTMS: Chưa khởi tạo');
+  await expect(r.locator('[data-sxm-del], [data-go$="/edit"]')).toHaveCount(0);
+  // Bên ĐTMS: Chi tiết ĐXMS ghi nguồn Phân hệ Quản lý sản xuất, không có mã đề xuất riêng.
   await as(page, 'admin', '#/luong/' + encodeURIComponent(dx));
   await expect(page.locator('main')).toContainText('Phân hệ Quản lý sản xuất · DA-SX-2026-001');
   await expect(page.locator('main')).not.toContainText('ĐXSX');
-  // Gửi lại đề xuất gửi lỗi → có mã ĐXMS.
+  // Gửi lại đề xuất đã duyệt nhưng gửi lỗi → có mã ĐXMS.
   await as(page, 'sxpm', '#/sx/mua-sam');
-  await page.locator('.vtable tbody tr', { hasText: 'Chưa có mã ĐXMS' }).locator('[data-sxm-resend]').click();
+  const er = page.locator('.vtable tbody tr', { hasText: 'Mua sắm bổ sung đầu nối' });
+  await expect(er).toContainText('Gửi lỗi');
+  await er.locator('[data-sxm-resend]').click();
   await expect(page).toHaveURL(/#\/sx\/mua-sam$/);
-  await expect(page.locator('.vtable tbody tr', { hasText: 'Mua sắm bổ sung đầu nối' })).toContainText(/ĐXMS-2026-\d{4}/);
+  await expect(er).toContainText(/ĐXMS-2026-\d{4}/);
   await expect(page.locator('.vtable tbody')).not.toContainText('Gửi lỗi');
-  // Xoá → xoá ĐXMS trên ĐTMS.
-  await page.locator('.vtable tbody tr', { hasText: dx }).locator('[data-sxm-del]').click();
+  // Nháp chưa gửi phê duyệt: Sửa / Xoá.
+  await page.locator('[data-go="sx/mua-sam/create"]').click();
+  await pick(page, 'sxm-project', 'DA-SX-2026-001');
+  await page.locator('#sxm-title').fill('Đề xuất nháp để xoá');
+  await page.locator('[data-sxm-save]').click();
+  const d = page.locator('.vtable tbody tr', { hasText: 'Đề xuất nháp để xoá' });
+  await expect(d).toContainText('Nháp');
+  await d.locator('[data-sxm-del]').click();
   await page.locator('#cf-ok').click();
-  await expect(page.locator('.vtable tbody')).not.toContainText(dx);
-  expect(await page.evaluate((c) => !!Flow.findDxms(c), dx)).toBe(false);
+  await expect(page.locator('.vtable tbody')).not.toContainText('Đề xuất nháp để xoá');
   // Lịch sử dự án.
   await as(page, 'sxpm', '#/sx/du-an/DA-SX-2026-001');
   await page.locator('[data-ttab="hist"]').click();
-  await expect(page.locator('main .vtable tbody')).toContainText('Lập đề xuất mua sắm (tạo ĐXMS trên ĐTMS)');
+  await expect(page.locator('main .vtable tbody')).toContainText('Gửi đề xuất mua sắm sang ĐTMS (tạo ĐXMS)');
   expect(page.errors).toEqual([]);
 });

@@ -171,7 +171,8 @@
   /* Link tới màn nghiệp vụ của đối tượng (dòng phụ của việc quy trình ở Việc của tôi). */
   function objLink(c) {
     const og = OBJ_GO[c.flow], p = objRec(c) || {};
-    const txt = `${og ? og[2] : FL(c.flow).name} ${c.obj}${p.name || p.title ? `: ${p.name || p.title}` : ''}`;
+    /* Góp ý 27/11: đối tượng có nhãn riêng (đề xuất mua sắm chưa có mã ĐXMS — không hiện khoá nội bộ). */
+    const lb = objOf(c).label, txt = lb ? `${og ? og[2] : FL(c.flow).name}: ${lb(c.obj)}` : `${og ? og[2] : FL(c.flow).name} ${c.obj}${p.name || p.title ? `: ${p.name || p.title}` : ''}`;
     return og ? `<a class="link" data-go="${og[0]}${encodeURIComponent(c.obj)}" title="${og[1]}">${esc(txt)}</a>` : esc(txt);
   }
   /* Việc quy trình của người dùng, cùng dạng dòng với công việc (sx-cong-viec.js): đang chờ xử lý + đã xử lý. stg = nhóm trạng thái cho lọc. */
@@ -204,7 +205,7 @@
       const h = c.hist[Number(viewIdx)];
       if (!h || h.step == null) return none('Không tìm thấy công việc.');
       const bar = window.Screens.statusBar({ mode: 'view', step: `Bước ${h.step} · ${stepOf(c.flow, h.step)[1]}`, date: dmy(h.at) });
-      return O.detail(p.code, { title: O.viewTitle, back: 'sx/viec-cua-toi', bar, task: true });
+      return O.detail(c.obj, { title: O.viewTitle, back: 'sx/viec-cua-toi', bar, task: true }); // c.obj: đề xuất mua sắm chưa có mã ĐXMS dùng khoá nội bộ
     }
     const t = c.tokens.find((x) => x.id === tokId);
     if (!t) return none('Công việc đã được xử lý hoặc không còn tồn tại.');
@@ -213,7 +214,7 @@
     const acts = o.choices ? o.choices.map((ch, i) => `<button type="button" class="vbtn ${ch[2] === 'no' ? 'secondary' : 'primary'}" data-sx-do="${i}">${esc(ch[0])}</button>`).join('')
       : `<button type="button" class="vbtn primary" data-sx-do="-1">${esc(o.label || 'Hoàn thành')}</button>`;
     const bar = window.Screens.statusBar({ mode: 'process', step: `Bước ${st[0]} · ${st[1]}`, date: dmy(dueOf(c, t)), overdue: late(c, t), acts, who: t.who !== pid() ? pName(t.who) : '' });
-    return `<div data-sx-task="${esc(c.code)}" data-sx-tok="${esc(t.id)}">${O.detail(p.code, { title: 'Xử lý công việc', back: 'sx/viec-cua-toi', bar, task: true, tok: t })}</div>`;
+    return `<div data-sx-task="${esc(c.code)}" data-sx-tok="${esc(t.id)}">${O.detail(c.obj, { title: 'Xử lý công việc', back: 'sx/viec-cua-toi', bar, task: true, tok: t })}</div>`;
   }
   /* Biến ngữ cảnh của eForm: dự án (đối tượng cha) + biến hồ sơ; mốc chính gợi ý theo khung kế hoạch khi chưa nhập. */
   function ctxOf(c) {

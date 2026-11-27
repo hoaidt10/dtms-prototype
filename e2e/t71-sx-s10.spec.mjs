@@ -1,6 +1,6 @@
 // @ts-check
 // T71 S10 (D-124): SX-17 Nhu cầu vật tư (MBOM × số lượng, tồn kho, còn thiếu, hạn đặt hàng; Thêm mới / Sửa / Xoá / Tạo từ MBOM) → Lập đề xuất mua sắm chọn sẵn;
-// Góp ý 27/11: Lưu gọi API-01 tạo ĐXMS trên ĐTMS ngay (bỏ luồng SX-MS duyệt nội bộ), một mã ĐXMS; danh sách Gói thầu, hợp đồng đọc ngược ĐTMS.
+// Góp ý 27/11: một mã ĐXMS; được duyệt (SX-MS) thì mới gọi API-01 tạo ĐXMS trên ĐTMS; danh sách Gói thầu, hợp đồng đọc ngược ĐTMS.
 import { test, expect } from '@playwright/test';
 import { fresh } from './helpers.mjs';
 
@@ -65,7 +65,7 @@ test('Nhu cầu vật tư: còn thiếu, hạn đặt hàng, trạng thái theo 
   expect(page.errors).toEqual([]);
 });
 
-test('Lập đề xuất từ nhu cầu: Lưu → tạo ĐXMS trên ĐTMS, nhu cầu chuyển Đã đề xuất', async ({ page }) => {
+test('Lập đề xuất từ nhu cầu: Gửi phê duyệt (chưa tạo ĐXMS, nhu cầu Đang đề xuất) → duyệt → tạo ĐXMS, nhu cầu Đã đề xuất', async ({ page }) => {
   await fresh(page, '#/sx/nhu-cau');
   await as(page, 'qt', '#/sx/nhu-cau');
   // Dòng VHT mua trực tiếp còn thiếu, chưa có đề xuất (chọn được) → Lập đề xuất mua sắm chọn sẵn.
@@ -78,11 +78,22 @@ test('Lập đề xuất từ nhu cầu: Lưu → tạo ĐXMS trên ĐTMS, nhu c
   await expect(page.locator('#sxm-title')).toHaveValue(/theo nhu cầu vật tư$/);
   await expect(page.locator(`[data-sxm-on="${mat}"]`)).toBeChecked();
   await page.locator('[data-sxm-form] button[type="submit"]').click();
+  await page.locator('.vmodal [data-sxm-send-ok]').click();
   await expect(page).toHaveURL(/#\/sx\/mua-sam$/);
-  const dx = await page.evaluate(() => SxMs.all()[0].code);
+  const ref = await page.evaluate(() => SxMs.all()[0].ref);
+  expect(await page.evaluate((o) => SxMs.byCode(o).code, ref)).toBe(''); // chưa duyệt → chưa tạo ĐXMS
+  await as(page, 'qt', '#/sx/nhu-cau');
+  await page.locator('[data-tkw]').fill(nc);
+  await page.locator('[data-tkw]').press('Enter');
+  await expect(page.locator('.vtable tbody tr', { has: page.locator(`[data-sxnc-view="${nc}"]`) })).toContainText('Đang đề xuất');
+  // Lãnh đạo Khối duyệt → hệ thống gọi API-01 tạo ĐXMS.
+  const c = await page.evaluate((o) => SxFlow.cases(o, 'SX-MS')[0], ref);
+  await as(page, c.tokens[0].who, `#/sx/viec/${encodeURIComponent(c.code)}/${c.tokens[0].id}`);
+  await page.locator('[data-sx-do="0"]').click();
+  await page.locator('.vmodal #ok').click();
+  const dx = await page.evaluate((o) => SxMs.byCode(o).code, ref);
   expect(dx).toMatch(/^ĐXMS-2026-\d{4}$/);
-  expect(await page.evaluate((c) => Flow.findDxms(c).src, dx)).toBe('SX');
-  await expect(page.locator('.vtable tbody tr', { hasText: dx })).toContainText('Chưa khởi tạo');
+  expect(await page.evaluate((x) => Flow.findDxms(x).src, dx)).toBe('SX');
   await as(page, 'qt', '#/sx/nhu-cau');
   await page.locator('[data-tkw]').fill(nc);
   await page.locator('[data-tkw]').press('Enter');
