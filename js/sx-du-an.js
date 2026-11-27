@@ -544,13 +544,17 @@
      (tài liệu mẫu ghi đè ở U.docOver). */
   const canDoc = (p) => p.status !== 'DONE' && (isAdmin() || p.pm === Flow.state.persona);
   const docCats = (code) => (U.docCats || {})[code] || [];
+  /* Góp ý 27/11: danh mục không cố định — danh mục mặc định (D.sxDocKind) cũng sửa tên / xoá được theo từng dự án: U.docKindName { [dự án]: { [loại]: tên } }, U.docKindDel { [dự án]: [loại] }.
+     Xoá danh mục khi chưa có tài liệu (danh mục đã xoá mà có tài liệu sinh từ quy trình thì vẫn hiện lại). */
+  const kindName = (code, key) => ((U.docKindName || {})[code] || {})[key];
+  const kindDel = (code) => (U.docKindDel || {})[code] || [];
   const docOf = (p, i) => Object.assign([], p.docs[i], ((U.docOver || {})[p.code] || {})[i] || {});
   const fileOf = (d) => d[6] || (d[3] ? d[0] : '');
   function docGroups(p, k) {
-    const cats = Object.entries(D.sxDocKind).concat(docCats(p.code).map((c) => [c.key, c.name]));
+    const cats = Object.entries(D.sxDocKind).filter(([key]) => !kindDel(p.code).includes(key)).map(([key, n]) => [key, kindName(p.code, key) || n]).concat(docCats(p.code).map((c) => [c.key, c.name]));
     const docs = p.docs.map((d0, i) => ({ i, d: docOf(p, i) }));
     const known = new Set(cats.map((c) => c[0]));
-    docs.forEach((x) => { if (!known.has(x.d[1])) { known.add(x.d[1]); cats.push([x.d[1], x.d[1] === 'KHAC' ? 'Tài liệu khác' : x.d[1]]); } });
+    docs.forEach((x) => { if (!known.has(x.d[1])) { known.add(x.d[1]); cats.push([x.d[1], kindName(p.code, x.d[1]) || D.sxDocKind[x.d[1]] || (x.d[1] === 'KHAC' ? 'Tài liệu khác' : x.d[1])]); } });
     const can = canDoc(p), rows = [], base = p.docs.length - (U.docs[p.code] || []).length, own = (key) => docCats(p.code).some((c) => c.key === key);
     const ib = (ic, label, attrs) => `<button type="button" class="vbtn icon ghost" title="${label}" aria-label="${label}" ${attrs}>${icon(ic)}</button>`;
     cats.forEach(([key, name]) => {
@@ -561,7 +565,7 @@
     return k.table([['Danh mục / tài liệu', 420], ['Phiên bản', 100], ['Người tải lên', 200], ['Ngày tải lên', 130], ['File đính kèm', 300], ['Thao tác', 150, 'c']], rows, (r) => {
       if (r.cat) {
         return `<td><b>${esc(r.name)}</b> <span class="faint">(${r.n})</span></td><td colspan="4">${r.n ? '' : '<span class="faint">Chưa có tài liệu</span>'}</td>
-          <td class="c"><div class="acts">${can ? ib('add', 'Thêm tài liệu vào danh mục', `data-sx-docadd="${esc(p.code)}|${esc(r.key)}"`) : ''}${can && own(r.key) ? ib('edit', 'Sửa danh mục', `data-sx-doccat-edit="${esc(p.code)}|${esc(r.key)}"`) + (r.n ? '' : ib('del', 'Xoá danh mục', `data-sx-doccat-del="${esc(p.code)}|${esc(r.key)}"`)) : ''}</div></td>`;
+          <td class="c"><div class="acts">${can ? ib('add', 'Thêm tài liệu vào danh mục', `data-sx-docadd="${esc(p.code)}|${esc(r.key)}"`) : ''}${can ? ib('edit', 'Sửa danh mục', `data-sx-doccat-edit="${esc(p.code)}|${esc(r.key)}"`) + (r.n ? '' : ib('del', 'Xoá danh mục', `data-sx-doccat-del="${esc(p.code)}|${esc(r.key)}"`)) : ''}</div></td>`;
       }
       const d = r.d, f = fileOf(d);
       return `<td style="padding-left:28px">${k.clamp(d[0])}${d[5] === 'SIGN' ? ' ' + badge('Đã ký số', 'success') : ''}</td><td>${d[2] ? esc(d[2]) : k.dash}</td><td>${d[3] ? k.clamp(pName(d[3])) : k.dash}</td><td class="num">${d[4] ? esc(dmy(d[4])) : k.dash}</td>
@@ -635,7 +639,7 @@
     if (c.dataset.sxDoccat) {
       const code = c.dataset.sxDoccat, name = await askName('Thêm danh mục tài liệu', 'Tên danh mục tài liệu', 'Nhập tên danh mục, vd Hồ sơ thử nghiệm thực tế');
       const l = (U.docCats = U.docCats || {})[code] = docCats(code);
-      l.push({ key: `DM-${l.length + 1}`, name }); addHist(code, 'Thêm danh mục tài liệu', name); persist();
+      l.push({ key: `DM-${Math.max(0, ...l.map((x) => Number(String(x.key).slice(3)) || 0)) + 1}`, name }); // mã không trùng sau khi xoá addHist(code, 'Thêm danh mục tài liệu', name); persist();
       toast('<b>Thành công</b><br>Thêm danh mục tài liệu thành công!'); rerender(); return;
     }
     const [code, key] = c.dataset.sxDocadd.split('|'), name = await askName('Thêm tài liệu', 'Tên tài liệu', 'Nhập tên tài liệu');
@@ -649,9 +653,18 @@
     if (!t) return;
     const ds = t.dataset, [code, key] = (ds.sxDoccatEdit || ds.sxDoccatDel || ds.sxDocEdit || ds.sxDocDel).split('|'), p = byCode(code);
     if (ds.sxDoccatEdit || ds.sxDoccatDel) {
-      const c = docCats(code).find((x) => x.key === key); if (!c) return;
-      if (ds.sxDoccatEdit) { c.name = await askName('Sửa danh mục tài liệu', 'Tên danh mục tài liệu', '', c.name); addHist(code, 'Sửa danh mục tài liệu', c.name); }
-      else { if (!(await window.Catalog.confirm({ sev: 'danger', title: 'Bạn chắc chắn muốn xoá không?', desc: `Xoá danh mục tài liệu: ${c.name}?`, hl: c.name, cancel: 'Hủy', ok: 'Xoá' }))) return; U.docCats[code] = docCats(code).filter((x) => x.key !== key); addHist(code, 'Xoá danh mục tài liệu', c.name); }
+      /* Danh mục riêng (U.docCats) hoặc danh mục mặc định (đổi tên / ẩn theo dự án). */
+      const c = docCats(code).find((x) => x.key === key), cur = c ? c.name : kindName(code, key) || D.sxDocKind[key] || (key === 'KHAC' ? 'Tài liệu khác' : key);
+      if (ds.sxDoccatEdit) {
+        const name = await askName('Sửa danh mục tài liệu', 'Tên danh mục tài liệu', '', cur);
+        if (c) c.name = name; else { U.docKindName = U.docKindName || {}; U.docKindName[code] = Object.assign({}, U.docKindName[code], { [key]: name }); }
+        addHist(code, 'Sửa danh mục tài liệu', `${cur} → ${name}`);
+      } else {
+        if (p.docs.some((d, i) => docOf(p, i)[1] === key)) { toast('Danh mục còn tài liệu, không xoá được.', 'warn'); return; }
+        if (!(await window.Catalog.confirm({ sev: 'danger', title: 'Bạn chắc chắn muốn xoá không?', desc: `Xoá danh mục tài liệu: ${cur}?`, hl: cur, cancel: 'Hủy', ok: 'Xoá' }))) return;
+        if (c) U.docCats[code] = docCats(code).filter((x) => x.key !== key); else { U.docKindDel = U.docKindDel || {}; U.docKindDel[code] = kindDel(code).concat(key); }
+        addHist(code, 'Xoá danh mục tài liệu', cur);
+      }
     } else {
       const i = Number(key), base = p.docs.length - (U.docs[code] || []).length, d = U.docs[code][i - base]; if (!d) return;
       if (ds.sxDocEdit) { d[0] = await askName('Sửa tài liệu', 'Tên tài liệu', '', d[0]); addHist(code, 'Sửa tài liệu', d[0]); }

@@ -4,6 +4,7 @@
 // công việc con chỉ ở công việc từ kế hoạch (chi tiết 3 tab).
 import { test, expect } from '@playwright/test';
 import { fresh } from './helpers.mjs';
+import { readFileSync } from 'node:fs';
 
 test.describe.configure({ timeout: 120000 });
 const BA = /SCR-|SX-\d\d\b|UC-|task 0|Prototype|minh hoạ|GIẢ LẬP/;
@@ -424,5 +425,37 @@ test('Góp ý 27/11: Bất thường sản xuất — cột Thao tác Sửa / Xo
   await page.locator('#cf-ok').click();
   await expect(page).toHaveURL(/#\/sx\/du-an\/DA-SX-2026-001/);
   await expect(page.locator('[data-sx-bt]')).not.toContainText('BT-2026-005');
+  expect(page.errors).toEqual([]);
+});
+
+test('Góp ý 27/11: tab Nghiệm thu có Xuất Excel; tab Tài liệu thêm / sửa / xoá được cả danh mục mặc định', async ({ page }) => {
+  await fresh(page, '#/sx/du-an');
+  // (1) Xuất Excel bảng Nghiệm thu sản phẩm.
+  await as(page, 'qt', '#/sx/du-an/DA-SX-2026-003');
+  await page.locator('[data-ttab="nt"]').click();
+  const [dl] = await Promise.all([page.waitForEvent('download'), page.locator('[data-sxnt-exp="DA-SX-2026-003"]').click()]);
+  expect(dl.suggestedFilename()).toBe('Nghiem thu san pham DA-SX-2026-003.csv');
+  const csv = readFileSync(await dl.path(), 'utf8');
+  expect(csv).toContain('"STT","Nội dung nghiệm thu","Cấp nghiệm thu"');
+  expect(csv).not.toContain('Thao tác');
+  const rowsN = await page.locator('[data-sx-nt] tbody tr').count();
+  expect(csv.trim().split('\n').length).toBe(3 + rowsN);
+  // (2) Danh mục mặc định: sửa tên, xoá (khi chưa có tài liệu), không ảnh hưởng dự án khác.
+  await as(page, 'sxpm', '#/sx/du-an/DA-SX-2026-001/docs');
+  const cats = page.locator('[data-sx-docs] tbody tr', { has: page.locator('[data-sx-doccat-edit]') });
+  const empty = page.locator('[data-sx-docs] tbody tr', { has: page.locator('[data-sx-doccat-del]') }).first();
+  const key = (await empty.locator('[data-sx-doccat-del]').getAttribute('data-sx-doccat-del')).split('|')[1];
+  expect(key.startsWith('DM-')).toBe(false); // danh mục mặc định cũng xoá được
+  expect(await cats.count()).toBeGreaterThan(1);
+  await page.locator(`[data-sx-doccat-edit="DA-SX-2026-001|${key}"]`).click();
+  await page.locator('#sx-ask').fill('Danh mục đã đổi tên');
+  await page.locator('#sx-ask-ok').click();
+  await expect(page.locator('[data-sx-docs]')).toContainText('Danh mục đã đổi tên');
+  await page.locator(`[data-sx-doccat-del="DA-SX-2026-001|${key}"]`).click();
+  await page.locator('#cf-ok').click();
+  await expect(page.locator('[data-sx-docs]')).not.toContainText('Danh mục đã đổi tên');
+  await expect(page.locator(`[data-sx-doccat-edit="DA-SX-2026-001|${key}"]`)).toHaveCount(0);
+  await as(page, 'qt', '#/sx/du-an/DA-SX-2026-003/docs');
+  await expect(page.locator(`[data-sx-doccat-edit="DA-SX-2026-003|${key}"]`)).toHaveCount(1);
   expect(page.errors).toEqual([]);
 });

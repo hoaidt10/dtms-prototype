@@ -391,11 +391,26 @@
         <td class="num">${x.date ? esc(dmy(x.date)) : k.dash}</td><td>${docs([['Biên bản', x.file]])}</td><td class="c">${badge(...(NT_ST[x.st] || NT_ST.CHUA))}</td>
         <td class="c"><div class="acts">${cn ? ib('edit', 'Sửa', `data-sxnt-ntm-edit="${esc(x.code)}"`) + ib('del', 'Xoá', `data-sxnt-ntm-del="${esc(x.code)}"`) : ''}</div></td>`;
     };
-    const btns = (canRequest(p) ? `<button type="button" class="vbtn secondary" data-sxnt-new="${esc(p.code)}">${icon('add')} Đề nghị nghiệm thu</button>` : '')
+    const btns = `<button type="button" class="vbtn secondary" data-sxnt-exp="${esc(p.code)}" title="Xuất Excel danh sách nghiệm thu sản phẩm">${icon('excel')} Xuất Excel</button>` + (canRequest(p) ? `<button type="button" class="vbtn secondary" data-sxnt-new="${esc(p.code)}">${icon('add')} Đề nghị nghiệm thu</button>` : '')
       + (canNtm(p) ? `<button type="button" class="vbtn secondary" data-sxnt-ntm-add="${esc(p.code)}">${icon('add')} Thêm thông tin nghiệm thu</button>` : '');
     return `<div data-sx-nt><section class="vcard pad24"><div class="vcard-h"><h3>Nghiệm thu sản phẩm</h3><div class="row">${btns}</div></div>
       ${k.table([['Nội dung nghiệm thu', 360], ['Cấp nghiệm thu', 200], ['Số lượng / kết quả', 200], ['Ngày', 150], ['Hồ sơ', 260], ['Tình trạng', 170, 'c'], ['Thao tác', 130, 'c']], rows, cells)}</section></div>`;
   }
+  /* Góp ý 27/11: Xuất Excel bảng Nghiệm thu sản phẩm của dự án — đúng các dòng, cột đang hiện (bỏ Thao tác), như Xuất Excel của danh sách (Thau.kit: prototype tải .csv UTF-8, thật: API xuất .xlsx). */
+  function exportNt(code) {
+    const p = P().byCode(code), tb = document.querySelector('[data-sx-nt] table'); if (!p || !tb) return;
+    const txt = (c) => c.textContent.replace(/\s+/g, ' ').trim();
+    const hs = [...tb.querySelectorAll('thead th')].map(txt), keep = hs.map((h, i) => (h && h !== 'Thao tác' && h !== 'STT' ? i : -1)).filter((i) => i >= 0);
+    const body = [...tb.querySelectorAll('tbody tr')].filter((tr) => tr.children.length >= hs.length).map((tr, n) => [n + 1].concat(keep.map((i) => { const v = txt(tr.children[i]); return v === '-' ? '' : v; })));
+    const q = (v) => `"${String(v == null ? '' : v).replace(/"/g, '""')}"`;
+    const lines = [[`NGHIỆM THU SẢN PHẨM — ${p.name} (${p.code})`.toUpperCase()], [], ['STT'].concat(keep.map((i) => hs[i]))].concat(body);
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob(['﻿' + lines.map((r) => r.map(q).join(',')).join('\n')], { type: 'text/csv;charset=utf-8;' }));
+    a.download = `Nghiem thu san pham ${p.code}.csv`;
+    a.click();
+    toast('<b>Thành công</b><br>Xuất file thành công');
+  }
+  document.addEventListener('click', (e) => { const b = e.target.closest && e.target.closest('[data-sxnt-exp]'); if (b) exportNt(b.dataset.sxntExp); });
   /* Nội dung đánh giá OQC (bấm dòng OQC): bảng đánh giá trong hộp thoại; thao tác trong hộp thoại đóng hộp thoại rồi xử lý như ở màn. */
   /* Chọn dự án (đang sản xuất / nghiệm thu, có quyền đề nghị) rồi mở hộp thoại Đề nghị nghiệm thu như ở tab dự án. */
   function pickProject() {

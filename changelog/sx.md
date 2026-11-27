@@ -3,6 +3,11 @@
 > Mỗi PR một mục, mới nhất trên cùng: `## YYYY-MM-DD — <việc> (#PR)` + 2–5 gạch đầu dòng (màn, thay đổi, nguồn, điểm treo mới).
 > Lịch sử trước T77: [lich-su-chung.md](lich-su-chung.md).
 
+## 2026-11-27 · Tab Nghiệm thu: Xuất Excel; tab Tài liệu: danh mục tự do (sửa / xoá cả danh mục mặc định)
+- **Nghiệm thu sản phẩm** (tab dự án, `js/sx-nghiem-thu.js`): nút **Xuất Excel** — xuất đúng các dòng (thử nghiệm thực tế, OQC, đề nghị nghiệm thu, thông tin nghiệm thu) và cột đang hiện, bỏ cột Thao tác; tệp `Nghiem thu san pham <mã dự án>.csv` (GIẢ LẬP như Xuất Excel các danh sách — thật: .xlsx).
+- **Tài liệu** (tab dự án, `js/sx-du-an.js`): danh mục không còn cố định — ngoài thêm danh mục, **Sửa tên / Xoá** được cả danh mục mặc định, theo từng dự án (`U.docKindName`, `U.docKindDel`); Xoá khi danh mục chưa có tài liệu. Mã danh mục thêm mới không trùng sau khi xoá.
+- Test: sx-cong-viec-con thêm 1 ca; các spec có Nghiệm thu / Tài liệu không ca đỏ thêm.
+
 ## 2026-11-27 · Bất thường sản xuất: cột Thao tác Sửa / Xoá
 - Danh sách **Bất thường sản xuất** và bảng **Phiếu bất thường** ở tab Bất thường & thay đổi của dự án (`js/sx-bat-thuong.js`): thêm cột **Thao tác** (Sửa, Xoá) — cùng quy tắc nút ở Chi tiết phiếu: phiếu **Lưu nháp** (chưa gửi vào luồng xử lý); người lập, Giám đốc dự án hoặc quản trị. Phiếu đã gửi xử lý theo luồng SX-BT (bị trả lại sửa ở bước 1, đang xử lý sửa tab Phân tích và xử lý).
 - Bấm nút trong dòng không mở chi tiết; Xoá ở danh sách / tab dự án thì ở lại màn đang đứng.
