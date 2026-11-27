@@ -3,6 +3,13 @@
 > Mỗi PR một mục, mới nhất trên cùng: `## YYYY-MM-DD — <việc> (#PR)` + 2–5 gạch đầu dòng (màn, thay đổi, nguồn, điểm treo mới).
 > Lịch sử trước T77: [lich-su-chung.md](lich-su-chung.md).
 
+## 2026-11-27 · Đề xuất mua sắm: Lưu gọi API tạo ĐXMS trên ĐTMS (một mã, một tên); tách Trạng thái gửi ĐTMS / Trạng thái phê duyệt
+- **Bỏ bước duyệt nội bộ Sản xuất** (luồng SX-MS không còn được khởi tạo) và mã ĐXSX riêng: màn **Lập đề xuất mua sắm** (`js/sx-mua-sam.js`) theo khuôn màn Lập ĐXMS của ĐTMS (Mã ĐXMS hệ thống tự sinh, Tên đề xuất mua sắm, Đơn vị đề xuất, Mức ưu tiên, Đợt, Thời gian thực hiện, Giá trị dự kiến, Người tạo) + Dự án sản xuất và bảng vật tư; nút **Lưu** = gọi API-01 tạo ĐXMS trên ĐTMS (GIẢ LẬP `Flow.createDxms`), phê duyệt theo quy trình ĐTMS.
+- Danh sách và tab Mua sắm & hợp đồng của dự án: một mã (mã ĐXMS) dưới tên; hai cột **Trạng thái gửi ĐTMS** (Đã gửi / Gửi lỗi + nút **Gửi lại**) và **Trạng thái phê duyệt** (trạng thái ĐXMS trên ĐTMS: Chưa khởi tạo, Đang phê duyệt, Đã phê duyệt…); lọc theo cả hai. **Sửa / Xoá** theo quy tắc ĐTMS: gửi lỗi hoặc ĐXMS còn Chưa khởi tạo — Sửa gọi API cập nhật ĐXMS, Xoá xoá mềm ĐXMS (mã không dùng lại).
+- Dữ liệu (`js/sx-data.js`): 2 đề xuất chuyển đổi mang mã ĐXMS-2026-0058 / 0066; thêm 1 đề xuất mẫu gửi lỗi (chưa có mã ĐXMS) để minh hoạ Gửi lại. Khoá lưu đổi `sx-proto-ms` → `sx-proto-ms2`. Nhu cầu vật tư (`js/sx-nhu-cau.js`) hiện mã ĐXMS.
+- **File phân hệ khác** `js/luong.js` (luong-dxms) — sửa 1 dòng: Chi tiết ĐXMS nguồn Sản xuất bỏ "· đề xuất <mã ĐXSX>" (không còn mã riêng; yêu cầu một mã một tên).
+- Test: t71-sx-s4 (3 ca), t71-sx-s10 ca Lập đề xuất từ nhu cầu và Gói thầu viết lại theo luồng mới. So với trước khi sửa (t71-*, t74-*, sx-*, ui-rules, luong*): không ca đỏ thêm, 53 → 49 ca đỏ cũ.
+
 ## 2026-11-27 · Thêm mới / Sửa / Xoá đồng bộ; Tiến độ và chất lượng 2 bảng; Hồ sơ dự án điều hướng tab Tài liệu
 - **Điều kiện sản xuất** (`js/sx-chuyen-giao.js`): nút **Thêm mới** (thay "Thêm điều kiện"), có ở mọi giai đoạn trước khi dự án hoàn thành; dòng thêm có Sửa / Xoá.
 - **Tiến độ và chất lượng** (`js/sx-btp.js`, tên tab bỏ "(Từ VMMS)"): bỏ Thêm kết quả IPQC; tách **bảng Tiến độ** và **bảng Chất lượng** (số đạt, số lỗi, tỷ lệ đạt, IPQC — bấm xem chi tiết).

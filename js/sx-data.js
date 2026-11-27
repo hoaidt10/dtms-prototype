@@ -500,21 +500,24 @@
   /* Tồn kho khả dụng ERP Kho TCT theo mã vật tư (tra cứu trực tiếp — GIẢ LẬP P-248; thật: API tra cứu tồn kho do TTMS cung cấp, SX-KS-K1 §2.5). */
   D.sxStock = { 'FPGA-XC7K325': 6, 'RF-PA-25W': 0, 'BAT-LI-12V': 30, 'CON-MIL-38999': 120, 'IR-DET-640': 2, 'SOC-IMX8': 40, 'PSU-28V-200W': 5, 'TRM-X-BAND': 0, 'FPGA-ZU9EG': 3,
     'SOC-MT7981': 15000, 'DDR4-512M': 22000, 'FPGA-ZU47DR': 120, 'PA-GAN-80W': 600, 'PSU-48V-1KW': 250 };
-  /* Đề xuất mua sắm đã gửi trước đây (dữ liệu chuyển đổi). sync = ảnh trạng thái ĐTMS nhận qua API-02 / 03 / 04 (ĐXMS gốc không nằm trong bộ dữ liệu mẫu ĐTMS — GIẢ LẬP). */
+  /* Đề xuất mua sắm đã gửi trước đây (dữ liệu chuyển đổi). sync = ảnh trạng thái ĐTMS nhận qua API-02 / 03 / 04 (ĐXMS gốc không nằm trong bộ dữ liệu mẫu ĐTMS — GIẢ LẬP).
+     Góp ý 27/11: một mã — mã đề xuất là mã ĐXMS trên ĐTMS (bỏ mã ĐXSX riêng). api: 'ERR' = gọi API-01 lỗi, chưa có mã ĐXMS (ref = khoá nội bộ). */
   D.sxProposals = [
-    { code: 'ĐXSX-2026-001', project: 'DA-SX-2026-001', dot: 1, title: 'Mua sắm vật tư leadtime dài VT-25 đợt 1', creator: 'sxpm', created: '2026-03-18', sent: '2026-03-20',
+    { code: 'ĐXMS-2026-0058', project: 'DA-SX-2026-001', dot: 1, title: 'Mua sắm vật tư leadtime dài VT-25 đợt 1', creator: 'sxpm', created: '2026-03-18', sent: '2026-03-20', priority: 'Thường', period: '04/2026 – 12/2026',
       lines: [['FPGA-XC7K325', 34], ['RF-PA-25W', 80], ['CON-MIL-38999', 120]],
       sync: { dxms: ['ĐXMS-2026-0058', 'Đã phê duyệt', 'success', '2026-04-10'], kh: ['KHLCNT-2026-0004', 'Hoàn thành KHLCNT', 'success', '2026-05-06'],
         pkgs: [['GT-2026-0008', 'Tổng thầu chế tạo, tích hợp, đo kiểm VT-25 đợt 1 (VMC)', 'Đã có kết quả LCNT', 'success']],
         hd: [['HĐ-2026-0019', 'Hợp đồng tổng thầu VT-25 đợt 1 với VMC', 'Đang thực hiện', 'success', 'Công ty Mua sắm Sản xuất Viettel', 14650000000, '2026-05-28']],
         kho: [['PNK-2026-0311', 'Nhập kho vật tư leadtime dài đợt 1', '2026-08-14', 'Đã nhập kho']] } },
-    { code: 'ĐXSX-2026-002', project: 'DA-SX-2026-003', dot: 1, title: 'Thuê gia công trọn gói 120.000 bộ phát WM-6', creator: 'sxk2', created: '2026-04-03', sent: '2026-04-05',
+    { code: 'ĐXMS-2026-0066', project: 'DA-SX-2026-003', dot: 1, title: 'Thuê gia công trọn gói 120.000 bộ phát WM-6', creator: 'sxk2', created: '2026-04-03', sent: '2026-04-05', priority: 'Thường', period: '05/2026 – 12/2026',
       lines: [['SOC-MT7981', 105000], ['DDR4-512M', 98000], ['PCB-WM6', 120000], ['ADAPTER-12V', 120000], ['CASE-WM6', 120000]],
       sync: { dxms: ['ĐXMS-2026-0066', 'Đã phê duyệt', 'success', '2026-04-14'], kh: ['KHLCNT-2026-0006', 'Hoàn thành KHLCNT', 'success', '2026-04-22'],
         pkgs: [['GT-2026-0012', 'Gia công trọn gói bộ phát WM-6', 'Đã có kết quả LCNT', 'success']],
         hd: [['HĐ-2026-0024', 'Hợp đồng gia công WM-6 với Nhà máy lắp ráp Hải Phòng', 'Đang thực hiện', 'success', 'Nhà máy lắp ráp thiết bị viễn thông Hải Phòng', 51600000000, '2026-04-28']],
         kho: [['PNK-2026-0402', 'Nhập kho lô 1 (20.000 thiết bị)', '2026-06-20', 'Đã nhập kho'], ['PNK-2026-0455', 'Nhập kho lô 2 (20.000 thiết bị)', '2026-07-25', 'Đã nhập kho'],
           ['PNK-2026-0508', 'Nhập kho lô 3 (20.000 thiết bị)', '2026-08-29', 'Đã nhập kho'], ['PNK-2026-0561', 'Nhập kho lô 4 (20.000 thiết bị)', '2026-10-03', 'Đã nhập kho']] } },
+    { ref: 'SXDX-MAU-01', code: '', api: 'ERR', apiErr: 'Không kết nối được ĐTMS (hết thời gian chờ). Bấm Gửi lại để gửi lại.', project: 'DA-SX-2026-001', dot: 1, title: 'Mua sắm bổ sung đầu nối MIL-DTL-38999 VT-25',
+      creator: 'sxpm', created: '2026-11-12', priority: 'Thường', period: '12/2026 – 03/2027', lines: [['CON-MIL-38999', 24]] },
   ];
 
   /* ---------- T71 S5 — Bán thành phẩm & tiến độ (SX-11) ----------

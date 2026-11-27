@@ -49,7 +49,7 @@
   const matOf = (r) => { const p = P().byCode(r.project); return mbomOf(p).find((m) => m.code === r.mat) || { code: r.mat, name: r.mat, unit: '', lt: 0, price: 0 }; };
   const stockOf = (code) => D.sxStock[code] || 0;
   /* Đề xuất mua sắm của cùng dự án có vật tư này (mới nhất). */
-  const propOf = (r) => window.SxMs.all().filter((x) => x.project === r.project && x.lines.some((l) => l[0] === r.mat)).sort((a, b) => (a.code < b.code ? 1 : -1))[0] || null;
+  const propOf = (r) => window.SxMs.all().filter((x) => x.project === r.project && x.lines.some((l) => l[0] === r.mat)).sort((a, b) => (a.created < b.created ? 1 : -1))[0] || null;
   /* (b) Q7 — Bên mua sắm (QT-TTSX-4A11 §5.4 bước 4, ghi chú): VHT ký hợp đồng trực tiếp với nhà cung cấp → đề xuất mua sắm sang ĐTMS;
      mua qua đối tác trung gian (tổng thầu, gia công) → đối tác ký hợp đồng với nhà cung cấp, QLSX chỉ theo dõi tập kết. Mặc định theo mô hình tổ chức:
      VHT tự sản xuất → VHT mua; VMC tổng thầu / thuê gia công → đối tác mua, trừ vật tư leadtime dài (≥ 20 tuần) hoặc cần Export License → VHT mua trước. Sửa được ở Chỉnh sửa. */
@@ -123,7 +123,7 @@
       href: () => 'sx/nhu-cau',
       cell: (r) => `<td class="c">${r.free && canManage(r.project) ? `<input type="checkbox" data-sxnc-sel="${esc(r.code)}" ${SEL.has(r.code) ? 'checked' : ''} aria-label="Chọn ${esc(r.code)}">` : ''}</td>
         <td class="c"><div class="acts">${canManage(r.project) ? iconBtn('edit', 'Sửa', `data-sxnc-edit="${esc(r.code)}"`) : ''}${canManage(r.project) && !r.prop ? `<span class="sep"></span>${iconBtn('del', 'Xoá', `data-sxnc-del="${esc(r.code)}"`)}` : ''}</div></td>
-        <td class="c">${badge(...r.st)}</td><td><a class="link" data-sxnc-view="${esc(r.code)}" title="Xem chi tiết nhu cầu vật tư">${k.clamp(r.m.name)}</a><div class="faint">${esc(r.mat)}</div></td><td>${PJ(r.project)}</td><td>${r.prop ? `<a class="link" data-go="sx/mua-sam/${encodeURIComponent(r.prop.code)}" title="Xem chi tiết đề xuất mua sắm">${esc(r.prop.code)}</a>` : k.dash}</td><td>${esc(BUYER[r.buyer])}</td><td>${esc(r.m.unit)}</td>
+        <td class="c">${badge(...r.st)}</td><td><a class="link" data-sxnc-view="${esc(r.code)}" title="Xem chi tiết nhu cầu vật tư">${k.clamp(r.m.name)}</a><div class="faint">${esc(r.mat)}</div></td><td>${PJ(r.project)}</td><td>${r.prop ? `<a class="link" data-go="sx/mua-sam/${encodeURIComponent(r.prop.code || r.prop.ref)}" title="Xem chi tiết đề xuất mua sắm">${esc(r.prop.code || 'Chưa có mã ĐXMS')}</a>` : k.dash}</td><td>${esc(BUYER[r.buyer])}</td><td>${esc(r.m.unit)}</td>
         <td class="r num">${num(r.qty)}</td><td class="r num">${num(r.avail)}</td><td class="r num">${r.short ? num(r.short) : k.dash}</td><td class="num">${esc(dmy(r.need))}</td>
         <td class="r num">${r.m.lt}</td><td class="num${r.st[0] === 'Trễ hạn đặt hàng' ? ' due-over' : ''}">${esc(dmy(r.order))}</td>`,
     });
@@ -139,7 +139,7 @@
     await window.EFormRun.open({ title: 'Xem chi tiết nhu cầu vật tư', readOnly: true, schema: { id: 'sx-nc-view', components: [
       txt(`**${r.code}** — ${r.m.name} (${r.mat})\nDự án ${r.project} · ${r.st[0]}`),
       txt(`Nhu cầu **${num(r.qty)} ${r.m.unit}** · Tồn kho TCT ${num(stockOf(r.mat))} · Còn thiếu ${num(r.short)}\nNgày cần ${dmy(r.need)} · Leadtime ${r.m.lt} tuần · Hạn đặt hàng ${dmy(r.order)}`),
-      txt(`Đề xuất mua sắm: ${r.prop ? r.prop.code : '-'} · Nguồn: ${r.src === 'MBOM' ? 'Tạo từ MBOM' : 'Nhập tay'}${r.note ? `\nGhi chú: ${r.note}` : ''}`)] }, values: {} });
+      txt(`Đề xuất mua sắm: ${r.prop ? r.prop.code || r.prop.title : '-'} · Nguồn: ${r.src === 'MBOM' ? 'Tạo từ MBOM' : 'Nhập tay'}${r.note ? `\nGhi chú: ${r.note}` : ''}`)] }, values: {} });
   }
   async function edit(code) {
     const list = rows(), r = list.find((x) => x.code === code);

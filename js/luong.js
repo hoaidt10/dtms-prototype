@@ -1085,7 +1085,7 @@
       ${kv('Đợt mua sắm', S5().dotOf(x) ? String(S5().dotOf(x)) : null)}${kv('Đơn vị đề xuất', esc(x.unit))}${kv('Khối đơn vị', esc(D.blockOf(x.unit) || ''))}
       ${kv('Người tạo', esc(x.creator))}${kv('Ngày tạo', esc(x.created || ''))}${kv('Mức ưu tiên', esc(x.priority))}
       ${x.priReason ? kv('Lý do ưu tiên', esc(x.priReason), 'span3') : ''}
-      ${'' /* T71 S4 (D-121 Q6): ĐXMS do phân hệ Quản lý sản xuất gửi sang (API-01) ghi nguồn + dự án sản xuất. */}${x.src === 'SX' ? kv('Nguồn', `Phân hệ Quản lý sản xuất · <a class="link" data-go="sx/du-an/${encodeURIComponent(x.sxProject)}">${esc(x.sxProject)}</a> · đề xuất ${esc(x.sxProposal || '')}`, 'span3') : ''}
+      ${'' /* T71 S4 (D-121 Q6): ĐXMS do phân hệ Quản lý sản xuất gửi sang (API-01) ghi nguồn + dự án sản xuất. */}${x.src === 'SX' ? kv('Nguồn', `Phân hệ Quản lý sản xuất · <a class="link" data-go="sx/du-an/${encodeURIComponent(x.sxProject)}">${esc(x.sxProject)}</a> `, 'span3') : ''}
       ${'' /* [T72 #77, D-122 Q1] bỏ ô Giá trị dự kiến (trước: kv('Giá trị dự kiến', x.est …) sau Giá trị đề xuất); Giá trị đề xuất = giá trị mới nhất (Screens.dxmsMeta). */}
       ${kv('Giá trị đề xuất', m.value == null ? null : x.luong && m.value === x.est ? dong(x.est) + ' đồng' : ty(m.value) + ' tỷ đồng')}${kv('Thời gian thực hiện', esc(x.period))}
       ${kv('Trạng thái', badge(window.Screens.DXMS_STATUS[m.state][0] + (m.state === 'OK' && m.adjN ? ` (điều chỉnh lần ${m.adjN})` : ''), window.Screens.DXMS_STATUS[m.state][1]))}${kv('Mật', x.secret ? 'Có' : 'Không')}${kv('Hình thức trình ký', esc(sgn(x.sign) || (x.secret ? OFF : 'VOffice')))}
