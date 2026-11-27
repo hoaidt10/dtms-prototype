@@ -98,16 +98,18 @@
         ${sel('project', 'Dự án', { options: P().visible().map((p) => ({ value: p.code, label: `${p.code} — ${p.name}` })) })}
         ${sel('dot', 'Đợt', { searchable: false, options: [{ value: '1', label: 'Đợt 1' }, { value: '2', label: 'Đợt 2' }] })}
         ${sel('st', 'Trạng thái', { multi: true, searchable: false, options: ['Nháp', 'Chờ phê duyệt', 'Bị từ chối', 'Đã gửi ĐTMS'].map((x) => ({ value: x, label: x })) })}`,
-      cols: [['Thao tác', 100, 'c'], ['Trạng thái', 150, 'c'], ['Đề xuất mua sắm', 360], ['Dự án', 240], ['Đợt', 70, 'c'], ['Giá trị dự toán (đồng)', 180, 'r'], ['ĐXMS', 150], ['Trạng thái trên ĐTMS', 170, 'c'], ['Ngày gửi', 120]],
+      cols: [['Thao tác', 100, 'c'], ['Trạng thái', 150, 'c'], ['Đề xuất mua sắm', 440], ['Dự án', 240], ['Đợt', 70, 'c'], ['Giá trị dự toán (đồng)', 180, 'r'], ['Ngày gửi', 120]],
       href,
-      cell: (x) => `<td class="c"><div class="acts">${canEditP(x) ? ib2('edit', 'Sửa', `data-go="${href(x)}/edit"`) : ''}${canDelP(x) ? ib2('del', 'Xoá', `data-sxm-del="${esc(x.code)}"`) : ''}</div></td><td class="c">${badge(...x.st)}</td><td>${NC(x.title, x.code, { go: href(x), tip: 'Xem chi tiết đề xuất mua sắm' })}</td><td>${PJ(x.project)}</td><td class="c">${x.dot}</td>
-        <td class="r num">${num(x.total)}</td><td>${x.dx ? `<a class="link" data-go="sx/mua-sam/${encodeURIComponent(x.dx)}" title="Xem chi tiết ĐXMS đồng bộ từ ĐTMS">${esc(x.dx)}</a>` : k.dash}</td><td class="c">${x.ds ? badge(...x.ds) : k.dash}</td><td class="num">${x.sent ? esc(dmy(x.sent)) : k.dash}</td>`,
+      cell: (x) => `<td class="c"><div class="acts">${canEditP(x) ? ib2('edit', 'Sửa', `data-go="${href(x)}/edit"`) : ''}${canDelP(x) ? ib2('del', 'Xoá', `data-sxm-del="${esc(x.code)}"`) : ''}</div></td><td class="c">${badge(...x.st)}</td><td>${NC(x.title, x.code, { go: href(x), tip: 'Xem chi tiết đề xuất mua sắm' })}${dxLine(x.dx, x.ds)}</td><td>${PJ(x.project)}</td><td class="c">${x.dot}</td>
+        <td class="r num">${num(x.total)}</td><td class="num">${x.sent ? esc(dmy(x.sent)) : k.dash}</td>`,
     });
   }
 
   /* ---------- SX-10 Lập / Chỉnh sửa ---------- */
   const F = { code: null, v: {}, err: {} };
   const ib2 = (ic, label, attrs) => `<button type="button" class="vbtn icon ghost" aria-label="${label}" title="${label}" ${attrs}>${icon(ic)}</button>`;
+  /* Góp ý 27/11: ĐXMS (tạo trên ĐTMS sau khi gửi) và trạng thái trên ĐTMS là dòng phụ dưới tên đề xuất — thay 2 cột riêng. */
+  const dxLine = (dx, ds) => (dx ? `<div class="faint" style="margin-top:6px;display:flex;flex-wrap:wrap;align-items:center;gap:6px;white-space:nowrap"><span>ĐXMS</span><a class="link" data-go="sx/mua-sam/${encodeURIComponent(dx)}" title="Xem chi tiết ĐXMS đồng bộ từ ĐTMS">${esc(dx)}</a>${ds ? badge(...ds) : ''}</div>` : '');
   const projOpts = () => P().visible().filter((p) => p.status !== 'DONE' && (isAdmin() || p.pm === pid()));
   function pick(project, dot) {
     const p = P().byCode(project);
@@ -342,9 +344,9 @@
     const kho = l.flatMap((x) => { const c = chain(x); return c ? c.kho.map((n) => [x, n]) : []; });
     return `<div data-sx-ms>
       <section class="vcard pad24"><div class="vcard-h"><h3>Đề xuất mua sắm</h3>${can ? `<button type="button" class="vbtn secondary" data-go="sx/mua-sam/create/${encodeURIComponent(p.code)}">${icon('add')} Lập đề xuất mua sắm</button>` : ''}</div>
-        ${k.table([['Đề xuất mua sắm', 400], ['Đợt', 70, 'c'], ['Giá trị dự toán (đồng)', 180, 'r'], ['Trạng thái', 140, 'c'], ['ĐXMS', 150], ['Trạng thái trên ĐTMS', 170, 'c']], l,
-    (x) => { const ds = dxmsSt(x), c = chain(x); return `<td>${NC(x.title, x.code, { go: href(x), tip: 'Xem chi tiết đề xuất mua sắm' })}</td><td class="c">${x.dot}</td><td class="r num">${num(totalOf(x))}</td>
-      <td class="c">${badge(...sentSt(x))}</td><td>${c ? esc(c.dxms[0]) : k.dash}</td><td class="c">${ds ? badge(...ds) : k.dash}</td>`; })}</section>
+        ${k.table([['Đề xuất mua sắm', 400], ['Đợt', 70, 'c'], ['Giá trị dự toán (đồng)', 180, 'r'], ['Trạng thái', 140, 'c']], l,
+    (x) => { const ds = dxmsSt(x), c = chain(x); return `<td>${NC(x.title, x.code, { go: href(x), tip: 'Xem chi tiết đề xuất mua sắm' })}${dxLine(c ? c.dxms[0] : '', ds)}</td><td class="c">${x.dot}</td><td class="r num">${num(totalOf(x))}</td>
+      <td class="c">${badge(...sentSt(x))}</td>`; })}</section>
       ${k.card('Hợp đồng', k.table([['Hợp đồng', 420], ['Nhà thầu', 260], ['Giá trị (đồng)', 170, 'r'], ['Trạng thái', 150, 'c']], hd,
     ([, h]) => `<td>${NC(h[1], h[0])}</td><td>${h[4] ? k.clamp(h[4]) : k.dash}</td><td class="r num">${h[5] ? num(h[5]) : k.dash}</td><td class="c">${badge(h[2], h[3])}</td>`))}
       ${k.card('Nhập kho Tổng công ty', k.table([['Phiếu nhập kho', 460], ['Ngày nhập', 130], ['Trạng thái', 150, 'c']], kho,
