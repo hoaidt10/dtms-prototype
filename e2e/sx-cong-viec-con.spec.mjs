@@ -122,7 +122,7 @@ test('Mục 3: không còn cột mã riêng — mã kèm dưới tên (link có 
     expect(heads.filter((h) => /^Mã\b/.test(h)), r).toEqual([]);
   }
   await as(page, 'sxpm', '#/sx/bat-thuong');
-  const cell = rowCode(page, 'BT-2026-002').locator('td').nth(2); // STT, Trạng thái, Phiếu bất thường
+  const cell = rowCode(page, 'BT-2026-002').locator('td').nth(3); // STT, Thao tác (góp ý 27/11), Trạng thái, Phiếu bất thường
   await expect(cell.locator('a[title="Xem chi tiết phiếu bất thường"]')).toContainText('Khối quang học lệch trục quang');
   await expect(cell.locator('.faint')).toHaveText('BT-2026-002');
   await expect(rowCode(page, 'BT-2026-002')).toContainText('Sản xuất tổ hợp quan sát quang điện tử QĐ-12');
@@ -400,5 +400,29 @@ test('Góp ý 27/11: Điều kiện sản xuất — MD1, MD2 (Tài liệu, phư
   await page.locator('.vmodal #ok').click();
   await expect(row).toContainText('Đạt');
   await expect(row).not.toContainText('Chưa đạt');
+  expect(page.errors).toEqual([]);
+});
+
+test('Góp ý 27/11: Bất thường sản xuất — cột Thao tác Sửa / Xoá ở danh sách và bảng Phiếu bất thường của tab dự án (phiếu Lưu nháp)', async ({ page }) => {
+  await fresh(page, '#/sx/bat-thuong');
+  await as(page, 'sxpm', '#/sx/bat-thuong');
+  await expect(page.locator('.vtable thead')).toContainText('Thao tác');
+  const draft = rowCode(page, 'BT-2026-005');
+  await expect(draft.locator('[data-sxbt-edit], [data-sxbt-del]')).toHaveCount(2);
+  await expect(rowCode(page, 'BT-2026-001').locator('[data-sxbt-edit], [data-sxbt-del]')).toHaveCount(0); // đã gửi xử lý
+  await draft.locator('[data-sxbt-edit]').click();
+  await expect(page.locator('.vmodal')).toContainText('Sửa phiếu bất thường');
+  await expect(page).toHaveURL(/#\/sx\/bat-thuong$/); // không mở chi tiết
+  await page.locator('.vmodal [data-close]').first().click();
+  // Tab Bất thường & thay đổi của dự án: Xoá ở lại tab.
+  await as(page, 'sxpm', '#/sx/du-an/DA-SX-2026-001');
+  await page.locator('[data-ttab="bt"]').click();
+  await expect(page.locator('[data-sx-bt] thead').first()).toContainText('Thao tác');
+  const r = page.locator('[data-sx-bt] tbody tr', { hasText: 'BT-2026-005' });
+  await expect(r.locator('[data-sxbt-edit], [data-sxbt-del]')).toHaveCount(2);
+  await r.locator('[data-sxbt-del]').click();
+  await page.locator('#cf-ok').click();
+  await expect(page).toHaveURL(/#\/sx\/du-an\/DA-SX-2026-001/);
+  await expect(page.locator('[data-sx-bt]')).not.toContainText('BT-2026-005');
   expect(page.errors).toEqual([]);
 });

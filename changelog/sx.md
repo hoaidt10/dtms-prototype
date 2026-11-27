@@ -3,6 +3,11 @@
 > Mỗi PR một mục, mới nhất trên cùng: `## YYYY-MM-DD — <việc> (#PR)` + 2–5 gạch đầu dòng (màn, thay đổi, nguồn, điểm treo mới).
 > Lịch sử trước T77: [lich-su-chung.md](lich-su-chung.md).
 
+## 2026-11-27 · Bất thường sản xuất: cột Thao tác Sửa / Xoá
+- Danh sách **Bất thường sản xuất** và bảng **Phiếu bất thường** ở tab Bất thường & thay đổi của dự án (`js/sx-bat-thuong.js`): thêm cột **Thao tác** (Sửa, Xoá) — cùng quy tắc nút ở Chi tiết phiếu: phiếu **Lưu nháp** (chưa gửi vào luồng xử lý); người lập, Giám đốc dự án hoặc quản trị. Phiếu đã gửi xử lý theo luồng SX-BT (bị trả lại sửa ở bước 1, đang xử lý sửa tab Phân tích và xử lý).
+- Bấm nút trong dòng không mở chi tiết; Xoá ở danh sách / tab dự án thì ở lại màn đang đứng.
+- Test: sx-cong-viec-con thêm 1 ca, ca "Mục 3" đổi chỉ số cột (16 ca xanh); các spec có Bất thường không ca đỏ thêm.
+
 ## 2026-11-27 · Điều kiện sản xuất: Tài liệu, phương pháp công nghệ do người dùng tự cập nhật
 - Nhóm **Tài liệu, phương pháp công nghệ (Method)**: MD1 (phiên bản sản phẩm có trong Kho sản phẩm sẵn sàng sản xuất) và MD2 (tài liệu sản xuất bàn giao cho đơn vị sản xuất) không còn do hệ thống tự đánh giá theo gói chuyển giao / luồng SX-BGNM — có **Cập nhật tiến độ**, Sửa, Xoá như các điều kiện khác (`js/sx-chuyen-giao.js`, `js/sx-data.js`).
 - Mọi tiêu chí: kết quả người dùng đã xác nhận được ưu tiên; dự án đã qua sản xuất mà chưa có xác nhận thì hiện "Đạt trước khi đưa vào hệ thống" (trước đây ghi đè cả kết quả đã cập nhật). Luồng bàn giao tài liệu SX-BGNM vẫn chạy, bước cuối không còn tự cập nhật 4M. DA-SX-2026-002 thêm xác nhận MD1 vào dữ liệu mẫu (giữ 12/13).

@@ -79,6 +79,11 @@
   const involved = (x) => F().cases(x.code).some((c) => c.tokens.some((t) => t.who === pid()) || c.hist.some((h) => h.who === pid()));
   const visible = () => { const ids = projIds(); return all().filter((x) => ids.has(x.project) || involved(x)); };
   const canCreate = () => isAdmin() || ['R-SX-QA', 'R-SX-PM', 'R-SX-SUBPM', 'R-SX-NM'].includes(D.roleOf(pid()));
+  /* Góp ý 27/11: cột Thao tác Sửa / Xoá (danh sách, tab dự án) — cùng quy tắc nút ở Chi tiết: phiếu Lưu nháp (chưa gửi, chưa vào luồng xử lý); người lập, Giám đốc dự án hoặc quản trị.
+     Phiếu đã gửi xử lý theo luồng SX-BT (bị trả lại thì sửa ở bước 1, đang xử lý thì sửa tab Phân tích và xử lý). */
+  const canEditBt = (x) => !!x.draft && (isAdmin() || x.creator === pid() || (P().byCode(x.project) || {}).pm === pid());
+  const ib2 = (ic, label, attrs) => `<button type="button" class="vbtn icon ghost" aria-label="${label}" title="${label}" ${attrs}>${icon(ic)}</button>`;
+  const actCell = (x) => `<td class="c"><div class="acts">${canEditBt(x) ? ib2('edit', 'Sửa', `data-sxbt-edit="${esc(x.code)}"`) + ib2('del', 'Xoá', `data-sxbt-del="${esc(x.code)}"`) : ''}</div></td>`;
 
   /* ---------- Bộ xử lý hành động của SX-BT ---------- */
   /* Giá trị form lap → bản ghi phiếu (T74 #100). */
@@ -144,10 +149,10 @@
         ${sel('nn', 'Nhóm nguyên nhân', { searchable: false, options: k.catOpts('sx-nhom-nguyen-nhan') })}${txt('ecr', 'Thay đổi kỹ thuật liên kết')}
         ${sel('st', 'Trạng thái', { multi: true, searchable: false, options: ST.map((x) => ({ value: x, label: x })) })}`,
       /* Góp ý 26/11 mục 3: bỏ cột Mã phiếu / Mã SP — mã kèm dưới tên (SxChung.nameCode); dự án hiện tên kèm mã. */
-      cols: [['Trạng thái', 160, 'c'], ['Phiếu bất thường', 300], ['Dự án', 220], ['Sản phẩm', 200], ['Serial', 130], ['Loại', 90], ['Mức độ', 140], ['Nhóm nguyên nhân', 220], ['Đơn vị xử lý', 190],
+      cols: [['Thao tác', 100, 'c'], ['Trạng thái', 160, 'c'], ['Phiếu bất thường', 300], ['Dự án', 220], ['Sản phẩm', 200], ['Serial', 130], ['Loại', 90], ['Mức độ', 140], ['Nhóm nguyên nhân', 220], ['Đơn vị xử lý', 190],
         ['Bước hiện tại', 240], ['Người đang xử lý', 170], ['Ngày tiếp nhận', 130], ['Hạn xử lý', 120], ['Còn lại', 110, 'r'], ['Ngày xử lý', 120], ['Thay đổi kỹ thuật liên kết', 170]],
       href,
-      cell: (x) => `<td class="c">${badge(...x.st)}</td><td>${NC(x.title, x.code, { go: href(x), tip: 'Xem chi tiết phiếu bất thường' })}</td><td>${PJ(x.project)}</td>
+      cell: (x) => `${actCell(x)}<td class="c">${badge(...x.st)}</td><td>${NC(x.title, x.code, { go: href(x), tip: 'Xem chi tiết phiếu bất thường' })}</td><td>${PJ(x.project)}</td>
         <td>${x.spMa ? NC(prodName(x.spMa), x.spMa) : k.dash}</td><td>${x.serial ? esc(x.serial) : k.dash}</td>
         <td>${x.type ? esc(typeText(x.type)) : k.dash}</td><td>${x.sev ? esc(D.sxSev[x.sev]) : k.dash}</td><td>${(x.causes || []).length ? k.clamp(causesText(x)) : k.dash}</td><td>${x.unitText ? k.clamp(x.unitText) : k.dash}</td>
         <td>${x.step ? k.clamp(x.step) : k.dash}</td><td>${x.who ? k.clamp(x.who) : k.dash}</td><td class="num">${x.received ? esc(dmy(x.received)) : k.dash}</td>
@@ -340,15 +345,17 @@
   document.addEventListener('click', async (e) => {
     const t = e.target.closest && e.target.closest('[data-sxbt-xl-edit],[data-sxbt-edit],[data-sxbt-del]');
     if (!t) return;
-    e.preventDefault();
+    e.preventDefault(); e.stopPropagation(); // nút trong dòng (data-go) không mở chi tiết
     if (t.dataset.sxbtXlEdit) { xlDlg(t.dataset.sxbtXlEdit); return; }
     if (t.dataset.sxbtEdit) { create(null, t.dataset.sxbtEdit); return; }
     const x = byCode(t.dataset.sxbtDel);
+    if (!x || !canEditBt(x)) return;
     const yes = await window.Catalog.confirm({ sev: 'danger', title: 'Bạn chắc chắn muốn xoá không?', desc: `Bạn có chắc chắn muốn xóa phiếu bất thường: ${x.code} — ${x.title} không?`, hl: `${x.code} — ${x.title}`, cancel: 'Hủy', ok: 'Xoá' });
     if (!yes) return;
     if (U.created.some((y) => y.code === x.code)) U.created = U.created.filter((y) => y.code !== x.code); else U.edit[x.code] = Object.assign({}, U.edit[x.code], { deleted: true });
     persist(); P().log(x.project, 'Xoá phiếu bất thường nháp', x.code);
-    toast('<b>Thành công</b><br>Xoá phiếu bất thường thành công'); location.hash = '#/sx/bat-thuong';
+    toast('<b>Thành công</b><br>Xoá phiếu bất thường thành công');
+    if (location.hash.indexOf('#/sx/bat-thuong/') === 0) location.hash = '#/sx/bat-thuong'; else rerender(); // xoá ở danh sách / tab dự án thì ở lại
   }, true);
   /* Ngữ cảnh eForm. */
   function ctx(code) {
@@ -369,8 +376,8 @@
     const k = K(), l = all().filter((x) => x.project === p.code).map((x) => Object.assign(x, { st: stOf(x) }));
     const can = canCreate() && p.status !== 'PLANNING' && p.status !== 'DONE';
     return `<div data-sx-bt><section class="vcard pad24"><div class="vcard-h"><h3>Phiếu bất thường</h3>${can ? `<button type="button" class="vbtn secondary" data-sxbt-new="${esc(p.code)}">${icon('add')} Thêm mới phiếu</button>` : ''}</div>
-      ${k.table([['Phiếu bất thường', 380], ['Loại', 90], ['Mức độ', 140], ['Trạng thái', 160, 'c'], ['Hạn xử lý', 120], ['Còn lại', 110, 'r']], l,
-    (x) => `<td>${NC(x.title, x.code, { go: href(x), tip: 'Xem chi tiết phiếu bất thường' })}</td><td>${x.type ? esc(typeText(x.type)) : k.dash}</td><td>${x.sev ? esc(D.sxSev[x.sev]) : k.dash}</td>
+      ${k.table([['Thao tác', 100, 'c'], ['Phiếu bất thường', 380], ['Loại', 90], ['Mức độ', 140], ['Trạng thái', 160, 'c'], ['Hạn xử lý', 120], ['Còn lại', 110, 'r']], l,
+    (x) => `${actCell(x)}<td>${NC(x.title, x.code, { go: href(x), tip: 'Xem chi tiết phiếu bất thường' })}</td><td>${x.type ? esc(typeText(x.type)) : k.dash}</td><td>${x.sev ? esc(D.sxSev[x.sev]) : k.dash}</td>
       <td class="c">${badge(...x.st)}</td><td class="num${isOver(x) ? ' due-over' : ''}">${x.due ? esc(dmy(x.due)) : k.dash}</td><td class="r">${leftCell(x, k)}</td>`)}
 </section>${window.SxTd ? window.SxTd.projectPart(p) : ''}</div>`;
   }
