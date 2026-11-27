@@ -353,5 +353,13 @@
   }
   function reset() { S = seed(); persist(); }
 
-  window.SxFlow = { route, enter: enterRoute, GUARD, progress, start, complete, cases, caseOf, running, pending, overdue, delayTxt, tokensFor, planTab, canStartKh, reset, ACT, openTotal, menuOf, flowItems, objLink };
+  /* Huỷ hồ sơ đang chạy (vd xoá đề nghị nghiệm thu chưa đánh giá — góp ý 27/11): đóng mọi việc đang mở, ghi lịch sử. */
+  function cancelCase(code, why) {
+    const c = caseOf(code); if (!c || c.status !== 'running') return;
+    c.tokens.forEach((t) => c.hist.push({ step: t.step, who: null, act: 'Huỷ', note: why || '', since: t.since, at: nowStamp(), sys: true }));
+    c.tokens = []; c.status = 'done'; c.ended = nowStamp();
+    c.hist.push({ step: null, who: pid(), act: why || 'Huỷ hồ sơ', at: nowStamp() });
+    persist();
+  }
+  window.SxFlow = { cancelCase, route, enter: enterRoute, GUARD, progress, start, complete, cases, caseOf, running, pending, overdue, delayTxt, tokensFor, planTab, canStartKh, reset, ACT, openTotal, menuOf, flowItems, objLink };
 })();

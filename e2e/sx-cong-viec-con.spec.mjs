@@ -133,13 +133,15 @@ test('Mục 4: chi tiết dự án — Tiến độ và chất lượng (Từ VM
   await fresh(page, '#/sx/du-an');
   await as(page, 'qt', '#/sx/du-an/DA-SX-2026-003');
   const tabs = await page.locator('[data-ttab]').allInnerTexts();
-  expect(tabs).toContain('Tiến độ và chất lượng (Từ VMMS)');
+  expect(tabs).toContain('Tiến độ và chất lượng'); // góp ý 27/11: bỏ chữ (Từ VMMS)
+  expect(tabs.join('|')).not.toContain('Từ VMMS');
   expect(tabs).toContain('Nghiệm thu sản phẩm');
   // Tiến độ và chất lượng: một bảng, có Số lỗi / Tỷ lệ đạt / IPQC; không còn Nhật ký sản lượng, Trạm đo, Định mức, nút Cập nhật.
   await page.locator('[data-ttab="btp"]').click();
   const btp = page.locator('[data-sx-btp]');
-  await expect(btp.locator('table')).toHaveCount(1);
-  await expect(btp.locator('thead')).toContainText('Tỷ lệ đạt');
+  await expect(btp.locator('table')).toHaveCount(2); // góp ý 27/11: bảng Tiến độ + bảng Chất lượng
+  await expect(btp.locator('[data-btp-qual] thead')).toContainText('Tỷ lệ đạt');
+  await expect(btp.locator('[data-sxnt-ipqc-new]')).toHaveCount(0); // bỏ Thêm mới
   await expect(btp).not.toContainText('Nhật ký sản lượng');
   await expect(btp.locator('[data-btp-up]')).toHaveCount(0);
   // Bất thường & thay đổi: không còn Nhật ký quản lý dự án.
@@ -287,5 +289,37 @@ test('Góp ý 27/11: dữ liệu cũ trùng mã việc mẫu được làm mới
     const x = await page.evaluate((c) => { const y = SxCv.byCode(c); return [y.code, y.parent]; }, code);
     expect(x, no).toEqual([code, par[no.split('.')[0]]]);
   }
+  expect(page.errors).toEqual([]);
+});
+
+test('Góp ý 27/11: Điều kiện SX có Thêm mới; Đề xuất mua sắm có Thêm mới / Sửa / Xoá; PASXKD, đề nghị nghiệm thu, OQC có Sửa / Xoá; Hồ sơ dự án điều hướng tab Tài liệu', async ({ page }) => {
+  await fresh(page, '#/sx/du-an');
+  // Điều kiện sản xuất: Thêm mới (cả khi đang sản xuất), mỗi dòng thêm có Sửa / Xoá.
+  await as(page, 'qt', '#/sx/du-an/DA-SX-2026-001');
+  await page.locator('[data-ttab="m4"]').click();
+  await expect(page.locator('[data-m4-add]')).toContainText('Thêm mới');
+  // Đề xuất mua sắm: danh sách đề xuất của Sản xuất, Thêm mới mở cùng màn với tab dự án.
+  await as(page, 'qt', '#/sx/mua-sam');
+  await expect(page.locator('a[data-go="sx/mua-sam/create"], button[data-go="sx/mua-sam/create"]')).toHaveCount(1);
+  await expect(page.locator('.vtable thead')).toContainText('Thao tác');
+  await page.locator('[data-go="sx/mua-sam/create"]').click();
+  await expect(page.locator('.pg-title')).toContainText('Lập đề xuất mua sắm');
+  // PASXKD: phương án Đang chuẩn bị có Xoá; dòng đầu vào có Xoá.
+  await as(page, 'qt', '#/sx/pasxkd');
+  const draft = page.locator('.vtable tbody tr', { hasText: 'Đang chuẩn bị' }).first();
+  await expect(draft.locator('[data-sxpa-del]')).toHaveCount(1);
+  // Đề nghị nghiệm thu chờ OQC (NT-2026-005): Sửa / Xoá.
+  await as(page, 'qt', '#/sx/du-an/DA-SX-2026-001');
+  await page.locator('[data-ttab="nt"]').click();
+  await expect(page.locator('[data-sxnt-lot-edit="NT-2026-005"]')).toHaveCount(1);
+  await expect(page.locator('[data-sxnt-lot-del="NT-2026-005"]')).toHaveCount(1);
+  await page.locator('[data-sxnt-lot-del="NT-2026-005"]').click();
+  await page.locator('#cf-ok').click();
+  await expect(page.locator('[data-sx-nt]')).not.toContainText('NT-2026-005');
+  expect(await page.evaluate(() => SxFlow.caseOf('HSNT-NT-2026-005-01').status)).toBe('done');
+  // Hồ sơ dự án → tab Tài liệu.
+  await as(page, 'qt', '#/sx/ho-so');
+  await page.locator('.vtable tbody tr', { hasText: 'DA-SX-2026-002' }).locator('a[title="Xem tài liệu của dự án"]').click();
+  await expect(page).toHaveURL(/#\/sx\/du-an\/DA-SX-2026-002\/docs$/);
   expect(page.errors).toEqual([]);
 });

@@ -34,7 +34,7 @@
     const p = P().byCode(x.project), it = p ? itemsOf(p).find((i) => i.key === x.item) : null;
     return Object.assign({}, x, { pm: p ? p.pm : null, itemText: it ? it.name : x.item, unitName: p ? p.unitName : '', serials: `${ser(x.project, x.from)} – ${ser(x.project, x.to)}` });
   }
-  const all = () => U.created.concat(D.sxLots).map((x) => decorate(Object.assign({}, x, U.edit[x.code] || {})));
+  const all = () => U.created.concat(D.sxLots).filter((x) => !(U.del || []).includes(x.code)).map((x) => decorate(Object.assign({}, x, U.edit[x.code] || {})));
   const byCode = (code) => all().find((x) => x.code === code) || null;
   const caseOf = (x) => { const l = F().cases(x.code, 'SX-NT'); return l[l.length - 1] || null; };
   function stOf(x) {
@@ -298,20 +298,23 @@
     return `<section class="vcard pad24" data-sxnt-oqc><div class="vcard-h"><h3>Đánh giá chất lượng xuất xưởng (OQC)</h3><div class="row">${st}
         ${can ? `<button type="button" class="vbtn secondary" data-sxnt-oqc-add="${esc(p.code)}">${icon('add')} Thêm nội dung đánh giá</button>
         <button type="button" class="vbtn primary" data-sxnt-oqc-done="${esc(p.code)}" ${l.length && !bad.length ? '' : 'disabled'}>Xác nhận hoàn thành OQC</button>` : ''}</div></div>${gate}
-      ${k.table([['Hạng mục / lô', 200], ['Nội dung đánh giá', 380], ['Tiêu chí / yêu cầu', 280], ['Kết quả ghi nhận', 220], ['Kết luận', 120, 'c'], ['Người đánh giá', 170], ['Ngày', 110], ['Tệp', 200]].concat(can ? [['', 70, 'c']] : []), l,
+      ${k.table([['Hạng mục / lô', 200], ['Nội dung đánh giá', 380], ['Tiêu chí / yêu cầu', 280], ['Kết quả ghi nhận', 220], ['Kết luận', 120, 'c'], ['Người đánh giá', 170], ['Ngày', 110], ['Tệp', 200]].concat(can ? [['', 100, 'c']] : []), l,
     (x) => `<td>${k.clamp(itName(x.item))}</td><td>${NC(x.content, x.code)}</td><td>${x.criteria ? k.clamp(x.criteria) : k.dash}</td><td>${x.actual ? k.clamp(x.actual) : k.dash}</td>
       <td class="c">${x.kq === 'DAT' ? badge('Đạt', 'success') : badge('Không đạt', 'error')}</td><td>${k.clamp(pName(x.who))}</td><td class="num">${esc(dmy(x.at))}</td><td>${x.file ? `<a class="link">${esc(x.file)}</a>` : k.dash}</td>
-      ${can ? `<td class="c"><button type="button" class="vbtn icon ghost" aria-label="Xoá" title="Xoá" data-sxnt-oqc-del="${esc(x.code)}">${icon('del')}</button></td>` : ''}`)}</section>`;
+      ${can ? `<td class="c"><div class="acts"><button type="button" class="vbtn icon ghost" aria-label="Sửa" title="Sửa" data-sxnt-oqc-edit="${esc(p.code)}|${esc(x.code)}">${icon('edit')}</button><button type="button" class="vbtn icon ghost" aria-label="Xoá" title="Xoá" data-sxnt-oqc-del="${esc(x.code)}">${icon('del')}</button></div></td>` : ''}`)}</section>`;
   }
-  async function oqcDlg(code) {
+  async function oqcDlg(code, editCode) {
     const p = P().byCode(code), { txt, tf, sel, rad, file, req, opts } = window.EForms.b, L = (c) => ({ layout: { columns: c } });
-    const r = await window.EFormRun.open({ title: 'Thêm nội dung đánh giá OQC', schema: { id: 'sx-oqc', components: [
+    const cur = editCode ? oqcAll(p).find((y) => y.code === editCode) : null; // góp ý 27/11: Sửa nội dung đánh giá OQC
+    const r = await window.EFormRun.open({ title: cur ? 'Sửa nội dung đánh giá OQC' : 'Thêm nội dung đánh giá OQC', schema: { id: 'sx-oqc', components: [
       txt(`Dự án **${p.code}** — ${p.name}. Ghi nhận từng nội dung đánh giá chất lượng xuất xưởng; kết luận Không đạt thì chuyển sang lập phiếu bất thường.`),
       sel('item', 'Hạng mục / lô', Object.assign(L(8), { values: opts([['', 'Toàn dự án']].concat(itemsOf(p).map((i) => [i.key, i.name]))) })),
       tf('content', 'Nội dung đánh giá', req(L(16))), tf('criteria', 'Tiêu chí / yêu cầu', L(16)), tf('actual', 'Kết quả ghi nhận', L(16)),
-      rad('kq', 'Kết luận', req({ values: opts([['DAT', 'Đạt'], ['NOK', 'Không đạt']]) })), file('file', 'Biên bản, hồ sơ đánh giá', L(16))] }, values: { kq: 'DAT', item: '' } });
+      rad('kq', 'Kết luận', req({ values: opts([['DAT', 'Đạt'], ['NOK', 'Không đạt']]) })), file('file', 'Biên bản, hồ sơ đánh giá', L(16))] },
+      values: cur ? { kq: cur.kq, item: cur.item || '', content: cur.content, criteria: cur.criteria || '', actual: cur.actual || '', file: cur.file || '' } : { kq: 'DAT', item: '' } });
     if (!r || !r.submit) return;
-    const v = r.values, x = { code: nextCode((U.oqc || []).concat(oqcAll(p)), 'code', `OQC-${p.code.slice(-3)}-`, 2), project: code, item: v.item || '', content: String(v.content || '').trim(), criteria: String(v.criteria || '').trim(), actual: String(v.actual || '').trim(), kq: v.kq, who: pid(), at: D.sxToday, file: v.file || '' };
+    const v = r.values, x = { code: cur ? cur.code : nextCode((U.oqc || []).concat(oqcAll(p)), 'code', `OQC-${p.code.slice(-3)}-`, 2), project: code, item: v.item || '', content: String(v.content || '').trim(), criteria: String(v.criteria || '').trim(), actual: String(v.actual || '').trim(), kq: v.kq, who: pid(), at: D.sxToday, file: v.file || '' };
+    if (cur) { U.oqc = (U.oqc || []).filter((y) => y.code !== cur.code); if (cur.seed) U.oqcDel = (U.oqcDel || []).concat(cur.code); }
     U.oqc = [x].concat(U.oqc || []); persist();
     if (v.file) P().addDoc(code, [v.file, 'OQC', x.code, pid(), D.sxToday]);
     P().log(code, 'Thêm nội dung đánh giá OQC', `${x.code}: ${x.content} — ${x.kq === 'DAT' ? 'Đạt' : 'Không đạt'}`);
@@ -381,7 +384,7 @@
         const x = r.x, step = stepOf(x);
         return `<td>${NC(x.itemText, x.code, { go: href(x), tip: 'Xem chi tiết đề nghị nghiệm thu' })}</td><td>Tổng công ty</td><td><span class="num">${num(x.qty)} ${esc(x.unitName)}</span><div class="faint">${esc(x.serials)}</div></td>
           <td class="num">${esc(dmy(x.stocked || x.created))}</td><td>${docs([['Biên bản', x.bb], ['Chứng chỉ', x.cert], ['Phiếu nhập kho', x.pnk]])}</td>
-          <td class="c">${badge(...x.st)}${step ? `<div class="faint" style="font-size:12px">${esc(step)}</div>` : ''}</td><td class="c"><div class="acts">${ib('search', 'Xem chi tiết đề nghị nghiệm thu', `data-go="${href(x)}"`)}</div></td>`;
+          <td class="c">${badge(...x.st)}${step ? `<div class="faint" style="font-size:12px">${esc(step)}</div>` : ''}</td><td class="c"><div class="acts">${ib('search', 'Xem chi tiết đề nghị nghiệm thu', `data-go="${href(x)}"`)}${canLot(x) ? ib('edit', 'Sửa đề nghị nghiệm thu', `data-sxnt-lot-edit="${esc(x.code)}"`) + ib('del', 'Xoá đề nghị nghiệm thu', `data-sxnt-lot-del="${esc(x.code)}"`) : ''}</div></td>`;
       }
       const x = r.x, cn = canNtm(p);
       return `<td>${NC(x.content, x.code)}${x.note ? `<div class="faint">${esc(x.note)}</div>` : ''}</td><td>${esc(NT_LEVEL[x.level] || '')}</td><td><span class="num">Tiến độ ${x.pct || 0}%</span></td>
@@ -403,9 +406,31 @@
     m.el.querySelector('#sxnt-pick-ok').onclick = () => { const v = m.el.querySelector('#sxnt-pick').value; m.close(); create(v); };
   }
   document.addEventListener('click', (e) => { if (e.target.closest && e.target.closest('[data-sxnt-pick]')) pickProject(); });
+  /* Góp ý 27/11: Sửa / Xoá đề nghị nghiệm thu khi chưa đánh giá OQC (hồ sơ còn ở bước 2), người đề nghị / PM / quản trị; xoá thì huỷ hồ sơ nghiệm thu. */
+  const canLot = (x) => { const c = caseOf(x); return !x.oqc && !x.bb && !x.cert && !!c && c.status === 'running' && String((c.tokens[0] || {}).step) === '2' && (isAdmin() || x.creator === pid() || x.pm === pid()); };
+  async function lotEdit(code) {
+    const x = byCode(code); if (!x || !canLot(x)) return;
+    const p = P().byCode(x.project), max = available(p, x.item) + x.qty, { txt, num: n, ta, req } = window.EForms.b;
+    const r = await window.EFormRun.open({ title: 'Sửa đề nghị nghiệm thu', schema: { id: 'sx-nt-edit', components: [txt(`**${x.itemText}** · tối đa ${num(max)} ${p.unitName}`),
+      n('qty', `Số lượng đề nghị (${p.unitName})`, req({ validate: { required: true, min: 1, max } })), ta('note', 'Ghi chú', { rows: 2 })] }, values: { qty: x.qty, note: x.note || '' } });
+    if (!r || !r.submit) return;
+    const qty = Number(r.values.qty);
+    patch(code, { qty, to: x.from + qty - 1, note: r.values.note || '' });
+    P().log(x.project, 'Sửa đề nghị nghiệm thu', `${code}: ${num(qty)} ${p.unitName}`);
+    toast('<b>Thành công</b><br>Cập nhật thành công!'); rerender();
+  }
+  async function lotDel(code) {
+    const x = byCode(code); if (!x || !canLot(x)) return;
+    if (!(await window.Catalog.confirm({ sev: 'danger', title: 'Bạn chắc chắn muốn xoá không?', desc: `Xoá đề nghị nghiệm thu ${code} (${x.itemText})? Hồ sơ nghiệm thu đang chờ đánh giá OQC sẽ bị huỷ.`, hl: code, cancel: 'Hủy', ok: 'Xoá' }))) return;
+    const c = caseOf(x);
+    U.created = U.created.filter((y) => y.code !== code); U.del = (U.del || []).concat(code); persist();
+    if (c) F().cancelCase(c.code, `Xoá đề nghị nghiệm thu ${code}`);
+    P().log(x.project, 'Xoá đề nghị nghiệm thu', code);
+    toast('<b>Thành công</b><br>Xoá thành công!'); rerender();
+  }
   function oqcView(code) {
     const p = P().byCode(code), m = window.UI.vModal({ title: 'Đánh giá chất lượng xuất xưởng (OQC)', size: 'xl', body: oqcCard(p), actions: '<button type="button" class="vbtn secondary" data-close>Đóng</button>' });
-    m.el.addEventListener('click', (e) => { if (e.target.closest('[data-sxnt-oqc-add],[data-sxnt-oqc-done],[data-sxnt-oqc-del],[data-sxnt-oqc-bt]')) m.close(); });
+    m.el.addEventListener('click', (e) => { if (e.target.closest('[data-sxnt-oqc-add],[data-sxnt-oqc-edit],[data-sxnt-oqc-done],[data-sxnt-oqc-del],[data-sxnt-oqc-bt]')) m.close(); });
   }
   document.addEventListener('click', (e) => { const v = e.target.closest && e.target.closest('[data-sxnt-oqc-view]'); if (v) oqcView(v.dataset.sxntOqcView); });
 
@@ -413,6 +438,9 @@
     const t = e.target;
     if (!t.closest) return;
     const oa = t.closest('[data-sxnt-oqc-add]'); if (oa) { oqcDlg(oa.dataset.sxntOqcAdd); return; }
+    const oe = t.closest('[data-sxnt-oqc-edit]'); if (oe) { const [pc, oc] = oe.dataset.sxntOqcEdit.split('|'); oqcDlg(pc, oc); return; }
+    const le = t.closest('[data-sxnt-lot-edit]'); if (le) { lotEdit(le.dataset.sxntLotEdit); return; }
+    const ld = t.closest('[data-sxnt-lot-del]'); if (ld) { lotDel(ld.dataset.sxntLotDel); return; }
     const od = t.closest('[data-sxnt-oqc-del]');
     if (od) { const c = od.dataset.sxntOqcDel; U.oqc = (U.oqc || []).filter((y) => y.code !== c); U.oqcDel = (U.oqcDel || []).concat(c); persist(); rerender(); return; }
     const ok = t.closest('[data-sxnt-oqc-done]');

@@ -32,42 +32,44 @@ test('Biểu mẫu tài liệu: danh mục trong phân hệ, mẫu chưa có t�
   expect(page.errors).toEqual([]);
 });
 
-test('Hồ sơ dự án: gom tài liệu theo nhóm, phạm vi vai; tải lên, chọn mẫu, sửa, xoá tài liệu người dùng thêm', async ({ page }) => {
+// Góp ý 27/11 (hoaidt10): Hồ sơ dự án chuyển thành điều hướng tới tab Tài liệu của từng dự án — thêm / sửa / xoá tài liệu làm ở tab Tài liệu (thay ca cũ: tải lên, chọn mẫu, sửa, xoá ngay ở Hồ sơ dự án).
+test('Hồ sơ dự án: danh sách dự án theo phạm vi, mở tab Tài liệu của dự án; thêm / sửa / xoá danh mục và tài liệu ở tab Tài liệu', async ({ page }) => {
   await fresh(page, '#/sx/ho-so');
   await as(page, 'sxpm', '#/sx/ho-so');
   await expect(page.locator('.pg-title')).toContainText('Hồ sơ dự án');
-  const n0 = await page.locator('.vtable tbody tr.click').count();
-  expect(n0).toBeGreaterThan(0);
+  await expect(page.locator('[data-sxhs-tpl], [data-sxhs-add]')).toHaveCount(0); // không thêm mới ở đây
   await expect(page.locator('.vtable tbody')).not.toContainText('DA-SX-2026-003'); // Khối 2
-  // Tài liệu có sẵn chỉ xem.
-  await expect(row(page, 'PAKD 214-PAKD-VHT.pdf').locator('[data-sxhs-del]')).toHaveCount(0);
-  await expect(row(page, 'PAKD 214-PAKD-VHT.pdf')).toContainText('Kế hoạch và căn cứ');
+  await expect(row(page, 'DA-SX-2026-001').locator('a[title="Xem tài liệu của dự án"]')).toHaveCount(1);
   expect(await page.locator('main').innerText()).not.toMatch(BA);
-  // Chọn mẫu tài liệu.
-  await page.locator('[data-sxhs-tpl]').click();
-  await pickEf(page, 'hsProject', 'DA-SX-2026-001');
-  await pickEf(page, 'hsTpl', 'BM.QLHDSX.04');
-  await page.locator('.vmodal #ok').click();
-  await expect(row(page, 'Biên bản làm việc Tổng công ty với nhà máy — DA-SX-2026-001.docx')).toContainText('Từ biểu mẫu');
-  await expect(row(page, 'Biên bản làm việc Tổng công ty với nhà máy — DA-SX-2026-001.docx')).toContainText('Chuẩn bị sản xuất');
-  // Sửa tên, loại.
-  await row(page, 'Biên bản làm việc Tổng công ty với nhà máy — DA-SX-2026-001.docx').locator('[data-sxhs-edit]').click();
-  await page.locator('.vmodal [data-ef="hsName"]').fill('Biên bản làm việc với VMC tháng 11.docx');
-  await page.locator('.vmodal [data-ef="hsVer"]').fill('v1.0');
-  await page.locator('.vmodal #ok').click();
-  await expect(row(page, 'Biên bản làm việc với VMC tháng 11.docx')).toContainText('v1.0');
-  // Tab Tài liệu của dự án thấy cùng tài liệu.
-  await as(page, 'sxpm', '#/sx/du-an/DA-SX-2026-001');
-  await page.locator('[data-ttab="docs"]').click();
-  await expect(page.locator('[data-sx-docs]')).toContainText('Biên bản làm việc với VMC tháng 11.docx');
-  // Xoá.
-  await as(page, 'sxpm', '#/sx/ho-so');
-  await row(page, 'Biên bản làm việc với VMC tháng 11.docx').locator('[data-sxhs-del]').click();
+  // Bấm dòng → tab Tài liệu của dự án.
+  await row(page, 'DA-SX-2026-001').locator('td').nth(3).click();
+  await expect(page).toHaveURL(/#\/sx\/du-an\/DA-SX-2026-001\/docs$/);
+  await expect(page.locator('[data-sx-docs]')).toBeVisible();
+  // Thêm danh mục → sửa tên → thêm tài liệu → sửa → xoá tài liệu → xoá danh mục.
+  await page.locator('[data-sx-doccat]').click();
+  await page.locator('#sx-ask').fill('Hồ sơ làm việc với VMC');
+  await page.locator('#sx-ask-ok').click();
+  await page.locator('[data-sx-doccat-edit$="|DM-1"]').click();
+  await page.locator('#sx-ask').fill('Hồ sơ làm việc với VMC tháng 11');
+  await page.locator('#sx-ask-ok').click();
+  await expect(page.locator('[data-sx-docs]')).toContainText('Hồ sơ làm việc với VMC tháng 11');
+  await page.locator('[data-sx-docadd$="|DM-1"]').click();
+  await page.locator('#sx-ask').fill('Nhật ký làm việc VMC');
+  await page.locator('#sx-ask-ok').click();
+  const d = () => page.locator('[data-sx-docs] tr', { hasText: 'Nhật ký làm việc VMC' });
+  await d().locator('[data-sx-doc-edit]').click();
+  await page.locator('#sx-ask').fill('Nhật ký làm việc VMC tháng 11');
+  await page.locator('#sx-ask-ok').click();
+  await expect(d()).toContainText('Nhật ký làm việc VMC tháng 11');
+  await expect(page.locator('[data-sx-doccat-del$="|DM-1"]')).toHaveCount(0); // danh mục còn tài liệu thì không xoá
+  await d().locator('[data-sx-doc-del]').click();
   await page.locator('#cf-ok').click();
-  await expect(page.locator('.vtable tbody tr.click')).toHaveCount(n0);
-  // Bấm dòng mở Xem chi tiết.
-  await row(page, 'PAKD 214-PAKD-VHT.pdf').locator('td').nth(3).click();
-  await expect(page.locator('.vmodal')).toContainText('Xem chi tiết tài liệu');
+  await expect(d()).toHaveCount(0);
+  await page.locator('[data-sx-doccat-del$="|DM-1"]').click();
+  await page.locator('#cf-ok').click();
+  await expect(page.locator('[data-sx-docs]')).not.toContainText('Hồ sơ làm việc với VMC');
+  // Tài liệu sinh từ quy trình: không Sửa / Xoá.
+  await expect(page.locator('[data-sx-docs] tr', { hasText: '.pdf' }).first().locator('[data-sx-doc-edit], [data-sx-doc-del]')).toHaveCount(0);
   expect(page.errors).toEqual([]);
 });
 

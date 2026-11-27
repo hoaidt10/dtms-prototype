@@ -105,7 +105,7 @@
 
   /* ---------- Kho dữ liệu ---------- */
   const KEY = 'sx-proto-pasxkd';
-  const blank = () => ({ created: [], edit: {}, b1: {}, hist: {} });
+  const blank = () => ({ created: [], edit: {}, b1: {}, hist: {}, del: [] });
   let U = blank();
   try { U = Object.assign(U, JSON.parse(localStorage.getItem(KEY) || '{}')); } catch (e) { /* bỏ qua */ }
   const persist = () => { try { localStorage.setItem(KEY, JSON.stringify(U)); } catch (e) { /* bỏ qua */ } };
@@ -114,7 +114,7 @@
     .concat(x.approvedAt ? [[x.approvedAt, x.approver, 'Phê duyệt', '']] : []);
   function all() {
     const seeds = (D.sxPakd || []).map((x) => Object.assign({}, x, EXTRA[x.code] || { status: 'APPROVED', pm: null, created: x.date }));
-    return U.created.concat(seeds).map((x) => {
+    return U.created.concat(seeds).filter((x) => !(U.del || []).includes(x.code)).map((x) => {
       const r = Object.assign({}, x, U.edit[x.code] || {});
       r.hist = (U.created.includes(x) ? [] : SEED_HIST(x)).concat(U.hist[x.code] || []);
       return r;
@@ -139,6 +139,9 @@
   const isApprover = () => isAdmin() || role() === 'R-SX-LD';
   const canCreate = () => isAdmin() || role() === 'R-SX-PM';
   const editable = (x) => ['DRAFT', 'RETURNED'].includes(x.status) && isOwner(x);
+  /* Góp ý 27/11: có Thêm thì có Xoá — xoá phương án Đang chuẩn bị chưa trình, chưa lập dự án (người lập / quản trị). */
+  const canDelPa = (x) => x.status === 'DRAFT' && isOwner(x) && !projectOf(x.code);
+  const ib2 = (ic, label, attrs) => `<button type="button" class="vbtn icon ghost" aria-label="${label}" title="${label}" ${attrs}>${icon(ic)}</button>`;
   const canUpdItem = (x, it) => ['DRAFT', 'RETURNED'].includes(x.status) && (isOwner(x) || it.who === pid());
   const canMakeProject = (x) => x.status === 'APPROVED' && !projectOf(x.code) && (isAdmin() || role() === 'R-SX-PM');
   /* Số việc chờ tôi: Lãnh đạo — PASXKD chờ phê duyệt; người lập — PASXKD đang chuẩn bị / bị trả lại / đã duyệt chưa lập dự án. */
@@ -188,8 +191,8 @@
     const kpi = [['ALL', 'Tổng số', ''], ['DRAFT', 'Đang chuẩn bị / trả lại', 'warn'], ['SUBMITTED', 'Chờ phê duyệt', 'info'], ['APPROVED', 'Đã duyệt, chưa lập dự án', 'ok'], ['PROJECT', 'Đã lập dự án', '']]
       .map(([g, l, cls]) => `<button type="button" class="sxpa-kpi ${cls} ${F.st === g ? 'on' : ''}" data-sxpa-f="${g}"><span>${l}</span><b>${cnt(g)}</b></button>`).join('');
     const pcs = (x) => { if (x.status === 'APPROVED') return '<span class="faint">Đã đủ</span>'; const r = check(x); return `<span class="num ${r.ready ? '' : 't-err'}">${r.okN}/4</span>`; };
-    const tbl = k.table([['Phương án sản xuất kinh doanh', 380], ['Nhiệm vụ', 300], ['Sản phẩm', 110], ['Số lượng', 110, 'r'], ['Người lập', 160], ['Đủ đầu vào', 100, 'c'], ['Trạng thái', 150, 'c'], ['Dự án sản xuất', 300]], show,
-      (x) => { const p = projectOf(x.code); return `<td>${NC(x.title, x.no, { go: href(x), tip: 'Xem chi tiết phương án sản xuất kinh doanh' })}</td>
+    const tbl = k.table([['Thao tác', 100, 'c'], ['Phương án sản xuất kinh doanh', 380], ['Nhiệm vụ', 300], ['Sản phẩm', 110], ['Số lượng', 110, 'r'], ['Người lập', 160], ['Đủ đầu vào', 100, 'c'], ['Trạng thái', 150, 'c'], ['Dự án sản xuất', 300]], show,
+      (x) => { const p = projectOf(x.code); return `<td class="c"><div class="acts">${editable(x) ? ib2('edit', 'Sửa', `data-sxpa-edit="${esc(x.code)}"`) : ''}${canDelPa(x) ? ib2('del', 'Xoá', `data-sxpa-del="${esc(x.code)}"`) : ''}</div></td><td>${NC(x.title, x.no, { go: href(x), tip: 'Xem chi tiết phương án sản xuất kinh doanh' })}</td>
         <td>${x.nv ? NC(((CV() && CV().byCode(x.nv)) || {}).title, x.nv, { go: `sx/cong-viec/${encodeURIComponent(x.nv)}`, tip: 'Xem chi tiết nhiệm vụ' }) : k.dash}</td><td>${esc(x.product)}</td><td class="r num">${num(x.qty)} ${esc(x.unitName || '')}</td>
         <td>${k.clamp(pName(x.pm))}</td><td class="c">${pcs(x)}</td><td class="c">${stBadge(x)}</td><td>${p ? NC(p.name, p.code, { go: `sx/du-an/${encodeURIComponent(p.code)}`, tip: 'Xem chi tiết dự án' }) : k.dash}</td>`; });
     const right = canCreate() ? `<button type="button" class="vbtn primary" data-sxpa-new="">${icon('add')} Thêm mới</button>` : '';
@@ -206,7 +209,7 @@
       notes: ['Tab <b>Hoàn thiện đầu vào</b>: B1.1 người / đơn vị cung cấp, nguồn, hạn, trạng thái (việc thiếu giữ "Đang chuẩn bị", không mất nhiệm vụ); B1.2 hồ sơ theo cấu hình × lô, chỉ "Tiếp nhận đủ" khi đủ BOM / hồ sơ kỹ thuật / định mức / chỉ tiêu cùng phiên bản; B1.3 phạm vi VHT / VMC / thuê ngoài, chỉ chốt khi có đầu mối + điều kiện bàn giao; B1.4 chi phí có căn cứ, hiệu lực, leadtime dài, chênh lệch với giá trị dự toán.',
         'Sửa được khi Đang chuẩn bị / Trả lại (người lập); người được giao ở B1.1 cập nhật dòng của mình. Chờ phê duyệt / Đã phê duyệt: chỉ xem.',
         'Đã phê duyệt → nút <b>Lập dự án sản xuất</b> mở Thêm mới dự án, điền sẵn từ phương án; sản phẩm phải có trong Kho sản phẩm sẵn sàng sản xuất.'], q: [] };
-    const right = (ed ? `<button type="button" class="vbtn secondary" data-sxpa-edit="${c}">${icon('edit')} Chỉnh sửa</button>` : '')
+    const right = (canDelPa(x) ? `<button type="button" class="vbtn secondary" data-sxpa-del="${c}">${icon('del')} Xoá</button>` : '') + (ed ? `<button type="button" class="vbtn secondary" data-sxpa-edit="${c}">${icon('edit')} Chỉnh sửa</button>` : '')
       + (ed ? `<button type="button" class="vbtn primary" data-sxpa-submit="${c}" ${r.ready ? '' : 'disabled title="Chưa đủ 4 nội dung đầu vào"'}>Trình phê duyệt</button>` : '')
       + (x.status === 'SUBMITTED' && isApprover() ? `<button type="button" class="vbtn secondary" data-sxpa-return="${c}">Trả lại</button><button type="button" class="vbtn primary" data-sxpa-approve="${c}">Phê duyệt</button>` : '')
       + (canMakeProject(x) ? `<button type="button" class="vbtn primary" data-go="sx/du-an/create/${encodeURIComponent(x.code)}">${icon('add')} Lập dự án sản xuất</button>` : '');
@@ -251,25 +254,25 @@
     const lateIds = new Set(r.sec.B11.late.map((i) => i.id));
     const t11 = k.table([['Hạng mục đầu vào', 280], ['Người / đơn vị cung cấp', 190], ['Nguồn, căn cứ', 220], ['Hạn trả kết quả', 120], ['Trạng thái', 140, 'c'], ['Ghi chú', 240], ['', 90, 'c']], d.items,
       (i) => `<td>${k.clamp(i.name)}</td><td>${k.clamp(whoTxt(i))}</td><td>${k.clamp(i.src)}</td><td class="num ${lateIds.has(i.id) ? 't-err' : ''}">${esc(dmy(i.due))}${lateIds.has(i.id) ? '<br><small>Quá hạn</small>' : ''}</td>
-        <td class="c">${badge(...ST_IN[i.st])}</td><td>${i.note ? k.clamp(i.note) : k.dash}</td><td class="c">${canUpdItem(x, i) ? btn(`data-sxpa-item="${c}|${i.id}"`, 'Cập nhật') : ''}</td>`);
+        <td class="c">${badge(...ST_IN[i.st])}</td><td>${i.note ? k.clamp(i.note) : k.dash}</td><td class="c">${canUpdItem(x, i) ? btn(`data-sxpa-item="${c}|${i.id}"`, 'Cập nhật') : ''}${ed ? ' ' + btn(`data-sxpa-rm="${c}|items|${i.id}"`, 'Xoá') : ''}</td>`);
     const s11 = `<section class="vcard pad24" data-sxpa="B11">${secHead('B11', r, ed ? btn(`data-sxpa-item="${c}|"`, `${icon('add')} Giao đầu vào`) : '')}
       <p class="cap">Giao việc làm rõ đầu ra, rà đầu vào kỹ thuật, nguồn lực, nguồn và căn cứ áp dụng; việc còn thiếu giữ "Đang chuẩn bị", không làm mất nhiệm vụ khỏi theo dõi.</p>${t11}</section>`;
     const docCell = (i, key) => (String(i[key] || '').trim() ? esc(i[key]) : '<span class="t-err">Thiếu</span>');
     const t12 = k.table([['Cấu hình', 200], ['Lô sản xuất', 160], ['BOM', 80], ['Hồ sơ kỹ thuật', 110], ['Định mức', 90], ['Chỉ tiêu được duyệt', 150], ['Phạm vi áp dụng', 170], ['Kết quả tiếp nhận', 150, 'c'], ['', 90, 'c']], d.cfgs,
       (i) => `<td>${k.clamp(i.cfg)}${verMismatch(i) ? `<br>${badge('Lệch phiên bản', 'warning')}` : ''}</td><td>${k.clamp(i.lot)}</td><td>${docCell(i, 'bom')}</td><td>${docCell(i, 'hskt')}</td><td>${docCell(i, 'dm')}</td><td>${docCell(i, 'ct')}</td>
-        <td>${k.clamp(i.scope)}</td><td class="c">${badge(...ST_CFG[i.kq])}${i.note ? `<br><small class="faint">${esc(i.note)}</small>` : ''}</td><td class="c">${ed ? btn(`data-sxpa-cfg="${c}|${i.id}"`, 'Tiếp nhận') : ''}</td>`);
+        <td>${k.clamp(i.scope)}</td><td class="c">${badge(...ST_CFG[i.kq])}${i.note ? `<br><small class="faint">${esc(i.note)}</small>` : ''}</td><td class="c">${ed ? btn(`data-sxpa-cfg="${c}|${i.id}"`, 'Tiếp nhận') + ' ' + btn(`data-sxpa-rm="${c}|cfgs|${i.id}"`, 'Xoá') : ''}</td>`);
     const s12 = `<section class="vcard pad24" data-sxpa="B12">${secHead('B12', r, ed ? btn(`data-sxpa-cfg="${c}|"`, `${icon('add')} Thêm cấu hình / lô`) : '')}
       <p class="cap">Gắn hồ sơ với cấu hình, lô, phiên bản; chỉ "Tiếp nhận đủ" khi đủ BOM, hồ sơ kỹ thuật, định mức, chỉ tiêu và cùng phiên bản — không dùng một mốc "đã bàn giao" chung.</p>${t12}</section>`;
     const t13 = k.table([['Hạng mục / gói', 280], ['Bên thực hiện', 140], ['Đầu mối', 190], ['Điều kiện kiểm tra, bàn giao', 280], ['Trạng thái', 120, 'c'], ['', 90, 'c']], d.scope,
       (i) => `<td>${k.clamp(i.name)}${i.note ? `<br><small class="faint">${esc(i.note)}</small>` : ''}</td><td>${i.side ? esc(SIDE[i.side]) : '<span class="t-err">Chưa xác định</span>'}</td><td>${whoTxt(i) ? k.clamp(whoTxt(i)) : '<span class="t-err">Chưa có</span>'}</td>
-        <td>${i.check ? k.clamp(i.check) : '<span class="t-err">Chưa có</span>'}</td><td class="c">${badge(...ST_SC[i.st])}</td><td class="c">${ed ? btn(`data-sxpa-scope="${c}|${i.id}"`, 'Cập nhật') : ''}</td>`);
+        <td>${i.check ? k.clamp(i.check) : '<span class="t-err">Chưa có</span>'}</td><td class="c">${badge(...ST_SC[i.st])}</td><td class="c">${ed ? btn(`data-sxpa-scope="${c}|${i.id}"`, 'Cập nhật') + ' ' + btn(`data-sxpa-rm="${c}|scope|${i.id}"`, 'Xoá') : ''}</td>`);
     const s13 = `<section class="vcard pad24" data-sxpa="B13">${secHead('B13', r, ed ? btn(`data-sxpa-scope="${c}|"`, `${icon('add')} Thêm hạng mục`) : '')}
       <p class="cap">Phân biệt phần VHT thực hiện, giao VMC hoặc thuê ngoài; mỗi gói có đầu mối và điều kiện kiểm tra, bàn giao. Gói chưa chốt chưa được chuẩn bị chính thức.</p>${t13}</section>`;
     const t14 = k.table([['Khoản chi phí', 240], ['Giá trị (triệu đồng)', 140, 'r'], ['Căn cứ giá', 220], ['Nguồn kinh phí', 150], ['Cập nhật', 100], ['Hiệu lực đến', 110], ['Leadtime (tuần)', 110, 'r'], ['Đánh giá', 220], ['', 90, 'c']], d.cost,
       (i) => { const is = costIssues(i); return `<td>${k.clamp(i.name)}</td><td class="r num">${num(i.amount)}</td><td>${i.basis ? k.clamp(i.basis) : '<span class="t-err">Chưa có căn cứ</span>'}</td><td>${i.src ? k.clamp(i.src) : k.dash}</td>
         <td class="num">${i.at ? esc(dmy(i.at)) : k.dash}</td><td class="num ${expired(i) ? 't-err' : ''}">${i.valid && i.valid < '2099' ? esc(dmy(i.valid)) : k.dash}</td>
         <td class="r num">${i.lt || k.dash}${i.lt >= LT_LONG ? `<br>${badge(i.early ? 'Đã đưa vào KH sớm' : 'Leadtime dài', i.early ? 'info' : 'warning')}` : ''}</td>
-        <td>${is.length ? `<span class="t-err">${esc(is.join('; '))}</span>` : badge('Đủ căn cứ', 'success')}</td><td class="c">${ed ? btn(`data-sxpa-cost="${c}|${i.id}"`, 'Cập nhật') : ''}</td>`; },
+        <td>${is.length ? `<span class="t-err">${esc(is.join('; '))}</span>` : badge('Đủ căn cứ', 'success')}</td><td class="c">${ed ? btn(`data-sxpa-cost="${c}|${i.id}"`, 'Cập nhật') + ' ' + btn(`data-sxpa-rm="${c}|cost|${i.id}"`, 'Xoá') : ''}</td>`; },
       `<tfoot><tr class="sum"><td></td><td><b>Tổng cộng</b></td><td class="r num"><b>${num(r.total)}</b></td><td colspan="7">${r.budget ? `Giá trị dự toán ${num(r.budget)} triệu · chênh lệch <b class="${r.diff > 0 ? 't-err' : ''}">${r.diff > 0 ? '+' : ''}${num(r.diff)}</b> triệu` : ''}</td></tr></tfoot>`);
     const s14 = `<section class="vcard pad24" data-sxpa="B14">${secHead('B14', r, ed ? btn(`data-sxpa-cost="${c}|"`, `${icon('add')} Thêm khoản chi phí`) : '')}
       <p class="cap">Mỗi khoản có căn cứ giá, nguồn, ngày cập nhật và còn hiệu lực; vật tư leadtime ≥ ${LT_LONG} tuần đưa vào kế hoạch từ đầu; chênh lệch với giá trị dự toán nêu để cấp có thẩm quyền quyết định.</p>${t14}</section>`;
@@ -403,6 +406,24 @@
     ({ item: itemDlg, cfg: cfgDlg, scope: scopeDlg, cost: costDlg })[kind](code, id || null);
   });
 
+  /* Xoá phương án / dòng đầu vào, cấu hình, hạng mục, chi phí (góp ý 27/11). */
+  document.addEventListener('click', async (e) => {
+    const t = e.target.closest && e.target.closest('[data-sxpa-del],[data-sxpa-rm]');
+    if (!t) return;
+    e.stopPropagation(); e.preventDefault();
+    if (t.dataset.sxpaDel) {
+      const x = byCode(t.dataset.sxpaDel); if (!x || !canDelPa(x)) return;
+      if (!(await window.Catalog.confirm({ sev: 'danger', title: 'Bạn chắc chắn muốn xoá không?', desc: `Xoá phương án sản xuất kinh doanh: ${x.title}?`, hl: x.title, cancel: 'Hủy', ok: 'Xoá' }))) return;
+      U.created = U.created.filter((y) => y.code !== x.code); U.del = (U.del || []).concat(x.code); delete U.b1[x.code]; persist();
+      toast('<b>Thành công</b><br>Xoá phương án thành công!'); location.hash = '#/sx/pasxkd'; rerender(); return;
+    }
+    const [code, kind, id] = t.dataset.sxpaRm.split('|'), x = byCode(code); if (!x || !editable(x)) return;
+    const b = b1Of(x), it = (b[kind] || []).find((y) => y.id === id); if (!it) return;
+    const name = it.name || it.scope || it.cfg || it.item || it.title || id;
+    if (!(await window.Catalog.confirm({ sev: 'danger', title: 'Bạn chắc chắn muốn xoá không?', desc: `Xoá dòng: ${name}?`, hl: String(name), cancel: 'Hủy', ok: 'Xoá' }))) return;
+    b[kind] = b[kind].filter((y) => y.id !== id); addHist(code, 'Xoá dòng phương án', String(name)); persist();
+    toast('<b>Thành công</b><br>Xoá thành công!'); rerender();
+  }, true);
   function route(parts) {
     if (!parts[0]) return list();
     if (parts[0] === 'create') return list();

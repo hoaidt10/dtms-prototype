@@ -3,6 +3,14 @@
 > Mỗi PR một mục, mới nhất trên cùng: `## YYYY-MM-DD — <việc> (#PR)` + 2–5 gạch đầu dòng (màn, thay đổi, nguồn, điểm treo mới).
 > Lịch sử trước T77: [lich-su-chung.md](lich-su-chung.md).
 
+## 2026-11-27 · Thêm mới / Sửa / Xoá đồng bộ; Tiến độ và chất lượng 2 bảng; Hồ sơ dự án điều hướng tab Tài liệu
+- **Điều kiện sản xuất** (`js/sx-chuyen-giao.js`): nút **Thêm mới** (thay "Thêm điều kiện"), có ở mọi giai đoạn trước khi dự án hoàn thành; dòng thêm có Sửa / Xoá.
+- **Tiến độ và chất lượng** (`js/sx-btp.js`, tên tab bỏ "(Từ VMMS)"): bỏ Thêm kết quả IPQC; tách **bảng Tiến độ** và **bảng Chất lượng** (số đạt, số lỗi, tỷ lệ đạt, IPQC — bấm xem chi tiết).
+- **Đề xuất mua sắm** (`js/sx-mua-sam.js`): menu hiện danh sách đề xuất của Sản xuất (thay danh sách ĐXMS chỉ xem T73) — **Thêm mới** (cùng màn Lập đề xuất của tab dự án), cột Thao tác **Sửa / Xoá** (đề xuất chưa gửi), cột ĐXMS mở ĐXMS đồng bộ; chi tiết có Chỉnh sửa.
+- **Hồ sơ dự án** (`js/sx-ho-so.js`): danh sách dự án (số tài liệu, chưa có tệp, cập nhật gần nhất) — bấm mở **tab Tài liệu** của dự án; bỏ Tải file lên / Chọn mẫu ở màn này.
+- Rà soát "có Thêm thì có Sửa, Xoá": **Phương án SXKD** thêm Xoá phương án (Đang chuẩn bị, chưa lập dự án) và Xoá dòng đầu vào / cấu hình / hạng mục / chi phí (`js/sx-pasxkd.js`); **Đề nghị nghiệm thu** Sửa / Xoá khi chưa đánh giá OQC (xoá thì huỷ hồ sơ — `SxFlow.cancelCase`); **OQC** thêm Sửa nội dung (`js/sx-nghiem-thu.js`, `js/sx-flow.js`); **Tài liệu** Sửa / Xoá danh mục riêng (xoá khi trống) và tài liệu người dùng thêm (`js/sx-du-an.js`). Các mục khác đã đủ (nhiệm vụ, công việc con, dự án, kế hoạch, nhân sự, nhu cầu vật tư, bất thường, nghiệm thu nhập tay, bài học).
+- Test: t71-sx-s11 "Hồ sơ dự án" viết lại theo thiết kế mới; sx-cong-viec-con thêm 1 ca (12 ca xanh). So với trước khi sửa, toàn bộ t71-* / t74-* không có ca đỏ thêm.
+
 ## 2026-11-27 · Sửa lỗi dòng công việc con mở nhầm việc khác (trùng mã dữ liệu cũ)
 - Nguyên nhân: dữ liệu mẫu đổi ngày 26/11 (việc theo bước kế hoạch thành CV-SX-2026-006…009); việc con người dùng tạo trước đó trong trình duyệt được cấp CV-SX-2026-006 → trùng mã việc mẫu "Bảo đảm máy móc…" (3 công việc con), bấm dòng 2.1 mở nhầm việc mẫu.
 - Kho công việc có phiên bản dữ liệu (`VER = 3`, `js/sx-cong-viec.js`): dữ liệu cũ khác phiên bản được làm mới một lần; bản ghi người dùng trùng mã dữ liệu mẫu bị bỏ qua; mã mới cấp tiếp sau mã lớn nhất (CV-SX-2026-010…). e2e thêm ca trùng mã (11 ca xanh).

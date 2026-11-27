@@ -26,35 +26,35 @@
   const docRows = () => { const ids = new Set(P().visible().map((p) => p.code)); return P().docsAll().filter((x) => ids.has(x.project)).map((x) => Object.assign({}, x, { code: x.id })); };
   const SRC = { TPL: 'Từ biểu mẫu', UP: 'Tải lên' };
   function docList() {
-    // Theo: task-management (danh sách) + card Danh sách tài liệu của task-create (Chọn mẫu tài liệu, Tải file lên); hộp thoại theo ecat catalog-form-dialog
+    /* Góp ý 27/11: Hồ sơ dự án = điều hướng tới tab Tài liệu của từng dự án (thêm / sửa / xoá tài liệu làm ở tab Tài liệu) — danh sách dự án kèm số tài liệu theo danh mục. */
     const k = K();
     const info = {
-      scr: 'SX-18', name: 'Hồ sơ dự án', uc: 'SX-ULNL Bước 15 Hồ sơ dự án (Xem danh sách, Tìm kiếm, Thêm mới, Chỉnh sửa, Xem chi tiết, Xóa); SX-KS-K1 §3.1 bước 15 (lưu hồ sơ sản xuất)',
+      scr: 'SX-18', name: 'Hồ sơ dự án', uc: 'SX-ULNL Bước 15 Hồ sơ dự án; SX-KS-K1 §3.1 bước 15 (lưu hồ sơ sản xuất)',
       notes: [
-        'Gom tài liệu của mọi dự án trong phạm vi xem — cùng nguồn với tab <b>Tài liệu</b> của Chi tiết dự án (tài liệu sinh từ quy trình như kế hoạch đã phê duyệt, tài liệu tải lên, tài liệu tạo từ biểu mẫu). <b>Nhóm hồ sơ</b> theo loại tài liệu (cấu hình).',
-        'Chọn mẫu tài liệu lấy từ danh mục <b>Biểu mẫu tài liệu sản xuất</b> (mẫu đang hoạt động, có tệp). Sửa / Xoá chỉ với tài liệu người dùng thêm, bởi PM dự án; tài liệu có sẵn của hồ sơ chỉ xem.',
-        'Hồ sơ chuyển giao của sản phẩm xem ở tab Hồ sơ chuyển giao của dự án. Thật: kho tài liệu dùng chung (MinIO) gắn theo dự án, phân quyền theo dự án (GIẢ LẬP P-261).',
+        '<b>Góp ý 27/11:</b> Hồ sơ dự án chuyển thành điều hướng — mỗi dòng là một dự án, bấm để mở <b>tab Tài liệu</b> của dự án (Thêm danh mục tài liệu, (+) thêm tài liệu, Tải file lên, Sửa / Xoá ở đó). Không còn Thêm mới / Chọn mẫu / Tải file lên ở màn này để tài liệu chỉ quản lý một chỗ.',
+        'Số tài liệu = mọi tài liệu của dự án (sinh từ quy trình, tải lên); "Chưa có tệp" = tài liệu mới chỉ có tên. Thật: kho tài liệu dùng chung (MinIO) gắn theo dự án, phân quyền theo dự án (GIẢ LẬP P-261).',
       ],
-      q: ['P-261'], src: 'task-management/task-management.component · task-create card Danh sách tài liệu',
+      q: ['P-261'], src: 'task-management/task-management.component',
     };
-    const can = isAdmin() || P().visible().some((p) => p.pm === pid());
-    const GR = [...new Set(Object.values(D.sxDocGroup))];
+    const go = (p) => `sx/du-an/${encodeURIComponent(p.code)}/docs`;
+    const rowOf = (p) => {
+      const docs = p.docs || [], files = docs.filter((d) => d[6] || d[3]), last = docs.map((d) => d[4]).filter(Boolean).sort().pop();
+      return Object.assign({}, p, { nDocs: docs.length, nNoFile: docs.length - files.length, last, kinds: new Set(docs.map((d) => d[1])).size });
+    };
     return k.listPage({
-      id: 'sxhs', exp: 'Ho so du an', title: 'Hồ sơ dự án', ph: 'Tìm kiếm theo tên tài liệu, dự án', info,
-      right: can ? `<button type="button" class="vbtn secondary" data-sxhs-tpl>Chọn mẫu tài liệu</button><button type="button" class="vbtn primary" data-sxhs-add>${icon('upload')} Tải file lên</button>` : '',
-      rows: () => docRows().sort((a, b) => (a.d[4] < b.d[4] ? 1 : a.d[4] > b.d[4] ? -1 : a.id < b.id ? -1 : 1)),
-      kwText: (x) => `${x.d[0]} ${x.project}`,
-      empty: () => ({ project: null, group: null, kind: null, name: '' }),
-      match: (x, f) => (!f.project || x.project === f.project) && (!f.group || D.sxDocGroup[x.d[1]] === f.group) && (!f.kind || x.d[1] === f.kind) && k.has(f.name, x.d[0]),
+      id: 'sxhs', title: 'Hồ sơ dự án', ph: 'Tìm kiếm theo tên, mã dự án', info, right: '',
+      rows: () => P().visible().map(rowOf).sort((a, b) => (String(a.last || '') < String(b.last || '') ? 1 : -1)),
+      kwText: (x) => `${x.code} ${x.name}`,
+      empty: () => ({ project: null, status: null }),
+      match: (x, f) => (!f.project || x.code === f.project) && (!f.status || x.status === f.status),
       adv: (txt, sel) => `${sel('project', 'Dự án', { options: P().visible().map((p) => ({ value: p.code, label: `${p.code} — ${p.name}` })) })}
-        ${sel('group', 'Nhóm hồ sơ', { searchable: false, options: GR.map((x) => ({ value: x, label: x })) })}
-        ${sel('kind', 'Loại tài liệu', { options: Object.entries(D.sxDocKind).map(([value, label]) => ({ value, label })) })}${txt('name', 'Tên tài liệu')}`,
-      cols: [['Thao tác', 100, 'c'], ['Tên tài liệu', 360], ['Nhóm hồ sơ', 180], ['Loại tài liệu', 260], ['Dự án', 140], ['Phiên bản', 100], ['Người tải lên', 190], ['Ngày tải lên', 120], ['Nguồn', 130]],
-      href: () => 'sx/ho-so',
-      cell: (x) => `<td class="c"><div class="acts">${x.own && canManage(x.project) ? `${iconBtn('edit', 'Sửa', `data-sxhs-edit="${esc(x.id)}"`)}<span class="sep"></span>${iconBtn('del', 'Xoá', `data-sxhs-del="${esc(x.id)}"`)}` : ''}</div></td>
-        <td><a class="link" data-sxhs-view="${esc(x.id)}">${esc(x.d[0])}</a></td><td>${esc(D.sxDocGroup[x.d[1]] || 'Khác')}</td><td>${k.clamp(D.sxDocKind[x.d[1]] || x.d[1])}</td>
-        <td><a class="link" data-go="sx/du-an/${encodeURIComponent(x.project)}">${esc(x.project)}</a></td><td>${esc(x.d[2])}</td><td>${k.clamp(pName(x.d[3]))}</td><td class="num">${esc(dmy(x.d[4]))}</td>
-        <td>${SRC[x.d[5]] ? esc(SRC[x.d[5]]) : k.dash}</td>`,
+        ${sel('status', 'Trạng thái dự án', { searchable: false, options: Object.entries(D.sxStatus).map(([value, label]) => ({ value, label })) })}`,
+      cols: [['Thao tác', 90, 'c'], ['Dự án', 420], ['Trạng thái dự án', 170, 'c'], ['Số tài liệu', 120, 'r'], ['Chưa có tệp', 120, 'r'], ['Số danh mục có tài liệu', 170, 'r'], ['Cập nhật gần nhất', 150], ['Giám đốc dự án', 200]],
+      href: go,
+      cell: (x) => `<td class="c"><div class="acts">${iconBtn('file', 'Xem tài liệu của dự án', `data-go="${go(x)}"`)}</div></td>
+        <td>${NC(x.name, x.code, { go: go(x), tip: 'Xem tài liệu của dự án' })}</td><td class="c">${badge(D.sxStatus[x.status], D.sxStatusV[x.status])}</td>
+        <td class="r num">${x.nDocs}</td><td class="r num${x.nNoFile ? ' t-err' : ''}">${x.nNoFile || k.dash}</td><td class="r num">${x.kinds}</td>
+        <td class="num">${x.last ? esc(dmy(x.last)) : k.dash}</td><td>${k.clamp(pName(x.pm))}</td>`,
     });
   }
   const kinds = () => Object.entries(D.sxDocKind);

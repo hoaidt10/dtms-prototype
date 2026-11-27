@@ -89,7 +89,7 @@
     };
     return k.listPage({
       id: 'sxms', title: 'Danh sách đề xuất mua sắm từ sản xuất', ph: 'Tìm kiếm theo mã, tên đề xuất, dự án', info,
-      right: '', /* T73: bỏ Thêm mới, Xuất Excel — lập đề xuất từ màn Nhu cầu vật tư; danh sách chỉ xem, đồng bộ từ ĐTMS */
+      right: projOpts().length ? `<button type="button" class="vbtn primary" data-go="sx/mua-sam/create" title="Lập đề xuất mua sắm (cùng màn với tab Mua sắm & hợp đồng của dự án)">${icon('add')} Thêm mới</button>` : '', /* góp ý 27/11 */
       rows: () => visible().map((x) => Object.assign({}, x, { st: sentSt(x), ds: dxmsSt(x), total: totalOf(x), dx: (chain(x) || { dxms: [''] }).dxms[0] })),
       kwText: (x) => `${x.code} ${x.title} ${x.project}`,
       empty: () => ({ code: '', title: '', project: null, dot: null, st: [] }),
@@ -98,15 +98,16 @@
         ${sel('project', 'Dự án', { options: P().visible().map((p) => ({ value: p.code, label: `${p.code} — ${p.name}` })) })}
         ${sel('dot', 'Đợt', { searchable: false, options: [{ value: '1', label: 'Đợt 1' }, { value: '2', label: 'Đợt 2' }] })}
         ${sel('st', 'Trạng thái', { multi: true, searchable: false, options: ['Nháp', 'Chờ phê duyệt', 'Bị từ chối', 'Đã gửi ĐTMS'].map((x) => ({ value: x, label: x })) })}`,
-      cols: [['Trạng thái', 150, 'c'], ['Đề xuất mua sắm', 360], ['Dự án', 240], ['Đợt', 70, 'c'], ['Giá trị dự toán (đồng)', 180, 'r'], ['ĐXMS', 150], ['Trạng thái trên ĐTMS', 170, 'c'], ['Ngày gửi', 120]],
+      cols: [['Thao tác', 100, 'c'], ['Trạng thái', 150, 'c'], ['Đề xuất mua sắm', 360], ['Dự án', 240], ['Đợt', 70, 'c'], ['Giá trị dự toán (đồng)', 180, 'r'], ['ĐXMS', 150], ['Trạng thái trên ĐTMS', 170, 'c'], ['Ngày gửi', 120]],
       href,
-      cell: (x) => `<td class="c">${badge(...x.st)}</td><td>${NC(x.title, x.code, { go: href(x), tip: 'Xem chi tiết đề xuất mua sắm' })}</td><td>${PJ(x.project)}</td><td class="c">${x.dot}</td>
-        <td class="r num">${num(x.total)}</td><td>${x.dx ? esc(x.dx) : k.dash}</td><td class="c">${x.ds ? badge(...x.ds) : k.dash}</td><td class="num">${x.sent ? esc(dmy(x.sent)) : k.dash}</td>`,
+      cell: (x) => `<td class="c"><div class="acts">${canEditP(x) ? ib2('edit', 'Sửa', `data-go="${href(x)}/edit"`) : ''}${canDelP(x) ? ib2('del', 'Xoá', `data-sxm-del="${esc(x.code)}"`) : ''}</div></td><td class="c">${badge(...x.st)}</td><td>${NC(x.title, x.code, { go: href(x), tip: 'Xem chi tiết đề xuất mua sắm' })}</td><td>${PJ(x.project)}</td><td class="c">${x.dot}</td>
+        <td class="r num">${num(x.total)}</td><td>${x.dx ? `<a class="link" data-go="sx/mua-sam/${encodeURIComponent(x.dx)}" title="Xem chi tiết ĐXMS đồng bộ từ ĐTMS">${esc(x.dx)}</a>` : k.dash}</td><td class="c">${x.ds ? badge(...x.ds) : k.dash}</td><td class="num">${x.sent ? esc(dmy(x.sent)) : k.dash}</td>`,
     });
   }
 
   /* ---------- SX-10 Lập / Chỉnh sửa ---------- */
   const F = { code: null, v: {}, err: {} };
+  const ib2 = (ic, label, attrs) => `<button type="button" class="vbtn icon ghost" aria-label="${label}" title="${label}" ${attrs}>${icon(ic)}</button>`;
   const projOpts = () => P().visible().filter((p) => p.status !== 'DONE' && (isAdmin() || p.pm === pid()));
   function pick(project, dot) {
     const p = P().byCode(project);
@@ -266,7 +267,7 @@
       q: INFO_Q, src: 'task-create (mode detail)',
     };
     /* T71 S12: Xoá chỉ đề xuất Nháp chưa từng gửi phê duyệt (chưa khởi tạo hồ sơ SX-MS); đã có hồ sơ (kể cả Bị từ chối) thì giữ để tra vết. */
-    const right = o.task || !canEditP(x) ? '' : (canDelP(x) ? `<button type="button" class="vbtn secondary" data-sxm-del="${esc(x.code)}">${icon('del')} Xoá</button>` : '')
+    const right = o.task || !canEditP(x) ? '' : (canDelP(x) ? `<button type="button" class="vbtn secondary" data-sxm-del="${esc(x.code)}">${icon('del')} Xoá</button>` : '') + `<button type="button" class="vbtn secondary" data-go="${href(x)}/edit">${icon('edit')} Chỉnh sửa</button>`
       + `<button type="button" class="vbtn primary" data-sxm-submit="${esc(x.code)}">Gửi phê duyệt</button>`;
     const alert = x.rejected && !x.sent && !pending(x) ? `<div class="hd-alerts"><div class="hd-alert error">${icon('info')}<span>Đề xuất bị từ chối: ${esc(x.rejected)}</span></div></div>` : '';
     const pr = hs ? FL().progress(hs) : null;
@@ -388,7 +389,8 @@
     if (a === 'create') return form(null);
     if (a && b === 'edit') return form(decodeURIComponent(a));
     if (a) { const c = decodeURIComponent(a); return /^ĐXMS/.test(c) && window.Luong ? window.Luong.detailSx(c) : detail(c); }
-    return window.Luong ? window.Luong.listSx() : list();
+    /* Góp ý 27/11: menu Đề xuất mua sắm = danh sách đề xuất của Sản xuất (Nháp, Chờ phê duyệt, Bị từ chối, Đã gửi ĐTMS — cột ĐXMS mở ĐXMS đồng bộ) có Thêm mới / Sửa / Xoá; thay danh sách ĐXMS chỉ xem (T73). */
+    return list();
   }
   function enter(parts) {
     if (parts[0] !== 'mua-sam') return;

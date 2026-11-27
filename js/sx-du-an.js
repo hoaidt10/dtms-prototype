@@ -502,7 +502,7 @@
       ${head({ title: o.title || 'Xem chi tiết dự án sản xuất', back: o.back || 'sx/du-an', lg: true, info: o.info || info, right })}
       ${o.bar || ''}
       ${alerts}
-      ${k.tabs('sx:' + p.code, [['info', 'Thông tin chung'], ['plan', 'Kế hoạch'], ['kh', 'Phê duyệt kế hoạch'], ['ns', 'Nhân sự'], ['cg', 'Hồ sơ chuyển giao'], ['m4', 'Điều kiện sản xuất'], ['ms', 'Mua sắm & hợp đồng'], ['btp', 'Tiến độ và chất lượng (Từ VMMS)'], ['bt', 'Bất thường & thay đổi'], ['nt', 'Nghiệm thu sản phẩm'], ['vmms', 'Dữ liệu VMMS'], ['docs', 'Tài liệu'], ['hist', 'Lịch sử']],
+      ${k.tabs('sx:' + p.code, [['info', 'Thông tin chung'], ['plan', 'Kế hoạch'], ['kh', 'Phê duyệt kế hoạch'], ['ns', 'Nhân sự'], ['cg', 'Hồ sơ chuyển giao'], ['m4', 'Điều kiện sản xuất'], ['ms', 'Mua sắm & hợp đồng'], ['btp', 'Tiến độ và chất lượng'], ['bt', 'Bất thường & thay đổi'], ['nt', 'Nghiệm thu sản phẩm'], ['vmms', 'Dữ liệu VMMS'], ['docs', 'Tài liệu'], ['hist', 'Lịch sử']],
     { info: tInfo, kh: tKh, plan: tPlan, ns: () => window.SxKh.tabStaff(p), cg: () => window.SxCg.projectCg(p), m4: () => window.SxCg.projectM4(p), ms: () => window.SxMs.projectTab(p), btp: () => window.SxBtp.projectTab(p), bt: () => window.SxBt.projectTab(p), nt: () => window.SxNt.projectTab(p), vmms: () => window.SxVmms.projectTab(p), docs: tDocs, hist: tHist })}</div>`;
   }
   const T = { open: {} };
@@ -551,7 +551,8 @@
     const docs = p.docs.map((d0, i) => ({ i, d: docOf(p, i) }));
     const known = new Set(cats.map((c) => c[0]));
     docs.forEach((x) => { if (!known.has(x.d[1])) { known.add(x.d[1]); cats.push([x.d[1], x.d[1] === 'KHAC' ? 'Tài liệu khác' : x.d[1]]); } });
-    const can = canDoc(p), rows = [];
+    const can = canDoc(p), rows = [], base = p.docs.length - (U.docs[p.code] || []).length, own = (key) => docCats(p.code).some((c) => c.key === key);
+    const ib = (ic, label, attrs) => `<button type="button" class="vbtn icon ghost" title="${label}" aria-label="${label}" ${attrs}>${icon(ic)}</button>`;
     cats.forEach(([key, name]) => {
       const l = docs.filter((x) => x.d[1] === key).reverse();
       rows.push({ cat: true, key, name, n: l.length });
@@ -560,12 +561,12 @@
     return k.table([['Danh mục / tài liệu', 420], ['Phiên bản', 100], ['Người tải lên', 200], ['Ngày tải lên', 130], ['File đính kèm', 300], ['Thao tác', 150, 'c']], rows, (r) => {
       if (r.cat) {
         return `<td><b>${esc(r.name)}</b> <span class="faint">(${r.n})</span></td><td colspan="4">${r.n ? '' : '<span class="faint">Chưa có tài liệu</span>'}</td>
-          <td class="c">${can ? `<button type="button" class="vbtn icon ghost" title="Thêm tài liệu vào danh mục" aria-label="Thêm tài liệu vào danh mục" data-sx-docadd="${esc(p.code)}|${esc(r.key)}">${icon('add')}</button>` : ''}</td>`;
+          <td class="c"><div class="acts">${can ? ib('add', 'Thêm tài liệu vào danh mục', `data-sx-docadd="${esc(p.code)}|${esc(r.key)}"`) : ''}${can && own(r.key) ? ib('edit', 'Sửa danh mục', `data-sx-doccat-edit="${esc(p.code)}|${esc(r.key)}"`) + (r.n ? '' : ib('del', 'Xoá danh mục', `data-sx-doccat-del="${esc(p.code)}|${esc(r.key)}"`)) : ''}</div></td>`;
       }
       const d = r.d, f = fileOf(d);
       return `<td style="padding-left:28px">${k.clamp(d[0])}${d[5] === 'SIGN' ? ' ' + badge('Đã ký số', 'success') : ''}</td><td>${d[2] ? esc(d[2]) : k.dash}</td><td>${d[3] ? k.clamp(pName(d[3])) : k.dash}</td><td class="num">${d[4] ? esc(dmy(d[4])) : k.dash}</td>
         <td>${f ? `<a class="link" title="Tải xuống">${icon('download')} ${esc(f)}</a>` : '<span class="faint">Chưa có tệp</span>'}</td>
-        <td class="c">${can ? `<label class="vbtn sm secondary" title="Tải file lên cho tài liệu này">${icon('upload')} Tải file lên<input type="file" hidden data-sx-docup="${esc(p.code)}|${r.i}"></label>` : ''}</td>`;
+        <td class="c"><div class="acts">${can ? `<label class="vbtn sm secondary" title="Tải file lên cho tài liệu này">${icon('upload')} Tải file lên<input type="file" hidden data-sx-docup="${esc(p.code)}|${r.i}"></label>` : ''}${can && r.i >= base ? ib('edit', 'Sửa tài liệu', `data-sx-doc-edit="${esc(p.code)}|${r.i}"`) + ib('del', 'Xoá tài liệu', `data-sx-doc-del="${esc(p.code)}|${r.i}"`) : ''}</div></td>`;
     });
   }
 
@@ -623,8 +624,8 @@
     if (t) tplDlg(t.dataset.sxTpl);
   });
   /* Tab Tài liệu: Thêm danh mục tài liệu, (+) thêm tên tài liệu vào danh mục, Tải file lên ở từng dòng. */
-  const askName = (title, label, ph) => new Promise((resolve) => {
-    const m = vModal({ title, size: 'md', body: `<div class="vfield"><div class="lr"><label>${esc(label)}</label><span class="req">*</span></div><input class="vctl" id="sx-ask" maxlength="255" placeholder="${esc(ph)}"><p class="msg t-err" id="sx-ask-err"></p></div>`,
+  const askName = (title, label, ph, val) => new Promise((resolve) => {
+    const m = vModal({ title, size: 'md', body: `<div class="vfield"><div class="lr"><label>${esc(label)}</label><span class="req">*</span></div><input class="vctl" id="sx-ask" maxlength="255" placeholder="${esc(ph)}" value="${esc(val || '')}"><p class="msg t-err" id="sx-ask-err"></p></div>`,
       actions: '<button type="button" class="vbtn secondary" data-close>Hủy</button><button type="button" class="vbtn primary" id="sx-ask-ok">Lưu</button>' });
     m.el.querySelector('#sx-ask-ok').onclick = () => { const v = m.el.querySelector('#sx-ask').value.trim(); if (!v) { m.el.querySelector('#sx-ask-err').textContent = `Bạn cần nhập ${label}.`; return; } m.close(); resolve(v); };
   });
@@ -641,6 +642,22 @@
     (U.docs[code] = U.docs[code] || []).push([name, key, '', null, null, 'NAME', '']);
     addHist(code, 'Thêm tài liệu vào danh mục', name); persist();
     toast('<b>Thành công</b><br>Thêm tài liệu thành công!'); rerender();
+  });
+  /* Có Thêm thì có Sửa / Xoá (góp ý 27/11): danh mục riêng của dự án (xoá khi chưa có tài liệu), tài liệu người dùng thêm (tài liệu sinh từ quy trình chỉ xem / tải lên phiên bản). */
+  document.addEventListener('click', async (e) => {
+    const t = e.target.closest && e.target.closest('[data-sx-doccat-edit],[data-sx-doccat-del],[data-sx-doc-edit],[data-sx-doc-del]');
+    if (!t) return;
+    const ds = t.dataset, [code, key] = (ds.sxDoccatEdit || ds.sxDoccatDel || ds.sxDocEdit || ds.sxDocDel).split('|'), p = byCode(code);
+    if (ds.sxDoccatEdit || ds.sxDoccatDel) {
+      const c = docCats(code).find((x) => x.key === key); if (!c) return;
+      if (ds.sxDoccatEdit) { c.name = await askName('Sửa danh mục tài liệu', 'Tên danh mục tài liệu', '', c.name); addHist(code, 'Sửa danh mục tài liệu', c.name); }
+      else { if (!(await window.Catalog.confirm({ sev: 'danger', title: 'Bạn chắc chắn muốn xoá không?', desc: `Xoá danh mục tài liệu: ${c.name}?`, hl: c.name, cancel: 'Hủy', ok: 'Xoá' }))) return; U.docCats[code] = docCats(code).filter((x) => x.key !== key); addHist(code, 'Xoá danh mục tài liệu', c.name); }
+    } else {
+      const i = Number(key), base = p.docs.length - (U.docs[code] || []).length, d = U.docs[code][i - base]; if (!d) return;
+      if (ds.sxDocEdit) { d[0] = await askName('Sửa tài liệu', 'Tên tài liệu', '', d[0]); addHist(code, 'Sửa tài liệu', d[0]); }
+      else { if (!(await window.Catalog.confirm({ sev: 'danger', title: 'Bạn chắc chắn muốn xoá không?', desc: `Xoá tài liệu: ${d[0]}?`, hl: d[0], cancel: 'Hủy', ok: 'Xoá' }))) return; U.docs[code].splice(i - base, 1); addHist(code, 'Xoá tài liệu', d[0]); }
+    }
+    persist(); toast('<b>Thành công</b><br>' + (ds.sxDoccatDel || ds.sxDocDel ? 'Xoá thành công!' : 'Cập nhật thành công!')); rerender();
   });
   document.addEventListener('change', (e) => {
     const t = e.target.closest && e.target.closest('[data-sx-docup]');
