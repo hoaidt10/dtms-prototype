@@ -159,8 +159,8 @@
   /* ---------- Thêm mới phiếu (BM.QLBT.01) = bước 1 của luồng ---------- */
   const catTypes = () => window.Catalog.rows('sx-bat-thuong').filter((r) => r.active !== false).map((r) => [r.code, r.name]);
   const catList = (key) => window.Catalog.rows(key).filter((r) => r.active !== false).map((r) => [r.code, r.name]);
-  /* Nhánh hoaidt10 (25/11): trường Quy trình — danh sách của menu Quản lý quy trình (quy-trinh.js), chỉ quy trình có phiên bản ACTIVE. */
-  const procList = () => ((window.QuyTrinh && window.QuyTrinh.WORKFLOWS) || []).filter((w) => w.versions.some((v) => v.status === 'ACTIVE')).map((w) => [w.code, `${w.code} — ${w.name}`]);
+  /* Nhánh hoaidt10 (25/11): trường Quy trình — danh sách của menu Quản lý quy trình, chỉ quy trình có phiên bản ACTIVE. Góp ý 27/11: quy trình của Sản xuất (D.sxWorkflows), không còn quy trình ĐTMS. */
+  const procList = () => (D.sxWorkflows || []).filter((w) => w.versions.some((v) => v.status === 'ACTIVE')).map((w) => [w.code, `${w.code} — ${w.name}`]);
   const procName = (code) => { const p = procList().find((x) => x[0] === code); return p ? p[1] : code; };
   /* Danh sách lựa chọn của form Thêm mới: sản phẩm, khách hàng, đơn vị, serial theo dự án, danh mục chuẩn, nhân sự. */
   function lists() {

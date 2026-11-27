@@ -1,5 +1,5 @@
 /* Phân hệ Quản lý sản xuất — Phương án sản xuất kinh doanh (PASXKD) — COP2 B1 (CDS-BT-03COP tr. 84–85). SX-22 danh sách, SX-23 chi tiết.
-   Luồng: Nhiệm vụ đơn vị (sx-cong-viec.js, chưa có dự án) → Lập PASXKD (hoàn thiện đầu vào B1.1–B1.4) → Trình → Ban Giám đốc Khối phê duyệt / trả lại
+   Luồng: (Nhiệm vụ đơn vị — không bắt buộc, góp ý 27/11) → Lập PASXKD (hoàn thiện đầu vào B1.1–B1.4) → Trình → Ban Giám đốc Khối phê duyệt / trả lại
    → PASXKD đã phê duyệt là căn cứ duy nhất để Thêm mới dự án sản xuất (sx-du-an.js) → dự án gắn ngược vào nhiệm vụ.
    Đầu vào: B1.1 giao trách nhiệm, tổ chức chuẩn bị; B1.2 tiếp nhận hồ sơ theo cấu hình, lô; B1.3 phạm vi, trách nhiệm các bên; B1.4 chi phí, kế hoạch tổng thể có căn cứ.
    Chỉ trình được khi đủ 4 nội dung. Phê duyệt trên màn (GIẢ LẬP — thật: luồng duyệt Camunda + ký số MySign).
@@ -83,7 +83,7 @@
   function template(x, done) {
     const s = (ok) => (done ? ok : 'CHUA'), pr = prodOf(x.product), ver = (pr && pr.version) || 'v1.0';
     const items = [
-      { name: x.nv ? `Nhiệm vụ được giao (${x.nv})` : 'Văn bản giao nhiệm vụ', who: x.pm, src: 'Quản lý nhiệm vụ', st: x.nv || done ? 'DU' : 'CHUA' },
+      { name: x.nv ? `Nhiệm vụ được giao (${x.nv})` : 'Yêu cầu sản xuất kinh doanh (không bắt buộc gắn nhiệm vụ)', who: x.pm, src: x.nv ? 'Quản lý nhiệm vụ' : 'Phương án lập độc lập', st: 'DU' }, // góp ý 27/11: không bắt buộc nhiệm vụ
       { name: 'Sản phẩm, số lượng, mốc yêu cầu của khách hàng', who: 'sxkd', src: 'Yêu cầu khách hàng / đơn vị sử dụng', st: s('DU') },
       { name: 'Hồ sơ kỹ thuật, BOM, định mức theo cấu hình', who: 'sxrd', src: 'Gói chuyển giao từ nghiên cứu', st: s('DU') },
       { name: 'Báo giá, giá tham chiếu vật tư chính', unit: 'Trung tâm Mua sắm', src: 'Báo giá nhà cung cấp', st: s('DU') },
@@ -183,9 +183,9 @@
     const k = K(), rows = visible().sort((a, b) => (a.created < b.created ? 1 : -1));
     const show = rows.filter(GROUP[F.st]);
     const info = { scr: 'SX-22', name: 'Danh sách phương án sản xuất kinh doanh', uc: 'CDS-BT-03COP COP2 B1 (B1.1–B1.4, tr. 84–85); QT-TTSX-4A11 §5.1 (đầu vào: phương án được phê duyệt)',
-      notes: ['<b>Luồng</b>: Nhiệm vụ đơn vị (chưa có dự án) → <b>Lập PASXKD</b> (hoàn thiện đầu vào B1.1–B1.4) → Trình → Ban Giám đốc Khối phê duyệt / trả lại → <b>Lập dự án sản xuất</b> từ PASXKD đã phê duyệt (một PASXKD một dự án) → dự án gắn vào nhiệm vụ.',
+      notes: ['<b>Luồng</b>: (Nhiệm vụ đơn vị — không bắt buộc, góp ý 27/11) → <b>Lập PASXKD</b> (hoàn thiện đầu vào B1.1–B1.4) → Trình → Ban Giám đốc Khối phê duyệt / trả lại → <b>Lập dự án sản xuất</b> từ PASXKD đã phê duyệt (một PASXKD một dự án) → dự án gắn vào nhiệm vụ.',
         'Chỉ trình được khi đủ 4 nội dung đầu vào. % đủ căn cứ = số dòng đủ / tổng số dòng của từng nội dung.',
-        'Ô chỉ số lọc nhanh. Thêm mới: người có vai Giám đốc dự án, chọn nhiệm vụ đơn vị chưa có dự án và chưa có PASXKD.',
+        'Ô chỉ số lọc nhanh. Thêm mới: người có vai Giám đốc dự án; Nhiệm vụ được giao không bắt buộc (góp ý 27/11) — chọn được nhiệm vụ đơn vị chưa có dự án và chưa có PASXKD.',
         'GIẢ LẬP: phê duyệt ngay trên màn (thật: luồng duyệt Camunda của phân hệ, ký số MySign); báo giá, nguồn vốn, hồ sơ chuyển giao nhập tay (thật: đồng bộ từ ĐTMS / Tài chính / Quản lý hồ sơ KHCN).'], q: [] };
     const cnt = (g) => rows.filter(GROUP[g]).length;
     const kpi = [['ALL', 'Tổng số', ''], ['DRAFT', 'Đang chuẩn bị / trả lại', 'warn'], ['SUBMITTED', 'Chờ phê duyệt', 'info'], ['APPROVED', 'Đã duyệt, chưa lập dự án', 'ok'], ['PROJECT', 'Đã lập dự án', '']]
@@ -208,17 +208,17 @@
     const info = { scr: 'SX-23', name: 'Chi tiết phương án sản xuất kinh doanh', uc: 'CDS-BT-03COP COP2 B1.1–B1.4',
       notes: ['Tab <b>Hoàn thiện đầu vào</b>: B1.1 người / đơn vị cung cấp, nguồn, hạn, trạng thái (việc thiếu giữ "Đang chuẩn bị", không mất nhiệm vụ); B1.2 hồ sơ theo cấu hình × lô, chỉ "Tiếp nhận đủ" khi đủ BOM / hồ sơ kỹ thuật / định mức / chỉ tiêu cùng phiên bản; B1.3 phạm vi VHT / VMC / thuê ngoài, chỉ chốt khi có đầu mối + điều kiện bàn giao; B1.4 chi phí có căn cứ, hiệu lực, leadtime dài, chênh lệch với giá trị dự toán.',
         'Sửa được khi Đang chuẩn bị / Trả lại (người lập); người được giao ở B1.1 cập nhật dòng của mình. Chờ phê duyệt / Đã phê duyệt: chỉ xem.',
-        'Đã phê duyệt → nút <b>Lập dự án sản xuất</b> mở Thêm mới dự án, điền sẵn từ phương án; sản phẩm phải có trong Kho sản phẩm sẵn sàng sản xuất.'], q: [] };
+        'Góp ý 27/11: không còn nút Lập dự án sản xuất ở màn này — lập dự án ở menu <b>Dự án sản xuất › Thêm mới</b>, chọn phương án đã phê duyệt; sản phẩm phải có trong Kho sản phẩm sẵn sàng sản xuất. Phương án không bắt buộc gắn nhiệm vụ.'], q: [] };
     const right = (canDelPa(x) ? `<button type="button" class="vbtn secondary" data-sxpa-del="${c}">${icon('del')} Xoá</button>` : '') + (ed ? `<button type="button" class="vbtn secondary" data-sxpa-edit="${c}">${icon('edit')} Chỉnh sửa</button>` : '')
       + (ed ? `<button type="button" class="vbtn primary" data-sxpa-submit="${c}" ${r.ready ? '' : 'disabled title="Chưa đủ 4 nội dung đầu vào"'}>Trình phê duyệt</button>` : '')
-      + (x.status === 'SUBMITTED' && isApprover() ? `<button type="button" class="vbtn secondary" data-sxpa-return="${c}">Trả lại</button><button type="button" class="vbtn primary" data-sxpa-approve="${c}">Phê duyệt</button>` : '')
-      + (canMakeProject(x) ? `<button type="button" class="vbtn primary" data-go="sx/du-an/create/${encodeURIComponent(x.code)}">${icon('add')} Lập dự án sản xuất</button>` : '');
+      + (x.status === 'SUBMITTED' && isApprover() ? `<button type="button" class="vbtn secondary" data-sxpa-return="${c}">Trả lại</button><button type="button" class="vbtn primary" data-sxpa-approve="${c}">Phê duyệt</button>` : '');
+    /* Góp ý 27/11: bỏ nút Lập dự án sản xuất ở màn này — lập dự án ở menu Dự án sản xuất › Thêm mới (chọn PASXKD đã phê duyệt). */
     const lastRet = x.status === 'RETURNED' ? x.hist.slice().reverse().find((h) => h[2] === 'Trả lại') : null;
     const alerts = [
       lastRet ? `<div class="hd-alert error">${icon('info')}<span>Ban Giám đốc Khối trả lại ngày ${esc(dmy(lastRet[0]))}: ${esc(lastRet[3])}</span></div>` : '',
       ed && !r.ready ? `<div class="hd-alert warning">${icon('info')}<span>Chưa đủ căn cứ để trình: ${r.okN}/4 nội dung đầu vào đủ. Xem tab Hoàn thiện đầu vào.</span></div>` : '',
       x.status === 'SUBMITTED' ? `<div class="hd-alert info">${icon('info')}<span>Đang chờ Ban Giám đốc Khối phê duyệt${x.submittedAt ? ` (trình ngày ${esc(dmy(x.submittedAt))})` : ''}.</span></div>` : '',
-      x.status === 'APPROVED' && !p ? `<div class="hd-alert ${pr && window.SxCg.ready(pr.code) ? 'info' : 'warning'}">${icon('info')}<span>${pr && window.SxCg.ready(pr.code) ? 'Phương án đã phê duyệt — sẵn sàng lập dự án sản xuất.' : `Phương án đã phê duyệt nhưng sản phẩm ${esc(x.product)} chưa có trong Kho sản phẩm sẵn sàng sản xuất — chưa lập được dự án.`}</span></div>` : '',
+      x.status === 'APPROVED' && !p ? `<div class="hd-alert ${pr && window.SxCg.ready(pr.code) ? 'info' : 'warning'}">${icon('info')}<span>${pr && window.SxCg.ready(pr.code) ? 'Phương án đã phê duyệt — lập dự án ở menu Dự án sản xuất › Thêm mới.' : `Phương án đã phê duyệt nhưng sản phẩm ${esc(x.product)} chưa có trong Kho sản phẩm sẵn sàng sản xuất — chưa lập được dự án.`}</span></div>` : '',
     ].join('');
     const tInfo = () => k.card('Thông tin chung', `<div class="ginfo c3">
       ${k.kv('Số phương án', esc(x.no))}${k.kv('Tên phương án', esc(x.title), 'span2')}
@@ -287,9 +287,9 @@
   async function infoDlg(code, nv) {
     const { tf, ta, sel, num: nf, dt, req, opts, L, txt } = B(), x = code ? byCode(code) : null;
     const tasks = freeTasks();
-    if (!x && !tasks.length) { toast('Bạn không có nhiệm vụ đơn vị nào chưa có dự án để lập phương án. Giao nhiệm vụ ở Quản lý nhiệm vụ › Nhiệm vụ đơn vị trước.', 'warn'); return; }
+    /* Góp ý 27/11: phương án lập và duyệt được không cần nhiệm vụ hay dự án trước — Nhiệm vụ được giao không bắt buộc. */
     const kh = SCOPE[pid()];
-    const comps = [x ? txt(`Nhiệm vụ: **${x.nv || '—'}**`) : sel('nv', 'Nhiệm vụ được giao', req({ values: opts(tasks.map((t) => [t.code, `${t.code} — ${t.title}`])) })),
+    const comps = [x ? txt(`Nhiệm vụ: **${x.nv || 'Không gắn nhiệm vụ'}**`) : sel('nv', 'Nhiệm vụ được giao (không bắt buộc)', { values: opts(tasks.map((t) => [t.code, `${t.code} — ${t.title}`])) }),
       tf('title', 'Tên phương án', req()), sel('khoi', 'Khối', req({ values: opts(Object.entries(KHOI)), layout: { columns: 8 } })),
       sel('product', 'Sản phẩm', req({ values: opts(D.sxProducts.map((p) => [p.code, `${p.code} — ${p.name} (${p.version})`])), layout: { columns: 8 } })),
       nf('qty', 'Số lượng', req({ validate: { required: true, min: 1 }, layout: { columns: 8 } })), sel('unitName', 'Đơn vị tính', req({ values: opts(['bộ', 'thiết bị', 'trạm', 'chiếc']), layout: { columns: 8 } })),
@@ -311,8 +311,8 @@
       addHist(x.code, 'Cập nhật thông tin phương án', ''); persist(); toast('<b>Thành công</b><br>Cập nhật thành công!'); rerender(); return;
     }
     const n = Math.max(0, ...all().map((y) => Number(y.code.slice(-3)) || 0)) + 1, codeN = 'PAKD-2026-' + String(n).padStart(3, '0');
-    const rec = Object.assign({ code: codeN, no: `${n}/PASXKD-VHT`, nv: v.nv, status: 'DRAFT', pm: pid(), created: today(), date: today() }, data);
-    U.created.unshift(rec); addHist(codeN, 'Lập phương án sản xuất kinh doanh', `Từ nhiệm vụ ${v.nv}`); persist();
+    const rec = Object.assign({ code: codeN, no: `${n}/PASXKD-VHT`, nv: v.nv || null, status: 'DRAFT', pm: pid(), created: today(), date: today() }, data);
+    U.created.unshift(rec); addHist(codeN, 'Lập phương án sản xuất kinh doanh', v.nv ? `Từ nhiệm vụ ${v.nv}` : ''); persist();
     toast('<b>Thành công</b><br>Đã lập phương án. Hoàn thiện đầu vào B1.1–B1.4 rồi trình phê duyệt.');
     window.Thau.kit.setTab('pa:' + codeN, 'dv');
     location.hash = '#/' + href(rec);

@@ -299,6 +299,19 @@
 
   /* ---------- Luồng nháp (P-238, GIẢ LẬP — gửi BA xác nhận; danh sách bước cũng ở docs/sx/prototype-qlsx-chuan-bi.md §4) ----------
      Mỗi bước: id, tên, vai (mã R-SX-*), next hoặc choices [nhãn, tới]; 'svc' = service task (hệ thống). */
+  /* Góp ý 27/11 (hoaidt10): menu Quản lý quy trình của Sản xuất chỉ hiện quy trình của phân hệ Sản xuất (bỏ các quy trình ĐTMS MS01…MS19) — quy-trinh.js đọc D.sxWorkflows khi route #/sx/….
+     Cấu trúc như WORKFLOWS (quy-trinh.js): mỗi quy trình các phiên bản deploy. Mã Camunda, ngày deploy GIẢ LẬP; chưa có BPMN khách (P-238) nên Chi tiết quy trình chưa có sơ đồ. */
+  D.sxWorkflows = [
+    { code: 'SX-HD', id: 'SX_HOAT_DONG_SX', name: 'Quy trình hoạt động sản xuất', versions: [
+      { key: '2251799813695101', version: 1, modeler: 'v1.0', deploy: 1, status: 'ACTIVE', page: 'SX-HD', at: '01/11/2026' }],
+      history: [{ version: 'v1.0', at: '2026-11-01T08:00', current: true, desc: 'Theo QT.VHT.TTSX.4A.1.1: phương án SXKD → lập dự án, kế hoạch → chuẩn bị sản xuất → sản xuất → nghiệm thu, bàn giao.' }] },
+    { code: 'SX-BT', id: 'SX_BAT_THUONG', name: 'Quy trình quản lý bất thường trong sản xuất', versions: [
+      { key: '2251799813695202', version: 1, modeler: 'v1.0', deploy: 1, status: 'ACTIVE', page: 'SX-BT', at: '01/11/2026' }],
+      history: [{ version: 'v1.0', at: '2026-11-01T08:15', current: true, desc: 'Ghi nhận phiếu bất thường → phân tích nguyên nhân → xử lý, khắc phục → xác nhận đóng phiếu.' }] },
+    { code: 'SX-TD', id: 'SX_THAY_DOI_KT', name: 'Quy trình quản lý thay đổi kỹ thuật trong sản xuất', versions: [
+      { key: '2251799813695303', version: 1, modeler: 'v1.0', deploy: 1, status: 'ACTIVE', page: 'SX-TD', at: '01/11/2026' }],
+      history: [{ version: 'v1.0', at: '2026-11-01T08:30', current: true, desc: 'Đề nghị thay đổi kỹ thuật → đánh giá ảnh hưởng → phê duyệt → cập nhật hồ sơ kỹ thuật, áp dụng.' }] },
+  ];
   D.sxFlows = {
     /* T71 S2: SX-KH chạy trên sx-flow.js. Thuộc tính bước (một bước = một dòng cấu hình): nlv = định mức ngày; label = nút khi không có choices;
        choices [nhãn, tới, kiểu?] — kiểu 'no' = nút từ chối (ý kiến bắt buộc); action = bộ xử lý hành động (SxFlow.ACT) chạy khi xong bước / theo lựa chọn;

@@ -40,6 +40,8 @@
   ];
   /* T24 Q2: Đồng bộ từ Camunda (SRS-QTQT 3.1.1.5, P-117). Thay đổi mẫu đang chờ trên Camunda — áp một lần: phiên bản mới (MS13 chạy song song với bản cũ),
      MS14 v1 bị xoá trên Camunda → Dừng hoạt động, MS01 phiên bản mới (bản chuẩn 12/10) — luật đã đủ, không sinh thêm. */
+  /* Nhánh hoaidt10 (27/11, phân hệ Sản xuất): menu Quản lý quy trình của Sản xuất (route #/sx/…) chỉ hiện quy trình Sản xuất (D.sxWorkflows, sx-data.js); ĐTMS giữ WORKFLOWS. */
+  const wfs = () => (location.hash.indexOf('#/sx/') === 0 && D.sxWorkflows ? D.sxWorkflows : WORKFLOWS);
   const WF_SEED = JSON.stringify(WORKFLOWS);
   const PENDING = [
     { code: 'MS13', add: { key: '2251799813692104', version: 2, modeler: 'v1.1', deploy: 2, status: 'ACTIVE', page: 'MS13', at: '30/10/2026' },
@@ -86,7 +88,7 @@
     return monitorRows().filter((r) => r.proc === w.code && r.version === v.version && (r.status === 'Đang chạy' || r.status === 'Quá hạn')).length;
   }
   const findVersion = (key) => {
-    for (const w of WORKFLOWS) for (const v of w.versions) if (v.key === key) return { w, v };
+    for (const w of wfs()) for (const v of w.versions) if (v.key === key) return { w, v };
     return null;
   };
 
@@ -105,7 +107,7 @@
     const wfOk = (w) => (adv
       ? (!f.code || norm(w.code).includes(norm(f.code))) && (!f.id || norm(w.id).includes(norm(f.id))) && (!f.name || norm(w.name).includes(norm(f.name)))
       : !kw || norm(`${w.code} ${w.id} ${w.name}`).includes(kw));
-    return WORKFLOWS.filter((w) => wfOk(w) && w.versions.some((v) => verOk(w, v)))
+    return wfs().filter((w) => wfOk(w) && w.versions.some((v) => verOk(w, v)))
       .map((w) => {
         const vers = w.versions.filter((v) => verOk(w, v));
         const latest = w.versions.reduce((a, b) => (b.version > a.version ? b : a));

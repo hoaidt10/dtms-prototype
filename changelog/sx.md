@@ -3,6 +3,13 @@
 > Mỗi PR một mục, mới nhất trên cùng: `## YYYY-MM-DD — <việc> (#PR)` + 2–5 gạch đầu dòng (màn, thay đổi, nguồn, điểm treo mới).
 > Lịch sử trước T77: [lich-su-chung.md](lich-su-chung.md).
 
+## 2026-11-27 · PASXKD không cần nhiệm vụ; bỏ Lập dự án ở Chi tiết PASXKD; Quản lý quy trình chỉ quy trình Sản xuất
+- **Phương án SXKD** (`js/sx-pasxkd.js`): Nhiệm vụ được giao không bắt buộc — lập và duyệt được khi chưa có nhiệm vụ / dự án (bỏ chặn "không có nhiệm vụ đơn vị"); dòng đầu vào nhiệm vụ không làm thiếu căn cứ.
+- **Chi tiết PASXKD**: bỏ nút Lập dự án sản xuất — lập dự án ở menu Dự án sản xuất › Thêm mới (chọn PASXKD đã phê duyệt).
+- **Quản lý quy trình** (menu Sản xuất): bỏ các quy trình ĐTMS, chỉ còn 3 quy trình Sản xuất (`D.sxWorkflows`, `js/sx-data.js`): Quy trình hoạt động sản xuất, Quy trình quản lý bất thường trong sản xuất, Quy trình quản lý thay đổi kỹ thuật trong sản xuất (mã Camunda, ngày deploy GIẢ LẬP; chưa có BPMN nên chưa có sơ đồ). Trường Quy trình của phiếu bất thường (`js/sx-bat-thuong.js`) lấy theo danh sách này.
+- **File phân hệ khác** `js/quy-trinh.js` (quan-tri): thêm `wfs()` — route `#/sx/…` đọc `D.sxWorkflows`, ĐTMS giữ `WORKFLOWS`. Ma trận hành động, Giám sát tiến trình chưa đổi.
+- Test: sx-cong-viec-con thêm 1 ca. So với trước khi sửa (t71-*, t74-*, sx-*, ui-rules, luong*, quy-trinh*, ma-tran*): không ca đỏ thêm.
+
 ## 2026-11-27 · Đề xuất mua sắm: phải được duyệt thì mới tạo ĐXMS trên ĐTMS
 - Góp ý mới (thay "Lưu gọi API ngay" ở mục dưới): màn Lập đề xuất mua sắm có **Lưu nháp** / **Gửi phê duyệt**; Gửi phê duyệt khởi tạo hồ sơ SX-MS (Lãnh đạo Khối Duyệt / Từ chối). **Chưa duyệt thì chưa tạo ĐXMS, chưa có mã**; được duyệt thì hệ thống gọi API-01 tạo ĐXMS trên ĐTMS và đề xuất nhận mã ĐXMS (vẫn một mã, một tên) (`js/sx-mua-sam.js`).
 - Hai cột: **Trạng thái phê duyệt** = duyệt nội bộ (Nháp, Chờ phê duyệt, Bị từ chối, Đã phê duyệt); **Trạng thái gửi ĐTMS** = Chưa gửi / Đã gửi (dòng phụ "Trên ĐTMS: <trạng thái ĐXMS>") / Gửi lỗi (Gửi lại, không phải duyệt lại). Sửa: Nháp, Bị từ chối; Xoá: Nháp chưa gửi phê duyệt; đã duyệt thì không sửa / xoá ở Sản xuất.

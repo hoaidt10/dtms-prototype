@@ -323,3 +323,34 @@ test('Góp ý 27/11: Điều kiện SX có Thêm mới; Đề xuất mua sắm c
   await expect(page).toHaveURL(/#\/sx\/du-an\/DA-SX-2026-002\/docs$/);
   expect(page.errors).toEqual([]);
 });
+
+test('Góp ý 27/11: PASXKD lập không cần nhiệm vụ; Chi tiết PASXKD không có nút Lập dự án (lập ở menu Dự án); Quản lý quy trình Sản xuất chỉ có 3 quy trình SX', async ({ page }) => {
+  await fresh(page, '#/sx/pasxkd');
+  // (1) Lập PASXKD không chọn nhiệm vụ.
+  await as(page, 'sxpm', '#/sx/pasxkd');
+  await page.locator('[data-sxpa-new]').first().click();
+  await expect(page.locator('.vmodal')).toContainText('Nhiệm vụ được giao (không bắt buộc)');
+  await page.locator('.vmodal [data-ef="title"]').fill('Phương án sản xuất độc lập');
+  await page.locator('.vmodal [data-vsel="ef-product"]').click(); await page.locator('.vsel-panel [data-opt="VT-25"]').click();
+  await page.locator('.vmodal [data-ef="qty"]').fill('10');
+  await page.locator('.vmodal [data-vsel="ef-model"]').click(); await page.locator('.vsel-panel [data-opt]').first().click();
+  await page.locator('.vmodal [data-ef="start"]').fill('01/01/2027');
+  await page.locator('.vmodal [data-ef="due"]').fill('01/06/2027');
+  await page.locator('.vmodal #ok').click();
+  await expect(page).toHaveURL(/#\/sx\/pasxkd\/PAKD-/);
+  const pa = await page.evaluate(() => SxPa.all().find((x) => x.title === 'Phương án sản xuất độc lập'));
+  expect(pa.nv).toBeNull();
+  // (2) PASXKD đã phê duyệt: không có nút Lập dự án sản xuất; menu Dự án sản xuất › Thêm mới vẫn chọn được phương án không gắn nhiệm vụ.
+  await as(page, 'sxpm', '#/sx/pasxkd/PAKD-2026-214');
+  await expect(page.locator('.pg-head')).not.toContainText('Lập dự án sản xuất');
+  await expect(page.locator('[data-go^="sx/du-an/create/"]')).toHaveCount(0);
+  // (3) Quản lý quy trình của Sản xuất: 3 quy trình SX, không còn quy trình ĐTMS; ĐTMS giữ nguyên.
+  await as(page, 'qt', '#/sx/quy-trinh');
+  const qt = page.locator('main');
+  for (const n of ['Quy trình hoạt động sản xuất', 'Quy trình quản lý bất thường trong sản xuất', 'Quy trình quản lý thay đổi kỹ thuật trong sản xuất']) await expect(qt).toContainText(n);
+  await expect(qt).not.toContainText('đề xuất mua sắm');
+  await expect(qt).not.toContainText('DTMS_MS01');
+  await as(page, 'qt', '#/quy-trinh');
+  await expect(page.locator('main')).toContainText('DTMS_MS01');
+  expect(page.errors).toEqual([]);
+});
